@@ -131,6 +131,13 @@ struct mpq2 {
     return a * (1 - t) + b * t;
   }
 
+  static mpq2 abs(const mpq2 &a)
+  {
+    mpq_class abs_x = (a.x >= 0) ? a.x : -a.x;
+    mpq_class abs_y = (a.y >= 0) ? a.y : -a.y;
+    return mpq2(abs_x, abs_y);
+  }
+
   static mpq_class distance(const mpq2 &a, const mpq2 &b)
   {
     return (a - b).length();

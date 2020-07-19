@@ -100,6 +100,11 @@ struct double2 {
     return a * (1 - t) + b * t;
   }
 
+  static double2 abs(const double2 &a)
+  {
+    return double2(fabsf(a.x), fabsf(a.y));
+  }
+
   static double distance(const double2 &a, const double2 &b)
   {
     return (a - b).length();

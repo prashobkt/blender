@@ -805,7 +805,7 @@ static void spheresphere_test(int nrings, double y_offset)
 
 TEST(mesh_intersect_perf, SphereSphere)
 {
-  spheresphere_test(64, 0.5);
+  spheresphere_test(16, 0.5);
 }
 
 #endif

@@ -241,11 +241,19 @@ struct mpq3 {
     return mpq3(a.x * s + b.x * t, a.y * s + b.y * t, a.z * s + b.z * t);
   }
 
+  static mpq3 abs(const mpq3 &a)
+  {
+    mpq_class abs_x = (a.x >= 0) ? a.x : -a.x;
+    mpq_class abs_y = (a.y >= 0) ? a.y : -a.y;
+    mpq_class abs_z = (a.z >= 0) ? a.z : -a.z;
+    return mpq3(abs_x, abs_y, abs_z);
+  }
+
   static int dominant_axis(const mpq3 &a)
   {
-    mpq_class x = abs(a[0]);
-    mpq_class y = abs(a[1]);
-    mpq_class z = abs(a[2]);
+    mpq_class x = (a.x >= 0) ? a.x : -a.x;
+    mpq_class y = (a.y >= 0) ? a.y : -a.y;
+    mpq_class z = (a.z >= 0) ? a.z : -a.z;
     return ((x > y) ? ((x > z) ? 0 : 2) : ((y > z) ? 1 : 2));
   }
 

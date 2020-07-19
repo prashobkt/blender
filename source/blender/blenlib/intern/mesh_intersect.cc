@@ -1181,15 +1181,15 @@ static bool non_trivial_intersect(const ITT_value &itt, Facep tri1, Facep tri2)
 
 static double supremum_cross(const double3 &a, const double3 &b)
 {
-  double3 abs_a{fabs(a[0]), fabs(a[1]), fabs(a[2])};
-  double3 abs_b{fabs(b[0]), fabs(b[1]), fabs(b[2])};
+  double3 abs_a = double3::abs(a);
+  double3 abs_b = double3::abs(b);
   double3 c;
   /* This is cross(a, b) but using absoluate values for a and b
    * and always using + when operation is + or -.
    */
-  c[0] = a[1] * b[2] + a[2] * b[1];
-  c[1] = a[2] * b[0] + a[0] * b[2];
-  c[2] = a[0] * b[1] + a[1] * b[0];
+  c[0] = abs_a[1] * abs_b[2] + abs_a[2] * abs_b[1];
+  c[1] = abs_a[2] * abs_b[0] + abs_a[0] * abs_b[2];
+  c[2] = abs_a[0] * abs_b[1] + abs_a[1] * abs_b[0];
   return double3::dot(c, c);
 }
 
@@ -1201,23 +1201,23 @@ constexpr int index_cross = 11;
 
 static double supremum_dot(const double3 &a, const double3 &b)
 {
-  double3 abs_a{fabs(a[0]), fabs(a[1]), fabs(a[2])};
-  double3 abs_b{fabs(b[0]), fabs(b[1]), fabs(b[2])};
+  double3 abs_a = double3::abs(a);
+  double3 abs_b = double3::abs(b);
   return double3::dot(abs_a, abs_b);
 }
 
 /* This value would be 3 if input values are exact */
-static int index_dot = 5;
+constexpr int index_dot = 5;
 
 static double supremum_orient3d(const double3 &a,
                                 const double3 &b,
                                 const double3 &c,
                                 const double3 &d)
 {
-  double3 abs_a{fabs(a[0]), fabs(a[1]), fabs(a[2])};
-  double3 abs_b{fabs(b[0]), fabs(b[1]), fabs(b[2])};
-  double3 abs_c{fabs(c[0]), fabs(c[1]), fabs(c[2])};
-  double3 abs_d{fabs(d[0]), fabs(d[1]), fabs(d[2])};
+  double3 abs_a = double3::abs(a);
+  double3 abs_b = double3::abs(b);
+  double3 abs_c = double3::abs(c);
+  double3 abs_d = double3::abs(d);
   double adx = abs_a[0] + abs_d[0];
   double bdx = abs_b[0] + abs_d[0];
   double cdx = abs_c[0] + abs_d[0];
@@ -1242,14 +1242,14 @@ static double supremum_orient3d(const double3 &a,
 }
 
 /* This value would be 8 if the input values are exact. */
-static int index_orient3d = 11;
+constexpr int index_orient3d = 11;
 
 /* Return the approximate orient3d of the four double3's, with
  * the guarantee that if the value is -1 or 1 then the underlying
  * mpq3 test would also have returned that value.
  * When the return value is 0, we are not sure of the sign.
  */
-static int fliter_orient3d(const double3 &a, const double3 &b, const double3 &c, const double3 &d)
+static int filter_orient3d(const double3 &a, const double3 &b, const double3 &c, const double3 &d)
 {
   double o3dfast = double3::orient3d_fast(a, b, c, d);
   if (o3dfast == 0.0) {
@@ -1269,7 +1269,7 @@ static int fliter_orient3d(const double3 &a, const double3 &b, const double3 &c,
  */
 static int filter_tri_plane_vert_orient3d(const Face &tri, Vertp v)
 {
-  return fliter_orient3d(tri[0]->co, tri[1]->co, tri[2]->co, v->co);
+  return filter_orient3d(tri[0]->co, tri[1]->co, tri[2]->co, v->co);
 }
 
 /* Are vectors a and b parallel or nearly parallel?
@@ -1306,6 +1306,34 @@ static bool dot_must_be_positive(const double3 &a, const double3 &b)
     return true;
   }
   return false;
+}
+
+/* Return the approximate side of point p on a plane with normal plane_no and point plane_p.
+ * The answer will be 1 if p is definitely above the plane, -1 if it is definitely below.
+ * If the answer is 0, we are unsure about which side of the plane (or if it is on the plane).
+ * In exact arithmetic, the answer is just sgn(dot(p - plane_p, plane_no)).
+ */
+
+/* This would be 5 if inputs are exact. */
+constexpr int index_plane_side = 7;
+
+static int filter_plane_side(const double3 &p,
+                             const double3 &plane_p,
+                             const double3 &plane_no,
+                             const double3 &abs_p,
+                             const double3 &abs_plane_p,
+                             const double3 &abs_plane_no)
+{
+  double d = double3::dot(p - plane_p, plane_no);
+  if (d == 0.0) {
+    return 0;
+  }
+  double supremum = double3::dot(abs_p - abs_plane_p, abs_plane_no);
+  double err_bound = supremum * index_plane_side * DBL_EPSILON;
+  if (d > err_bound) {
+    return d > 0 ? 1 : -1;
+  }
+  return 0;
 }
 
 /* A fast, non-exhaustive test for non_trivial intersection.
@@ -1589,7 +1617,7 @@ static ITT_value intersect_tri_tri(const Mesh &tm, uint t1, uint t2)
 {
   constexpr int dbg_level = 0;
 #ifdef PERFDEBUG
-  incperfcount(0);
+  incperfcount(2); /* Intersect_tri_tri calls. */
 #endif
   const Face &tri1 = *tm.face(t1);
   const Face &tri2 = *tm.face(t2);
@@ -1609,7 +1637,57 @@ static ITT_value intersect_tri_tri(const Mesh &tm, uint t1, uint t2)
     std::cout << "  r2 = " << vr2 << "\n";
   }
 
-  /* TODO: try doing intersect with double arithmetic first, with error bounds. */
+  /* Get signs of t1's vertices' distances to plane of t2 and vice versa. */
+
+  /* Try first getting signs with double arithmetic, with error bounds.
+   * If the signs calculated in this section are not 0, they are the same
+   * as what they would be using exact arithmetic.
+   */
+  const double3 &d_p1 = vp1->co;
+  const double3 &d_q1 = vq1->co;
+  const double3 &d_r1 = vr1->co;
+  const double3 &d_p2 = vp2->co;
+  const double3 &d_q2 = vq2->co;
+  const double3 &d_r2 = vr2->co;
+  const double3 &d_n2 = tri2.plane.norm;
+
+  const double3 &abs_d_p1 = double3::abs(d_p1);
+  const double3 &abs_d_q1 = double3::abs(d_q1);
+  const double3 &abs_d_r1 = double3::abs(d_r1);
+  const double3 &abs_d_r2 = double3::abs(d_r2);
+  const double3 &abs_d_n2 = double3::abs(d_n2);
+
+  int sp1 = filter_plane_side(d_p1, d_r2, d_n2, abs_d_p1, abs_d_r2, abs_d_n2);
+  int sq1 = filter_plane_side(d_q1, d_r2, d_n2, abs_d_q1, abs_d_r2, abs_d_n2);
+  int sr1 = filter_plane_side(d_r1, d_r2, d_n2, abs_d_r1, abs_d_r2, abs_d_n2);
+  if ((sp1 > 0 && sq1 > 0 && sr1 > 0) || (sp1 < 0 && sq1 < 0 && sr1 < 0)) {
+#ifdef PERFDEBUG
+    incperfcount(3); /* Tri tri intersects decided by filter plane tests. */
+#endif
+    if (dbg_level > 0) {
+      std::cout << "no intersection, all t1's verts above or below t2\n";
+    }
+    return ITT_value(INONE);
+  }
+
+  const double3 &d_n1 = tri1.plane.norm;
+  const double3 &abs_d_p2 = double3::abs(d_p2);
+  const double3 &abs_d_q2 = double3::abs(d_q2);
+  const double3 &abs_d_n1 = double3::abs(d_n1);
+
+  int sp2 = filter_plane_side(d_p2, d_r1, d_n1, abs_d_p2, abs_d_r1, abs_d_n1);
+  int sq2 = filter_plane_side(d_q2, d_r1, d_n1, abs_d_q2, abs_d_r1, abs_d_n1);
+  int sr2 = filter_plane_side(d_r2, d_r1, d_n1, abs_d_r2, abs_d_r1, abs_d_n1);
+  if ((sp2 > 0 && sq2 > 0 && sr2 > 0) || (sp2 < 0 && sq2 < 0 && sr2 < 0)) {
+#ifdef PERFDEBUG
+    incperfcount(3); /* Tri tri intersects decided by filter plane tests. */
+#endif
+    if (dbg_level > 0) {
+      std::cout << "no intersection, all t2's verts above or below t1\n";
+    }
+    return ITT_value(INONE);
+  }
+
   const mpq3 &p1 = vp1->co_exact;
   const mpq3 &q1 = vq1->co_exact;
   const mpq3 &r1 = vr1->co_exact;
@@ -1617,12 +1695,17 @@ static ITT_value intersect_tri_tri(const Mesh &tm, uint t1, uint t2)
   const mpq3 &q2 = vq2->co_exact;
   const mpq3 &r2 = vr2->co_exact;
 
-  /* Get signs of t1's vertices' distances to plane of t2. */
-  /* If don't have normal, use mpq3 n2 = cross_v3v3(sub_v3v3(p2, r2), sub_v3v3(q2, r2)); */
   const mpq3 &n2 = tri2.plane.norm_exact;
-  int sp1 = sgn(mpq3::dot(p1 - r2, n2));
-  int sq1 = sgn(mpq3::dot(q1 - r2, n2));
-  int sr1 = sgn(mpq3::dot(r1 - r2, n2));
+
+  if (sp1 == 0) {
+    sp1 = sgn(mpq3::dot(p1 - r2, n2));
+  }
+  if (sq1 == 0) {
+    sq1 = sgn(mpq3::dot(q1 - r2, n2));
+  }
+  if (sr1 == 0) {
+    sr1 = sgn(mpq3::dot(r1 - r2, n2));
+  }
 
   if (dbg_level > 1) {
     std::cout << "  sp1=" << sp1 << " sq1=" << sq1 << " sr1=" << sr1 << "\n";
@@ -1630,20 +1713,25 @@ static ITT_value intersect_tri_tri(const Mesh &tm, uint t1, uint t2)
 
   if ((sp1 * sq1 > 0) && (sp1 * sr1 > 0)) {
     if (dbg_level > 0) {
-      std::cout << "no intersection, all t1's verts above or below t2\n";
+      std::cout << "no intersection, all t1's verts above or below t2 (exact)\n";
     }
 #ifdef PERFDEBUG
-    incperfcount(2);
+    incperfcount(4); /* Tri tri interects decided by exact plane tests. */
 #endif
     return ITT_value(INONE);
   }
 
   /* Repeat for signs of t2's vertices with respect to plane of t1. */
-  /* If don't have normal, use mpq3 n1 = cross_v3v3(sub_v3v3(q1, p1), sub_v3v3(r1, p1)); */
   const mpq3 &n1 = tri1.plane.norm_exact;
-  int sp2 = sgn(mpq3::dot(p2 - r1, n1));
-  int sq2 = sgn(mpq3::dot(q2 - r1, n1));
-  int sr2 = sgn(mpq3::dot(r2 - r1, n1));
+  if (sp2 == 0) {
+    sp2 = sgn(mpq3::dot(p2 - r1, n1));
+  }
+  if (sq2 == 0) {
+    sq2 = sgn(mpq3::dot(q2 - r1, n1));
+  }
+  if (sr2 == 0) {
+    sr2 = sgn(mpq3::dot(r2 - r1, n1));
+  }
 
   if (dbg_level > 1) {
     std::cout << "  sp2=" << sp2 << " sq2=" << sq2 << " sr2=" << sr2 << "\n";
@@ -1651,10 +1739,10 @@ static ITT_value intersect_tri_tri(const Mesh &tm, uint t1, uint t2)
 
   if ((sp2 * sq2 > 0) && (sp2 * sr2 > 0)) {
     if (dbg_level > 0) {
-      std::cout << "no intersection, all t2's verts above or below t1\n";
+      std::cout << "no intersection, all t2's verts above or below t1 (exact)\n";
     }
 #ifdef PERFDEBUG
-    incperfcount(2);
+    incperfcount(4); /* Tri tri interects decided by exact plane tests. */
 #endif
     return ITT_value(INONE);
   }
@@ -2108,7 +2196,7 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
         continue;
       }
 #ifdef PERFDEBUG
-      incperfcount(3);
+      incperfcount(0); /* Overlaps. */
 #endif
       ITT_value itt;
       if (may_non_trivially_intersect(tm.face(tu), tm.face(t_other))) {
@@ -2119,7 +2207,7 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
           std::cout << "early discovery of only trivial intersect\n";
         }
 #ifdef PERFDEBUG
-        incperfcount(4);
+        incperfcount(1); /* Early discovery of trivial intersects. */
 #endif
         itt = ITT_value(INONE);
       }
@@ -2497,23 +2585,23 @@ static void perfdata_init(void)
 {
   /* count 0. */
   perfdata.count.append(0);
-  perfdata.count_name.append("intersect_tri_tri calls");
+  perfdata.count_name.append("overlaps");
 
   /* count 1. */
   perfdata.count.append(0);
-  perfdata.count_name.append("trivial intersects detected post intersect_tri_tri");
+  perfdata.count_name.append("early discovery of trivial intersects");
 
   /* count 2. */
   perfdata.count.append(0);
-  perfdata.count_name.append("tri tri intersects stopped by plane tests");
+  perfdata.count_name.append("intersect_tri_tri calls");
 
   /* count 3. */
   perfdata.count.append(0);
-  perfdata.count_name.append("overlaps");
+  perfdata.count_name.append("tri tri intersects decided by filter plane tests");
 
   /* count 4. */
   perfdata.count.append(0);
-  perfdata.count_name.append("early discovery of trivial intersects");
+  perfdata.count_name.append("tri tri intersects decided by exact plane tests");
 
   /* count 5. */
   perfdata.count.append(0);

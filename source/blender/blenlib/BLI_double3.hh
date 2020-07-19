@@ -217,6 +217,11 @@ struct double3 {
     return a * (1 - t) + b * t;
   }
 
+  static double3 abs(const double3 &a)
+  {
+    return double3(fabs(a.x), fabs(a.y), fabs(a.z));
+  }
+
   /* orient3d gives the exact result, using multiprecision artihmetic when result
    * is close to zero. orient3d_fast just uses double arithmetic, so may be
    * wrong if the answer is very close to zero.

@@ -123,6 +123,11 @@ struct float2 {
     return a * (1 - t) + b * t;
   }
 
+  static float2 abs(const float2 &a)
+  {
+    return float2(fabsf(a.x), fabsf(a.y));
+  }
+
   static float distance(const float2 &a, const float2 &b)
   {
     return (a - b).length();
