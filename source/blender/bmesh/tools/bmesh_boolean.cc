@@ -41,8 +41,9 @@ static Mesh mesh_from_bm(BMesh *bm,
   BLI_assert(r_triangulated != nullptr);
   BM_mesh_elem_index_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
   BM_mesh_elem_table_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
+  /* Account for triangulation and intersects. */
   const int estimate_num_outv = (3 * bm->totvert) / 2;
-  const int estimate_num_outf = (3 * bm->totface) / 2;
+  const int estimate_num_outf = 4 * bm->totface;
   arena->reserve(estimate_num_outv, estimate_num_outf);
   Array<Vertp> vert(bm->totvert);
   for (int v = 0; v < bm->totvert; ++v) {
