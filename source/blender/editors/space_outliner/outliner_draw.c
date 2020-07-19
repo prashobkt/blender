@@ -2050,9 +2050,11 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
         break;
       case TSE_CONSTRAINT_BASE:
         data.icon = ICON_CONSTRAINT;
+        data.drag_id = tselem->id;
         break;
       case TSE_CONSTRAINT: {
         bConstraint *con = te->directdata;
+        data.drag_id = tselem->id;
         switch ((eBConstraint_Types)con->type) {
           case CONSTRAINT_TYPE_CAMERASOLVER:
             data.icon = ICON_CON_CAMERASOLVER;
@@ -2502,6 +2504,7 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
       }
       case TSE_EFFECT_BASE:
       case TSE_EFFECT:
+        data.drag_id = tselem->id;
         data.icon = ICON_SHADERFX;
         break;
       default:
