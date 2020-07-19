@@ -26,6 +26,8 @@
 
 #include "GHOST_Context.h"
 
+#include <vulkan/vulkan.h>
+
 #ifndef GHOST_OPENGL_VK_CONTEXT_FLAGS
 /* leave as convenience define for the future */
 #  define GHOST_OPENGL_VK_CONTEXT_FLAGS 0
@@ -96,6 +98,7 @@ class GHOST_ContextVK : public GHOST_Context {
   GHOST_TSuccess getSwapInterval(int &intervalOut);
 
  private:
+  VkInstance m_instance;
 };
 
 #endif  // __GHOST_CONTEXTVK_H__
