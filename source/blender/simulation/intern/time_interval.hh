@@ -12,33 +12,46 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2009, Blender Foundation
  */
 
-/** \file
- * \ingroup editors
+#ifndef __SIM_TIME_INTERVAL_HH__
+#define __SIM_TIME_INTERVAL_HH__
+
+#include "BLI_utildefines.h"
+
+namespace blender::sim {
+
+/**
+ * The start time is inclusive and the end time is exclusive. The duration is zero, the interval
+ * describes a single point in time.
  */
+class TimeInterval {
+ private:
+  float start_;
+  float duration_;
 
-#ifndef __ED_INFO_H__
-#define __ED_INFO_H__
+ public:
+  TimeInterval(float start, float duration) : start_(start), duration_(duration)
+  {
+    BLI_assert(duration_ >= 0.0f);
+  }
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+  float start() const
+  {
+    return start_;
+  }
 
-struct Main;
+  float end() const
+  {
+    return start_ + duration_;
+  }
 
-/* info_stats.c */
-void ED_info_stats_clear(struct ViewLayer *view_layer);
-const char *ED_info_statusbar_string(struct Main *bmain,
-                                     struct bScreen *screen,
-                                     struct bContext *C);
-void ED_info_draw_stats(
-    struct Main *bmain, Scene *scene, ViewLayer *view_layer, int x, int *y, int height);
+  float duration() const
+  {
+    return duration_;
+  }
+};
 
-#ifdef __cplusplus
-}
-#endif
+}  // namespace blender::sim
 
-#endif /*  __ED_INFO_H__ */
+#endif /* __SIM_TIME_INTERVAL_HH__ */
