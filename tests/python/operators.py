@@ -157,8 +157,8 @@ def main():
             break
         elif cmd == "--run-test":
             operators_test.apply_modifiers = False
-            index = int(command[i + 1])
-            operators_test.run_test(index)
+            name = str(command[i + 1])
+            operators_test.run_test(name)
             break
 
 

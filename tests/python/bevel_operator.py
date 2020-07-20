@@ -169,8 +169,8 @@ def main():
             operator_test.run_all_tests()
             break
         elif cmd == "--run-test":
-            index = int(command[i + 1])
-            operator_test.run_test(index)
+            name = str(command[i + 1])
+            operator_test.run_test(name)
             break
 
 
