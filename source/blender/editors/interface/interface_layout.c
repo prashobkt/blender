@@ -664,7 +664,10 @@ static void ui_item_array(uiLayout *layout,
 
     /* special case, boolean array in a menu, this could be used in a more generic way too */
     if (ELEM(subtype, PROP_COLOR, PROP_COLOR_GAMMA) && !expand && ELEM(len, 3, 4)) {
-      uiDefAutoButR(block, ptr, prop, -1, "", ICON_NONE, 0, 0, w, UI_UNIT_Y);
+      but = uiDefAutoButR(block, ptr, prop, -1, "", ICON_NONE, 0, 0, w, UI_UNIT_Y);
+      if (label_but != NULL) {
+        but->label_but = label_but;
+      }
     }
     else {
       bool *boolarr = NULL;
