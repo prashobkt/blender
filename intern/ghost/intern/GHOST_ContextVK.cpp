@@ -28,6 +28,12 @@
 
 #include <vulkan/vulkan.h>
 
+#ifdef _WIN32
+#  include <vulkan/vulkan_win32.h>
+#else
+#  include <vulkan/vulkan_xlib.h>
+#endif
+
 #include <vector>
 
 #include <cassert>
@@ -104,11 +110,11 @@ static const char *vulkan_error_as_string(VkResult result)
 
 GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual) : GHOST_Context(stereoVisual)
 {
-  assert(m_display != NULL);
 }
 
 GHOST_ContextVK::~GHOST_ContextVK()
 {
+  vkDestroyInstance(m_instance, NULL);
 }
 
 GHOST_TSuccess GHOST_ContextVK::swapBuffers()
@@ -128,11 +134,11 @@ GHOST_TSuccess GHOST_ContextVK::releaseDrawingContext()
 
 static vector<VkExtensionProperties> getExtensionsAvailable()
 {
-  uint32_t extensionCount = 0;
-  vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+  uint32_t extension_count = 0;
+  vkEnumerateInstanceExtensionProperties(NULL, &extension_count, NULL);
 
-  vector<VkExtensionProperties> extensions(extensionCount);
-  vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+  vector<VkExtensionProperties> extensions(extension_count);
+  vkEnumerateInstanceExtensionProperties(NULL, &extension_count, extensions.data());
 
   return extensions;
 }
@@ -148,7 +154,7 @@ static bool checkExtensionSupport(vector<VkExtensionProperties> &extensions_avai
   return false;
 }
 
-static bool requireExtension(vector<VkExtensionProperties> &extensions_available,
+static void requireExtension(vector<VkExtensionProperties> &extensions_available,
                              vector<const char *> &extensions_enabled,
                              const char *extension_name)
 {
@@ -156,12 +162,148 @@ static bool requireExtension(vector<VkExtensionProperties> &extensions_available
     extensions_enabled.push_back(extension_name);
   }
   else {
-    cout << "Error : " << extension.extensionName << " not found\n";
+    cout << "Error : " << extension_name << " not found\n";
   }
+}
+
+static vector<VkLayerProperties> getLayersAvailable()
+{
+  uint32_t layer_count = 0;
+  vkEnumerateInstanceLayerProperties(&layer_count, NULL);
+
+  vector<VkLayerProperties> layers(layer_count);
+  vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
+
+  return layers;
+}
+
+static bool checkLayerSupport(vector<VkLayerProperties> &layers_available, const char *layer_name)
+{
+  for (const auto &layer : layers_available) {
+    if (strcmp(layer_name, layer.layerName) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void enableLayer(vector<VkLayerProperties> &layers_available,
+                        vector<const char *> &layers_enabled,
+                        const char *layer_name)
+{
+  if (checkLayerSupport(layers_available, layer_name)) {
+    layers_enabled.push_back(layer_name);
+  }
+  else {
+    cout << "Info : " << layer_name << " not supported.\n";
+  }
+}
+
+static VkPhysicalDevice pickPhysicalDevice(VkInstance instance)
+{
+  uint32_t device_count = 0;
+  vkEnumeratePhysicalDevices(instance, &device_count, NULL);
+
+  if (device_count == 0) {
+    return VK_NULL_HANDLE;
+  }
+
+  vector<VkPhysicalDevice> devices(device_count);
+  vkEnumeratePhysicalDevices(instance, &device_count, devices.data());
+
+  // TODO Pick the best GPU by default OR by name from user settings.
+  // For now we just select the first suitable gpu.
+  VkPhysicalDevice best_device = VK_NULL_HANDLE;
+  int best_device_score = -1;
+
+  for (const auto &device : devices) {
+    VkPhysicalDeviceProperties device_properties;
+    vkGetPhysicalDeviceProperties(device, &device_properties);
+
+    VkPhysicalDeviceFeatures device_features;
+    vkGetPhysicalDeviceFeatures(device, &device_features);
+
+    // List of REQUIRED features.
+    if (device_features.geometryShader &&  // Needed for wide lines
+        device_features.dualSrcBlend &&    // Needed by EEVEE
+        device_features.logicOp            // Needed by EEVEE
+    ) {
+      int device_score = 0;
+      switch (device_properties.deviceType) {
+        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+          device_score = 400;
+          break;
+        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+          device_score = 300;
+          break;
+        case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+          device_score = 200;
+          break;
+        case VK_PHYSICAL_DEVICE_TYPE_CPU:
+          device_score = 100;
+          break;
+        default:
+          break;
+      }
+      cout << "Found Vulkan Device : " << device_properties.deviceName << "\n";
+      if (device_score > best_device_score) {
+        best_device = device;
+        best_device_score = device_score;
+      }
+    }
+  }
+
+  if (best_device == VK_NULL_HANDLE) {
+    // TODO debug output of devices and features.
+    cout << "Error: No suitable Vulkan Device found!\n";
+  }
+  else {
+    VkPhysicalDeviceProperties device_properties;
+    vkGetPhysicalDeviceProperties(best_device, &device_properties);
+    cout << "Selected Vulkan Device : " << device_properties.deviceName << "\n";
+  }
+
+  return best_device;
+}
+
+static GHOST_TSuccess getGraphicQueueFamily(VkPhysicalDevice device, uint32_t *r_queue_index)
+{
+  uint32_t queue_family_count = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, NULL);
+
+  vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.data());
+
+  *r_queue_index = 0;
+  for (const auto &queue_family : queue_families) {
+    if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+      return GHOST_kSuccess;
+    }
+    (*r_queue_index)++;
+  }
+
+  cout << "Couldn't find any Graphic queue familly on selected device\n";
+
+  return GHOST_kFailure;
 }
 
 GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 {
+  auto layers_available = getLayersAvailable();
+  auto extensions_available = getExtensionsAvailable();
+
+  vector<const char *> layers_enabled;
+  if (true) {
+    enableLayer(layers_available, layers_enabled, "VK_LAYER_KHRONOS_validation");
+  }
+
+  vector<const char *> extensions_enabled;
+#ifdef _WIN32
+  requireExtension(extensions_available, extensions_enabled, VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#else
+  requireExtension(extensions_available, extensions_enabled, VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+#endif
+
   VkApplicationInfo app_info = {
       .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
       .pApplicationName = "Blender",
@@ -171,27 +313,22 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
       .apiVersion = VK_API_VERSION_1_0,
   };
 
-  auto extensions_available = getExtensionsAvailable();
-
-  vector<const char *> extensions_enabled;
-#ifdef _WIN32
-  requireExtension(extensions_available, extensions_enabled, VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-#else
-  requireExtension(extensions_available, extensions_enabled, VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
-#endif
-
   VkInstanceCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
       .pApplicationInfo = &app_info,
-      .enabledLayerCount = 0,
-      .ppEnabledLayerNames = NULL,
+      .enabledLayerCount = static_cast<uint32_t>(layers_enabled.size()),
+      .ppEnabledLayerNames = layers_enabled.data(),
       .enabledExtensionCount = static_cast<uint32_t>(extensions_enabled.size()),
       .ppEnabledExtensionNames = extensions_enabled.data(),
   };
 
   VK_CHECK(vkCreateInstance(&create_info, NULL, &m_instance));
 
-  vkDestroyInstance(m_instance, NULL);
+  m_physical_device = pickPhysicalDevice(m_instance);
+
+  if (!getGraphicQueueFamily(m_physical_device, &m_queue_family_graphic)) {
+    return GHOST_kFailure;
+  }
 
   return GHOST_kFailure;
 }
