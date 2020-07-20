@@ -633,7 +633,7 @@ static void computeCumulativeVisibility(ViewMap *ioViewMap,
 
     wFaces.clear();
   }
-  if (iRenderMonitor && vedges.size()) {
+  if (iRenderMonitor && !vedges.empty()) {
     stringstream ss;
     ss << "Freestyle: Visibility computations " << (100 * cnt / vedges.size()) << "%";
     iRenderMonitor->setInfo(ss.str());
@@ -1084,7 +1084,7 @@ static inline bool crossesProscenium(real proscenium[4], FEdge *fe)
   return GeomUtils::intersect2dSeg2dArea(min, max, A, B);
 }
 
-static inline bool insideProscenium(real proscenium[4], const Vec3r &point)
+static inline bool insideProscenium(const real proscenium[4], const Vec3r &point)
 {
   return !(point[0] < proscenium[0] || point[0] > proscenium[1] || point[1] < proscenium[2] ||
            point[1] > proscenium[3]);

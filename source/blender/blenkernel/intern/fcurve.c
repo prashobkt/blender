@@ -1063,9 +1063,9 @@ static BezTriple *cycle_offset_triple(
 /**
  * Variant of #calchandles_fcurve() that allows calculating based on a different select flag.
  *
- * \param sel_flag: The flag (bezt.f1/2/3) value to use to determine selection. Usually `SELECT`,
- *                  but may want to use a different one at times (if caller does not operate on
- *                  selection).
+ * \param handle_sel_flag: The flag (bezt.f1/2/3) value to use to determine selection.
+ * Usually `SELECT`, but may want to use a different one at times
+ * (if caller does not operate on selection).
  */
 void calchandles_fcurve_ex(FCurve *fcu, eBezTriple_Flag handle_sel_flag)
 {
@@ -1277,7 +1277,7 @@ short test_time_fcurve(FCurve *fcu)
  * than the horizontal distance between (v1-v4).
  * This is to prevent curve loops.
  */
-void correct_bezpart(float v1[2], float v2[2], float v3[2], float v4[2])
+void correct_bezpart(const float v1[2], float v2[2], float v3[2], const float v4[2])
 {
   float h1[2], h2[2], len1, len2, len, fac;
 

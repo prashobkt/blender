@@ -51,6 +51,8 @@ bool SCULPT_mode_poll_view3d(struct bContext *C);
 bool SCULPT_poll(struct bContext *C);
 bool SCULPT_poll_view3d(struct bContext *C);
 
+bool SCULPT_vertex_colors_poll(struct bContext *C);
+
 /* Updates */
 
 typedef enum SculptUpdateType {
@@ -146,7 +148,19 @@ int SCULPT_active_vertex_get(SculptSession *ss);
 const float *SCULPT_active_vertex_co_get(SculptSession *ss);
 void SCULPT_active_vertex_normal_get(SculptSession *ss, float normal[3]);
 
-bool SCULPT_vertex_is_boundary(SculptSession *ss, const int index);
+/* Fake Neighbors */
+
+#define FAKE_NEIGHBOR_NONE -1
+
+void SCULPT_fake_neighbors_ensure(struct Sculpt *sd, Object *ob, const float max_dist);
+void SCULPT_fake_neighbors_enable(Object *ob);
+void SCULPT_fake_neighbors_disable(Object *ob);
+void SCULPT_fake_neighbors_free(struct Object *ob);
+
+/* Vertex Info. */
+void SCULPT_boundary_info_ensure(Object *object);
+/* Boundary Info needs to be initialized in order to use this function. */
+bool SCULPT_vertex_is_boundary(const SculptSession *ss, const int index);
 
 /* Sculpt Visibility API */
 
@@ -168,11 +182,15 @@ bool SCULPT_vertex_has_unique_face_set(SculptSession *ss, int index);
 int SCULPT_face_set_next_available_get(SculptSession *ss);
 
 void SCULPT_face_set_visibility_set(SculptSession *ss, int face_set, bool visible);
-bool SCULPT_vertex_all_face_sets_visible_get(SculptSession *ss, int index);
+bool SCULPT_vertex_all_face_sets_visible_get(const SculptSession *ss, int index);
 bool SCULPT_vertex_any_face_set_visible_get(SculptSession *ss, int index);
 
 void SCULPT_face_sets_visibility_invert(SculptSession *ss);
 void SCULPT_face_sets_visibility_all_set(SculptSession *ss, bool visible);
+
+bool SCULPT_stroke_is_main_symmetry_pass(struct StrokeCache *cache);
+bool SCULPT_stroke_is_first_brush_step(struct StrokeCache *cache);
+bool SCULPT_stroke_is_first_brush_step_of_symmetry_pass(struct StrokeCache *cache);
 
 /* Sculpt Original Data */
 typedef struct {
@@ -389,15 +407,14 @@ void SCULPT_do_paint_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode
 void SCULPT_do_smear_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode);
 
 /* Smooth Brush. */
-
-void SCULPT_neighbor_average(SculptSession *ss, float avg[3], uint vert);
-void SCULPT_bmesh_neighbor_average(float avg[3], struct BMVert *v);
-
 void SCULPT_bmesh_four_neighbor_average(float avg[3], float direction[3], struct BMVert *v);
 
 void SCULPT_neighbor_coords_average(SculptSession *ss, float result[3], int index);
 float SCULPT_neighbor_mask_average(SculptSession *ss, int index);
 void SCULPT_neighbor_color_average(SculptSession *ss, float result[4], int index);
+
+/* Mask the mesh boundaries smoothing only the mesh surface without using automasking. */
+void SCULPT_neighbor_coords_average_interior(SculptSession *ss, float result[3], int index);
 
 void SCULPT_smooth(Sculpt *sd,
                    Object *ob,
@@ -573,6 +590,7 @@ typedef struct SculptThreadedTaskData {
 
   int filter_type;
   float filter_strength;
+  float *filter_fill_color;
 
   bool use_area_cos;
   bool use_area_nos;
@@ -619,6 +637,16 @@ typedef struct SculptThreadedTaskData {
   float dirty_mask_max;
   bool dirty_mask_dirty_only;
 
+  /* Mask By Color Tool */
+
+  float mask_by_color_threshold;
+  bool mask_by_color_invert;
+  bool mask_by_color_preserve_mask;
+
+  /* Index of the vertex that is going to be used as a reference for the colors. */
+  int mask_by_color_vertex;
+  float *mask_by_color_floodfill;
+
   int face_set;
   int filter_undo_type;
 
@@ -652,7 +680,8 @@ typedef struct {
   float radius_squared;
   const float *center;
   bool original;
-  bool ignore_fully_masked;
+  /* This ignores fully masked and fully hidden nodes. */
+  bool ignore_fully_ineffective;
 } SculptSearchSphereData;
 
 typedef struct {
@@ -660,7 +689,7 @@ typedef struct {
   struct SculptSession *ss;
   float radius_squared;
   bool original;
-  bool ignore_fully_masked;
+  bool ignore_fully_ineffective;
   struct DistRayAABB_Precalc *dist_ray_to_aabb_precalc;
 } SculptSearchCircleData;
 
@@ -707,6 +736,12 @@ bool SCULPT_pbvh_calc_area_normal(const struct Brush *brush,
  */
 
 #define SCULPT_CLAY_STABILIZER_LEN 10
+
+typedef struct AutomaskingSettings {
+  /* Flags from eAutomasking_flag. */
+  int flags;
+  int initial_face_set;
+} AutomaskingSettings;
 
 typedef struct StrokeCache {
   /* Invariants */
@@ -830,7 +865,11 @@ typedef struct StrokeCache {
   float true_gravity_direction[3];
   float gravity_direction[3];
 
-  float *automask;
+  /* Automasking. */
+  AutomaskingSettings automask_settings;
+  /* Precomputed automask factor indexed by vertex, owned by the automasking system and initialized
+   * in SCULPT_automasking_init when needed. */
+  float *automask_factor;
 
   float stroke_local_mat[4][4];
   float multiplane_scrape_angle;

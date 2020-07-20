@@ -1,9 +1,11 @@
+/* Apache License, Version 2.0 */
+
 #include "BLI_stack.hh"
 #include "BLI_strict_flags.h"
 #include "BLI_vector.hh"
 #include "testing/testing.h"
 
-using namespace blender;
+namespace blender {
 
 TEST(stack, DefaultConstructor)
 {
@@ -182,3 +184,5 @@ TEST(stack, OveralignedValues)
     EXPECT_EQ((uintptr_t)&stack.peek() % 512, 0);
   }
 }
+
+}  // namespace blender

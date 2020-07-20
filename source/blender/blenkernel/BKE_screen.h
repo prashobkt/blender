@@ -142,7 +142,13 @@ typedef struct ARegionType {
   void (*exit)(struct wmWindowManager *wm, struct ARegion *region);
   /* draw entirely, view changes should be handled here */
   void (*draw)(const struct bContext *C, struct ARegion *region);
-  /* Handler to draw overlays. This handler is called every draw loop. */
+  /**
+   * Handler to draw overlays. This handler is called every draw loop.
+   *
+   * \note Some editors should return early if the interface is locked
+   * (check with #CTX_wm_interface_locked) to avoid accessing scene data
+   * that another thread may be modifying
+   */
   void (*draw_overlay)(const struct bContext *C, struct ARegion *region);
   /* optional, compute button layout before drawing for dynamic size */
   void (*layout)(const struct bContext *C, struct ARegion *region);
@@ -213,7 +219,7 @@ typedef struct PanelType {
   char context[BKE_ST_MAXNAME];   /* for buttons window */
   char category[BKE_ST_MAXNAME];  /* for category tabs */
   char owner_id[BKE_ST_MAXNAME];  /* for work-spaces to selectively show. */
-  char parent_id[BKE_ST_MAXNAME]; /* parent idname for subpanels */
+  char parent_id[BKE_ST_MAXNAME]; /* parent idname for sub-panels */
   short space_type;
   short region_type;
   /* For popovers, 0 for default. */

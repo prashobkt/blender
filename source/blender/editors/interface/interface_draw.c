@@ -475,13 +475,18 @@ void UI_draw_roundbox_shade_x(bool filled,
       .color_outline[1] = clamp_f(col[1] + shadetop + shadedown, 0.0f, 1.0f),
       .color_outline[2] = clamp_f(col[2] + shadetop + shadedown, 0.0f, 1.0f),
       .color_outline[3] = clamp_f(col[3] + shadetop + shadedown, 0.0f, 1.0f),
+      .shade_dir = 1.0f,
       .alpha_discard = 1.0f,
   };
+
+  GPU_blend(true);
 
   GPUBatch *batch = ui_batch_roundbox_widget_get();
   GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_WIDGET_BASE);
   GPU_batch_uniform_4fv_array(batch, "parameters", 11, (float *)&widget_params);
   GPU_batch_draw(batch);
+
+  GPU_blend(false);
 }
 
 #if 0  /* unused */
@@ -794,10 +799,8 @@ void ui_draw_but_IMAGE(ARegion *UNUSED(region),
  *
  * \note This function is to be used with the 2D dashed shader enabled.
  *
- * \param pos: is a PRIM_FLOAT, 2, GPU_FETCH_FLOAT vertex attribute.
- * \param line_origin: is a PRIM_FLOAT, 2, GPU_FETCH_FLOAT vertex attribute.
- *
- * The next 4 parameters are the offsets for the view, not the zones.
+ * \param pos: is a #PRIM_FLOAT, 2, #GPU_FETCH_FLOAT vertex attribute.
+ * \param x1, x2, y1, y2: The offsets for the view, not the zones.
  */
 void UI_draw_safe_areas(uint pos,
                         float x1,
@@ -830,7 +833,7 @@ void UI_draw_safe_areas(uint pos,
 
 static void draw_scope_end(const rctf *rect, GLint *scissor)
 {
-  /* restore scissortest */
+  /* Restore scissor test. */
   GPU_scissor(scissor[0], scissor[1], scissor[2], scissor[3]);
 
   GPU_blend_set_func_separate(
@@ -864,7 +867,7 @@ static void histogram_draw_one(float r,
   }
 
   GPU_line_smooth(true);
-  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
+  GPU_blend_set_func_separate(GPU_SRC_ALPHA, GPU_ONE, GPU_ONE, GPU_ONE);
 
   immUniformColor4fv(color);
 
@@ -1165,7 +1168,7 @@ void ui_draw_but_WAVEFORM(ARegion *UNUSED(region),
   }
 
   if (scopes->ok && scopes->waveform_1 != NULL) {
-    glBlendFunc(GL_ONE, GL_ONE);
+    GPU_blend_set_func(GPU_ONE, GPU_ONE);
     GPU_point_size(1.0);
 
     /* LUMA (1 channel) */
@@ -1465,7 +1468,7 @@ void ui_draw_but_VECTORSCOPE(ARegion *UNUSED(region),
     /* pixel point cloud */
     float col[3] = {alpha, alpha, alpha};
 
-    glBlendFunc(GL_ONE, GL_ONE);
+    GPU_blend_set_func(GPU_ONE, GPU_ONE);
     GPU_point_size(1.0);
 
     GPU_matrix_push();
@@ -1780,8 +1783,7 @@ void ui_draw_but_UNITVEC(uiBut *but, const uiWidgetColors *wcol, const rcti *rec
   UI_draw_roundbox_3ub_alpha(
       true, rect->xmin, rect->ymin, rect->xmax, rect->ymax, 5.0f, wcol->inner, 255);
 
-  glCullFace(GL_BACK);
-  glEnable(GL_CULL_FACE);
+  GPU_face_culling(GPU_CULL_BACK);
 
   /* setup lights */
   ui_but_v3_get(but, light);
@@ -1806,7 +1808,7 @@ void ui_draw_but_UNITVEC(uiBut *but, const uiWidgetColors *wcol, const rcti *rec
   GPU_batch_draw(sphere);
 
   /* restore */
-  glDisable(GL_CULL_FACE);
+  GPU_face_culling(GPU_CULL_NONE);
 
   /* AA circle */
   GPUVertFormat *format = immVertexFormat();

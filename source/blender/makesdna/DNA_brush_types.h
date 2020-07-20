@@ -343,6 +343,12 @@ typedef enum eBrushPoseOriginType {
   BRUSH_POSE_ORIGIN_FACE_SETS_FK = 2,
 } eBrushPoseOriginType;
 
+typedef enum eBrushSmearDeformType {
+  BRUSH_SMEAR_DEFORM_DRAG = 0,
+  BRUSH_SMEAR_DEFORM_PINCH = 1,
+  BRUSH_SMEAR_DEFORM_EXPAND = 2,
+} eBrushSmearDeformType;
+
 /* Gpencilsettings.Vertex_mode */
 typedef enum eGp_Vertex_Mode {
   /* Affect to Stroke only. */
@@ -474,7 +480,7 @@ typedef struct Brush {
   /** Source for fill tool color gradient application. */
   char gradient_fill_mode;
 
-  char _pad0[5];
+  char _pad0[1];
 
   /** Projection shape (sphere, circle). */
   char falloff_shape;
@@ -500,7 +506,7 @@ typedef struct Brush {
   char gpencil_sculpt_tool;
   /** Active grease pencil weight tool. */
   char gpencil_weight_tool;
-  char _pad1[2];
+  char _pad1[6];
 
   float autosmooth_factor;
 
@@ -518,6 +524,9 @@ typedef struct Brush {
   float texture_sample_bias;
 
   int curve_preset;
+
+  /* Maximun distance to search fake neighbors from a vertex. */
+  float disconnected_distance_max;
 
   /* automasking */
   int automasking_flags;
@@ -551,6 +560,9 @@ typedef struct Brush {
 
   /* multiplane scrape */
   float multiplane_scrape_angle;
+
+  /* smear */
+  int smear_deform_type;
 
   /* overlay */
   int texture_overlay_alpha;
@@ -680,6 +692,7 @@ typedef enum eBrushFlags2 {
   BRUSH_MULTIPLANE_SCRAPE_DYNAMIC = (1 << 0),
   BRUSH_MULTIPLANE_SCRAPE_PLANES_PREVIEW = (1 << 1),
   BRUSH_POSE_IK_ANCHORED = (1 << 2),
+  BRUSH_USE_CONNECTED_ONLY = (1 << 3),
 } eBrushFlags2;
 
 typedef enum {

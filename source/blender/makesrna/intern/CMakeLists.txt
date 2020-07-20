@@ -69,6 +69,7 @@ set(DEFSRC
   rna_packedfile.c
   rna_palette.c
   rna_particle.c
+  rna_pointcloud.c
   rna_pose.c
   rna_render.c
   rna_rigidbody.c
@@ -82,7 +83,6 @@ set(DEFSRC
   rna_sound.c
   rna_space.c
   rna_speaker.c
-  rna_pointcloud.c
   rna_test.c
   rna_text.c
   rna_texture.c
@@ -150,6 +150,16 @@ if(GENSRC_CFLAGS)
 endif()
 unset(GENSRC_CFLAGS)
 
+
+# NOTE: Disable clang-tidy because generated files are stored outside of the source,
+# so the clang-tidy can not find our .clang-tidy and fall-backs to own set of rules
+# which are too noisy for Blender.
+#
+# In the future clang-tidy would either need to be inlined checks and passed via the
+# command line (instead of using .clang-tidy file). Or, maybe, there is a way to
+# pass configuration file to the clang-tidy command.
+unset(CMAKE_C_CLANG_TIDY)
+unset(CMAKE_CXX_CLANG_TIDY)
 
 set(SRC_RNA_INC
   ../RNA_access.h
@@ -350,7 +360,7 @@ blender_include_dirs(
   ../../imbuf
   ../../makesdna
   ../../nodes/
-  ../../physics
+  ../../simulation
   ../../windowmanager
   ../../editors/include
   ../../render/extern/include

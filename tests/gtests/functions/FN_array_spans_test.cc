@@ -1,29 +1,13 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* Apache License, Version 2.0 */
 
 #include "testing/testing.h"
 
 #include "FN_array_spans.hh"
-#include "FN_cpp_types.hh"
 #include "FN_generic_vector_array.hh"
 
 #include "BLI_array.hh"
 
-namespace blender {
-namespace fn {
+namespace blender::fn {
 
 TEST(virtual_array_span, EmptyConstructor)
 {
@@ -92,7 +76,7 @@ TEST(virtual_array_span, MultipleArrayConstructor)
 
 TEST(generic_virtual_array_span, TypeConstructor)
 {
-  GVArraySpan span{CPPType_int32};
+  GVArraySpan span{CPPType::get<int32_t>()};
   EXPECT_EQ(span.size(), 0);
   EXPECT_TRUE(span.is_empty());
 
@@ -103,7 +87,7 @@ TEST(generic_virtual_array_span, TypeConstructor)
 TEST(generic_virtual_array_span, GSpanConstructor)
 {
   std::array<std::string, 3> values = {"hello", "world", "test"};
-  GVArraySpan span{GSpan(CPPType_string, values.data(), 3), 5};
+  GVArraySpan span{GSpan(CPPType::get<std::string>(), values.data(), 3), 5};
   EXPECT_EQ(span.size(), 5);
   EXPECT_FALSE(span.is_empty());
   EXPECT_EQ(span[0][0], values.data());
@@ -134,7 +118,7 @@ TEST(generic_virtual_array_span, IsSingleArray1)
 
 TEST(generic_virtual_array_span, IsSingleArray2)
 {
-  GVectorArray vectors{CPPType_int32, 3};
+  GVectorArray vectors{CPPType::get<int32_t>(), 3};
   GVectorArrayRef<int> vectors_ref = vectors;
   vectors_ref.append(1, 4);
 
@@ -145,5 +129,4 @@ TEST(generic_virtual_array_span, IsSingleArray2)
   EXPECT_FALSE(converted.is_single_array());
 }
 
-}  // namespace fn
-}  // namespace blender
+}  // namespace blender::fn

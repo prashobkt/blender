@@ -53,14 +53,11 @@ extern struct DrawEngineType draw_engine_eevee_type;
 
 /* Only define one of these. */
 // #define IRRADIANCE_SH_L2
-// #define IRRADIANCE_CUBEMAP
 #define IRRADIANCE_HL2
 #define HAMMERSLEY_SIZE 1024
 
 #if defined(IRRADIANCE_SH_L2)
 #  define SHADER_IRRADIANCE "#define IRRADIANCE_SH_L2\n"
-#elif defined(IRRADIANCE_CUBEMAP)
-#  define SHADER_IRRADIANCE "#define IRRADIANCE_CUBEMAP\n"
 #elif defined(IRRADIANCE_HL2)
 #  define SHADER_IRRADIANCE "#define IRRADIANCE_HL2\n"
 #endif
@@ -417,7 +414,8 @@ typedef struct EEVEE_RenderPassData {
   int renderPassGlossyLight;
   int renderPassEmit;
   int renderPassSSSColor;
-  int _pad[2];
+  int renderPassEnvironment;
+  int _pad[1];
 } EEVEE_RenderPassData;
 
 /* ************ LIGHT UBO ************* */
@@ -588,7 +586,7 @@ typedef struct EEVEE_ObjectKey {
   /** Parent object for duplis */
   struct Object *parent;
   /** Dupli objects recursive unique identifier */
-  int id[16]; /* 2*MAX_DUPLI_RECUR */
+  int id[8]; /* MAX_DUPLI_RECUR */
 } EEVEE_ObjectKey;
 
 typedef struct EEVEE_ObjectMotionData {
@@ -835,6 +833,7 @@ typedef struct EEVEE_ViewLayerData {
   /* Material Render passes */
   struct {
     struct GPUUniformBuffer *combined;
+    struct GPUUniformBuffer *environment;
     struct GPUUniformBuffer *diff_color;
     struct GPUUniformBuffer *diff_light;
     struct GPUUniformBuffer *spec_color;
@@ -1010,8 +1009,8 @@ void EEVEE_material_bind_resources(DRWShadingGroup *shgrp,
                                    struct GPUMaterial *gpumat,
                                    EEVEE_ViewLayerData *sldata,
                                    EEVEE_Data *vedata,
-                                   int *ssr_id,
-                                   float *refract_depth,
+                                   const int *ssr_id,
+                                   const float *refract_depth,
                                    bool use_ssrefraction,
                                    bool use_alpha_blend);
 /* eevee_lights.c */

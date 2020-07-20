@@ -1,3 +1,5 @@
+/* Apache License, Version 2.0 */
+
 #include "BLI_map.hh"
 #include "BLI_rand.h"
 #include "BLI_set.hh"
@@ -6,7 +8,7 @@
 #include "BLI_vector.hh"
 #include "testing/testing.h"
 
-using namespace blender;
+namespace blender {
 
 TEST(map, DefaultConstructor)
 {
@@ -88,13 +90,13 @@ TEST(map, PopTry)
   map.add(1, 5);
   map.add(2, 7);
   EXPECT_EQ(map.size(), 2u);
-  Optional<int> value = map.pop_try(4);
+  std::optional<int> value = map.pop_try(4);
   EXPECT_EQ(map.size(), 2u);
   EXPECT_FALSE(value.has_value());
   value = map.pop_try(2);
   EXPECT_EQ(map.size(), 1u);
   EXPECT_TRUE(value.has_value());
-  EXPECT_EQ(value.value(), 7);
+  EXPECT_EQ(*value, 7);
   EXPECT_EQ(*map.pop_try(1), 5);
   EXPECT_EQ(map.size(), 0u);
 }
@@ -584,3 +586,5 @@ TEST(map, Benchmark)
  */
 
 #endif /* Benchmark */
+
+}  // namespace blender

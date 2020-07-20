@@ -1,34 +1,17 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* Apache License, Version 2.0 */
 
 #include "testing/testing.h"
 
-#include "FN_cpp_types.hh"
 #include "FN_multi_function_builder.hh"
 #include "FN_multi_function_network.hh"
 #include "FN_multi_function_network_evaluation.hh"
 
-namespace blender {
-namespace fn {
+namespace blender::fn {
 
 TEST(multi_function_network, Test1)
 {
-  CustomFunction_SI_SO<int, int> add_10_fn("add 10", [](int value) { return value + 10; });
-  CustomFunction_SI_SI_SO<int, int, int> multiply_fn("multiply",
-                                                     [](int a, int b) { return a * b; });
+  CustomMF_SI_SO<int, int> add_10_fn("add 10", [](int value) { return value + 10; });
+  CustomMF_SI_SI_SO<int, int, int> multiply_fn("multiply", [](int a, int b) { return a * b; });
 
   MFNetwork network;
 
@@ -171,7 +154,7 @@ class CreateRangeFunction : public MultiFunction {
 
 TEST(multi_function_network, Test2)
 {
-  CustomFunction_SI_SO<int, int> add_3_fn("add 3", [](int value) { return value + 3; });
+  CustomMF_SI_SO<int, int> add_3_fn("add 3", [](int value) { return value + 3; });
 
   ConcatVectorsFunction concat_vectors_fn;
   AppendFunction append_fn;
@@ -211,7 +194,7 @@ TEST(multi_function_network, Test2)
     Array<int> input_value_1 = {3, 6};
     int input_value_2 = 4;
 
-    GVectorArray output_value_1(CPPType_int32, 5);
+    GVectorArray output_value_1(CPPType::get<int32_t>(), 5);
     Array<int> output_value_2(5, -1);
 
     MFParamsBuilder params(network_fn, 5);
@@ -237,14 +220,14 @@ TEST(multi_function_network, Test2)
     EXPECT_EQ(output_value_2[4], 39);
   }
   {
-    GVectorArray input_value_1(CPPType_int32, 3);
+    GVectorArray input_value_1(CPPType::get<int32_t>(), 3);
     GVectorArrayRef<int> input_value_ref_1 = input_value_1;
     input_value_ref_1.extend(0, {3, 4, 5});
     input_value_ref_1.extend(1, {1, 2});
 
     Array<int> input_value_2 = {4, 2, 3};
 
-    GVectorArray output_value_1(CPPType_int32, 3);
+    GVectorArray output_value_1(CPPType::get<int32_t>(), 3);
     Array<int> output_value_2(3, -1);
 
     MFParamsBuilder params(network_fn, 3);
@@ -267,5 +250,4 @@ TEST(multi_function_network, Test2)
   }
 }
 
-}  // namespace fn
-}  // namespace blender
+}  // namespace blender::fn

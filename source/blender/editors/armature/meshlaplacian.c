@@ -640,13 +640,11 @@ static float heat_limit_weight(float weight)
   if (weight < WEIGHT_LIMIT_END) {
     return 0.0f;
   }
-  else if (weight < WEIGHT_LIMIT_START) {
+  if (weight < WEIGHT_LIMIT_START) {
     t = (weight - WEIGHT_LIMIT_END) / (WEIGHT_LIMIT_START - WEIGHT_LIMIT_END);
     return t * WEIGHT_LIMIT_START;
   }
-  else {
-    return weight;
-  }
+  return weight;
 }
 
 void heat_bone_weighting(Object *ob,
@@ -657,7 +655,7 @@ void heat_bone_weighting(Object *ob,
                          bDeformGroup **dgroupflip,
                          float (*root)[3],
                          float (*tip)[3],
-                         int *selected,
+                         const int *selected,
                          const char **err_str)
 {
   LaplacianSystem *sys;
@@ -1238,7 +1236,7 @@ static float meshdeform_boundary_phi(const MeshDeformBind *mdb,
 }
 
 static float meshdeform_interp_w(MeshDeformBind *mdb,
-                                 float *gridvec,
+                                 const float *gridvec,
                                  float *UNUSED(vec),
                                  int UNUSED(cagevert))
 {

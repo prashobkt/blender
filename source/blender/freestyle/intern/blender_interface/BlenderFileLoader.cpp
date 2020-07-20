@@ -222,7 +222,7 @@ void BlenderFileLoader::clipTriangle(int numTris,
                                      bool em1,
                                      bool em2,
                                      bool em3,
-                                     int clip[3])
+                                     const int clip[3])
 {
   float *v[3], *n[3];
   bool em[3];
@@ -746,7 +746,7 @@ void BlenderFileLoader::insertShapeNode(Object *ob, Mesh *me, int id)
     detriList.push_back(detri);
   }
 
-  if (detriList.size() > 0) {
+  if (!detriList.empty()) {
     vector<detri_t>::iterator v;
     for (v = detriList.begin(); v != detriList.end(); v++) {
       detri_t detri = (*v);

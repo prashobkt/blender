@@ -1,42 +1,26 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* Apache License, Version 2.0 */
 
-#include "FN_cpp_types.hh"
 #include "FN_generic_vector_array.hh"
 
 #include "testing/testing.h"
 
-namespace blender {
-namespace fn {
+namespace blender::fn {
 
 TEST(generic_vector_array, Constructor)
 {
-  GVectorArray vectors{CPPType_int32, 3};
+  GVectorArray vectors{CPPType::get<int32_t>(), 3};
   EXPECT_EQ(vectors.size(), 3);
   EXPECT_EQ(vectors.lengths().size(), 3);
   EXPECT_EQ(vectors.starts().size(), 3);
   EXPECT_EQ(vectors.lengths()[0], 0);
   EXPECT_EQ(vectors.lengths()[1], 0);
   EXPECT_EQ(vectors.lengths()[2], 0);
-  EXPECT_EQ(vectors.type(), CPPType_int32);
+  EXPECT_EQ(vectors.type(), CPPType::get<int32_t>());
 }
 
 TEST(generic_vector_array, Append)
 {
-  GVectorArray vectors{CPPType_string, 3};
+  GVectorArray vectors{CPPType::get<std::string>(), 3};
   std::string value = "hello";
   vectors.append(0, &value);
   value = "world";
@@ -54,7 +38,7 @@ TEST(generic_vector_array, Append)
 
 TEST(generic_vector_array, AsArraySpan)
 {
-  GVectorArray vectors{CPPType_int32, 3};
+  GVectorArray vectors{CPPType::get<int32_t>(), 3};
   int value = 3;
   vectors.append(0, &value);
   vectors.append(0, &value);
@@ -64,7 +48,7 @@ TEST(generic_vector_array, AsArraySpan)
   vectors.append(2, &value);
 
   GVArraySpan span = vectors;
-  EXPECT_EQ(span.type(), CPPType_int32);
+  EXPECT_EQ(span.type(), CPPType::get<int32_t>());
   EXPECT_EQ(span.size(), 3);
   EXPECT_EQ(span[0].size(), 2);
   EXPECT_EQ(span[1].size(), 0);
@@ -75,7 +59,7 @@ TEST(generic_vector_array, AsArraySpan)
 
 TEST(generic_vector_array, TypedRef)
 {
-  GVectorArray vectors{CPPType_int32, 4};
+  GVectorArray vectors{CPPType::get<int32_t>(), 4};
   GVectorArrayRef<int> ref = vectors.typed<int>();
   ref.append(0, 2);
   ref.append(0, 6);
@@ -99,7 +83,7 @@ TEST(generic_vector_array, TypedRef)
 
 TEST(generic_vector_array, Extend)
 {
-  GVectorArray vectors{CPPType_int32, 3};
+  GVectorArray vectors{CPPType::get<int32_t>(), 3};
   GVectorArrayRef<int> ref = vectors;
 
   ref.extend(1, {5, 6, 7});
@@ -114,5 +98,4 @@ TEST(generic_vector_array, Extend)
   EXPECT_EQ(ref[0][0], 3);
 }
 
-}  // namespace fn
-}  // namespace blender
+}  // namespace blender::fn

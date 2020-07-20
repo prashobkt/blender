@@ -1,7 +1,9 @@
+/* Apache License, Version 2.0 */
+
 #include "BLI_index_mask.hh"
 #include "testing/testing.h"
 
-using namespace blender;
+namespace blender {
 
 TEST(index_mask, DefaultConstructor)
 {
@@ -37,3 +39,5 @@ TEST(index_mask, RangeConstructor)
   EXPECT_EQ(indices[1], 4);
   EXPECT_EQ(indices[2], 5);
 }
+
+}  // namespace blender

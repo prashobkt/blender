@@ -351,7 +351,7 @@ void WM_init(bContext *C, int argc, const char **argv)
   BKE_material_copybuf_clear();
   ED_render_clear_mtex_copybuf();
 
-  // glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+  // GPU_blend_set_func(GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 
   wm_history_file_read();
 
@@ -578,7 +578,7 @@ void WM_exit_ex(bContext *C, const bool do_python)
   BKE_subdiv_exit();
 
   if (opengl_is_init) {
-    GPU_free_unused_buffers(G_MAIN);
+    GPU_free_unused_buffers();
   }
 
   BKE_blender_free(); /* blender.c, does entire library and spacetypes */

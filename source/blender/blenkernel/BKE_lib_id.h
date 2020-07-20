@@ -229,7 +229,6 @@ bool BKE_id_copy(struct Main *bmain, const struct ID *id, struct ID **newid);
 bool BKE_id_copy_ex(struct Main *bmain, const struct ID *id, struct ID **r_newid, const int flag);
 struct ID *BKE_id_copy_for_duplicate(struct Main *bmain,
                                      struct ID *id,
-                                     const bool is_owner_id_liboverride,
                                      const uint duplicate_flags);
 
 void BKE_lib_id_swap(struct Main *bmain, struct ID *id_a, struct ID *id_b);
@@ -267,6 +266,7 @@ void BKE_main_id_repair_duplicate_names_listbase(struct ListBase *lb);
 void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const struct ID *id, char separator_str);
 void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
                                     const struct ID *id,
+                                    const bool add_lib_hint,
                                     char separator_char);
 
 char *BKE_id_to_unique_string_key(const struct ID *id);

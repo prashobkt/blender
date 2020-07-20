@@ -50,11 +50,14 @@ def generate_from_enum_ex(
         attr,
         cursor='DEFAULT',
         tooldef_keywords={},
+        exclude_filter = {}
 ):
     tool_defs = []
     for enum in type.bl_rna.properties[attr].enum_items_static:
         name = enum.name
         idname = enum.identifier
+        if idname in exclude_filter:
+            continue
         tool_defs.append(
             ToolDef.from_dict(
                 dict(
@@ -124,12 +127,12 @@ class _defs_view3d_generic:
                 kmi_remove = None
             return tip_(
                 "Measure distance and angles.\n"
-                "\u2022 {} anywhere for new measurement.\n"
+                "\u2022 %s anywhere for new measurement.\n"
                 "\u2022 Drag ruler segment to measure an angle.\n"
-                "\u2022 {} to remove the active ruler.\n"
+                "\u2022 %s to remove the active ruler.\n"
                 "\u2022 Ctrl while dragging to snap.\n"
                 "\u2022 Shift while dragging to measure surface thickness"
-            ).format(
+            ) % (
                 kmi_to_string_or_none(kmi_add),
                 kmi_to_string_or_none(kmi_remove),
             )
@@ -482,7 +485,7 @@ class _defs_view3d_add:
         return dict(
             idname="builtin.primitive_cone_add",
             label="Add Cone",
-            icon="ops.mesh.primitive_cube_add_gizmo",
+            icon="ops.mesh.primitive_cone_add_gizmo",
             description=(
                 "Add cone to mesh interactively"
             ),
@@ -1178,12 +1181,18 @@ class _defs_sculpt:
 
     @staticmethod
     def generate_from_brushes(context):
+        if bpy.context.preferences.experimental.use_sculpt_vertex_colors:
+            exclude_filter = {}
+        else:
+            exclude_filter = {'PAINT', 'SMEAR'}
+
         return generate_from_enum_ex(
             context,
             idname_prefix="builtin_brush.",
             icon_prefix="brush.sculpt.",
             type=bpy.types.Brush,
             attr="sculpt_tool",
+            exclude_filter = exclude_filter,
         )
 
     @ToolDef.from_fn
@@ -1224,10 +1233,10 @@ class _defs_sculpt:
             layout.prop(props, "strength")
             layout.prop(props, "deform_axis")
             layout.prop(props, "use_face_sets")
-            if (props.type == "SURFACE_SMOOTH"):
+            if props.type == 'SURFACE_SMOOTH':
                 layout.prop(props, "surface_smooth_shape_preservation", expand=False)
                 layout.prop(props, "surface_smooth_current_vertex", expand=False)
-            if (props.type == "SHARPEN"):
+            elif props.type == 'SHARPEN':
                 layout.prop(props, "sharpen_smooth_ratio", expand=False)
 
         return dict(
@@ -1263,12 +1272,32 @@ class _defs_sculpt:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("sculpt.color_filter")
             layout.prop(props, "type", expand=False)
+            if props.type == 'FILL':
+                layout.prop(props, "fill_color", expand=False)
             layout.prop(props, "strength")
 
         return dict(
             idname="builtin.color_filter",
             label="Color Filter",
             icon="ops.sculpt.color_filter",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def mask_by_color():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("sculpt.mask_by_color")
+            layout.prop(props, "threshold")
+            layout.prop(props, "contiguous")
+            layout.prop(props, "invert")
+            layout.prop(props, "preserve_previous_mask")
+
+        return dict(
+            idname="builtin.mask_by_color",
+            label="Mask By Color",
+            icon="ops.sculpt.mask_by_color",
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
@@ -1556,6 +1585,20 @@ class _defs_image_uv_select:
             keymap=(),
             draw_settings=draw_settings,
             draw_cursor=draw_cursor,
+        )
+
+
+class _defs_image_uv_edit:
+
+    @ToolDef.from_fn
+    def rip_region():
+        return dict(
+            idname="builtin.rip_region",
+            label="Rip Region",
+            icon="ops.mesh.rip",
+            # TODO: generic operator (UV version of `VIEW3D_GGT_tool_generic_handle_free`).
+            widget=None,
+            keymap=(),
         )
 
 
@@ -2153,6 +2196,8 @@ class IMAGE_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             *_tools_annotate,
             None,
+            _defs_image_uv_edit.rip_region,
+            None,
             lambda context: (
                 _defs_image_uv_sculpt.generate_from_brushes(context)
                 if _defs_image_generic.poll_uvedit(context)
@@ -2449,7 +2494,19 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             _defs_sculpt.mesh_filter,
             _defs_sculpt.cloth_filter,
-            _defs_sculpt.color_filter,
+            lambda context: (
+                (_defs_sculpt.color_filter,)
+                if bpy.context.preferences.view.show_developer_ui and \
+                   bpy.context.preferences.experimental.use_sculpt_vertex_colors
+                else ()
+            ),
+            None,
+            lambda context: (
+                (_defs_sculpt.mask_by_color,)
+                if bpy.context.preferences.view.show_developer_ui and \
+                   bpy.context.preferences.experimental.use_sculpt_vertex_colors
+                else ()
+            ),
             None,
             _defs_transform.translate,
             _defs_transform.rotate,

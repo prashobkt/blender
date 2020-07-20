@@ -96,7 +96,7 @@ gravity_s$ID$ = vec3($GRAVITY_X$, $GRAVITY_Y$, $GRAVITY_Z$) # in SI unit (e.g. m
 gs_s$ID$      = vec3($RESX$, $RESY$, $RESZ$)\n\
 maxVel_s$ID$  = 0\n\
 \n\
-doOpen_s$ID$           = $DO_OPEN$\n\
+domainClosed_s$ID$     = $DOMAIN_CLOSED$\n\
 boundConditions_s$ID$  = '$BOUND_CONDITIONS$'\n\
 boundaryWidth_s$ID$    = $BOUNDARY_WIDTH$\n\
 deleteInObstacle_s$ID$ = $DELETE_IN_OBSTACLE$\n\
@@ -146,19 +146,19 @@ mantaMsg('1 Mantaflow cell is ' + str(ratioMetersToRes_s$ID$) + ' Blender length
 ratioResToBLength_s$ID$ = float(res_s$ID$) / float(domainSize_s$ID$) # [cells / blength] (blength: cm, m, or km, ... )\n\
 mantaMsg('1 Blender length unit is ' + str(ratioResToBLength_s$ID$) + ' Mantaflow cells long.')\n\
 \n\
-ratioBTimeToTimstep_s$ID$ = float(1) / float(frameLengthRaw_s$ID$) # the time within 1 blender time unit, see also fluid.c\n\
-mantaMsg('1 Blender time unit is ' + str(ratioBTimeToTimstep_s$ID$) + ' Mantaflow time units long.')\n\
+ratioBTimeToTimestep_s$ID$ = float(1) / float(frameLengthRaw_s$ID$) # the time within 1 blender time unit, see also fluid.c\n\
+mantaMsg('1 Blender time unit is ' + str(ratioBTimeToTimestep_s$ID$) + ' Mantaflow time units long.')\n\
 \n\
 ratioFrameToFramelength_s$ID$ = float(1) / float(frameLengthUnscaled_s$ID$ ) # the time within 1 frame\n\
 mantaMsg('frame / frameLength is ' + str(ratioFrameToFramelength_s$ID$) + ' Mantaflow time units long.')\n\
 \n\
-scaleAcceleration_s$ID$ = ratioResToBLength_s$ID$ * (ratioBTimeToTimstep_s$ID$**2)# [meters/btime^2] to [cells/timestep^2] (btime: sec, min, or h, ...)\n\
+scaleAcceleration_s$ID$ = ratioResToBLength_s$ID$ * (ratioBTimeToTimestep_s$ID$**2)# [meters/btime^2] to [cells/timestep^2] (btime: sec, min, or h, ...)\n\
 mantaMsg('scaleAcceleration is ' + str(scaleAcceleration_s$ID$))\n\
 \n\
 scaleSpeedFrames_s$ID$ = ratioResToBLength_s$ID$ * ratioFrameToFramelength_s$ID$ # [blength/frame] to [cells/frameLength]\n\
 mantaMsg('scaleSpeed is ' + str(scaleSpeedFrames_s$ID$))\n\
 \n\
-scaleSpeedTime_s$ID$ = ratioResToBLength_s$ID$ * ratioBTimeToTimstep_s$ID$ # [blength/btime] to [cells/frameLength]\n\
+scaleSpeedTime_s$ID$ = ratioResToBLength_s$ID$ * ratioBTimeToTimestep_s$ID$ # [blength/btime] to [cells/frameLength]\n\
 mantaMsg('scaleSpeedTime is ' + str(scaleSpeedTime_s$ID$))\n\
 \n\
 gravity_s$ID$ *= scaleAcceleration_s$ID$ # scale from world acceleration to cell based acceleration\n\
@@ -461,14 +461,14 @@ if 'fluid_data_dict_resume_s$ID$' in globals(): fluid_data_dict_resume_s$ID$.cle
 if 'fluid_guiding_dict_s$ID$' in globals(): fluid_guiding_dict_s$ID$.clear()\n\
 if 'fluid_vel_dict_s$ID$' in globals(): fluid_vel_dict_s$ID$.clear()\n\
 \n\
-# Delete all childs from objects (e.g. pdata for particles)\n\
-mantaMsg('Release solver childs childs')\n\
+# Delete all children from objects (e.g. pdata for particles)\n\
+mantaMsg('Release solver childrens children')\n\
 for var in list(globals()):\n\
     if var.endswith('_pp$ID$') or var.endswith('_mesh$ID$'):\n\
         del globals()[var]\n\
 \n\
-# Now delete childs from solver objects\n\
-mantaMsg('Release solver childs')\n\
+# Now delete children from solver objects\n\
+mantaMsg('Release solver children')\n\
 for var in list(globals()):\n\
     if var.endswith('_s$ID$') or var.endswith('_sn$ID$') or var.endswith('_sm$ID$') or var.endswith('_sp$ID$') or var.endswith('_sg$ID$'):\n\
         del globals()[var]\n\
@@ -502,10 +502,12 @@ gc.collect()\n";
 // BAKE
 //////////////////////////////////////////////////////////////////////
 
+/* This has to match the behavior of BLI_path_frame,
+ * for positive and negative frame numbers. */
 const std::string fluid_cache_helper =
     "\n\
 def fluid_cache_get_framenr_formatted_$ID$(framenr):\n\
-    return str(framenr).zfill(4) # framenr with leading zeroes\n";
+    return str(framenr).zfill(4) if framenr >= 0 else str(framenr).zfill(5)\n";
 
 const std::string fluid_bake_multiprocessing =
     "\n\

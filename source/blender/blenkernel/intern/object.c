@@ -1532,12 +1532,12 @@ void BKE_object_copy_particlesystems(Object *ob_dst, const Object *ob_src, const
         }
       }
       else if (md->type == eModifierType_Fluid) {
-        FluidModifierData *mmd = (FluidModifierData *)md;
+        FluidModifierData *fmd = (FluidModifierData *)md;
 
-        if (mmd->type == MOD_FLUID_TYPE_FLOW) {
-          if (mmd->flow) {
-            if (mmd->flow->psys == psys) {
-              mmd->flow->psys = npsys;
+        if (fmd->type == MOD_FLUID_TYPE_FLOW) {
+          if (fmd->flow) {
+            if (fmd->flow->psys == psys) {
+              fmd->flow->psys = npsys;
             }
           }
         }
@@ -1760,7 +1760,7 @@ Object *BKE_object_copy(Main *bmain, const Object *ob)
  */
 Object *BKE_object_duplicate(Main *bmain,
                              Object *ob,
-                             const eDupli_ID_Flags dupflag,
+                             eDupli_ID_Flags dupflag,
                              const eLibIDDuplicateFlags duplicate_options)
 {
   const bool is_subprocess = (duplicate_options & LIB_ID_DUPLICATE_IS_SUBPROCESS) != 0;
@@ -1768,10 +1768,14 @@ Object *BKE_object_duplicate(Main *bmain,
   if (!is_subprocess) {
     BKE_main_id_tag_all(bmain, LIB_TAG_NEW, false);
     BKE_main_id_clear_newpoins(bmain);
+    /* In case root duplicated ID is linked, assume we want to get a local copy of it and duplicate
+     * all expected linked data. */
+    if (ID_IS_LINKED(ob)) {
+      dupflag |= USER_DUP_LINKED_ID;
+    }
   }
 
   Material ***matarar;
-  const bool is_object_liboverride = ID_IS_OVERRIDE_LIBRARY(ob);
 
   Object *obn;
   BKE_id_copy(bmain, &ob->id, (ID **)&obn);
@@ -1785,112 +1789,109 @@ Object *BKE_object_duplicate(Main *bmain,
     return obn;
   }
 
-  /* duplicates using userflags */
-  if (dupflag & USER_DUP_ACT) {
-    BKE_animdata_copy_id_action(bmain, &obn->id, true);
-  }
+  BKE_animdata_duplicate_id_action(bmain, &obn->id, dupflag);
 
   if (dupflag & USER_DUP_MAT) {
     for (int i = 0; i < obn->totcol; i++) {
-      BKE_id_copy_for_duplicate(bmain, (ID *)obn->mat[i], is_object_liboverride, dupflag);
+      BKE_id_copy_for_duplicate(bmain, (ID *)obn->mat[i], dupflag);
     }
   }
   if (dupflag & USER_DUP_PSYS) {
     ParticleSystem *psys;
     for (psys = obn->particlesystem.first; psys; psys = psys->next) {
-      BKE_id_copy_for_duplicate(bmain, (ID *)psys->part, is_object_liboverride, dupflag);
+      BKE_id_copy_for_duplicate(bmain, (ID *)psys->part, dupflag);
     }
   }
 
-  ID *id = obn->data;
+  ID *id_old = obn->data;
   ID *id_new = NULL;
-  const bool need_to_duplicate_obdata = (id != NULL) && (id->newid == NULL);
+  const bool need_to_duplicate_obdata = (id_old != NULL) && (id_old->newid == NULL);
 
   switch (obn->type) {
     case OB_MESH:
       if (dupflag & USER_DUP_MESH) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_CURVE:
       if (dupflag & USER_DUP_CURVE) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_SURF:
       if (dupflag & USER_DUP_SURF) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_FONT:
       if (dupflag & USER_DUP_FONT) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_MBALL:
       if (dupflag & USER_DUP_MBALL) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_LAMP:
       if (dupflag & USER_DUP_LAMP) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_ARMATURE:
       if (dupflag & USER_DUP_ARM) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_LATTICE:
       if (dupflag != 0) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_CAMERA:
       if (dupflag != 0) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_LIGHTPROBE:
       if (dupflag & USER_DUP_LIGHTPROBE) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_SPEAKER:
       if (dupflag != 0) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_GPENCIL:
       if (dupflag & USER_DUP_GPENCIL) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_HAIR:
       if (dupflag & USER_DUP_HAIR) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_POINTCLOUD:
       if (dupflag & USER_DUP_POINTCLOUD) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
     case OB_VOLUME:
       if (dupflag & USER_DUP_VOLUME) {
-        id_new = BKE_id_copy_for_duplicate(bmain, id, is_object_liboverride, dupflag);
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag);
       }
       break;
   }
 
   /* If obdata has been copied, we may also have to duplicate the materials assigned to it. */
-  if (need_to_duplicate_obdata && id_new != NULL) {
+  if (need_to_duplicate_obdata && !ELEM(id_new, NULL, id_old)) {
     if (dupflag & USER_DUP_MAT) {
       matarar = BKE_object_material_array_p(obn);
       if (matarar) {
         for (int i = 0; i < obn->totcol; i++) {
-          BKE_id_copy_for_duplicate(bmain, (ID *)(*matarar)[i], is_object_liboverride, dupflag);
+          BKE_id_copy_for_duplicate(bmain, (ID *)(*matarar)[i], dupflag);
         }
       }
     }
@@ -2383,7 +2384,6 @@ void BKE_object_matrix_local_get(struct Object *ob, float mat[4][4])
 }
 
 /**
- * \param depsgraph: Used for dupli-frame time.
  * \return success if \a mat is set.
  */
 static bool ob_parcurve(Object *ob, Object *par, float mat[4][4])
@@ -2487,9 +2487,10 @@ static void give_parvert(Object *par, int nr, float vec[3])
 
     if (me_eval) {
       int count = 0;
-      const int numVerts = me_eval->totvert;
+      int numVerts = me_eval->totvert;
 
-      if (em && me_eval->runtime.is_original) {
+      if (em && me_eval->runtime.wrapper_type == ME_WRAPPER_TYPE_BMESH) {
+        numVerts = em->bm->totvert;
         if (em->bm->elem_table_dirty & BM_VERT) {
 #ifdef VPARENT_THREADING_HACK
           BLI_mutex_lock(&vparent_lock);
@@ -2502,10 +2503,18 @@ static void give_parvert(Object *par, int nr, float vec[3])
           BM_mesh_elem_table_ensure(em->bm, BM_VERT);
 #endif
         }
+        if (nr < numVerts) {
+          if (me_eval && me_eval->runtime.edit_data && me_eval->runtime.edit_data->vertexCos) {
+            add_v3_v3(vec, me_eval->runtime.edit_data->vertexCos[nr]);
+          }
+          else {
+            const BMVert *v = BM_vert_at_index(em->bm, nr);
+            add_v3_v3(vec, v->co);
+          }
+          count++;
+        }
       }
-
-      if (CustomData_has_layer(&me_eval->vdata, CD_ORIGINDEX) &&
-          !(em && me_eval->runtime.is_original)) {
+      else if (CustomData_has_layer(&me_eval->vdata, CD_ORIGINDEX)) {
         const int *index = CustomData_get_layer(&me_eval->vdata, CD_ORIGINDEX);
         /* Get the average of all verts with (original index == nr). */
         for (int i = 0; i < numVerts; i++) {
@@ -4584,9 +4593,9 @@ bool BKE_object_modifier_update_subframe(Depsgraph *depsgraph,
     }
   }
   else if (type == eModifierType_Fluid) {
-    FluidModifierData *mmd = (FluidModifierData *)md;
+    FluidModifierData *fmd = (FluidModifierData *)md;
 
-    if (mmd && (mmd->type & MOD_FLUID_TYPE_DOMAIN) != 0) {
+    if (fmd && (fmd->type & MOD_FLUID_TYPE_DOMAIN) != 0) {
       return true;
     }
   }

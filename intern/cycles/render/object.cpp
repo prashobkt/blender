@@ -594,7 +594,7 @@ void ObjectManager::device_update_transforms(DeviceScene *dscene, Scene *scene, 
     numparticles += psys->particles.size();
   }
 
-  /* Parallel object update, with grain size to avoid too much threadng overhead
+  /* Parallel object update, with grain size to avoid too much threading overhead
    * for individual objects. */
   static const int OBJECTS_PER_TASK = 32;
   parallel_for(blocked_range<size_t>(0, scene->objects.size(), OBJECTS_PER_TASK),
@@ -822,6 +822,12 @@ void ObjectManager::apply_static_transforms(DeviceScene *dscene, Scene *scene, P
     if (geom->type == Geometry::MESH) {
       Mesh *mesh = static_cast<Mesh *>(geom);
       apply = apply && mesh->subdivision_type == Mesh::SUBDIVISION_NONE;
+    }
+    else if (geom->type == Geometry::HAIR) {
+      /* Can't apply non-uniform scale to curves, this can't be represented by
+       * control points and radius alone. */
+      float scale;
+      apply = apply && transform_uniform_scale(object->tfm, scale);
     }
 
     if (apply) {

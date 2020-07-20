@@ -21,6 +21,7 @@
 #define DNA_DEPRECATED_ALLOW
 
 #include "BLI_listbase.h"
+#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_types.h"
@@ -36,6 +37,7 @@
 #include "BKE_colortools.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
+#include "BKE_node.h"
 
 #include "BLO_readfile.h"
 #include "readfile.h"
@@ -255,21 +257,32 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
+
+    /* Initialize parameters of the new Nishita sky model. */
+    if (!DNA_struct_elem_find(fd->filesdna, "NodeTexSky", "float", "sun_size")) {
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        if (ntree->type == NTREE_SHADER) {
+          LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+            if (node->type == SH_NODE_TEX_SKY && node->storage) {
+              NodeTexSky *tex = (NodeTexSky *)node->storage;
+              tex->sun_disc = true;
+              tex->sun_size = DEG2RADF(0.545);
+              tex->sun_elevation = M_PI_2;
+              tex->sun_rotation = 0.0f;
+              tex->altitude = 0.0f;
+              tex->air_density = 1.0f;
+              tex->dust_density = 1.0f;
+              tex->ozone_density = 1.0f;
+            }
+          }
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
   }
 
-  /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - "versioning_userdef.c", #BLO_version_defaults_userpref_blend
-   * - "versioning_userdef.c", #do_versions_theme
-   *
-   * \note Keep this message at the bottom of the function.
-   */
-  {
-    /* Keep this block, even when empty. */
-
-    /* Transition to saving expansion for all of a modifier's subpanels. */
+  if (!MAIN_VERSION_ATLEAST(bmain, 290, 6)) {
+    /* Transition to saving expansion for all of a modifier's sub-panels. */
     if (!DNA_struct_elem_find(fd->filesdna, "ModifierData", "short", "ui_expand_flag")) {
       for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
         LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
@@ -297,7 +310,7 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    /* Transition to saving expansion for all of a constraint's subpanels. */
+    /* Transition to saving expansion for all of a constraint's sub-panels. */
     if (!DNA_struct_elem_find(fd->filesdna, "bConstraint", "short", "ui_expand_flag")) {
       for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
         LISTBASE_FOREACH (bConstraint *, con, &object->constraints) {
@@ -311,7 +324,7 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    /* Transition to saving expansion for all of grease pencil modifier's subpanels. */
+    /* Transition to saving expansion for all of grease pencil modifier's sub-panels. */
     if (!DNA_struct_elem_find(fd->filesdna, "GpencilModifierData", "short", "ui_expand_flag")) {
       for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
         LISTBASE_FOREACH (GpencilModifierData *, md, &object->greasepencil_modifiers) {
@@ -325,7 +338,7 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    /* Transition to saving expansion for all of an effect's subpanels. */
+    /* Transition to saving expansion for all of an effect's sub-panels. */
     if (!DNA_struct_elem_find(fd->filesdna, "ShaderFxData", "short", "ui_expand_flag")) {
       for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
         LISTBASE_FOREACH (ShaderFxData *, fx, &object->shader_fx) {
@@ -338,19 +351,59 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
-  }
 
-  /* Refactor bevel profile type to use an enum. */
-  if (!DNA_struct_elem_find(fd->filesdna, "BevelModifierData", "short", "profile_type")) {
-    for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
-      LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
-        if (md->type == eModifierType_Bevel) {
-          BevelModifierData *bmd = (BevelModifierData *)md;
-          bool use_custom_profile = bmd->flags & MOD_BEVEL_CUSTOM_PROFILE_DEPRECATED;
-          bmd->profile_type = use_custom_profile ? MOD_BEVEL_PROFILE_CUSTOM :
-                                                   MOD_BEVEL_PROFILE_SUPERELLIPSE;
+    /* Refactor bevel profile type to use an enum. */
+    if (!DNA_struct_elem_find(fd->filesdna, "BevelModifierData", "short", "profile_type")) {
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+          if (md->type == eModifierType_Bevel) {
+            BevelModifierData *bmd = (BevelModifierData *)md;
+            bool use_custom_profile = bmd->flags & MOD_BEVEL_CUSTOM_PROFILE_DEPRECATED;
+            bmd->profile_type = use_custom_profile ? MOD_BEVEL_PROFILE_CUSTOM :
+                                                     MOD_BEVEL_PROFILE_SUPERELLIPSE;
+          }
         }
       }
+    }
+
+    /* Change ocean modifier values from [0, 10] to [0, 1] ranges. */
+    for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+      LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+        if (md->type == eModifierType_Ocean) {
+          OceanModifierData *omd = (OceanModifierData *)md;
+          omd->wave_alignment *= 0.1f;
+          omd->sharpen_peak_jonswap *= 0.1f;
+        }
+      }
+    }
+  }
+
+  /**
+   * Versioning code until next subversion bump goes here.
+   *
+   * \note Be sure to check when bumping the version:
+   * - "versioning_userdef.c", #BLO_version_defaults_userpref_blend
+   * - "versioning_userdef.c", #do_versions_theme
+   *
+   * \note Keep this message at the bottom of the function.
+   */
+  {
+    /* Keep this block, even when empty. */
+
+    /* Initialize additional parameter of the Nishita sky model and change altitude unit. */
+    if (!DNA_struct_elem_find(fd->filesdna, "NodeTexSky", "float", "sun_intensity")) {
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        if (ntree->type == NTREE_SHADER) {
+          LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+            if (node->type == SH_NODE_TEX_SKY && node->storage) {
+              NodeTexSky *tex = (NodeTexSky *)node->storage;
+              tex->sun_intensity = 1.0f;
+              tex->altitude *= 0.001f;
+            }
+          }
+        }
+      }
+      FOREACH_NODETREE_END;
     }
   }
 }

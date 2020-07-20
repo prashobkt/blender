@@ -249,6 +249,34 @@ void BKE_collection_add_from_object(Main *bmain,
   BKE_main_collection_sync(bmain);
 }
 
+/**
+ * Add \a collection_dst to all scene collections that reference collection \a collection_src is
+ * in.
+ *
+ * Logic is very similar to #BKE_collection_object_add_from().
+ */
+void BKE_collection_add_from_collection(Main *bmain,
+                                        Scene *scene,
+                                        Collection *collection_src,
+                                        Collection *collection_dst)
+{
+  bool is_instantiated = false;
+
+  FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
+    if (!ID_IS_LINKED(collection) && BKE_collection_has_collection(collection, collection_src)) {
+      collection_child_add(collection, collection_dst, 0, true);
+      is_instantiated = true;
+    }
+  }
+  FOREACH_SCENE_COLLECTION_END;
+
+  if (!is_instantiated) {
+    collection_child_add(scene->master_collection, collection_dst, 0, true);
+  }
+
+  BKE_main_collection_sync(bmain);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -333,7 +361,6 @@ static Collection *collection_duplicate_recursive(Main *bmain,
   Collection *collection_new;
   bool do_full_process = false;
   const bool is_collection_master = (collection_old->flag & COLLECTION_IS_MASTER) != 0;
-  const bool is_collection_liboverride = ID_IS_OVERRIDE_LIBRARY(collection_old);
 
   const bool do_objects = (duplicate_flags & USER_DUP_OBJECT) != 0;
 
@@ -346,7 +373,12 @@ static Collection *collection_duplicate_recursive(Main *bmain,
   }
   else if (collection_old->id.newid == NULL) {
     collection_new = (Collection *)BKE_id_copy_for_duplicate(
-        bmain, (ID *)collection_old, is_collection_liboverride, duplicate_flags);
+        bmain, (ID *)collection_old, duplicate_flags);
+
+    if (collection_new == collection_old) {
+      return collection_new;
+    }
+
     do_full_process = true;
   }
   else {
@@ -382,15 +414,13 @@ static Collection *collection_duplicate_recursive(Main *bmain,
       Object *ob_old = cob->ob;
       Object *ob_new = (Object *)ob_old->id.newid;
 
-      /* If collection is an override, we do not want to duplicate any linked data-block, as that
-       * would generate a purely local data. */
-      if (is_collection_liboverride && ID_IS_LINKED(ob_old)) {
-        continue;
-      }
-
       if (ob_new == NULL) {
         ob_new = BKE_object_duplicate(
             bmain, ob_old, duplicate_flags, duplicate_options | LIB_ID_DUPLICATE_IS_SUBPROCESS);
+      }
+
+      if (ob_new == ob_old) {
+        continue;
       }
 
       collection_object_add(bmain, collection_new, ob_new, 0, true);
@@ -403,29 +433,23 @@ static Collection *collection_duplicate_recursive(Main *bmain,
   LISTBASE_FOREACH_MUTABLE (CollectionChild *, child, &collection_old->children) {
     Collection *child_collection_old = child->collection;
 
-    if (is_collection_liboverride && ID_IS_LINKED(child_collection_old)) {
-      continue;
-    }
-
-    collection_duplicate_recursive(
+    Collection *child_collection_new = collection_duplicate_recursive(
         bmain, collection_new, child_collection_old, duplicate_flags, duplicate_options);
-    collection_child_remove(collection_new, child_collection_old);
+    if (child_collection_new != child_collection_old) {
+      collection_child_remove(collection_new, child_collection_old);
+    }
   }
 
   return collection_new;
 }
 
 /**
- * Make a deep copy (aka duplicate) of the given collection and all of its children, recusrsively.
+ * Make a deep copy (aka duplicate) of the given collection and all of its children, recursively.
  *
  * \warning This functions will clear all \a bmain #ID.idnew pointers, unless \a
- * LIB_ID_DUPLICATE_IS_SUBPROCESS duplicate option is passed on, in which case caller is reponsible
- * to reconstruct collection dependencies informations (i.e. call #BKE_main_collection_sync).
- *
- * \param do_objects: If true, it will also make copies of objects.
- * \param do_obdata: If true, it will also make duplicates of objects,
- * using behavior defined in user settings (#U.dupflag).
- * This one does nothing if \a do_objects is not set.
+ * #LIB_ID_DUPLICATE_IS_SUBPROCESS duplicate option is passed on, in which case caller is
+ * responsible to reconstruct collection dependencies information's
+ * (i.e. call #BKE_main_collection_sync).
  */
 Collection *BKE_collection_duplicate(Main *bmain,
                                      Collection *parent,
@@ -438,14 +462,19 @@ Collection *BKE_collection_duplicate(Main *bmain,
   if (!is_subprocess) {
     BKE_main_id_tag_all(bmain, LIB_TAG_NEW, false);
     BKE_main_id_clear_newpoins(bmain);
+    /* In case root duplicated ID is linked, assume we want to get a local copy of it and duplicate
+     * all expected linked data. */
+    if (ID_IS_LINKED(collection)) {
+      duplicate_flags |= USER_DUP_LINKED_ID;
+    }
   }
 
   Collection *collection_new = collection_duplicate_recursive(
       bmain, parent, collection, duplicate_flags, duplicate_options);
 
   if (!is_subprocess) {
-    /* `collection_duplicate_recursive` will also tag our 'root' collection, whic is not required
-     * unless its duplication is a subprocess of another one. */
+    /* `collection_duplicate_recursive` will also tag our 'root' collection, which is not required
+     * unless its duplication is a sub-process of another one. */
     collection_new->id.tag &= ~LIB_TAG_NEW;
 
     /* This code will follow into all ID links using an ID tagged with LIB_TAG_NEW.*/
@@ -924,7 +953,7 @@ bool BKE_collection_object_remove(Main *bmain,
 
 /**
  * Remove object from all collections of scene
- * \param scene_collection_skip: Don't remove base from this collection.
+ * \param collection_skip: Don't remove base from this collection.
  */
 static bool scene_collections_object_remove(
     Main *bmain, Scene *scene, Object *ob, const bool free_us, Collection *collection_skip)
@@ -1123,7 +1152,7 @@ static bool collection_find_instance_recursive(Collection *collection,
 {
   LISTBASE_FOREACH (CollectionObject *, collection_object, &collection->gobject) {
     if (collection_object->ob != NULL &&
-        /* Object from a given collection should never instanciate that collection either. */
+        /* Object from a given collection should never instantiate that collection either. */
         ELEM(collection_object->ob->instance_collection, instance_collection, collection)) {
       return true;
     }
@@ -1150,7 +1179,7 @@ bool BKE_collection_find_cycle(Collection *new_ancestor, Collection *collection)
     }
   }
 
-  /* Find possible objects in collection or its children, that would instanciate the given ancestor
+  /* Find possible objects in collection or its children, that would instantiate the given ancestor
    * collection (that would also make a fully invalid cycle of dependencies) .*/
   return collection_find_instance_recursive(collection, new_ancestor);
 }

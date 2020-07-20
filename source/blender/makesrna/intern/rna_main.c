@@ -410,7 +410,7 @@ void RNA_def_main(BlenderRNA *brna)
 
   srna = RNA_def_struct(brna, "BlendData", NULL);
   RNA_def_struct_ui_text(srna,
-                         "Blendfile Data",
+                         "Blend-file Data",
                          "Main data structure representing a .blend file and all its data-blocks");
   RNA_def_struct_ui_icon(srna, ICON_BLENDER);
 
@@ -436,7 +436,7 @@ void RNA_def_main(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_autopack", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(prop, "rna_Main_use_autopack_get", "rna_Main_use_autopack_set");
   RNA_def_property_ui_text(
-      prop, "Use Autopack", "Automatically pack all external data into .blend file");
+      prop, "Use Auto-pack", "Automatically pack all external data into .blend file");
 
   prop = RNA_def_int_vector(srna,
                             "version",
@@ -445,7 +445,7 @@ void RNA_def_main(BlenderRNA *brna)
                             0,
                             INT_MAX,
                             "Version",
-                            "Version of Blender the .blend was saved with",
+                            "File format version the .blend file was saved with",
                             0,
                             INT_MAX);
   RNA_def_property_int_funcs(prop, "rna_Main_version_get", NULL, NULL);
