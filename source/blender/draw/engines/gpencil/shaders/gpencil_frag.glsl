@@ -91,7 +91,7 @@ void main()
 
   if (GP_FLAG_TEST(matFlag, GP_STROKE_MASK | GP_FILL_MASK)) {
     fragColor = vec4(0.0, 0.0, 0.0, 1.0);
-    revealColor = vec4(1.0, 1.0, 1.0, 0.0);
+    revealColor = vec4(1.0, 1.0, 1.0, 1.0);
   }
   else {
     /* For compatibility with colored alpha buffer.
