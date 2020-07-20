@@ -2142,6 +2142,124 @@ static bool bvhtreeverlap_cmp(const BVHTreeOverlap &a, const BVHTreeOverlap &b)
   }
   return false;
 }
+class TriOverlaps {
+  BVHTree *tree_{nullptr};
+  BVHTree *tree_b_{nullptr};
+  BVHTreeOverlap *overlap_{nullptr};
+  uint overlap_tot_{0};
+
+  struct CBData {
+    const Mesh &tm;
+    std::function<int(int)> shape_fn;
+    int nshapes;
+    bool use_self;
+  };
+
+ public:
+  TriOverlaps(const Mesh &tm,
+              const Array<BoundingBox> &tri_bb,
+              int nshapes,
+              std::function<int(int)> shape_fn,
+              bool use_self)
+  {
+    constexpr int dbg_level = 1;
+    if (dbg_level > 0) {
+      std::cout << "TriOverlaps construction\n";
+    }
+    /* Tree type is 8 => octtree; axis = 6 => using XYZ axes only. */
+    tree_ = BLI_bvhtree_new(static_cast<int>(tm.face_size()), FLT_EPSILON, 8, 6);
+    /* In the common case of a binary boolean and no self intersection in
+     * each shape, we will use two trees and simple bounding box overlap.
+     */
+    bool two_trees_no_self = nshapes == 2 && !use_self;
+    if (two_trees_no_self) {
+      tree_b_ = BLI_bvhtree_new(static_cast<int>(tm.face_size()), FLT_EPSILON, 8, 6);
+    }
+    float bbpts[6];
+    for (uint t : tm.face_index_range()) {
+      const BoundingBox &bb = tri_bb[t];
+      copy_v3_v3(bbpts, bb.min);
+      copy_v3_v3(bbpts + 3, bb.max);
+      int shape = shape_fn(tm.face(t)->orig);
+      if (two_trees_no_self) {
+        if (shape == 0) {
+          BLI_bvhtree_insert(tree_, static_cast<int>(t), bbpts, 2);
+        }
+        else if (shape == 1) {
+          BLI_bvhtree_insert(tree_b_, static_cast<int>(t), bbpts, 2);
+        }
+      }
+      else {
+        if (shape != -1) {
+          BLI_bvhtree_insert(tree_, static_cast<int>(t), bbpts, 2);
+        }
+      }
+    }
+    BLI_bvhtree_balance(tree_);
+    if (two_trees_no_self) {
+      BLI_bvhtree_balance(tree_b_);
+      /* Don't expect a lot of trivial intersects in this case. */
+      overlap_ = BLI_bvhtree_overlap(tree_, tree_b_, &overlap_tot_, NULL, NULL);
+    }
+    else {
+      CBData cbdata{tm, shape_fn, nshapes, use_self};
+      if (nshapes == 1 && use_self) {
+        /* Expect a lot of trivial intersects from quads that are triangulated
+         * and faces that share vertices.
+         * Filter them out with a callback.
+         */
+        overlap_ = BLI_bvhtree_overlap(
+            tree_, tree_, &overlap_tot_, only_nontrivial_intersects, &cbdata);
+      }
+      else {
+        overlap_ = BLI_bvhtree_overlap(
+            tree_, tree_, &overlap_tot_, only_different_shapes, &cbdata);
+      }
+    }
+    /* Sort the overlaps to bring all the intersects with a given indexA together.   */
+    std::sort(overlap_, overlap_ + overlap_tot_, bvhtreeverlap_cmp);
+    if (dbg_level > 0) {
+      std::cout << overlap_tot_ << " overlaps found:\n";
+      for (BVHTreeOverlap ov : overlap()) {
+        std::cout << "A: " << ov.indexA << ", B: " << ov.indexB << "\n";
+      }
+    }
+  }
+
+  ~TriOverlaps()
+  {
+    if (tree_) {
+      BLI_bvhtree_free(tree_);
+    }
+    if (tree_b_) {
+      BLI_bvhtree_free(tree_b_);
+    }
+    if (overlap_) {
+      MEM_freeN(overlap_);
+    }
+  }
+
+  Span<BVHTreeOverlap> overlap() const
+  {
+    return Span<BVHTreeOverlap>(overlap_, overlap_tot_);
+  }
+
+ private:
+  static bool only_nontrivial_intersects(void *userdata,
+                                         int index_a,
+                                         int index_b,
+                                         int UNUSED(thread))
+  {
+    CBData *cbdata = static_cast<CBData *>(userdata);
+    return may_non_trivially_intersect(cbdata->tm.face(index_a), cbdata->tm.face(index_b));
+  }
+
+  static bool only_different_shapes(void *userdata, int index_a, int index_b, int UNUSED(thread))
+  {
+    CBData *cbdata = static_cast<CBData *>(userdata);
+    return cbdata->tm.face(index_a)->orig != cbdata->tm.face(index_b)->orig;
+  }
+};
 
 /* For each triangle in tm, fill in the corresponding slot in
  * r_tri_subdivided with the result of intersecting it with
@@ -2153,25 +2271,16 @@ static bool bvhtreeverlap_cmp(const BVHTreeOverlap &a, const BVHTreeOverlap &b)
 static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
                                  const Mesh &tm,
                                  const CoplanarClusterInfo &clinfo,
-                                 BVHTree *tri_tree,
+                                 const TriOverlaps &ov,
                                  MArena *arena)
 {
   const int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "\nCALC_SUBDIVIDED_TRIS\n\n";
   }
-  uint overlap_tot;
-  BVHTreeOverlap *overlap = BLI_bvhtree_overlap(tri_tree, tri_tree, &overlap_tot, NULL, NULL);
-  if (overlap == nullptr) {
-    return;
-  }
-  if (overlap_tot <= 1) {
-    MEM_freeN(overlap);
-    return;
-  }
-  /* Sort the overlaps to bring all the intersects with a given indexA together.   */
-  std::sort(overlap, overlap + overlap_tot, bvhtreeverlap_cmp);
   uint overlap_index = 0;
+  Span<BVHTreeOverlap> overlap = ov.overlap();
+  uint overlap_tot = overlap.size();
   while (overlap_index < overlap_tot) {
     int t = overlap[overlap_index].indexA;
     uint i = overlap_index;
@@ -2198,19 +2307,7 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
 #ifdef PERFDEBUG
       incperfcount(0); /* Overlaps. */
 #endif
-      ITT_value itt;
-      if (may_non_trivially_intersect(tm.face(tu), tm.face(t_other))) {
-        itt = intersect_tri_tri(tm, tu, t_other);
-      }
-      else {
-        if (dbg_level > 0) {
-          std::cout << "early discovery of only trivial intersect\n";
-        }
-#ifdef PERFDEBUG
-        incperfcount(1); /* Early discovery of trivial intersects. */
-#endif
-        itt = ITT_value(INONE);
-      }
+      ITT_value itt = intersect_tri_tri(tm, tu, t_other);
       if (itt.kind != INONE) {
         itts.append(itt);
       }
@@ -2225,7 +2322,6 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
     }
     overlap_index = i + 1;
   }
-  MEM_freeN(overlap);
 }
 
 static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
@@ -2394,49 +2490,19 @@ static bool has_degenerate_tris(const Mesh &tm)
   return false;
 }
 
-/* Caller will be responsible for doing BLI_bvhtree_free on return val. */
-static BVHTree *bvhtree_for_tris(const Mesh &tm, const Array<BoundingBox> &tri_bb)
-{
-  /* Tree type is 8 => octtree; axis = 6 => using XYZ axes only. */
-  BVHTree *tri_tree = BLI_bvhtree_new(static_cast<int>(tm.face_size()), FLT_EPSILON, 8, 6);
-  float bbpts[6];
-  for (uint t : tm.face_index_range()) {
-    const BoundingBox &bb = tri_bb[t];
-    copy_v3_v3(bbpts, bb.min);
-    copy_v3_v3(bbpts + 3, bb.max);
-    BLI_bvhtree_insert(tri_tree, static_cast<int>(t), bbpts, 2);
-  }
-  BLI_bvhtree_balance(tri_tree);
-  return tri_tree;
-}
-
-/* Maybe return nullptr if there are no clsuters.
- * If not, caller is responsible for doing BLI_bvhtree_free on return val.
- */
-static BVHTree *bvhtree_for_clusters(const CoplanarClusterInfo &clinfo)
-{
-  int nc = static_cast<int>(clinfo.tot_cluster());
-  if (nc == 0) {
-    return nullptr;
-  }
-  BVHTree *cluster_tree = BLI_bvhtree_new(nc, FLT_EPSILON, 8, 6);
-  float bbpts[6];
-  for (uint c : clinfo.index_range()) {
-    const BoundingBox &bb = clinfo.cluster(c).bounding_box();
-    copy_v3_v3(bbpts, bb.min);
-    copy_v3_v3(bbpts + 3, bb.max);
-    BLI_bvhtree_insert(cluster_tree, static_cast<int>(c), bbpts, 2);
-  }
-  BLI_bvhtree_balance(cluster_tree);
-  return cluster_tree;
-}
-
 /* This is the main routine for calculating the self_intersection of a triangle mesh. */
 Mesh trimesh_self_intersect(const Mesh &tm_in, MArena *arena)
 {
+  return trimesh_nary_intersect(
+      tm_in, 1, [](int) { return 0; }, true, arena);
+}
+
+Mesh trimesh_nary_intersect(
+    const Mesh &tm_in, int nshapes, std::function<int(int)> shape_fn, bool use_self, MArena *arena)
+{
   constexpr int dbg_level = 0;
   if (dbg_level > 0) {
-    std::cout << "\nTRIMESH_SELF_INTERSECT\n";
+    std::cout << "\nTRIMESH_NARY_INTERSECT\n";
     for (Facep f : tm_in.faces()) {
       BLI_assert(f->is_tri());
     }
@@ -2446,7 +2512,7 @@ Mesh trimesh_self_intersect(const Mesh &tm_in, MArena *arena)
     BLI_assert(false);
   }
   Array<BoundingBox> tri_bb = calc_face_bounding_boxes(tm_in);
-  /* Clusters have at least two coplanar, non-trivially intersecting triangles. */
+  TriOverlaps tri_ov(tm_in, tri_bb, nshapes, shape_fn, use_self);
   CoplanarClusterInfo clinfo = find_clusters(tm_in, tri_bb);
   if (dbg_level > 1) {
     std::cout << clinfo;
@@ -2455,15 +2521,14 @@ Mesh trimesh_self_intersect(const Mesh &tm_in, MArena *arena)
   perfdata_init();
   doperfmax(0, static_cast<int>(tm_in.face_size()));
   doperfmax(1, static_cast<int>(clinfo.tot_cluster()));
+  doperfmax(2, static_cast<int>(ov.overlap().size)));
 #endif
-  BVHTree *tri_tree = bvhtree_for_tris(tm_in, tri_bb);
-  BVHTree *cluster_tree = bvhtree_for_clusters(clinfo);
   Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
   for (uint c : clinfo.index_range()) {
     cluster_subdivided[c] = calc_cluster_subdivided(clinfo, c, tm_in, arena);
   }
   blender::Array<Mesh> tri_subdivided(tm_in.face_size());
-  calc_subdivided_tris(tri_subdivided, tm_in, clinfo, tri_tree, arena);
+  calc_subdivided_tris(tri_subdivided, tm_in, clinfo, tri_ov, arena);
   for (uint t : tm_in.face_index_range()) {
     uint c = clinfo.tri_cluster(t);
     if (c != NO_INDEX_U) {
@@ -2476,12 +2541,8 @@ Mesh trimesh_self_intersect(const Mesh &tm_in, MArena *arena)
   }
   Mesh combined = union_tri_subdivides(tri_subdivided);
   if (dbg_level > 1) {
-    std::cout << "TRIMESH_SELF_INTERSECT answer:\n";
+    std::cout << "TRIMESH_NARY_INTERSECT answer:\n";
     std::cout << combined;
-  }
-  BLI_bvhtree_free(tri_tree);
-  if (cluster_tree != nullptr) {
-    BLI_bvhtree_free(cluster_tree);
   }
 #ifdef PERFDEBUG
   dump_perfdata();
@@ -2611,9 +2672,9 @@ static void perfdata_init(void)
   perfdata.max.append(0);
   perfdata.max_name.append("total faces");
 
-  /* max 1. */
+  /* max 2. */
   perfdata.max.append(0);
-  perfdata.max_name.append("total clusters");
+  perfdata.max_name.append("total overlaps");
 }
 
 static void incperfcount(int countnum)

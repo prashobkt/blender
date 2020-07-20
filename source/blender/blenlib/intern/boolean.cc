@@ -1976,21 +1976,32 @@ static Mesh polymesh_from_trimesh_with_dissolve(const Mesh &tm_out,
  * The shape_fn function should take a triangle index in tm_in and return
  * a number in the range 0 to nshapes-1, to say which shape that triangle is in.
  */
-Mesh boolean_trimesh(
-    Mesh &tm_in, bool_optype op, int nshapes, std::function<int(int)> shape_fn, MArena *arena)
+Mesh boolean_trimesh(Mesh &tm_in,
+                     bool_optype op,
+                     int nshapes,
+                     std::function<int(int)> shape_fn,
+                     bool use_self,
+                     MArena *arena)
 {
-  constexpr int dbg_level = 0;
+  constexpr int dbg_level = 2;
   if (dbg_level > 0) {
     std::cout << "BOOLEAN of " << nshapes << " operand" << (nshapes == 1 ? "" : "s")
               << " op=" << bool_optype_name(op) << "\n";
     if (dbg_level > 1) {
       std::cout << "boolean_trimesh input:\n" << tm_in;
+      write_obj_mesh(tm_in, "boolean_in");
     }
   }
   if (tm_in.face_size() == 0) {
     return Mesh(tm_in);
   }
-  Mesh tm_si = trimesh_self_intersect(tm_in, arena);
+  Mesh tm_si;
+  if (use_self) {
+    tm_si = trimesh_self_intersect(tm_in, arena);
+  }
+  else {
+    tm_si = trimesh_nary_intersect(tm_in, nshapes, shape_fn, use_self, arena);
+  }
   if (dbg_level > 1) {
     write_obj_mesh(tm_si, "boolean_tm_si");
     std::cout << "\nboolean_tm_input after intersection:\n" << tm_si;
@@ -2036,6 +2047,7 @@ Mesh boolean_mesh(Mesh &pm,
                   bool_optype op,
                   int nshapes,
                   std::function<int(int)> shape_fn,
+                  bool use_self,
                   Mesh *pm_triangulated,
                   MArena *arena)
 {
@@ -2045,7 +2057,7 @@ Mesh boolean_mesh(Mesh &pm,
     our_triangulation = triangulate_polymesh(pm, arena);
     tm_in = &our_triangulation;
   }
-  Mesh tm_out = boolean_trimesh(*tm_in, op, nshapes, shape_fn, arena);
+  Mesh tm_out = boolean_trimesh(*tm_in, op, nshapes, shape_fn, use_self, arena);
   Mesh ans = polymesh_from_trimesh_with_dissolve(tm_out, pm, arena);
   return ans;
 }

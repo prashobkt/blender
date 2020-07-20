@@ -336,6 +336,12 @@ std::ostream &operator<<(std::ostream &os, const Mesh &mesh);
  */
 Mesh trimesh_self_intersect(const Mesh &tm_in, MArena *arena);
 
+Mesh trimesh_nary_intersect(const Mesh &tm_in,
+                            int nshapes,
+                            std::function<int(int)> shape_fn,
+                            bool use_self,
+                            MArena *arena);
+
 /* This has the side effect of populating verts in the Mesh. */
 void write_obj_mesh(Mesh &m, const std::string &objname);
 

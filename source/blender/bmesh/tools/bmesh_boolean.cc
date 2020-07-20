@@ -197,7 +197,7 @@ static bool bmesh_boolean(BMesh *bm,
     };
   }
   bool_optype op = static_cast<bool_optype>(boolean_mode);
-  Mesh m_out = boolean_mesh(m_in, op, nshapes, shape_fn, &m_triangulated, &arena);
+  Mesh m_out = boolean_mesh(m_in, op, nshapes, shape_fn, use_self, &m_triangulated, &arena);
   bool any_change = apply_mesh_output_to_bmesh(bm, m_out);
   return any_change;
 }

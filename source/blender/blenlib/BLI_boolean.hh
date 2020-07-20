@@ -40,6 +40,8 @@ enum bool_optype {
  * The boolean operation has nshapes input shapes. Each is a disjoint subset of the input mesh.
  * The shape_fn argument, when applied to an input face argument, says which shape it is in
  * (should be a value from -1 to nshapes - 1: if -1, it is not part of any shape).
+ * The use_self arg says whether or not the function should assume that faces in the
+ * same shape intersect - if the argument is true, such self-intersections will be found.
  * Sometimes the caller has already done a triangulation of the faces,
  * and if so, *pm_triangulated contains a triangulation: if non-null, it contains a mesh
  * of triangles, each of whose orig_field says which face in pm that triangle belongs to.
@@ -52,6 +54,7 @@ Mesh boolean_mesh(Mesh &pm,
                   bool_optype op,
                   int nshapes,
                   std::function<int(int)> shape_fn,
+                  bool use_self,
                   Mesh *pm_triangulated,
                   MArena *arena);
 
@@ -59,8 +62,12 @@ Mesh boolean_mesh(Mesh &pm,
  * It is exposed mainly for unit testing, at the moment: boolean_mesh() uses
  * it to do most of its work.
  */
-Mesh boolean_trimesh(
-    Mesh &tm, bool_optype op, int nshapes, std::function<int(int)> shape_fn, MArena *arena);
+Mesh boolean_trimesh(Mesh &tm,
+                     bool_optype op,
+                     int nshapes,
+                     std::function<int(int)> shape_fn,
+                     bool use_self,
+                     MArena *arena);
 
 }  // namespace blender::meshintersect
 #endif /* __BLI_BOOLEAN_HH__ */

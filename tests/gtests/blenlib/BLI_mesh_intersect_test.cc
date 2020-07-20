@@ -638,7 +638,7 @@ TEST(mesh_intersect, TetTet)
 
 #if DO_PERF_TESTS
 
-static void spheresphere_test(int nrings, double y_offset)
+static void spheresphere_test(int nrings, double y_offset, bool use_self)
 {
   /* Make two icospheres with nrings rings ad 2*nrings segments. */
   if (nrings < 2) {
@@ -794,8 +794,16 @@ static void spheresphere_test(int nrings, double y_offset)
   }
   Mesh mesh(faces);
   double time_create = PIL_check_seconds_timer();
-  write_obj_mesh(mesh, "spheresphere_in");
-  Mesh out = trimesh_self_intersect(mesh, &arena);
+  // write_obj_mesh(mesh, "spheresphere_in");
+  Mesh out;
+  if (use_self) {
+    out = trimesh_self_intersect(mesh, &arena);
+  }
+  else {
+    int nf = triangulate ? num_sphere_tris : num_sphere_faces;
+    out = trimesh_nary_intersect(
+        mesh, 2, [nf](int t) { return t < nf ? 0 : 1; }, false, &arena);
+  }
   double time_intersect = PIL_check_seconds_timer();
   std::cout << "Create time: " << time_create - time_start << "\n";
   std::cout << "Intersect time: " << time_intersect - time_create << "\n";
@@ -805,7 +813,7 @@ static void spheresphere_test(int nrings, double y_offset)
 
 TEST(mesh_intersect_perf, SphereSphere)
 {
-  spheresphere_test(16, 0.5);
+  spheresphere_test(64, 0.5, true);
 }
 
 #endif
