@@ -174,7 +174,9 @@ class MeshTest:
                                 geometry after running the operations.
         :param operations_stack: list - stack holding operations to perform on the test_object.
         :param apply_modifier: bool - True if we want to apply the modifiers right after adding them to the object.
+                                    - True if we want to apply the modifier to a list of modifiers, after some operation.
                                This affects operations of type ModifierSpec and DeformModifierSpec.
+
         :param test_name: str - unique test name identifier.
         """
         if operations_stack is None:
@@ -304,6 +306,9 @@ class MeshTest:
 
         elif test_object.type == 'MESH':
             bpy.ops.object.modifier_apply(modifier=modifier_name)
+
+        else:
+            raise Exception("This object type is not yet supported!")
 
     def _bake_current_simulation(self, obj, test_mod_type, test_mod_name, frame_end):
         for scene in bpy.data.scenes:
