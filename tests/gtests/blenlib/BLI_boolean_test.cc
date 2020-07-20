@@ -103,7 +103,6 @@ class MeshBuilder {
   }
 };
 
-#if 0
 TEST(boolean_trimesh, Empty)
 {
   MArena arena;
@@ -232,7 +231,6 @@ TEST(boolean_trimesh, CubeTet)
     write_obj_mesh(out, "cubetet_union");
   }
 }
-#endif
 
 TEST(boolean_trimesh, BinaryTetTet)
 {
@@ -266,7 +264,6 @@ TEST(boolean_trimesh, BinaryTetTet)
   }
 }
 
-#if 0
 TEST(boolean_trimesh, TetTetCoplanar)
 {
   const char *spec = R"(8 8
@@ -466,6 +463,5 @@ TEST(boolean_polymesh, TetTeTCoplanarDiff)
     write_obj_mesh(out, "tettet_coplanar_diff");
   }
 }
-#endif
 
 }  // namespace blender::meshintersect

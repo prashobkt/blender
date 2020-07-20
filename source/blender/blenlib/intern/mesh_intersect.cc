@@ -2162,7 +2162,7 @@ class TriOverlaps {
               std::function<int(int)> shape_fn,
               bool use_self)
   {
-    constexpr int dbg_level = 1;
+    constexpr int dbg_level = 0;
     if (dbg_level > 0) {
       std::cout << "TriOverlaps construction\n";
     }
@@ -2215,6 +2215,19 @@ class TriOverlaps {
         overlap_ = BLI_bvhtree_overlap(
             tree_, tree_, &overlap_tot_, only_different_shapes, &cbdata);
       }
+    }
+    /* The rest of the code is simpler and easier to parallelize if, in the two-trees case,
+     * we repeat the overlaps with indexA and indexB reversed. It is important that
+     * in the repeated part, sorting will then bring things with indexB together.
+     */
+    if (two_trees_no_self) {
+      overlap_ = static_cast<BVHTreeOverlap *>(
+          MEM_reallocN(overlap_, 2 * overlap_tot_ * sizeof(overlap_[0])));
+      for (uint i = 0; i < overlap_tot_; ++i) {
+        overlap_[overlap_tot_ + i].indexA = overlap_[i].indexB;
+        overlap_[overlap_tot_ + i].indexB = overlap_[i].indexA;
+      }
+      overlap_tot_ += overlap_tot_;
     }
     /* Sort the overlaps to bring all the intersects with a given indexA together.   */
     std::sort(overlap_, overlap_ + overlap_tot_, bvhtreeverlap_cmp);
@@ -2521,7 +2534,7 @@ Mesh trimesh_nary_intersect(
   perfdata_init();
   doperfmax(0, static_cast<int>(tm_in.face_size()));
   doperfmax(1, static_cast<int>(clinfo.tot_cluster()));
-  doperfmax(2, static_cast<int>(ov.overlap().size)));
+  doperfmax(2, static_cast<int>(tri_ov.overlap().size()));
 #endif
   Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
   for (int c : clinfo.index_range()) {
@@ -2671,6 +2684,10 @@ static void perfdata_init(void)
   /* max 0. */
   perfdata.max.append(0);
   perfdata.max_name.append("total faces");
+
+  /* max 1. */
+  perfdata.max.append(0);
+  perfdata.max_name.append("total clusters");
 
   /* max 2. */
   perfdata.max.append(0);

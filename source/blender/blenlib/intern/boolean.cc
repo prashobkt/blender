@@ -110,23 +110,6 @@ static std::ostream &operator<<(std::ostream &os, const Span<int> &a)
   return os;
 }
 
-static std::ostream &operator<<(std::ostream &os, const Span<uint> &a)
-{
-  for (int i : a.index_range()) {
-    os << a[i];
-    if (i != a.size() - 1) {
-      os << " ";
-    }
-  }
-  return os;
-}
-
-static std::ostream &operator<<(std::ostream &os, const Vector<uint> &ivec)
-{
-  os << Span<uint>(ivec);
-  return os;
-}
-
 static std::ostream &operator<<(std::ostream &os, const Array<int> &iarr)
 {
   os << Span<int>(iarr);
@@ -1984,7 +1967,7 @@ Mesh boolean_trimesh(Mesh &tm_in,
                      bool use_self,
                      MArena *arena)
 {
-  constexpr int dbg_level = 2;
+  constexpr int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "BOOLEAN of " << nshapes << " operand" << (nshapes == 1 ? "" : "s")
               << " op=" << bool_optype_name(op) << "\n";
