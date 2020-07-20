@@ -105,6 +105,7 @@ static const char *vulkan_error_as_string(VkResult result)
               __LINE__, \
               __STR(__expression), \
               vulkan_error_as_string(r)); \
+      return GHOST_kFailure; \
     } \
   } while (0)
 
@@ -114,7 +115,12 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual) : GHOST_Context(stereoVisual
 
 GHOST_ContextVK::~GHOST_ContextVK()
 {
-  vkDestroyInstance(m_instance, NULL);
+  if (m_device != VK_NULL_HANDLE) {
+    vkDestroyDevice(m_device, NULL);
+  }
+  if (m_instance != VK_NULL_HANDLE) {
+    vkDestroyInstance(m_instance, NULL);
+  }
 }
 
 GHOST_TSuccess GHOST_ContextVK::swapBuffers()
@@ -226,7 +232,7 @@ static VkPhysicalDevice pickPhysicalDevice(VkInstance instance)
     // List of REQUIRED features.
     if (device_features.geometryShader &&  // Needed for wide lines
         device_features.dualSrcBlend &&    // Needed by EEVEE
-        device_features.logicOp            // Needed by EEVEE
+        device_features.logicOp            // Needed by UI
     ) {
       int device_score = 0;
       switch (device_properties.deviceType) {
@@ -298,6 +304,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   }
 
   vector<const char *> extensions_enabled;
+  requireExtension(extensions_available, extensions_enabled, "VK_KHR_surface");
 #ifdef _WIN32
   requireExtension(extensions_available, extensions_enabled, VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #else
@@ -329,6 +336,34 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   if (!getGraphicQueueFamily(m_physical_device, &m_queue_family_graphic)) {
     return GHOST_kFailure;
   }
+
+  float queue_priorities[] = {1.0f};
+  VkDeviceQueueCreateInfo queue_create_info = {
+      .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+      .queueFamilyIndex = m_queue_family_graphic,
+      .queueCount = 1,
+      .pQueuePriorities = queue_priorities,
+  };
+
+  VkPhysicalDeviceFeatures device_features = {
+      .geometryShader = VK_TRUE,  // Needed for wide lines
+      .dualSrcBlend = VK_TRUE,    // Needed by EEVEE
+      .logicOp = VK_TRUE,         // Needed by UI
+  };
+
+  VkDeviceCreateInfo device_create_info = {
+      .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+      .queueCreateInfoCount = 1,
+      .pQueueCreateInfos = &queue_create_info,
+      // Same as instance extensions. Only needed for 1.0 implementations.
+      .enabledLayerCount = static_cast<uint32_t>(layers_enabled.size()),
+      .ppEnabledLayerNames = layers_enabled.data(),
+      .pEnabledFeatures = &device_features,
+  };
+
+  VK_CHECK(vkCreateDevice(m_physical_device, &device_create_info, nullptr, &m_device));
+
+  vkGetDeviceQueue(m_device, m_queue_family_graphic, 0, &m_graphic_queue);
 
   return GHOST_kFailure;
 }

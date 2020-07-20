@@ -101,6 +101,9 @@ class GHOST_ContextVK : public GHOST_Context {
   VkInstance m_instance;
   VkPhysicalDevice m_physical_device;
   uint32_t m_queue_family_graphic;
+
+  VkDevice m_device;
+  VkQueue m_graphic_queue;
 };
 
 #endif  // __GHOST_CONTEXTVK_H__
