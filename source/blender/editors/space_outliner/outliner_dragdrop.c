@@ -73,6 +73,7 @@ static Collection *collection_parent_from_ID(ID *id);
 
 typedef struct OutlinerDropData {
   Object *ob_parent;
+  bPoseChannel *bone_parent;
   TreeStoreElem *drag_tselem;
   void *drag_directdata;
   int drag_index;
@@ -84,12 +85,17 @@ typedef struct OutlinerDropData {
 } OutlinerDropData;
 
 /*  */
-static void outliner_drop_data_init(
-    wmDrag *drag, Object *ob, TreeElement *te, TreeStoreElem *tselem, void *directdata)
+static void outliner_drop_data_init(wmDrag *drag,
+                                    Object *ob,
+                                    bPoseChannel *pchan,
+                                    TreeElement *te,
+                                    TreeStoreElem *tselem,
+                                    void *directdata)
 {
   OutlinerDropData *drop_data = MEM_callocN(sizeof(OutlinerDropData), "outliner drop data");
 
   drop_data->ob_parent = ob;
+  drop_data->bone_parent = pchan;
   drop_data->drag_tselem = tselem;
   drop_data->drag_directdata = directdata;
   drop_data->drag_index = te->index;
@@ -802,6 +808,9 @@ static bool uistack_drop_poll(bContext *C,
       tselem_target = TREESTORE(object_te);
     }
     else if (tselem_target->type == drop_data->drag_tselem->type) {
+      if (drop_data->insert_type == TE_INSERT_INTO) {
+        return false;
+      }
       *r_tooltip = TIP_("Reorder");
       drop_data->drop_action = UI_STACK_DROP_REORDER;
       drop_data->drop_te = te_target;
@@ -1235,8 +1244,18 @@ static int outliner_item_drag_drop_invoke(bContext *C,
            TSE_CONSTRAINT_BASE,
            TSE_EFFECT,
            TSE_EFFECT_BASE)) {
-    ModifierData *md = te->directdata;
-    outliner_drop_data_init(drag, (Object *)tselem->id, te, tselem, md);
+    /* Check if parent is a bone */
+    TreeElement *te_bone = te->parent;
+    bPoseChannel *pchan = NULL;
+    while (te_bone) {
+      TreeStoreElem *tselem_bone = TREESTORE(te_bone);
+      if (tselem_bone->type == TSE_POSE_CHANNEL) {
+        pchan = (bPoseChannel *)te_bone->directdata;
+        break;
+      }
+      te_bone = te_bone->parent;
+    }
+    outliner_drop_data_init(drag, (Object *)tselem->id, pchan, te, tselem, te->directdata);
   }
   else if (ELEM(GS(data.drag_id->name), ID_OB, ID_GR)) {
     /* For collections and objects we cheat and drag all selected. */
