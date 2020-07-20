@@ -972,8 +972,11 @@ static uiBut *ui_item_with_label(uiLayout *layout,
   const bool use_prop_sep = ((layout->item.flag & UI_ITEM_PROP_SEP) != 0);
 #endif
 
-  /* Always align item with label since text is already given enough space not to overlap. */
-  sub = uiLayoutRow(layout, true);
+  /* Previously 'align' was enabled to make sure the label is spaced closely to the button.
+   * Set the space to zero instead as aligning a large number of labels can end up aligning
+   * thousands of buttons when displaying key-map search (a heavy operation), see: T78636. */
+  sub = uiLayoutRow(layout, false);
+  sub->space = 0;
   UI_block_layout_set_current(block, sub);
 
 #ifdef UI_PROP_DECORATE
@@ -6051,6 +6054,26 @@ void UI_menutype_draw(bContext *C, MenuType *mt, struct uiLayout *layout)
   }
 }
 
+static bool ui_layout_has_panel_label(const uiLayout *layout, const PanelType *pt)
+{
+  LISTBASE_FOREACH (uiItem *, subitem, &layout->items) {
+    if (subitem->type == ITEM_BUTTON) {
+      uiButtonItem *bitem = (uiButtonItem *)subitem;
+      if (!(bitem->but->flag & UI_HIDDEN) && STREQ(bitem->but->str, pt->label)) {
+        return true;
+      }
+    }
+    else {
+      uiLayout *litem = (uiLayout *)subitem;
+      if (ui_layout_has_panel_label(litem, pt)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout, bool show_header)
 {
   Panel *panel = MEM_callocN(sizeof(Panel), "popover panel");
@@ -6067,7 +6090,13 @@ static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout,
       pt->draw_header(C, panel);
       panel->layout = NULL;
     }
-    uiItemL(row, CTX_IFACE_(pt->translation_context, pt->label), ICON_NONE);
+
+    /* draw_header() is often used to add a checkbox to the header. If we add the label like below
+     * the label is disconnected from the checkbox, adding a weird looking gap. As workaround, let
+     * the checkbox add the label instead. */
+    if (!ui_layout_has_panel_label(row, pt)) {
+      uiItemL(row, CTX_IFACE_(pt->translation_context, pt->label), ICON_NONE);
+    }
   }
 
   panel->layout = layout;

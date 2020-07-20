@@ -178,6 +178,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
 
 #define BUF_INSTANCE DRW_shgroup_call_buffer_instance
 #define BUF_LINE(grp, format) DRW_shgroup_call_buffer(grp, format, GPU_PRIM_LINES)
+#define BUF_POINT(grp, format) DRW_shgroup_call_buffer(grp, format, GPU_PRIM_POINTS)
 
     {
       format = formats->instance_bone;
@@ -2118,7 +2119,7 @@ static void armature_context_setup(ArmatureDrawContext *ctx,
                                    const bool do_envelope_dist,
                                    const bool is_edit_mode,
                                    const bool is_pose_mode,
-                                   float *const_color)
+                                   const float *const_color)
 {
   const bool is_object_mode = !do_envelope_dist;
   const bool is_xray = (ob->dtx & OB_DRAWXRAY) != 0 || (pd->armature.do_pose_xray && is_pose_mode);

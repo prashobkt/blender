@@ -1395,7 +1395,7 @@ static int collection_instance_add_exec(bContext *C, wmOperator *op)
 
     /* Avoid dependency cycles. */
     LayerCollection *active_lc = BKE_layer_collection_get_active(view_layer);
-    while (BKE_collection_find_cycle(active_lc->collection, collection)) {
+    while (BKE_collection_cycle_find(active_lc->collection, collection)) {
       active_lc = BKE_layer_collection_activate_parent(view_layer, active_lc);
     }
 
@@ -2451,7 +2451,8 @@ static int object_convert_exec(bContext *C, wmOperator *op)
                                matrix,
                                0,
                                use_seams,
-                               use_faces);
+                               use_faces,
+                               false);
       gpencilConverted = true;
 
       /* Remove unused materials. */

@@ -52,6 +52,8 @@ class Params:
         "use_v3d_shade_ex_pie",
         # Swap orbit/pan keys (for 2D workflows).
         "use_v3d_mmb_pan",
+        # Alt click to access tools.
+        "use_alt_click_leader",
         # Experimental option.
         "use_pie_click_drag",
         "v3d_tilde_action",
@@ -73,6 +75,7 @@ class Params:
             use_v3d_tab_menu=False,
             use_v3d_shade_ex_pie=False,
             use_v3d_mmb_pan=False,
+            use_alt_click_leader=False,
             use_pie_click_drag=False,
             v3d_tilde_action='VIEW',
             v3d_alt_mmb_drag_action='RELATIVE',
@@ -126,6 +129,7 @@ class Params:
         self.v3d_tilde_action = v3d_tilde_action
         self.v3d_alt_mmb_drag_action = v3d_alt_mmb_drag_action
 
+        self.use_alt_click_leader = use_alt_click_leader
         self.use_pie_click_drag = use_pie_click_drag
         if not use_pie_click_drag:
             self.pie_value = 'PRESS'
@@ -449,10 +453,14 @@ def km_window(params):
             op_menu("TOPBAR_MT_file_context_menu", {"type": 'F4', "value": 'PRESS'}),
             # Pass through when when no tool-system exists or the fallback isn't available.
             ("wm.toolbar_fallback_pie", {"type": 'W', "value": 'PRESS', "alt": True}, None),
-            # Alt as "Leader-Key".
-            ("wm.toolbar_prompt", {"type": 'LEFT_ALT', "value": 'CLICK'}, None),
-            ("wm.toolbar_prompt", {"type": 'RIGHT_ALT', "value": 'CLICK'}, None),
         ])
+
+        if params.use_alt_click_leader:
+            items.extend([
+                # Alt as "Leader-Key".
+                ("wm.toolbar_prompt", {"type": 'LEFT_ALT', "value": 'CLICK'}, None),
+                ("wm.toolbar_prompt", {"type": 'RIGHT_ALT', "value": 'CLICK'}, None),
+            ])
 
         if params.spacebar_action == 'TOOL':
             items.append(
@@ -743,6 +751,9 @@ def km_property_editor(_params):
         # ShaderFX panels
         ("object.shaderfx_remove", {"type": 'X', "value": 'PRESS'}, {"properties": [("report", True)]}),
         ("object.shaderfx_remove", {"type": 'DEL', "value": 'PRESS'}, {"properties": [("report", True)]}),
+        # Constraint panels
+        ("constraint.delete", {"type": 'X', "value": 'PRESS'}, {"properties": [("report", True)]}),
+        ("constraint.delete", {"type": 'DEL', "value": 'PRESS'}, {"properties": [("report", True)]}),
     ])
 
     return keymap
@@ -852,7 +863,14 @@ def km_uv_editor(params):
          {"properties": [("extend", False)]}),
         ("uv.select_loop", {"type": params.select_mouse, "value": params.select_mouse_value, "shift": True, "alt": True},
          {"properties": [("extend", True)]}),
-        ("uv.shortest_path_pick", {"type": params.select_mouse, "value": params.select_mouse_value, "ctrl": True}, None),
+        ("uv.select_edge_ring", {"type": params.select_mouse, "value": params.select_mouse_value, "ctrl": True, "alt": True},
+         {"properties": [("extend", False)]}),
+        ("uv.select_edge_ring", {"type": params.select_mouse, "value": params.select_mouse_value, "ctrl": True, "shift": True, "alt": True},
+         {"properties": [("extend", True)]}),
+        ("uv.shortest_path_pick", {"type": params.select_mouse, "value": params.select_mouse_value, "ctrl": True},
+         {"properties": [("use_fill", False)]}),
+        ("uv.shortest_path_pick", {"type": params.select_mouse, "value": params.select_mouse_value, "ctrl": True, "shift": True},
+         {"properties": [("use_fill", True)]}),
         ("uv.select_split", {"type": 'Y', "value": 'PRESS'}, None),
         ("uv.select_box", {"type": 'B', "value": 'PRESS'},
          {"properties": [("pinned", False)]}),
@@ -3160,7 +3178,7 @@ def km_grease_pencil_stroke_edit_mode(params):
         ("gpencil.copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         ("gpencil.paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
         # Snap
-        op_menu("GPENCIL_MT_snap", {"type": 'S', "value": 'PRESS', "shift": True}),
+        op_menu_pie("GPENCIL_MT_snap_pie", {"type": 'S', "value": 'PRESS', "shift": True}),
         # Show/hide
         ("gpencil.reveal", {"type": 'H', "value": 'PRESS', "alt": True}, None),
         ("gpencil.hide", {"type": 'H', "value": 'PRESS'},
