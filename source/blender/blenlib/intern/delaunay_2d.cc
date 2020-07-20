@@ -245,19 +245,19 @@ template<typename T> class CDT_state {
 
 template<typename T> CDTArrangement<T>::~CDTArrangement()
 {
-  for (uint i = 0; i < this->verts.size(); ++i) {
+  for (int i : this->verts.index_range()) {
     CDTVert<T> *v = this->verts[i];
     BLI_linklist_free(v->input_ids, nullptr);
     delete v;
     this->verts[i] = nullptr;
   }
-  for (uint i = 0; i < this->edges.size(); ++i) {
+  for (int i : this->edges.index_range()) {
     CDTEdge<T> *e = this->edges[i];
     BLI_linklist_free(e->input_ids, nullptr);
     delete e;
     this->edges[i] = nullptr;
   }
-  for (uint i = 0; i < this->faces.size(); ++i) {
+  for (int i : this->faces.index_range()) {
     CDTFace<T> *f = this->faces[i];
     BLI_linklist_free(f->input_ids, nullptr);
     delete f;
@@ -1635,7 +1635,7 @@ void add_edge_constraint(
       get_next_crossing_from_edge(cd, cd_next, v2, cdt_state->epsilon);
       ok = true;
     }
-    constexpr uint unreasonably_large_crossings = 100000;
+    constexpr int unreasonably_large_crossings = 100000;
     if (!ok || crossings.size() == unreasonably_large_crossings) {
       /* Shouldn't happen but if does, just bail out. */
       BLI_assert(false);
@@ -2387,7 +2387,7 @@ extern "C" ::CDT_result *BLI_delaunay_2d_cdt_calc(const ::CDT_input *input,
     output->vert_coords[v][1] = static_cast<float>(res.vert[v][1]);
     int this_start = v_orig_index;
     output->verts_orig_start_table[v] = this_start;
-    for (uint j = 0; j < res.vert_orig[v].size(); ++j) {
+    for (int j : res.vert_orig[v].index_range()) {
       output->verts_orig[v_orig_index++] = res.vert_orig[v][j];
     }
     output->verts_orig_len_table[v] = v_orig_index - this_start;
@@ -2398,7 +2398,7 @@ extern "C" ::CDT_result *BLI_delaunay_2d_cdt_calc(const ::CDT_input *input,
     output->edges[e][1] = res.edge[e].second;
     int this_start = e_orig_index;
     output->edges_orig_start_table[e] = this_start;
-    for (uint j = 0; j < res.edge_orig[e].size(); ++j) {
+    for (int j : res.edge_orig[e].index_range()) {
       output->edges_orig[e_orig_index++] = res.edge_orig[e][j];
     }
     output->edges_orig_len_table[e] = e_orig_index - this_start;
@@ -2414,7 +2414,7 @@ extern "C" ::CDT_result *BLI_delaunay_2d_cdt_calc(const ::CDT_input *input,
     }
     int this_start = f_orig_index;
     output->faces_orig_start_table[f] = this_start;
-    for (uint k = 0; k < res.face_orig[f].size(); ++k) {
+    for (int k : res.face_orig[f].index_range()) {
       output->faces_orig[f_orig_index++] = res.face_orig[f][k];
     }
     output->faces_orig_len_table[f] = f_orig_index - this_start;

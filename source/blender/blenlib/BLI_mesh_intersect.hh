@@ -37,7 +37,6 @@
 namespace blender::meshintersect {
 
 constexpr int NO_INDEX = -1;
-constexpr uint NO_INDEX_U = UINT_MAX;
 
 /* Vertex coordinates are stored both as double3 and mpq3, which should agree.
  * Most calculations are done in exact arithmetic, using the mpq3 version,
@@ -73,7 +72,7 @@ struct Vert {
   bool operator==(const Vert &other) const;
 
   /* Hash on the co_exact field. */
-  uint32_t hash() const;
+  uint64_t hash() const;
 };
 
 /* Use Vertp for Verts everywhere: can modify the pointer
@@ -98,7 +97,7 @@ struct Plane {
   bool operator==(const Plane &other) const;
 
   /* Hash onthe exact fields. */
-  uint32_t hash() const;
+  uint64_t hash() const;
 
   void make_canonical();
 };
@@ -123,7 +122,7 @@ struct Face {
   int id = NO_INDEX;
   int orig = NO_INDEX;
 
-  using FacePos = uint;
+  using FacePos = int;
 
   Face() = default;
   Face(Span<Vertp> verts, int id, int orig, Span<int> edge_origs);
@@ -156,12 +155,12 @@ struct Face {
     return (p + vert.size() - 1) % vert.size();
   }
 
-  const Vertp &operator[](uint index) const
+  const Vertp &operator[](int index) const
   {
     return vert[index];
   }
 
-  uint size() const
+  int size() const
   {
     return vert.size();
   }
@@ -211,8 +210,8 @@ class MArena {
    */
   void reserve(int vert_num_hint, int face_num_hint);
 
-  uint tot_allocated_verts() const;
-  uint tot_allocated_faces() const;
+  int tot_allocated_verts() const;
+  int tot_allocated_faces() const;
 
   /* These add routines find and return an existing Vert with the same
    * co_exact, if it exists (the orig argument is ignored in this case),
@@ -241,8 +240,8 @@ class MArena {
 
 class Mesh {
   Array<Facep> face_;
-  Array<Vertp> vert_;              /* Only valid if vert_populated_. */
-  Map<Vertp, uint> vert_to_index_; /* Only valid if vert_populated_. */
+  Array<Vertp> vert_;             /* Only valid if vert_populated_. */
+  Map<Vertp, int> vert_to_index_; /* Only valid if vert_populated_. */
   bool vert_populated_ = false;
 
  public:
@@ -252,17 +251,17 @@ class Mesh {
   }
 
   void set_faces(Span<Facep> faces);
-  Facep face(uint index) const
+  Facep face(int index) const
   {
     return face_[index];
   }
 
-  uint face_size() const
+  int face_size() const
   {
     return face_.size();
   }
 
-  uint vert_size() const
+  int vert_size() const
   {
     return vert_.size();
   }
@@ -283,16 +282,16 @@ class Mesh {
    * estimate on the maximum number of verts.
    */
   void populate_vert();
-  void populate_vert(uint max_verts);
+  void populate_vert(int max_verts);
 
-  Vertp vert(uint index) const
+  Vertp vert(int index) const
   {
     BLI_assert(vert_populated_);
     return vert_[index];
   }
 
-  /* Returns index in vert_ where v is, or NO_INDEX_U. */
-  uint lookup_vert(Vertp v) const;
+  /* Returns index in vert_ where v is, or NO_INDEX. */
+  int lookup_vert(Vertp v) const;
 
   IndexRange vert_index_range() const
   {
@@ -320,7 +319,7 @@ class Mesh {
    * vertices at the positions in face_pos_erase that are true.
    * Use arena to allocate the new face in.
    */
-  void erase_face_positions(uint f_index, Span<bool> face_pos_erase, MArena *arena);
+  void erase_face_positions(int f_index, Span<bool> face_pos_erase, MArena *arena);
 };
 
 std::ostream &operator<<(std::ostream &os, const Mesh &mesh);

@@ -169,7 +169,7 @@ struct mpq2 {
   static int incircle(const mpq2 &a, const mpq2 &b, const mpq2 &c, const mpq2 &d);
 
   /* There is a sensible use for hashing on exact arithmetic types. */
-  uint32_t hash() const;
+  uint64_t hash() const;
 };
 
 }  // namespace blender

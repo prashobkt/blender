@@ -219,32 +219,32 @@ template<typename T> std::ostream &operator<<(std::ostream &os, const CDT_result
   os << "\nRESULT\n";
   os << r.vert.size() << " verts, " << r.edge.size() << " edges, " << r.face.size() << " faces\n";
   os << "\nVERTS\n";
-  for (uint i = 0; i < r.vert.size(); ++i) {
+  for (int i : r.vert.index_range()) {
     os << "v" << i << " = " << r.vert[i] << "\n";
     os << "  orig: ";
-    for (uint j = 0; j < r.vert_orig[i].size(); ++j) {
+    for (int j : r.vert_orig[i].index_range()) {
       os << r.vert_orig[i][j] << " ";
     }
     os << "\n";
   }
   os << "\nEDGES\n";
-  for (uint i = 0; i < r.edge.size(); ++i) {
+  for (int i : r.edge.index_range()) {
     os << "e" << i << " = (" << r.edge[i].first << ", " << r.edge[i].second << ")\n";
     os << "  orig: ";
-    for (uint j = 0; j < r.edge_orig[i].size(); ++j) {
+    for (int j : r.edge_orig[i].size()) {
       os << r.edge_orig[i][j] << " ";
     }
     os << "\n";
   }
   os << "\nFACES\n";
-  for (uint i = 0; i < r.face.size(); ++i) {
+  for (int i : r.face.index_range()) {
     os << "f" << i << " = ";
-    for (uint j = 0; j < r.face[i].size(); ++j) {
+    for (int j : r.face[i].index_range()) {
       os << r.face[i][j] << " ";
     }
     os << "\n";
     os << "  orig: ";
-    for (uint j = 0; j < r.face_orig[i].size(); ++j) {
+    for (int j : r.face_orig[i].index_range()) {
       os << r.face_orig[i][j] << " ";
     }
     os << "\n";

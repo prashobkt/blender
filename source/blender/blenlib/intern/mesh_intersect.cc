@@ -86,7 +86,7 @@ bool Vert::operator==(const Vert &other) const
   return this->co_exact == other.co_exact;
 }
 
-uint32_t Vert::hash() const
+uint64_t Vert::hash() const
 {
   return co_exact.hash();
 }
@@ -115,16 +115,16 @@ Plane::Plane(const mpq3 &norm_exact, const mpq_class &d_exact)
   d = d_exact.get_d();
 }
 
-uint32_t Plane::hash() const
+uint64_t Plane::hash() const
 {
-  constexpr uint32_t h1 = 33;
-  constexpr uint32_t h2 = 37;
-  constexpr uint32_t h3 = 39;
-  uint32_t hashx = hash_mpq_class(this->norm_exact.x);
-  uint32_t hashy = hash_mpq_class(this->norm_exact.y);
-  uint32_t hashz = hash_mpq_class(this->norm_exact.z);
-  uint32_t hashd = hash_mpq_class(this->d_exact);
-  uint32_t ans = hashx ^ (hashy * h1) ^ (hashz * h1 * h2) ^ (hashd * h1 * h2 * h3);
+  constexpr uint64_t h1 = 33;
+  constexpr uint64_t h2 = 37;
+  constexpr uint64_t h3 = 39;
+  uint64_t hashx = hash_mpq_class(this->norm_exact.x);
+  uint64_t hashy = hash_mpq_class(this->norm_exact.y);
+  uint64_t hashz = hash_mpq_class(this->norm_exact.z);
+  uint64_t hashd = hash_mpq_class(this->d_exact);
+  uint64_t ans = hashx ^ (hashy * h1) ^ (hashz * h1 * h2) ^ (hashd * h1 * h2 * h3);
   return ans;
 }
 
@@ -166,7 +166,7 @@ Face::Face(Span<Vertp> verts, int id, int orig, Span<int> edge_origs)
   mpq3 normal;
   if (vert.size() > 3) {
     Array<mpq3> co(vert.size());
-    for (uint i : index_range()) {
+    for (int i : index_range()) {
       co[i] = vert[i]->co_exact;
     }
     normal = mpq3::cross_poly(co);
@@ -241,11 +241,11 @@ bool Face::cyclic_equal(const Face &other) const
   if (this->size() != other.size()) {
     return false;
   }
-  uint flen = this->size();
+  int flen = this->size();
   for (FacePos start : index_range()) {
     for (FacePos start_other : index_range()) {
       bool ok = true;
-      for (uint i = 0; ok && i < flen; ++i) {
+      for (int i = 0; ok && i < flen; ++i) {
         FacePos p = (start + i) % flen;
         FacePos p_other = (start_other + i) % flen;
         if (this->vert[p] != other.vert[p_other]) {
@@ -333,12 +333,12 @@ class MArena::MArenaImpl {
     allocated_faces_.reserve(face_num_hint);
   }
 
-  uint tot_allocated_verts() const
+  int tot_allocated_verts() const
   {
     return allocated_verts_.size();
   }
 
-  uint tot_allocated_faces() const
+  int tot_allocated_faces() const
   {
     return allocated_faces_.size();
   }
@@ -380,7 +380,7 @@ class MArena::MArenaImpl {
   {
     Array<int> eorig(vs.size(), NO_INDEX);
     Face ftry(vs, NO_INDEX, NO_INDEX, eorig);
-    for (const uint i : allocated_faces_.index_range()) {
+    for (const int i : allocated_faces_.index_range()) {
       if (ftry.cyclic_equal(*allocated_faces_[i])) {
         return allocated_faces_[i].get();
       }
@@ -425,12 +425,12 @@ void MArena::reserve(int vert_num_hint, int face_num_hint)
   pimpl_->reserve(vert_num_hint, face_num_hint);
 }
 
-uint MArena::tot_allocated_verts() const
+int MArena::tot_allocated_verts() const
 {
   return pimpl_->tot_allocated_verts();
 }
 
-uint MArena::tot_allocated_faces() const
+int MArena::tot_allocated_faces() const
 {
   return pimpl_->tot_allocated_faces();
 }
@@ -465,10 +465,10 @@ void Mesh::set_faces(Span<Facep> faces)
   face_ = faces;
 }
 
-uint Mesh::lookup_vert(Vertp v) const
+int Mesh::lookup_vert(Vertp v) const
 {
   BLI_assert(vert_populated_);
-  return vert_to_index_.lookup_default(v, NO_INDEX_U);
+  return vert_to_index_.lookup_default(v, NO_INDEX);
 }
 
 void Mesh::populate_vert()
@@ -477,30 +477,30 @@ void Mesh::populate_vert()
    * faces. It is ok if estimate is over or even under.
    */
   constexpr int ESTIMATE_VERTS_PER_FACE = 4;
-  uint estimate_num_verts = ESTIMATE_VERTS_PER_FACE * face_.size();
+  int estimate_num_verts = ESTIMATE_VERTS_PER_FACE * face_.size();
   populate_vert(estimate_num_verts);
 }
 
-void Mesh::populate_vert(uint max_verts)
+void Mesh::populate_vert(int max_verts)
 {
   if (vert_populated_) {
     return;
   }
   vert_to_index_.reserve(max_verts);
-  uint next_allocate_index = 0;
+  int next_allocate_index = 0;
   for (Facep f : face_) {
     for (Vertp v : *f) {
-      uint index = vert_to_index_.lookup_default(v, NO_INDEX_U);
-      if (index == NO_INDEX_U) {
+      int index = vert_to_index_.lookup_default(v, NO_INDEX);
+      if (index == NO_INDEX) {
         BLI_assert(next_allocate_index < UINT_MAX - 2);
         vert_to_index_.add(v, next_allocate_index++);
       }
     }
   }
-  uint tot_v = next_allocate_index;
+  int tot_v = next_allocate_index;
   vert_ = Array<Vertp>(tot_v);
   for (auto item : vert_to_index_.items()) {
-    uint index = item.value;
+    int index = item.value;
     BLI_assert(index < tot_v);
     vert_[index] = item.key;
   }
@@ -522,7 +522,7 @@ void Mesh::populate_vert(uint max_verts)
       }
       return a->id < b->id;
     });
-    for (uint i : vert_.index_range()) {
+    for (int i : vert_.index_range()) {
       Vertp v = vert_[i];
       vert_to_index_.add_overwrite(v, i);
     }
@@ -530,12 +530,12 @@ void Mesh::populate_vert(uint max_verts)
   vert_populated_ = true;
 }
 
-void Mesh::erase_face_positions(uint f_index, Span<bool> face_pos_erase, MArena *arena)
+void Mesh::erase_face_positions(int f_index, Span<bool> face_pos_erase, MArena *arena)
 {
   Facep cur_f = this->face(f_index);
   int cur_len = static_cast<int>(cur_f->size());
   int num_to_erase = 0;
-  for (uint i : cur_f->index_range()) {
+  for (int i : cur_f->index_range()) {
     if (face_pos_erase[i]) {
       ++num_to_erase;
     }
@@ -551,7 +551,7 @@ void Mesh::erase_face_positions(uint f_index, Span<bool> face_pos_erase, MArena 
   Array<Vertp> new_vert(new_len);
   Array<int> new_edge_orig(new_len);
   int new_index = 0;
-  for (uint i : cur_f->index_range()) {
+  for (int i : cur_f->index_range()) {
     if (!face_pos_erase[i]) {
       new_vert[new_index] = (*cur_f)[i];
       new_edge_orig[new_index] = cur_f->edge_orig[i];
@@ -674,7 +674,7 @@ static Array<BoundingBox> calc_face_bounding_boxes(const Mesh &m)
 {
   double max_abs_val = 0.0;
   Array<BoundingBox> ans(m.face_size());
-  for (uint f : m.face_index_range()) {
+  for (int f : m.face_index_range()) {
     const Face &face = *m.face(f);
     BoundingBox &bb = ans[f];
     for (Vertp v : face) {
@@ -693,7 +693,7 @@ static Array<BoundingBox> calc_face_bounding_boxes(const Mesh &m)
     pad = 2 * FLT_EPSILON * max_abs_val;
   }
   pad *= pad_factor; /* For extra safety. */
-  for (uint f : m.face_index_range()) {
+  for (int f : m.face_index_range()) {
     ans[f].expand(pad);
   }
   return ans;
@@ -708,12 +708,12 @@ static Array<BoundingBox> calc_face_bounding_boxes(const Mesh &m)
  * triangle in the cluster.
  */
 class CoplanarCluster {
-  Vector<uint> tris_;
+  Vector<int> tris_;
   BoundingBox bb_;
 
  public:
   CoplanarCluster() = default;
-  CoplanarCluster(uint t, const BoundingBox &bb)
+  CoplanarCluster(int t, const BoundingBox &bb)
   {
     this->add_tri(t, bb);
   }
@@ -741,24 +741,24 @@ class CoplanarCluster {
   }
 
   /* Assume that caller knows this will not be a duplicate. */
-  void add_tri(uint t, const BoundingBox &bb)
+  void add_tri(int t, const BoundingBox &bb)
   {
     tris_.append(t);
     bb_ = bb;
   }
-  uint tot_tri() const
+  int tot_tri() const
   {
     return tris_.size();
   }
-  uint tri(uint index) const
+  int tri(int index) const
   {
     return tris_[index];
   }
-  const uint *begin() const
+  const int *begin() const
   {
     return tris_.begin();
   }
-  const uint *end() const
+  const int *end() const
   {
     return tris_.end();
   }
@@ -776,32 +776,32 @@ class CoplanarCluster {
  */
 class CoplanarClusterInfo {
   Vector<CoplanarCluster> clusters_;
-  Array<uint> tri_cluster_;
+  Array<int> tri_cluster_;
 
  public:
   CoplanarClusterInfo() = default;
-  explicit CoplanarClusterInfo(uint numtri) : tri_cluster_(Array<uint>(numtri))
+  explicit CoplanarClusterInfo(int numtri) : tri_cluster_(Array<int>(numtri))
   {
     tri_cluster_.fill(-1);
   }
 
-  uint tri_cluster(uint t) const
+  int tri_cluster(int t) const
   {
     BLI_assert(t < tri_cluster_.size());
     return tri_cluster_[t];
   }
 
-  uint add_cluster(CoplanarCluster cl)
+  int add_cluster(CoplanarCluster cl)
   {
-    uint c_index = clusters_.append_and_get_index(cl);
-    for (uint t : cl) {
+    int c_index = clusters_.append_and_get_index(cl);
+    for (int t : cl) {
       BLI_assert(t < tri_cluster_.size());
       tri_cluster_[t] = c_index;
     }
     return c_index;
   }
 
-  uint tot_cluster() const
+  int tot_cluster() const
   {
     return clusters_.size();
   }
@@ -821,7 +821,7 @@ class CoplanarClusterInfo {
     return clusters_.index_range();
   }
 
-  const CoplanarCluster &cluster(uint index) const
+  const CoplanarCluster &cluster(int index) const
   {
     BLI_assert(index < clusters_.size());
     return clusters_[index];
@@ -1053,7 +1053,7 @@ static bool non_trivially_2d_intersect(const mpq2 *a[3], const mpq2 *b[3])
  * to solve this problem in 2d.
  */
 static bool non_trivially_coplanar_intersects(const Mesh &tm,
-                                              uint t,
+                                              int t,
                                               const CoplanarCluster &cl,
                                               int proj_axis)
 {
@@ -1066,7 +1066,7 @@ static bool non_trivially_coplanar_intersects(const Mesh &tm,
     v1 = v2;
     v2 = tmp;
   }
-  for (const uint cl_t : cl) {
+  for (const int cl_t : cl) {
     const Face &cl_tri = *tm.face(cl_t);
     mpq2 ctv0 = project_3d_to_2d(cl_tri[0]->co_exact, proj_axis);
     mpq2 ctv1 = project_3d_to_2d(cl_tri[1]->co_exact, proj_axis);
@@ -1115,8 +1115,8 @@ static bool non_trivial_intersect(const ITT_value &itt, Facep tri1, Facep tri2)
     bool has_seg_as_edge[2] = {false, false};
     for (int i = 0; i < 2; ++i) {
       const Face &t = *tris[i];
-      for (uint pos : t.index_range()) {
-        uint nextpos = t.next_pos(pos);
+      for (int pos : t.index_range()) {
+        int nextpos = t.next_pos(pos);
         if ((itt.p1 == t[pos]->co_exact && itt.p2 == t[nextpos]->co_exact) ||
             (itt.p2 == t[pos]->co_exact && itt.p1 == t[nextpos]->co_exact)) {
           has_seg_as_edge[i] = true;
@@ -1613,7 +1613,7 @@ static ITT_value itt_canon1(const mpq3 &p1,
   return ITT_value(ICOPLANAR);
 }
 
-static ITT_value intersect_tri_tri(const Mesh &tm, uint t1, uint t2)
+static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
 {
   constexpr int dbg_level = 0;
 #ifdef PERFDEBUG
@@ -1883,7 +1883,7 @@ static void prepare_need_edge(CDT_data &cd, const mpq3 &p1, const mpq3 &p2)
   cd.edge.append(std::pair<int, int>(v1, v2));
 }
 
-static void prepare_need_tri(CDT_data &cd, const Mesh &tm, uint t)
+static void prepare_need_tri(CDT_data &cd, const Mesh &tm, int t)
 {
   const Face &tri = *tm.face(t);
   int v0 = prepare_need_vert(cd, tri[0]->co_exact);
@@ -1917,7 +1917,7 @@ static void prepare_need_tri(CDT_data &cd, const Mesh &tm, uint t)
   cd.is_reversed.append(rev);
 }
 
-static CDT_data prepare_cdt_input(const Mesh &tm, uint t, const Vector<ITT_value> itts)
+static CDT_data prepare_cdt_input(const Mesh &tm, int t, const Vector<ITT_value> itts)
 {
   CDT_data ans;
   ans.t_plane = tm.face(t)->plane;
@@ -1944,7 +1944,7 @@ static CDT_data prepare_cdt_input(const Mesh &tm, uint t, const Vector<ITT_value
 
 static CDT_data prepare_cdt_input_for_cluster(const Mesh &tm,
                                               const CoplanarClusterInfo &clinfo,
-                                              uint c,
+                                              int c,
                                               const Vector<ITT_value> itts)
 {
   CDT_data ans;
@@ -1955,7 +1955,7 @@ static CDT_data prepare_cdt_input_for_cluster(const Mesh &tm,
   ans.t_plane = tm.face(t0)->plane;
   const Plane &pl = ans.t_plane;
   ans.proj_axis = mpq3::dominant_axis(pl.norm_exact);
-  for (const uint t : cl) {
+  for (const int t : cl) {
     prepare_need_tri(ans, tm, t);
   }
   for (const ITT_value &itt : itts) {
@@ -1983,18 +1983,18 @@ static void do_cdt(CDT_data &cd)
   cdt_in.face = Span<Vector<int>>(cd.face);
   if (dbg_level > 0) {
     std::cout << "CDT input\nVerts:\n";
-    for (uint i = 0; i < cdt_in.vert.size(); ++i) {
+    for (int i : cdt_in.vert.index_range()) {
       std::cout << "v" << i << ": " << cdt_in.vert[i] << "\n";
     }
     std::cout << "Edges:\n";
-    for (uint i = 0; i < cdt_in.edge.size(); ++i) {
+    for (int i : cdt_in.edge.index_range()) {
       std::cout << "e" << i << ": (" << cdt_in.edge[i].first << ", " << cdt_in.edge[i].second
                 << ")\n";
     }
     std::cout << "Tris\n";
-    for (uint f = 0; f < cdt_in.face.size(); ++f) {
+    for (int f : cdt_in.face.index_range()) {
       std::cout << "f" << f << ": ";
-      for (uint j = 0; j < cdt_in.face[f].size(); ++j) {
+      for (int j : cdt_in.face[f].index_range()) {
         std::cout << cdt_in.face[f][j] << " ";
       }
       std::cout << "\n";
@@ -2004,27 +2004,27 @@ static void do_cdt(CDT_data &cd)
   cd.cdt_out = blender::meshintersect::delaunay_2d_calc(cdt_in, CDT_INSIDE);
   if (dbg_level > 0) {
     std::cout << "\nCDT result\nVerts:\n";
-    for (uint i = 0; i < cd.cdt_out.vert.size(); ++i) {
+    for (int i : cd.cdt_out.vert.index_range()) {
       std::cout << "v" << i << ": " << cd.cdt_out.vert[i] << "\n";
     }
     std::cout << "Tris\n";
-    for (uint f = 0; f < cd.cdt_out.face.size(); ++f) {
+    for (int f : cd.cdt_out.face.index_range()) {
       std::cout << "f" << f << ": ";
-      for (uint j = 0; j < cd.cdt_out.face[f].size(); ++j) {
+      for (int j : cd.cdt_out.face[f].index_range()) {
         std::cout << cd.cdt_out.face[f][j] << " ";
       }
       std::cout << "orig: ";
-      for (uint j = 0; j < cd.cdt_out.face_orig[f].size(); ++j) {
+      for (int j : cd.cdt_out.face_orig[f].index_range()) {
         std::cout << cd.cdt_out.face_orig[f][j] << " ";
       }
       std::cout << "\n";
     }
     std::cout << "Edges\n";
-    for (uint e = 0; e < cd.cdt_out.edge.size(); ++e) {
+    for (int e : cd.cdt_out.edge.index_range()) {
       std::cout << "e" << e << ": (" << cd.cdt_out.edge[e].first << ", "
                 << cd.cdt_out.edge[e].second << ") ";
       std::cout << "orig: ";
-      for (uint j = 0; j < cd.cdt_out.edge_orig[e].size(); ++j) {
+      for (int j : cd.cdt_out.edge_orig[e].index_range()) {
         std::cout << cd.cdt_out.edge_orig[e][j] << " ";
       }
       std::cout << "\n";
@@ -2035,7 +2035,7 @@ static void do_cdt(CDT_data &cd)
 static int get_cdt_edge_orig(int i0, int i1, const CDT_data &cd, const Mesh &in_tm)
 {
   int foff = cd.cdt_out.face_edge_offset;
-  for (uint e : cd.cdt_out.edge.index_range()) {
+  for (int e : cd.cdt_out.edge.index_range()) {
     std::pair<int, int> edge = cd.cdt_out.edge[e];
     if ((edge.first == i0 && edge.second == i1) || (edge.first == i1 && edge.second == i0)) {
       /* Pick an arbitrary orig, but not one equal to NO_INDEX, if we can help it. */
@@ -2074,7 +2074,7 @@ static int get_cdt_edge_orig(int i0, int i1, const CDT_data &cd, const Mesh &in_
 /* Using the result of CDT in cd.cdt_out, extract a Mesh representing the subdivision
  * of input triangle t, which should be an element of cd.input_face.
  */
-static Mesh extract_subdivided_tri(const CDT_data &cd, const Mesh &in_tm, uint t, MArena *arena)
+static Mesh extract_subdivided_tri(const CDT_data &cd, const Mesh &in_tm, int t, MArena *arena)
 {
   const CDT_result<mpq_class> &cdt_out = cd.cdt_out;
   int t_in_cdt = -1;
@@ -2091,7 +2091,7 @@ static Mesh extract_subdivided_tri(const CDT_data &cd, const Mesh &in_tm, uint t
   int t_orig = in_tm.face(t)->orig;
   constexpr int inline_buf_size = 20;
   Vector<Facep, inline_buf_size> faces;
-  for (uint f = 0; f < cdt_out.face.size(); ++f) {
+  for (int f : cdt_out.face.index_range()) {
     if (cdt_out.face_orig[f].contains(t_in_cdt)) {
       BLI_assert(cdt_out.face[f].size() == 3);
       int i0 = cdt_out.face[f][0];
@@ -2126,7 +2126,7 @@ static Mesh extract_subdivided_tri(const CDT_data &cd, const Mesh &in_tm, uint t
   return Mesh(faces);
 }
 
-static Mesh extract_single_tri(const Mesh &tm, uint t)
+static Mesh extract_single_tri(const Mesh &tm, int t)
 {
   Facep f = tm.face(t);
   return Mesh({f});
@@ -2176,7 +2176,7 @@ class TriOverlaps {
       tree_b_ = BLI_bvhtree_new(static_cast<int>(tm.face_size()), FLT_EPSILON, 8, 6);
     }
     float bbpts[6];
-    for (uint t : tm.face_index_range()) {
+    for (int t : tm.face_index_range()) {
       const BoundingBox &bb = tri_bb[t];
       copy_v3_v3(bbpts, bb.min);
       copy_v3_v3(bbpts + 3, bb.max);
@@ -2278,17 +2278,17 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
   if (dbg_level > 0) {
     std::cout << "\nCALC_SUBDIVIDED_TRIS\n\n";
   }
-  uint overlap_index = 0;
+  int overlap_index = 0;
   Span<BVHTreeOverlap> overlap = ov.overlap();
-  uint overlap_tot = overlap.size();
+  int overlap_tot = overlap.size();
   while (overlap_index < overlap_tot) {
     int t = overlap[overlap_index].indexA;
-    uint i = overlap_index;
+    int i = overlap_index;
     while (i + 1 < overlap_tot && overlap[i + 1].indexA == t) {
       ++i;
     }
     /* Now overlap[overlap_index] to overlap[i] have indexA == t. */
-    if (clinfo.tri_cluster(t) != NO_INDEX_U) {
+    if (clinfo.tri_cluster(t) != NO_INDEX) {
       /* Triangles in clusters are handled separately. */
       overlap_index = i + 1;
       continue;
@@ -2298,16 +2298,15 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
     }
     constexpr int inline_capacity = 100;
     Vector<ITT_value, inline_capacity> itts;
-    uint tu = static_cast<uint>(t);
-    for (uint j = overlap_index; j <= i; ++j) {
-      uint t_other = static_cast<uint>(overlap[j].indexB);
-      if (t_other == tu) {
+    for (int j = overlap_index; j <= i; ++j) {
+      int t_other = overlap[j].indexB;
+      if (t_other == t) {
         continue;
       }
 #ifdef PERFDEBUG
       incperfcount(0); /* Overlaps. */
 #endif
-      ITT_value itt = intersect_tri_tri(tm, tu, t_other);
+      ITT_value itt = intersect_tri_tri(tm, t, t_other);
       if (itt.kind != INONE) {
         itts.append(itt);
       }
@@ -2316,16 +2315,16 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
       }
     }
     if (itts.size() > 0) {
-      CDT_data cd_data = prepare_cdt_input(tm, tu, itts);
+      CDT_data cd_data = prepare_cdt_input(tm, t, itts);
       do_cdt(cd_data);
-      r_tri_subdivided[tu] = extract_subdivided_tri(cd_data, tm, tu, arena);
+      r_tri_subdivided[t] = extract_subdivided_tri(cd_data, tm, t, arena);
     }
     overlap_index = i + 1;
   }
 }
 
 static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
-                                        uint c,
+                                        int c,
                                         const Mesh &tm,
                                         MArena *UNUSED(arena))
 {
@@ -2341,12 +2340,12 @@ static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
    * it should already be in cluster cl).
    */
   Vector<ITT_value> itts;
-  for (uint t_other : tm.face_index_range()) {
+  for (int t_other : tm.face_index_range()) {
     if (clinfo.tri_cluster(t_other) != c) {
       if (dbg_level > 0) {
         std::cout << "intersect cluster " << c << " with tri " << t_other << "\n";
       }
-      for (const uint t : cl) {
+      for (const int t : cl) {
         ITT_value itt = intersect_tri_tri(tm, t, t_other);
         if (dbg_level > 0) {
           std::cout << "intersect tri " << t << " with tri " << t_other << " = " << itt << "\n";
@@ -2365,12 +2364,12 @@ static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
 
 static Mesh union_tri_subdivides(const blender::Array<Mesh> &tri_subdivided)
 {
-  uint tot_tri = 0;
+  int tot_tri = 0;
   for (const Mesh &m : tri_subdivided) {
     tot_tri += m.face_size();
   }
   Array<Facep> faces(tot_tri);
-  uint face_index = 0;
+  int face_index = 0;
   for (const Mesh &m : tri_subdivided) {
     for (Facep f : m.faces()) {
       faces[face_index++] = f;
@@ -2392,7 +2391,7 @@ static CoplanarClusterInfo find_clusters(const Mesh &tm, const Array<BoundingBox
    */
   Map<Plane, Vector<CoplanarCluster>> plane_cls;
   plane_cls.reserve(tm.face_size());
-  for (uint t : tm.face_index_range()) {
+  for (int t : tm.face_index_range()) {
     /* Use a canonical version of the plane for map index.
      * We can't just store the canonical version in the face
      * since canonicalizing loses the orientation of the normal.
@@ -2436,7 +2435,7 @@ static CoplanarClusterInfo find_clusters(const Mesh &tm, const Array<BoundingBox
         CoplanarCluster mergecl;
         mergecl.add_tri(t, tri_bb[t]);
         for (CoplanarCluster *cl : int_cls) {
-          for (uint t : *cl) {
+          for (int t : *cl) {
             mergecl.add_tri(t, tri_bb[t]);
           }
         }
@@ -2505,6 +2504,7 @@ Mesh trimesh_nary_intersect(
     std::cout << "\nTRIMESH_NARY_INTERSECT\n";
     for (Facep f : tm_in.faces()) {
       BLI_assert(f->is_tri());
+      UNUSED_VARS_NDEBUG(f);
     }
   }
   if (has_degenerate_tris(tm_in)) {
@@ -2524,14 +2524,14 @@ Mesh trimesh_nary_intersect(
   doperfmax(2, static_cast<int>(ov.overlap().size)));
 #endif
   Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
-  for (uint c : clinfo.index_range()) {
+  for (int c : clinfo.index_range()) {
     cluster_subdivided[c] = calc_cluster_subdivided(clinfo, c, tm_in, arena);
   }
   blender::Array<Mesh> tri_subdivided(tm_in.face_size());
   calc_subdivided_tris(tri_subdivided, tm_in, clinfo, tri_ov, arena);
-  for (uint t : tm_in.face_index_range()) {
-    uint c = clinfo.tri_cluster(t);
-    if (c != NO_INDEX_U) {
+  for (int t : tm_in.face_index_range()) {
+    int c = clinfo.tri_cluster(t);
+    if (c != NO_INDEX) {
       BLI_assert(tri_subdivided[t].face_size() == 0);
       tri_subdivided[t] = extract_subdivided_tri(cluster_subdivided[c], tm_in, t, arena);
     }
@@ -2554,7 +2554,7 @@ static std::ostream &operator<<(std::ostream &os, const CoplanarCluster &cl)
 {
   os << "cl(";
   bool first = true;
-  for (const uint t : cl) {
+  for (const int t : cl) {
     if (first) {
       first = false;
     }
@@ -2570,7 +2570,7 @@ static std::ostream &operator<<(std::ostream &os, const CoplanarCluster &cl)
 static std::ostream &operator<<(std::ostream &os, const CoplanarClusterInfo &clinfo)
 {
   os << "Coplanar Cluster Info:\n";
-  for (uint c : clinfo.index_range()) {
+  for (int c : clinfo.index_range()) {
     os << c << ": " << clinfo.cluster(c) << "\n";
   }
   return os;
@@ -2690,10 +2690,10 @@ static void doperfmax(int maxnum, int val)
 static void dump_perfdata(void)
 {
   std::cout << "\nPERFDATA\n";
-  for (uint i : perfdata.count.index_range()) {
+  for (int i : perfdata.count.index_range()) {
     std::cout << perfdata.count_name[i] << " = " << perfdata.count[i] << "\n";
   }
-  for (uint i : perfdata.max.index_range()) {
+  for (int i : perfdata.max.index_range()) {
     std::cout << perfdata.max_name[i] << " = " << perfdata.max[i] << "\n";
   }
 }

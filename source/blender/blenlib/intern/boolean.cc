@@ -78,11 +78,11 @@ class Edge {
     return v_[0]->id == other.v_[0]->id && v_[1]->id == other.v_[1]->id;
   }
 
-  uint32_t hash() const
+  uint64_t hash() const
   {
-    constexpr uint32_t h1 = 33;
-    uint32_t v0hash = DefaultHash<int>{}(v_[0]->id);
-    uint32_t v1hash = DefaultHash<int>{}(v_[1]->id);
+    constexpr uint64_t h1 = 33;
+    uint64_t v0hash = DefaultHash<int>{}(v_[0]->id);
+    uint64_t v1hash = DefaultHash<int>{}(v_[1]->id);
     return v0hash ^ (v1hash * h1);
   }
 };
@@ -101,7 +101,7 @@ static std::ostream &operator<<(std::ostream &os, const Edge &e)
 
 static std::ostream &operator<<(std::ostream &os, const Span<int> &a)
 {
-  for (uint i = 0; i < a.size(); ++i) {
+  for (int i : a.index_range()) {
     os << a[i];
     if (i != a.size() - 1) {
       os << " ";
@@ -112,7 +112,7 @@ static std::ostream &operator<<(std::ostream &os, const Span<int> &a)
 
 static std::ostream &operator<<(std::ostream &os, const Span<uint> &a)
 {
-  for (uint i = 0; i < a.size(); ++i) {
+  for (int i : a.index_range()) {
     os << a[i];
     if (i != a.size() - 1) {
       os << " ";
@@ -136,7 +136,7 @@ static std::ostream &operator<<(std::ostream &os, const Array<int> &iarr)
 /* Holds information about topology of a Mesh that is all triangles. */
 class TriMeshTopology {
   /* Triangles that contain a given Edge (either order). */
-  Map<Edge, Vector<uint> *> edge_tri_;
+  Map<Edge, Vector<int> *> edge_tri_;
   /* Edges incident on each vertex. */
   Map<Vertp, Vector<Edge>> vert_edges_;
 
@@ -147,8 +147,8 @@ class TriMeshTopology {
   ~TriMeshTopology();
 
   /* If e is manifold, return index of the other triangle (not t) that has it. Else return
-   * NO_INDEX_U. */
-  uint other_tri_if_manifold(Edge e, int t) const
+   * NO_INDEX. */
+  int other_tri_if_manifold(Edge e, int t) const
   {
     if (edge_tri_.contains(e)) {
       auto *p = edge_tri_.lookup(e);
@@ -156,11 +156,11 @@ class TriMeshTopology {
         return ((*p)[0] == t) ? (*p)[1] : (*p)[0];
       }
     }
-    return NO_INDEX_U;
+    return NO_INDEX;
   }
 
   /* Which triangles share edge e (in either orientation)? */
-  const Vector<uint> *edge_tris(Edge e) const
+  const Vector<int> *edge_tris(Edge e) const
   {
     return edge_tri_.lookup_default(e, nullptr);
   }
@@ -183,11 +183,11 @@ TriMeshTopology::TriMeshTopology(const Mesh &tm)
   /* If everything were manifold, F+V-E=2 and E=3F/2.
    * So an likely overestimate, allowing for non-manifoldness, is E=2F and V=F.
    */
-  const uint estimate_num_edges = 2 * tm.face_size();
-  const uint estimate_num_verts = tm.face_size();
+  const int estimate_num_edges = 2 * tm.face_size();
+  const int estimate_num_verts = tm.face_size();
   edge_tri_.reserve(estimate_num_edges);
   vert_edges_.reserve(estimate_num_verts);
-  for (uint t : tm.face_index_range()) {
+  for (int t : tm.face_index_range()) {
     const Face &tri = *tm.face(t);
     BLI_assert(tri.is_tri());
     for (int i = 0; i < 3; ++i) {
@@ -201,8 +201,8 @@ TriMeshTopology::TriMeshTopology(const Mesh &tm)
         BLI_assert(edges != nullptr);
       }
       edges->append_non_duplicates(e);
-      auto createf = [t](Vector<uint> **pvec) { *pvec = new Vector<uint>{t}; };
-      auto modifyf = [t](Vector<uint> **pvec) { (*pvec)->append_non_duplicates(t); };
+      auto createf = [t](Vector<int> **pvec) { *pvec = new Vector<int>{t}; };
+      auto modifyf = [t](Vector<int> **pvec) { (*pvec)->append_non_duplicates(t); };
       this->edge_tri_.add_or_modify(Edge(v, vnext), createf, modifyf);
     }
   }
@@ -228,13 +228,14 @@ TriMeshTopology::TriMeshTopology(const Mesh &tm)
 
 TriMeshTopology::~TriMeshTopology()
 {
-  auto deletef = [](const Edge &UNUSED(e), const Vector<uint> *vec) { delete vec; };
-  edge_tri_.foreach_item(deletef);
+  for (const Vector<int> *vec : edge_tri_.values()) {
+    delete vec;
+  }
 }
 
 /* A Patch is a maximal set of triangles that share manifold edges only. */
 class Patch {
-  Vector<uint> tri_; /* Indices of triangles in the Patch. */
+  Vector<int> tri_; /* Indices of triangles in the Patch. */
 
  public:
   Patch() = default;
@@ -244,17 +245,17 @@ class Patch {
     tri_.append(t);
   }
 
-  const Vector<uint> &tri() const
+  const Vector<int> &tri() const
   {
     return tri_;
   }
 
-  uint tot_tri() const
+  int tot_tri() const
   {
     return tri_.size();
   }
 
-  uint tri(uint i) const
+  int tri(int i) const
   {
     return tri_[i];
   }
@@ -264,25 +265,25 @@ class Patch {
     return IndexRange(tri_.size());
   }
 
-  Span<uint> tris() const
+  Span<int> tris() const
   {
-    return Span<uint>(tri_);
+    return Span<int>(tri_);
   }
 
-  uint cell_above{NO_INDEX_U};
-  uint cell_below{NO_INDEX_U};
+  int cell_above{NO_INDEX};
+  int cell_below{NO_INDEX};
 };
 
 static std::ostream &operator<<(std::ostream &os, const Patch &patch)
 {
   os << "Patch " << patch.tri();
-  if (patch.cell_above != NO_INDEX_U) {
+  if (patch.cell_above != NO_INDEX) {
     os << " cell_above=" << patch.cell_above;
   }
   else {
     os << " cell_above not set";
   }
-  if (patch.cell_below != NO_INDEX_U) {
+  if (patch.cell_below != NO_INDEX) {
     os << " cell_below=" << patch.cell_below;
   }
   else {
@@ -295,51 +296,51 @@ class PatchesInfo {
   /* All of the Patches for a Mesh. */
   Vector<Patch> patch_;
   /* Patch index for corresponding triangle. */
-  Array<uint> tri_patch_;
+  Array<int> tri_patch_;
   /* Shared edge for incident patches; (-1, -1) if none. */
-  Map<std::pair<uint, uint>, Edge> pp_edge_;
+  Map<std::pair<int, int>, Edge> pp_edge_;
 
  public:
-  explicit PatchesInfo(uint ntri)
+  explicit PatchesInfo(int ntri)
   {
     constexpr int max_expected_patch_patch_incidences = 100;
-    tri_patch_ = Array<uint>(ntri, NO_INDEX_U);
+    tri_patch_ = Array<int>(ntri, NO_INDEX);
     pp_edge_.reserve(max_expected_patch_patch_incidences);
   }
 
-  uint tri_patch(uint t) const
+  int tri_patch(int t) const
   {
     return tri_patch_[t];
   }
 
-  uint add_patch()
+  int add_patch()
   {
-    uint patch_index = patch_.append_and_get_index(Patch());
+    int patch_index = patch_.append_and_get_index(Patch());
     return patch_index;
   }
 
-  void grow_patch(uint patch_index, uint t)
+  void grow_patch(int patch_index, int t)
   {
     tri_patch_[t] = patch_index;
     patch_[patch_index].add_tri(t);
   }
 
-  bool tri_is_assigned(uint t) const
+  bool tri_is_assigned(int t) const
   {
-    return tri_patch_[t] != NO_INDEX_U;
+    return tri_patch_[t] != NO_INDEX;
   }
 
-  const Patch &patch(uint patch_index) const
-  {
-    return patch_[patch_index];
-  }
-
-  Patch &patch(uint patch_index)
+  const Patch &patch(int patch_index) const
   {
     return patch_[patch_index];
   }
 
-  uint tot_patch() const
+  Patch &patch(int patch_index)
+  {
+    return patch_[patch_index];
+  }
+
+  int tot_patch() const
   {
     return patch_.size();
   }
@@ -359,13 +360,13 @@ class PatchesInfo {
     return patch_.end();
   }
 
-  void add_new_patch_patch_edge(uint p1, uint p2, Edge e)
+  void add_new_patch_patch_edge(int p1, int p2, Edge e)
   {
-    pp_edge_.add_new(std::pair<uint, uint>(p1, p2), e);
-    pp_edge_.add_new(std::pair<uint, uint>(p2, p1), e);
+    pp_edge_.add_new(std::pair<int, int>(p1, p2), e);
+    pp_edge_.add_new(std::pair<int, int>(p2, p1), e);
   }
 
-  Edge patch_patch_edge(uint p1, uint p2)
+  Edge patch_patch_edge(int p1, int p2)
   {
     return pp_edge_.lookup_default(std::pair<int, int>(p1, p2), Edge());
   }
@@ -378,7 +379,7 @@ static bool apply_bool_op(int bool_optype, const Array<int> &winding);
  * One cell, the Ambient cell, contains all other cells.
  */
 class Cell {
-  Vector<uint> patches_;
+  Vector<int> patches_;
   Array<int> winding_;
   bool winding_assigned_{false};
   bool flag_{false};
@@ -391,7 +392,7 @@ class Cell {
     patches_.append(p);
   }
 
-  const Vector<uint> &patches() const
+  const Vector<int> &patches() const
   {
     return patches_;
   }
@@ -450,21 +451,21 @@ class CellsInfo {
 
   int add_cell()
   {
-    uint index = cell_.append_and_get_index(Cell());
+    int index = cell_.append_and_get_index(Cell());
     return static_cast<int>(index);
   }
 
-  Cell &cell(uint c)
+  Cell &cell(int c)
   {
     return cell_[c];
   }
 
-  const Cell &cell(uint c) const
+  const Cell &cell(int c) const
   {
     return cell_[c];
   }
 
-  uint tot_cell() const
+  int tot_cell() const
   {
     return cell_.size();
   }
@@ -499,16 +500,16 @@ static PatchesInfo find_patches(const Mesh &tm, const TriMeshTopology &tmtopo)
   if (dbg_level > 0) {
     std::cout << "\nFIND_PATCHES\n";
   }
-  uint ntri = tm.face_size();
+  int ntri = tm.face_size();
   PatchesInfo pinfo(ntri);
   /* Algorithm: Grow patches across manifold edges as long as there are unassigned triangles. */
-  Stack<uint> cur_patch_grow;
-  for (uint t : tm.face_index_range()) {
+  Stack<int> cur_patch_grow;
+  for (int t : tm.face_index_range()) {
     if (pinfo.tri_patch(t) == -1) {
       cur_patch_grow.push(t);
-      uint cur_patch_index = pinfo.add_patch();
+      int cur_patch_index = pinfo.add_patch();
       while (!cur_patch_grow.is_empty()) {
-        uint tcand = cur_patch_grow.pop();
+        int tcand = cur_patch_grow.pop();
         if (dbg_level > 1) {
           std::cout << "pop tcand = " << tcand << "; assigned = " << pinfo.tri_is_assigned(tcand)
                     << "\n";
@@ -523,11 +524,11 @@ static PatchesInfo find_patches(const Mesh &tm, const TriMeshTopology &tmtopo)
         const Face &tri = *tm.face(tcand);
         for (int i = 0; i < 3; ++i) {
           Edge e(tri[i], tri[(i + 1) % 3]);
-          uint t_other = tmtopo.other_tri_if_manifold(e, tcand);
+          int t_other = tmtopo.other_tri_if_manifold(e, tcand);
           if (dbg_level > 1) {
             std::cout << "  edge " << e << " generates t_other=" << t_other << "\n";
           }
-          if (t_other != NO_INDEX_U) {
+          if (t_other != NO_INDEX) {
             if (!pinfo.tri_is_assigned(t_other)) {
               if (dbg_level > 1) {
                 std::cout << "    push t_other = " << t_other << "\n";
@@ -540,12 +541,12 @@ static PatchesInfo find_patches(const Mesh &tm, const TriMeshTopology &tmtopo)
             if (dbg_level > 1) {
               std::cout << "    e non-manifold case\n";
             }
-            const Vector<uint> *etris = tmtopo.edge_tris(e);
+            const Vector<int> *etris = tmtopo.edge_tris(e);
             if (etris != nullptr) {
-              for (uint i : etris->index_range()) {
-                uint t_other = (*etris)[i];
+              for (int i : etris->index_range()) {
+                int t_other = (*etris)[i];
                 if (t_other != tcand && pinfo.tri_is_assigned(t_other)) {
-                  uint p_other = pinfo.tri_patch(t_other);
+                  int p_other = pinfo.tri_patch(t_other);
                   if (p_other == cur_patch_index) {
                     continue;
                   }
@@ -566,12 +567,12 @@ static PatchesInfo find_patches(const Mesh &tm, const TriMeshTopology &tmtopo)
   }
   if (dbg_level > 0) {
     std::cout << "\nafter FIND_PATCHES: found " << pinfo.tot_patch() << " patches\n";
-    for (uint p : pinfo.index_range()) {
+    for (int p : pinfo.index_range()) {
       std::cout << p << ": " << pinfo.patch(p) << "\n";
     }
     if (dbg_level > 1) {
       std::cout << "\ntriangle map\n";
-      for (uint t : tm.face_index_range()) {
+      for (int t : tm.face_index_range()) {
         std::cout << t << ": patch " << pinfo.tri_patch(t) << "\n";
       }
     }
@@ -700,10 +701,10 @@ static int sort_tris_class(const Face &tri, const Face &tri0, const Edge e)
  * a sign to the index: positive if the triangle has edge e in the same orientation,
  * otherwise negative.
  */
-static void sort_by_signed_triangle_index(Vector<uint> &g, const Edge e, const Mesh &tm)
+static void sort_by_signed_triangle_index(Vector<int> &g, const Edge e, const Mesh &tm)
 {
   Array<int> signed_g(g.size());
-  for (uint i : g.index_range()) {
+  for (int i : g.index_range()) {
     const Face &tri = *tm.face(g[i]);
     bool rev;
     find_flap_vert(tri, e, &rev);
@@ -711,12 +712,12 @@ static void sort_by_signed_triangle_index(Vector<uint> &g, const Edge e, const M
   }
   std::sort(signed_g.begin(), signed_g.end());
 
-  for (uint i : g.index_range()) {
+  for (int i : g.index_range()) {
     g[i] = abs(signed_g[i]);
   }
 }
 
-constexpr uint EXTRA_TRI_INDEX = INT_MAX;
+constexpr int EXTRA_TRI_INDEX = INT_MAX;
 
 /*
  * Sort the triangles tris, which all share edge e, as they appear
@@ -732,12 +733,12 @@ constexpr uint EXTRA_TRI_INDEX = INT_MAX;
  * To accommodate this:
  * If extra_tri is non-null, then an index of EXTRA_TRI_INDEX should use it for the triangle.
  */
-static Array<uint> sort_tris_around_edge(const Mesh &tm,
-                                         const TriMeshTopology &tmtopo,
-                                         const Edge e,
-                                         const Span<uint> &tris,
-                                         const uint t0,
-                                         Facep extra_tri)
+static Array<int> sort_tris_around_edge(const Mesh &tm,
+                                        const TriMeshTopology &tmtopo,
+                                        const Edge e,
+                                        const Span<int> &tris,
+                                        const int t0,
+                                        Facep extra_tri)
 {
   /* Divide and conquer, quicksort-like sort.
    * Pick a triangle t0, then partition into groups:
@@ -752,7 +753,7 @@ static Array<uint> sort_tris_around_edge(const Mesh &tm,
    */
   const int dbg_level = 0;
   if (tris.size() == 0) {
-    return Array<uint>();
+    return Array<int>();
   }
   if (dbg_level > 0) {
     if (t0 == tris[0]) {
@@ -761,17 +762,17 @@ static Array<uint> sort_tris_around_edge(const Mesh &tm,
     std::cout << "sort_tris_around_edge " << e << "\n";
     std::cout << "tris = " << tris << "\n";
   }
-  Vector<uint> g1{tris[0]};
-  Vector<uint> g2;
-  Vector<uint> g3;
-  Vector<uint> g4;
-  Vector<uint> *groups[] = {&g1, &g2, &g3, &g4};
+  Vector<int> g1{tris[0]};
+  Vector<int> g2;
+  Vector<int> g3;
+  Vector<int> g4;
+  Vector<int> *groups[] = {&g1, &g2, &g3, &g4};
   const Face &tri0 = *tm.face(t0);
-  for (uint i : tris.index_range()) {
+  for (int i : tris.index_range()) {
     if (i == 0) {
       continue;
     }
-    uint t = tris[i];
+    int t = tris[i];
     BLI_assert(t < tm.face_size() || (t == EXTRA_TRI_INDEX && extra_tri != nullptr));
     const Face &tri = (t == EXTRA_TRI_INDEX) ? *extra_tri : *tm.face(t);
     if (dbg_level > 2) {
@@ -802,22 +803,22 @@ static Array<uint> sort_tris_around_edge(const Mesh &tm,
     }
   }
   if (g3.size() > 1) {
-    Array<uint> g3sorted = sort_tris_around_edge(tm, tmtopo, e, g3, g3[0], extra_tri);
+    Array<int> g3sorted = sort_tris_around_edge(tm, tmtopo, e, g3, g3[0], extra_tri);
     std::copy(g3sorted.begin(), g3sorted.end(), g3.begin());
     if (dbg_level > 1) {
       std::cout << "g3 sorted: " << g3 << "\n";
     }
   }
   if (g4.size() > 1) {
-    Array<uint> g4sorted = sort_tris_around_edge(tm, tmtopo, e, g4, g4[0], extra_tri);
+    Array<int> g4sorted = sort_tris_around_edge(tm, tmtopo, e, g4, g4[0], extra_tri);
     std::copy(g4sorted.begin(), g4sorted.end(), g4.begin());
     if (dbg_level > 1) {
       std::cout << "g4 sorted: " << g4 << "\n";
     }
   }
-  uint group_tot_size = g1.size() + g2.size() + g3.size() + g4.size();
-  Array<uint> ans(group_tot_size);
-  uint *p = ans.begin();
+  int group_tot_size = g1.size() + g2.size() + g3.size() + g4.size();
+  Array<int> ans(group_tot_size);
+  int *p = ans.begin();
   if (tris[0] == t0) {
     p = std::copy(g1.begin(), g1.end(), p);
     p = std::copy(g4.begin(), g4.end(), p);
@@ -851,10 +852,10 @@ static void find_cells_from_edge(const Mesh &tm,
   if (dbg_level > 0) {
     std::cout << "find_cells_from_edge " << e << "\n";
   }
-  const Vector<uint> *edge_tris = tmtopo.edge_tris(e);
+  const Vector<int> *edge_tris = tmtopo.edge_tris(e);
   BLI_assert(edge_tris != nullptr);
-  Array<uint> sorted_tris = sort_tris_around_edge(
-      tm, tmtopo, e, Span<uint>(*edge_tris), (*edge_tris)[0], nullptr);
+  Array<int> sorted_tris = sort_tris_around_edge(
+      tm, tmtopo, e, Span<int>(*edge_tris), (*edge_tris)[0], nullptr);
 
   int n_edge_tris = static_cast<int>(edge_tris->size());
   Array<int> edge_patches(n_edge_tris);
@@ -874,8 +875,8 @@ static void find_cells_from_edge(const Mesh &tm,
     bool rnext_flipped;
     find_flap_vert(*tm.face(sorted_tris[i]), e, &r_flipped);
     find_flap_vert(*tm.face(sorted_tris[inext]), e, &rnext_flipped);
-    uint *r_follow_cell = r_flipped ? &r.cell_below : &r.cell_above;
-    uint *rnext_prev_cell = rnext_flipped ? &rnext.cell_above : &rnext.cell_below;
+    int *r_follow_cell = r_flipped ? &r.cell_below : &r.cell_above;
+    int *rnext_prev_cell = rnext_flipped ? &rnext.cell_above : &rnext.cell_below;
     if (dbg_level > 0) {
       std::cout << "process patch pair " << r_index << " " << rnext_index << "\n";
       std::cout << "  r_flipped = " << r_flipped << " rnext_flipped = " << rnext_flipped << "\n";
@@ -884,7 +885,7 @@ static void find_cells_from_edge(const Mesh &tm,
       std::cout << "  rnext_prev_cell (" << (rnext_flipped ? "above" : "below")
                 << ") = " << *rnext_prev_cell << "\n";
     }
-    if (*r_follow_cell == NO_INDEX_U && *rnext_prev_cell == NO_INDEX_U) {
+    if (*r_follow_cell == NO_INDEX && *rnext_prev_cell == NO_INDEX) {
       /* Neither is assigned: make a new cell. */
       int c = cinfo.add_cell();
       *r_follow_cell = c;
@@ -900,7 +901,7 @@ static void find_cells_from_edge(const Mesh &tm,
                   << " = c" << c << "\n";
       }
     }
-    else if (*r_follow_cell != NO_INDEX_U && *rnext_prev_cell == NO_INDEX_U) {
+    else if (*r_follow_cell != NO_INDEX && *rnext_prev_cell == NO_INDEX) {
       int c = *r_follow_cell;
       *rnext_prev_cell = c;
       cinfo.cell(c).add_patch(rnext_index);
@@ -909,7 +910,7 @@ static void find_cells_from_edge(const Mesh &tm,
                   << c << "\n";
       }
     }
-    else if (*r_follow_cell == NO_INDEX_U && *rnext_prev_cell != NO_INDEX_U) {
+    else if (*r_follow_cell == NO_INDEX && *rnext_prev_cell != NO_INDEX) {
       int c = *rnext_prev_cell;
       *r_follow_cell = c;
       cinfo.cell(c).add_patch(r_index);
@@ -939,9 +940,9 @@ static CellsInfo find_cells(const Mesh &tm, const TriMeshTopology &tmtopo, Patch
   CellsInfo cinfo;
   /* For each unique edge shared between patch pairs, process it. */
   Set<Edge> processed_edges;
-  uint np = pinfo.tot_patch();
-  for (uint p = 0; p < np; ++p) {
-    for (uint q = p + 1; q < np; ++q) {
+  int np = pinfo.tot_patch();
+  for (int p = 0; p < np; ++p) {
+    for (int q = p + 1; q < np; ++q) {
       Edge e = pinfo.patch_patch_edge(p, q);
       if (e.v0() != nullptr) {
         if (!processed_edges.contains(e)) {
@@ -953,11 +954,11 @@ static CellsInfo find_cells(const Mesh &tm, const TriMeshTopology &tmtopo, Patch
   }
   if (dbg_level > 0) {
     std::cout << "\nFIND_CELLS found " << cinfo.tot_cell() << " cells\nCells\n";
-    for (uint i : cinfo.index_range()) {
+    for (int i : cinfo.index_range()) {
       std::cout << i << ": " << cinfo.cell(i) << "\n";
     }
     std::cout << "Patches\n";
-    for (uint i : pinfo.index_range()) {
+    for (int i : pinfo.index_range()) {
       std::cout << i << ": " << pinfo.patch(i) << "\n";
     }
   }
@@ -971,21 +972,21 @@ static bool patch_cell_graph_connected(const CellsInfo &cinfo, const PatchesInfo
   }
   Array<bool> cell_reachable(cinfo.tot_cell(), false);
   Array<bool> patch_reachable(pinfo.tot_patch(), false);
-  Stack<uint> stack; /* Patch indexes to visit. */
+  Stack<int> stack; /* Patch indexes to visit. */
   stack.push(0);
   while (!stack.is_empty()) {
-    uint p = stack.pop();
+    int p = stack.pop();
     if (patch_reachable[p]) {
       continue;
     }
     patch_reachable[p] = true;
     const Patch &patch = pinfo.patch(p);
-    for (uint c : {patch.cell_above, patch.cell_below}) {
+    for (int c : {patch.cell_above, patch.cell_below}) {
       if (cell_reachable[c]) {
         continue;
       }
       cell_reachable[c] = true;
-      for (uint p : cinfo.cell(c).patches()) {
+      for (int p : cinfo.cell(c).patches()) {
         if (!patch_reachable[p]) {
           stack.push(p);
         }
@@ -1006,22 +1007,22 @@ static bool patch_cell_graph_connected(const CellsInfo &cinfo, const PatchesInfo
  */
 static bool patch_cell_graph_ok(const CellsInfo &cinfo, const PatchesInfo &pinfo)
 {
-  for (uint c : cinfo.index_range()) {
+  for (int c : cinfo.index_range()) {
     const Cell &cell = cinfo.cell(c);
     if (cell.patches().size() == 0) {
       std::cout << "Patch/Cell graph disconnected at Cell " << c << " with no patches\n";
       return false;
     }
-    for (uint p : cell.patches()) {
+    for (int p : cell.patches()) {
       if (p >= pinfo.tot_patch()) {
         std::cout << "Patch/Cell graph has bad patch index at Cell " << c << "\n";
         return false;
       }
     }
   }
-  for (uint p : pinfo.index_range()) {
+  for (int p : pinfo.index_range()) {
     const Patch &patch = pinfo.patch(p);
-    if (patch.cell_above == NO_INDEX_U || patch.cell_below == NO_INDEX_U) {
+    if (patch.cell_above == NO_INDEX || patch.cell_below == NO_INDEX) {
       std::cout << "Patch/Cell graph disconnected at Patch " << p
                 << " with one or two missing cells\n";
       return false;
@@ -1097,26 +1098,26 @@ static int find_ambient_cell(const Mesh &tm,
    * cell. */
   mpq3 p_in_ambient = v_extreme->co_exact;
   p_in_ambient.x += 1;
-  const Vector<uint> *ehull_edge_tris = tmtopo.edge_tris(ehull);
+  const Vector<int> *ehull_edge_tris = tmtopo.edge_tris(ehull);
   Vertp dummy_vert = arena->add_or_find_vert(p_in_ambient, NO_INDEX);
   Facep dummy_tri = arena->add_face(
-      {ehull.v0(), ehull.v1(), dummy_vert}, NO_INDEX_U, {NO_INDEX, NO_INDEX, NO_INDEX});
-  Array<uint> edge_tris(ehull_edge_tris->size() + 1);
+      {ehull.v0(), ehull.v1(), dummy_vert}, NO_INDEX, {NO_INDEX, NO_INDEX, NO_INDEX});
+  Array<int> edge_tris(ehull_edge_tris->size() + 1);
   std::copy(ehull_edge_tris->begin(), ehull_edge_tris->end(), edge_tris.begin());
   edge_tris[edge_tris.size() - 1] = EXTRA_TRI_INDEX;
-  Array<uint> sorted_tris = sort_tris_around_edge(
+  Array<int> sorted_tris = sort_tris_around_edge(
       tm, tmtopo, ehull, edge_tris, edge_tris[0], dummy_tri);
   if (dbg_level > 0) {
     std::cout << "sorted tris = " << sorted_tris << "\n";
   }
-  uint *p_sorted_dummy = std::find(sorted_tris.begin(), sorted_tris.end(), EXTRA_TRI_INDEX);
+  int *p_sorted_dummy = std::find(sorted_tris.begin(), sorted_tris.end(), EXTRA_TRI_INDEX);
   BLI_assert(p_sorted_dummy != sorted_tris.end());
-  uint dummy_index = p_sorted_dummy - sorted_tris.begin();
-  uint prev_tri = (dummy_index == 0) ? sorted_tris[sorted_tris.size() - 1] :
-                                       sorted_tris[dummy_index - 1];
-  uint next_tri = (dummy_index == static_cast<int>(sorted_tris.size() - 1)) ?
-                      sorted_tris[0] :
-                      sorted_tris[dummy_index + 1];
+  int dummy_index = p_sorted_dummy - sorted_tris.begin();
+  int prev_tri = (dummy_index == 0) ? sorted_tris[sorted_tris.size() - 1] :
+                                      sorted_tris[dummy_index - 1];
+  int next_tri = (dummy_index == static_cast<int>(sorted_tris.size() - 1)) ?
+                     sorted_tris[0] :
+                     sorted_tris[dummy_index + 1];
   if (dbg_level > 0) {
     std::cout << "prev tri to dummy = " << prev_tri << ";  next tri to dummy = " << next_tri
               << "\n";
@@ -1147,7 +1148,7 @@ static int find_ambient_cell(const Mesh &tm,
  */
 static void propagate_windings_and_flag(PatchesInfo &pinfo,
                                         CellsInfo &cinfo,
-                                        uint c_ambient,
+                                        int c_ambient,
                                         bool_optype op,
                                         int nshapes,
                                         std::function<int(int)> shape_fn)
@@ -1159,20 +1160,20 @@ static void propagate_windings_and_flag(PatchesInfo &pinfo,
   Cell &cell_ambient = cinfo.cell(c_ambient);
   cell_ambient.seed_ambient_winding();
   /* Use a vector as a queue. It can't grow bigger than number of cells. */
-  Vector<uint> queue;
+  Vector<int> queue;
   queue.reserve(cinfo.tot_cell());
-  uint queue_head = 0;
+  int queue_head = 0;
   queue.append(c_ambient);
   while (queue_head < queue.size()) {
-    uint c = queue[queue_head++];
+    int c = queue[queue_head++];
     if (dbg_level > 1) {
       std::cout << "process cell " << c << "\n";
     }
     Cell &cell = cinfo.cell(c);
-    for (uint p : cell.patches()) {
+    for (int p : cell.patches()) {
       Patch &patch = pinfo.patch(p);
       bool p_above_c = patch.cell_below == c;
-      uint c_neighbor = p_above_c ? patch.cell_above : patch.cell_below;
+      int c_neighbor = p_above_c ? patch.cell_above : patch.cell_below;
       if (dbg_level > 1) {
         std::cout << "  patch " << p << " p_above_c = " << p_above_c << "\n";
         std::cout << "    c_neighbor = " << c_neighbor << "\n";
@@ -1180,7 +1181,7 @@ static void propagate_windings_and_flag(PatchesInfo &pinfo,
       Cell &cell_neighbor = cinfo.cell(c_neighbor);
       if (!cell_neighbor.winding_assigned()) {
         int winding_delta = p_above_c ? -1 : 1;
-        uint t = patch.tri(0);
+        int t = patch.tri(0);
         int shape = shape_fn(t);
         BLI_assert(shape < nshapes);
         if (dbg_level > 1) {
@@ -1272,8 +1273,8 @@ static Mesh extract_from_flag_diffs(const Mesh &tm_subdivided,
   }
   Vector<Facep> out_tris;
   out_tris.reserve(tm_subdivided.face_size());
-  for (uint t : tm_subdivided.face_index_range()) {
-    uint p = pinfo.tri_patch(t);
+  for (int t : tm_subdivided.face_index_range()) {
+    int p = pinfo.tri_patch(t);
     const Patch &patch = pinfo.patch(p);
     const Cell &cell_above = cinfo.cell(patch.cell_above);
     const Cell &cell_below = cinfo.cell(patch.cell_below);
@@ -1328,7 +1329,7 @@ static const char *bool_optype_name(bool_optype op)
  */
 static int find_cdt_edge(const CDT_result<mpq_class> &cdt_out, int v1, int v2)
 {
-  for (uint e : cdt_out.edge.index_range()) {
+  for (int e : cdt_out.edge.index_range()) {
     const std::pair<int, int> &edge = cdt_out.edge[e];
     if ((edge.first == v1 && edge.second == v2) || (edge.first == v2 && edge.second == v1)) {
       return e;
@@ -1346,12 +1347,12 @@ static int find_cdt_edge(const CDT_result<mpq_class> &cdt_out, int v1, int v2)
  */
 static Array<Facep> triangulate_poly(Facep f, MArena *arena)
 {
-  uint flen = f->size();
+  int flen = f->size();
   CDT_input<mpq_class> cdt_in;
   cdt_in.vert = Array<mpq2>(flen);
   cdt_in.face = Array<Vector<int>>(1);
   cdt_in.face[0].reserve(flen);
-  for (uint i : f->index_range()) {
+  for (int i : f->index_range()) {
     cdt_in.face[0].append(static_cast<int>(i));
   }
   /* Project poly along dominant axis of normal to get 2d coords. */
@@ -1373,7 +1374,7 @@ static Array<Facep> triangulate_poly(Facep f, MArena *arena)
     }
   }
   CDT_result<mpq_class> cdt_out = delaunay_2d_calc(cdt_in, CDT_INSIDE);
-  uint n_tris = cdt_out.face.size();
+  int n_tris = cdt_out.face.size();
   Array<Facep> ans(n_tris);
   for (int t = 0; t < n_tris; ++t) {
     int i_v_out[3];
@@ -1411,7 +1412,7 @@ static Mesh triangulate_polymesh(Mesh &pm, MArena *arena)
   face_tris.reserve(estimated_tris_per_face * pm.face_size());
   for (Facep f : pm.faces()) {
     /* Tesselate face f, following plan similar to BM_face_calc_tesselation. */
-    uint flen = f->size();
+    int flen = f->size();
     if (flen == 3) {
       face_tris.append(f);
     }
@@ -1508,7 +1509,7 @@ struct FaceMergeState {
 static std::ostream &operator<<(std::ostream &os, const FaceMergeState &fms)
 {
   os << "faces:\n";
-  for (uint f : fms.face.index_range()) {
+  for (int f : fms.face.index_range()) {
     const MergeFace &mf = fms.face[f];
     std::cout << f << ": orig=" << mf.orig << " verts ";
     for (Vertp v : mf.vert) {
@@ -1519,7 +1520,7 @@ static std::ostream &operator<<(std::ostream &os, const FaceMergeState &fms)
     std::cout << "    merge_to = " << mf.merge_to << "\n";
   }
   os << "\nedges:\n";
-  for (uint e : fms.edge.index_range()) {
+  for (int e : fms.edge.index_range()) {
     const MergeEdge &me = fms.edge[e];
     std::cout << e << ": (" << me.v1 << "," << me.v2 << ") left=" << me.left_face
               << " right=" << me.right_face << " dis=" << me.dissolvable << " orig=" << me.orig
@@ -1528,7 +1529,7 @@ static std::ostream &operator<<(std::ostream &os, const FaceMergeState &fms)
   return os;
 }
 
-static void init_face_merge_state(FaceMergeState *fms, const Vector<uint> &tris, const Mesh &tm)
+static void init_face_merge_state(FaceMergeState *fms, const Vector<int> &tris, const Mesh &tm)
 {
   const int dbg_level = 0;
   /* Reserve enough faces and edges so that neither will have to resize. */
@@ -1538,7 +1539,7 @@ static void init_face_merge_state(FaceMergeState *fms, const Vector<uint> &tris,
   if (dbg_level > 0) {
     std::cout << "\nINIT_FACE_MERGE_STATE\n";
   }
-  for (uint t : tris.index_range()) {
+  for (int t : tris.index_range()) {
     MergeFace mf;
     const Face &tri = *tm.face(tris[t]);
     mf.vert.append(tri[0]);
@@ -1692,7 +1693,7 @@ static void do_dissolve(FaceMergeState *fms)
     std::cout << "\nDO_DISSOLVE\n";
   }
   Vector<int> dissolve_edges;
-  for (uint e : fms->edge.index_range()) {
+  for (int e : fms->edge.index_range()) {
     if (fms->edge[e].dissolvable) {
       dissolve_edges.append(e);
     }
@@ -1736,7 +1737,7 @@ static void do_dissolve(FaceMergeState *fms)
  * We can tell edges that don't overlap real input edges because they will have an
  * "original edge" that is different from NO_INDEX.
  */
-static Vector<Facep> merge_tris_for_face(Vector<uint> tris,
+static Vector<Facep> merge_tris_for_face(Vector<int> tris,
                                          const Mesh &tm,
                                          const Mesh &pm_in,
                                          MArena *arena)
@@ -1779,7 +1780,7 @@ static Vector<Facep> merge_tris_for_face(Vector<uint> tris,
   for (const MergeFace &mf : fms.face) {
     if (mf.merge_to == -1) {
       Array<int> e_orig(mf.edge.size());
-      for (uint i : mf.edge.index_range()) {
+      for (int i : mf.edge.index_range()) {
         e_orig[i] = fms.edge[mf.edge[i]].orig;
       }
       Facep facep = arena->add_face(mf.vert, mf.orig, e_orig);
@@ -1799,7 +1800,7 @@ static Array<bool> find_dissolve_verts(Mesh &pm_out, int *r_count_dissolve)
   pm_out.populate_vert();
   /* dissolve[i] will say whether pm_out.vert(i) can be dissolved. */
   Array<bool> dissolve(pm_out.vert_size());
-  for (uint v_index : pm_out.vert_index_range()) {
+  for (int v_index : pm_out.vert_index_range()) {
     const Vert &vert = *pm_out.vert(v_index);
     dissolve[v_index] = (vert.orig == NO_INDEX);
   }
@@ -1809,12 +1810,12 @@ static Array<bool> find_dissolve_verts(Mesh &pm_out, int *r_count_dissolve)
    */
   Array<std::pair<Vertp, Vertp>> neighbors(pm_out.vert_size(),
                                            std::pair<Vertp, Vertp>(nullptr, nullptr));
-  for (uint f : pm_out.face_index_range()) {
+  for (int f : pm_out.face_index_range()) {
     const Face &face = *pm_out.face(f);
-    for (uint i : face.index_range()) {
+    for (int i : face.index_range()) {
       Vertp v = face[i];
-      uint v_index = pm_out.lookup_vert(v);
-      BLI_assert(v_index != NO_INDEX_U);
+      int v_index = pm_out.lookup_vert(v);
+      BLI_assert(v_index != NO_INDEX);
       if (dissolve[v_index]) {
         Vertp n1 = face[face.next_pos(i)];
         Vertp n2 = face[face.prev_pos(i)];
@@ -1835,7 +1836,7 @@ static Array<bool> find_dissolve_verts(Mesh &pm_out, int *r_count_dissolve)
     }
   }
   int count = 0;
-  for (uint v_out : pm_out.vert_index_range()) {
+  for (int v_out : pm_out.vert_index_range()) {
     if (dissolve[v_out]) {
       dissolve[v_out] = false; /* Will set back to true if final condition is satisfied. */
       const std::pair<Vertp, Vertp> &nbrs = neighbors[v_out];
@@ -1866,15 +1867,15 @@ static Array<bool> find_dissolve_verts(Mesh &pm_out, int *r_count_dissolve)
  */
 static void dissolve_verts(Mesh *pm, const Array<bool> dissolve, MArena *arena)
 {
-  constexpr uint inline_face_size = 100;
+  constexpr int inline_face_size = 100;
   Vector<bool, inline_face_size> face_pos_erase;
-  for (uint f : pm->face_index_range()) {
+  for (int f : pm->face_index_range()) {
     const Face &face = *pm->face(f);
     face_pos_erase.clear();
     int num_erase = 0;
     for (Vertp v : face) {
-      uint v_index = pm->lookup_vert(v);
-      BLI_assert(v_index != NO_INDEX_U);
+      int v_index = pm->lookup_vert(v);
+      BLI_assert(v_index != NO_INDEX);
       if (dissolve[v_index]) {
         face_pos_erase.append(true);
         ++num_erase;
@@ -1912,16 +1913,16 @@ static Mesh polymesh_from_trimesh_with_dissolve(const Mesh &tm_out,
    * face_output_tris[f] will be indices of triangles in tm_out
    * that have f as their original face.
    */
-  uint tot_in_face = pm_in.face_size();
-  Array<Vector<uint>> face_output_tris(tot_in_face);
-  for (uint t : tm_out.face_index_range()) {
+  int tot_in_face = pm_in.face_size();
+  Array<Vector<int>> face_output_tris(tot_in_face);
+  for (int t : tm_out.face_index_range()) {
     const Face &tri = *tm_out.face(t);
     int in_face = tri.orig;
     face_output_tris[in_face].append(t);
   }
   if (dbg_level > 1) {
     std::cout << "face_output_tris:\n";
-    for (uint f : face_output_tris.index_range()) {
+    for (int f : face_output_tris.index_range()) {
       std::cout << f << ": " << face_output_tris[f] << "\n";
     }
   }
@@ -1931,12 +1932,12 @@ static Mesh polymesh_from_trimesh_with_dissolve(const Mesh &tm_out,
    * make up whatever part of the boolean output remains of input face f.
    */
   Array<Vector<Facep>> face_output_face(tot_in_face);
-  uint tot_out_face = 0;
-  for (uint in_f : pm_in.face_index_range()) {
+  int tot_out_face = 0;
+  for (int in_f : pm_in.face_index_range()) {
     if (dbg_level > 1) {
       std::cout << "merge tris for face " << in_f << "\n";
     }
-    uint num_out_tris_for_face = face_output_tris.size();
+    int num_out_tris_for_face = face_output_tris.size();
     if (num_out_tris_for_face == 0) {
       continue;
     }
@@ -1944,8 +1945,8 @@ static Mesh polymesh_from_trimesh_with_dissolve(const Mesh &tm_out,
     tot_out_face += face_output_face[in_f].size();
   }
   Array<Facep> face(tot_out_face);
-  uint out_f_index = 0;
-  for (uint in_f : pm_in.face_index_range()) {
+  int out_f_index = 0;
+  for (int in_f : pm_in.face_index_range()) {
     const Vector<Facep> &f_faces = face_output_face[in_f];
     if (f_faces.size() > 0) {
       std::copy(f_faces.begin(), f_faces.end(), &face[out_f_index]);
@@ -2025,8 +2026,8 @@ Mesh boolean_trimesh(Mesh &tm_in,
     return Mesh(tm_in);
   }
   cinfo.init_windings(nshapes);
-  uint c_ambient = find_ambient_cell(tm_si, tm_si_topo, pinfo, arena);
-  if (c_ambient == NO_INDEX_U) {
+  int c_ambient = find_ambient_cell(tm_si, tm_si_topo, pinfo, arena);
+  if (c_ambient == NO_INDEX) {
     /* TODO: find a way to propagate this error to user properly. */
     std::cout << "Could not find an ambient cell; input not valid?\n";
     return Mesh(tm_si);

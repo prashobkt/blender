@@ -51,7 +51,7 @@ static Mesh mesh_from_bm(BMesh *bm,
     vert[v] = arena->add_or_find_vert(mpq3(bmv->co[0], bmv->co[1], bmv->co[2]), v);
   }
   Array<Facep> face(bm->totface);
-  constexpr uint estimated_max_facelen = 100;
+  constexpr int estimated_max_facelen = 100;
   Vector<Vertp, estimated_max_facelen> face_vert;
   Vector<int, estimated_max_facelen> face_edge_orig;
   for (int f = 0; f < bm->totface; ++f) {
@@ -128,7 +128,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
 
   if (m_out.vert_size() > 0 && m_out.face_size() > 0) {
     Array<BMVert *> new_bmv(m_out.vert_size());
-    for (uint v : m_out.vert_index_range()) {
+    for (int v : m_out.vert_index_range()) {
       Vertp vertp = m_out.vert(v);
       float co[3];
       const double3 &d_co = vertp->co;
@@ -147,7 +147,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
       int flen = static_cast<int>(face.size());
       for (int i = 0; i < flen; ++i) {
         Vertp v = face[i];
-        uint v_index = m_out.lookup_vert(v);
+        int v_index = m_out.lookup_vert(v);
         BLI_assert(v_index < new_bmv.size());
         face_bmverts[i] = new_bmv[v_index];
       }

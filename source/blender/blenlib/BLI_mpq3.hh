@@ -262,10 +262,10 @@ struct mpq3 {
   static int orient3d(const mpq3 &a, const mpq3 &b, const mpq3 &c, const mpq3 &d);
 
   /* There is a sensible use for hashing on exact arithmetic types. */
-  uint32_t hash() const;
+  uint64_t hash() const;
 };
 
-uint32_t hash_mpq_class(const mpq_class &value);
+uint64_t hash_mpq_class(const mpq_class &value);
 
 }  // namespace blender
 
