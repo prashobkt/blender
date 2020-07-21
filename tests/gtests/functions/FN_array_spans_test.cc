@@ -3,7 +3,6 @@
 #include "testing/testing.h"
 
 #include "FN_array_spans.hh"
-#include "FN_cpp_types.hh"
 #include "FN_generic_vector_array.hh"
 
 #include "BLI_array.hh"
@@ -51,7 +50,7 @@ TEST(virtual_array_span, MultipleArrayConstructor)
   std::array<int, 2> values1 = {6, 7};
   std::array<int, 1> values2 = {8};
   std::array<const int *, 3> starts = {values0.data(), values1.data(), values2.data()};
-  std::array<uint, 3> sizes{values0.size(), values1.size(), values2.size()};
+  std::array<int64_t, 3> sizes{values0.size(), values1.size(), values2.size()};
 
   VArraySpan<int> span{starts, sizes};
   EXPECT_EQ(span.size(), 3);
@@ -77,7 +76,7 @@ TEST(virtual_array_span, MultipleArrayConstructor)
 
 TEST(generic_virtual_array_span, TypeConstructor)
 {
-  GVArraySpan span{CPPType_int32};
+  GVArraySpan span{CPPType::get<int32_t>()};
   EXPECT_EQ(span.size(), 0);
   EXPECT_TRUE(span.is_empty());
 
@@ -88,7 +87,7 @@ TEST(generic_virtual_array_span, TypeConstructor)
 TEST(generic_virtual_array_span, GSpanConstructor)
 {
   std::array<std::string, 3> values = {"hello", "world", "test"};
-  GVArraySpan span{GSpan(CPPType_string, values.data(), 3), 5};
+  GVArraySpan span{GSpan(CPPType::get<std::string>(), values.data(), 3), 5};
   EXPECT_EQ(span.size(), 5);
   EXPECT_FALSE(span.is_empty());
   EXPECT_EQ(span[0][0], values.data());
@@ -119,7 +118,7 @@ TEST(generic_virtual_array_span, IsSingleArray1)
 
 TEST(generic_virtual_array_span, IsSingleArray2)
 {
-  GVectorArray vectors{CPPType_int32, 3};
+  GVectorArray vectors{CPPType::get<int32_t>(), 3};
   GVectorArrayRef<int> vectors_ref = vectors;
   vectors_ref.append(1, 4);
 

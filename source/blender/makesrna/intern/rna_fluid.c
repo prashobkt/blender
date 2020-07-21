@@ -161,7 +161,7 @@ static void rna_Fluid_flow_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
   rna_Fluid_update(bmain, scene, ptr);
 }
 
-static void rna_Fluid_domain_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
+static void rna_Fluid_domain_data_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
 #  ifdef WITH_FLUID
   FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
@@ -169,6 +169,39 @@ static void rna_Fluid_domain_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
 #  endif
 
   rna_Fluid_datacache_reset(bmain, scene, ptr);
+  rna_Fluid_update(bmain, scene, ptr);
+}
+
+static void rna_Fluid_domain_noise_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+#  ifdef WITH_FLUID
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
+  BKE_fluid_modifier_reset(settings->fmd);
+#  endif
+
+  rna_Fluid_noisecache_reset(bmain, scene, ptr);
+  rna_Fluid_update(bmain, scene, ptr);
+}
+
+static void rna_Fluid_domain_mesh_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+#  ifdef WITH_FLUID
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
+  BKE_fluid_modifier_reset(settings->fmd);
+#  endif
+
+  rna_Fluid_meshcache_reset(bmain, scene, ptr);
+  rna_Fluid_update(bmain, scene, ptr);
+}
+
+static void rna_Fluid_domain_particles_reset(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+#  ifdef WITH_FLUID
+  FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
+  BKE_fluid_modifier_reset(settings->fmd);
+#  endif
+
+  rna_Fluid_particlescache_reset(bmain, scene, ptr);
   rna_Fluid_update(bmain, scene, ptr);
 }
 
@@ -232,7 +265,7 @@ static void rna_Fluid_flip_parts_update(Main *bmain, Scene *scene, PointerRNA *p
   if (fmd->domain->type != FLUID_DOMAIN_TYPE_LIQUID) {
     rna_Fluid_parts_delete(ptr, PART_FLUID_FLIP);
     fmd->domain->particle_type &= ~FLUID_DOMAIN_PARTICLE_FLIP;
-    rna_Fluid_domain_reset(bmain, scene, ptr);
+    rna_Fluid_domain_data_reset(bmain, scene, ptr);
     return;
   }
 
@@ -686,10 +719,10 @@ static int rna_FluidModifier_grid_get_length(PointerRNA *ptr, int length[RNA_MAX
     /* high resolution smoke */
     int res[3];
 
-    manta_smoke_turbulence_get_res(fds->fluid, res);
+    manta_noise_get_res(fds->fluid, res);
     size = res[0] * res[1] * res[2];
 
-    density = manta_smoke_turbulence_get_density(fds->fluid);
+    density = manta_noise_get_density(fds->fluid);
   }
   else if (fds->fluid) {
     /* regular resolution */
@@ -758,7 +791,7 @@ static void rna_FluidModifier_density_grid_get(PointerRNA *ptr, float *values)
   BLI_rw_mutex_lock(fds->fluid_mutex, THREAD_LOCK_READ);
 
   if (fds->flags & FLUID_DOMAIN_USE_NOISE && fds->fluid) {
-    density = manta_smoke_turbulence_get_density(fds->fluid);
+    density = manta_noise_get_density(fds->fluid);
   }
   else {
     density = manta_smoke_get_density(fds->fluid);
@@ -805,11 +838,11 @@ static void rna_FluidModifier_color_grid_get(PointerRNA *ptr, float *values)
   }
   else {
     if (fds->flags & FLUID_DOMAIN_USE_NOISE) {
-      if (manta_smoke_turbulence_has_colors(fds->fluid)) {
-        manta_smoke_turbulence_get_rgba(fds->fluid, values, 0);
+      if (manta_noise_has_colors(fds->fluid)) {
+        manta_noise_get_rgba(fds->fluid, values, 0);
       }
       else {
-        manta_smoke_turbulence_get_rgba_fixed_color(fds->fluid, fds->active_color, values, 0);
+        manta_noise_get_rgba_fixed_color(fds->fluid, fds->active_color, values, 0);
       }
     }
     else {
@@ -835,7 +868,7 @@ static void rna_FluidModifier_flame_grid_get(PointerRNA *ptr, float *values)
   BLI_rw_mutex_lock(fds->fluid_mutex, THREAD_LOCK_READ);
 
   if (fds->flags & FLUID_DOMAIN_USE_NOISE && fds->fluid) {
-    flame = manta_smoke_turbulence_get_flame(fds->fluid);
+    flame = manta_noise_get_flame(fds->fluid);
   }
   else {
     flame = manta_smoke_get_flame(fds->fluid);
@@ -885,7 +918,7 @@ static void rna_FluidModifier_temperature_grid_get(PointerRNA *ptr, float *value
   BLI_rw_mutex_lock(fds->fluid_mutex, THREAD_LOCK_READ);
 
   if (fds->flags & FLUID_DOMAIN_USE_NOISE && fds->fluid) {
-    flame = manta_smoke_turbulence_get_flame(fds->fluid);
+    flame = manta_noise_get_flame(fds->fluid);
   }
   else {
     flame = manta_smoke_get_flame(fds->fluid);
@@ -1515,7 +1548,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Adaptive Domain", "Adapt simulation resolution and size to fluid");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_data_reset");
 
   /* fluid domain options */
 
@@ -1529,7 +1562,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
       "Resolution used for the fluid domain. Value corresponds to the longest domain side "
       "(resolution for other domain sides is calculated automatically)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_data_reset");
 
   prop = RNA_def_property(srna, "use_collision_border_front", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "border_collisions", FLUID_DOMAIN_BORDER_FRONT);
@@ -1712,7 +1745,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
                            "The noise simulation is scaled up by this factor (compared to the "
                            "base resolution of the domain)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_noise_reset");
 
   prop = RNA_def_property(srna, "noise_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "noise_type");
@@ -1720,7 +1753,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Noise Method", "Noise method which is used during the high-res simulation");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_noise_reset");
 
   prop = RNA_def_property(srna, "use_noise", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_NOISE);
@@ -1734,7 +1767,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "simulation_method");
   RNA_def_property_enum_items(prop, simulation_methods);
   RNA_def_property_ui_text(prop, "Simulation Method", "Change the underlying simulation method");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_data_reset");
 
   prop = RNA_def_property(srna, "flip_ratio", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 1.0);
@@ -1822,7 +1855,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Use Diffusion", "Enable fluid diffusion settings (e.g. viscosity, surface tension)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_datacache_reset");
 
   prop = RNA_def_property(srna, "surface_tension", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0, 100.0);
@@ -1889,7 +1922,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
                            "resolution of the domain). For best meshing, it is recommended to "
                            "adjust the mesh particle radius alongside this value");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_meshcache_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_mesh_reset");
 
   prop = RNA_def_property(srna, "mesh_generator", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "mesh_generator");
@@ -2089,7 +2122,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
                            "The particle simulation is scaled up by this factor (compared to the "
                            "base resolution of the domain)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_particles_reset");
 
   prop = RNA_def_property(srna, "use_spray_particles", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "particle_type", FLUID_DOMAIN_PARTICLE_SPRAY);
@@ -2246,7 +2279,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, cache_types);
   RNA_def_property_enum_funcs(prop, NULL, "rna_Fluid_cachetype_set", NULL);
   RNA_def_property_ui_text(prop, "Type", "Change the cache type of the simulation");
-  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Fluid_domain_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Fluid_domain_data_reset");
 
   prop = RNA_def_property(srna, "cache_resumable", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_DOMAIN_USE_RESUMABLE_CACHE);
@@ -2323,7 +2356,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
       "only needed if you plan to analyze the cache (e.g. view grids, velocity vectors, "
       "particles) in Mantaflow directly (outside of Blender) after baking the simulation");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_data_reset");
 
   /* time options */
 
@@ -2847,7 +2880,7 @@ static void rna_def_fluid_effector_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_plane_init", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", FLUID_EFFECTOR_USE_PLANE_INIT);
   RNA_def_property_ui_text(prop, "Is Planar", "Treat this object as a planar, unclosed mesh");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_reset");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, "rna_Fluid_domain_data_reset");
 
   prop = RNA_def_property(srna, "velocity_factor", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "vel_multi");
