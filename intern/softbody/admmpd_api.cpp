@@ -126,44 +126,26 @@ static int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, float *in_verts, 
   return 1;
 }
 
-static int admmpd_init_with_lattice(
-  ADMMPDInterfaceData *iface, float *in_verts, unsigned int *in_faces,
-  Eigen::MatrixXd *V, Eigen::MatrixXi *T, Eigen::VectorXd *m)
+static int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, float *in_verts, unsigned int *in_faces)
 {
-/*
-  int nv = iface->mesh_totverts;
-  Eigen::MatrixXd in_V(nv,3);
-  for (int i=0; i<nv; ++i)
-  {
-    for (int j=0; j<3; ++j)
-    {
-      in_V(i,j) = in_verts[i*3+j];
-    }
-  }
-
-  int nf = iface->mesh_totfaces;
-  Eigen::MatrixXi in_F(nf,3);
-  for (int i=0; i<nf; ++i)
-  {
-    for (int j=0; j<3; ++j)
-    {
-      in_F(i,j) = in_faces[i*3+j];
-    }
-  }
-
   iface->totverts = 0;
-  bool trim_lattice = true;
-  bool success = iface->idata->embmesh->generate(in_V,in_F,trim_lattice);
-  if (success)
+  iface->idata->mesh = std::make_shared<admmpd::EmbeddedMesh>();
+  bool success = iface->idata->mesh->create(
+    in_verts,
+    iface->mesh_totverts,
+    in_faces,
+    iface->mesh_totfaces,
+    nullptr,
+    0);
+
+  iface->totverts = iface->idata->mesh->rest_prim_verts().rows();
+  if (!success)
   {
-    iface->idata->embmesh->compute_masses(m);
-    *T = iface->idata->embmesh->lat_tets;
-    *V = iface->idata->embmesh->lat_rest_x;
-    iface->totverts = V->rows();
-    return 1;
+    printf("EmbeddedMesh failed to generate\n");
+    return 0;
   }
-*/
-  return 0;
+
+  return 1;
 }
 
 int admmpd_init(ADMMPDInterfaceData *iface, ADMMPDInitData *in_mesh)
@@ -195,10 +177,10 @@ int admmpd_init(ADMMPDInterfaceData *iface, ADMMPDInitData *in_mesh)
 //  {
 //    default:
 //    case 0: {
-      gen_success = admmpd_init_with_tetgen(iface,in_mesh->verts,in_mesh->faces);
+//      gen_success = admmpd_init_with_tetgen(iface,in_mesh->verts,in_mesh->faces);
 //    } break;
 //    case 1: {
-//      gen_success = admmpd_init_with_lattice(iface,in_mesh->verts,in_mesh->faces,&V,&T,&m);
+      gen_success = admmpd_init_with_lattice(iface,in_mesh->verts,in_mesh->faces);
 //      iface->idata->collision = new admmpd::EmbeddedMeshCollision(iface->idata->embmesh);
  //     iface->idata->pin = new admmpd::EmbeddedMeshPin(iface->idata->embmesh);
 //    } break;

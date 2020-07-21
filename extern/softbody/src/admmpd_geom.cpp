@@ -44,7 +44,6 @@ bool geom::point_in_tet(
 	const Vector3d &c,
 	const Vector3d &d)
 {
-	using namespace Eigen;
 	auto check_face = [](
 		const Vector3d &point,
 		const Vector3d &p0,
@@ -62,6 +61,43 @@ bool geom::point_in_tet(
 		check_face(p, b, c, d, a) &&
 		check_face(p, c, d, a, b) &&
 		check_face(p, d, a, b, c);
+}
+
+void geom::create_tets_from_box(
+    const Eigen::Vector3d &bmin,
+    const Eigen::Vector3d &bmax,
+    std::vector<Eigen::Vector3d> &verts,
+    std::vector<Eigen::RowVector4i> &tets)
+{
+	std::vector<Vector3d> v = {
+		// Top plane, clockwise looking down
+		bmax,
+		Vector3d(bmin[0], bmax[1], bmax[2]),
+		Vector3d(bmin[0], bmax[1], bmin[2]),
+		Vector3d(bmax[0], bmax[1], bmin[2]),
+		// Bottom plane, clockwise looking down
+		Vector3d(bmax[0], bmin[1], bmax[2]),
+		Vector3d(bmin[0], bmin[1], bmax[2]),
+		bmin,
+		Vector3d(bmax[0], bmin[1], bmin[2])
+	};
+	// Add vertices and get indices of the box
+	std::vector<int> b;
+	for(int i=0; i<8; ++i)
+	{
+		b.emplace_back(verts.size());
+		verts.emplace_back(v[i]);
+	}
+	// From the box, create five new tets
+	std::vector<RowVector4i> new_tets = {
+		RowVector4i( b[0], b[5], b[7], b[4] ),
+		RowVector4i( b[5], b[7], b[2], b[0] ),
+		RowVector4i( b[5], b[0], b[2], b[1] ),
+		RowVector4i( b[7], b[2], b[0], b[3] ),
+		RowVector4i( b[5], b[2], b[7], b[6] )
+	};
+	for(int i=0; i<5; ++i)
+		tets.emplace_back(new_tets[i]);
 }
 
 // From Real-Time Collision Detection by Christer Ericson
@@ -341,6 +377,47 @@ bool geom::ray_triangle(
 	t_max = t;
 	return true;
 } // end ray - triangle test
+
+void geom::merge_close_vertices(
+	std::vector<Vector3d> &verts,
+	std::vector<RowVector4i> &tets,
+	double eps)
+{
+	int nv = verts.size();
+	std::vector<Vector3d> new_v(nv); // new verts
+	std::vector<int> idx(nv,0); // index mapping
+	std::vector<int> visited(nv,0);
+	int count = 0;
+	for (int i=0; i<nv; ++i)
+	{
+		if(!visited[i])
+		{
+			visited[i] = 1;
+			new_v[count] = verts[i];
+			idx[i] = count;
+			Vector3d vi = verts[i];
+			for (int j = i+1; j<nv; ++j)
+			{
+				if((verts[j]-vi).norm() < eps)
+				{
+					visited[j] = 1;
+					idx[j] = count;
+				}
+			}
+			count++;
+		}
+	}
+	new_v.resize(count);
+	verts = new_v;
+	int nt = tets.size();
+	for (int i=0; i<nt; ++i)
+	{
+		for (int j=0; j<4; ++j)
+		{
+			tets[i][j] = idx[tets[i][j]];
+		}
+	}
+}
 
 //
 // Compile template types
