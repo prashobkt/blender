@@ -8,7 +8,7 @@
 namespace admmpd {
 using namespace Eigen;
 
-Lame::Lame() : m_model(ELASTIC_NH)
+Lame::Lame() : m_model(ELASTIC_ARAP)
 {
 	set_from_youngs_poisson(10000000,0.399);
 }
