@@ -277,6 +277,8 @@ void BKE_gpencil_parent_matrix_get(const struct Depsgraph *depsgraph,
 
 void BKE_gpencil_update_layer_parent(const struct Depsgraph *depsgraph, struct Object *ob);
 
+int BKE_gpencil_material_find_index_by_name_prefix(struct Object *ob, const char *name_prefix);
+
 #ifdef __cplusplus
 }
 #endif

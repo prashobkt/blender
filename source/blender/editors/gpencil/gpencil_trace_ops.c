@@ -130,18 +130,6 @@ static int gpencil_trace_image_exec(bContext *C, wmOperator *op)
   }
   bGPdata *gpd = (bGPdata *)ob_gpencil->data;
 
-  /* If the object has materials means it was created in a previous run. */
-  if (ob_gpencil->totcol == 0) {
-    const float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-    int r_idx;
-    Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob_gpencil, "Material", &r_idx);
-    MaterialGPencilStyle *gp_style = mat_gp->gp_style;
-
-    linearrgb_to_srgb_v4(gp_style->stroke_rgba, default_color);
-    gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
-    gp_style->flag &= ~GP_MATERIAL_FILL_SHOW;
-  }
-
   /* Create Layer and frame. */
   bGPDlayer *gpl = NULL;
   if (!newob) {
@@ -173,7 +161,8 @@ static int gpencil_trace_image_exec(bContext *C, wmOperator *op)
   int offset[2];
   offset[0] = ibuf->x / 2;
   offset[1] = ibuf->y / 2;
-  ED_gpencil_trace_data_to_gp(st, ob_gpencil, gpf, offset, scale, sample, resolution, thickness);
+  ED_gpencil_trace_data_to_strokes(
+      bmain, st, ob_gpencil, gpf, offset, scale, sample, resolution, thickness);
 
   /* Free memory. */
   potrace_state_free(st);

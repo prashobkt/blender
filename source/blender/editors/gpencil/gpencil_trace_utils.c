@@ -32,9 +32,12 @@
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_geom.h"
 #include "BKE_image.h"
+#include "BKE_main.h"
+#include "BKE_material.h"
 
 #include "DNA_gpencil_types.h"
 #include "DNA_image_types.h"
+#include "DNA_material_types.h"
 #include "DNA_object_types.h"
 
 #include "IMB_imbuf.h"
@@ -227,6 +230,7 @@ static void add_bezier(bGPDstroke *gps,
 
 /**
  * Convert Potrace Bitmap to Grease Pencil strokes
+ * \param bmain: Main pointer
  * \param st: Data with traced data
  * \param ob: Target grease pencil object
  * \param gpf: Currect grease pencil frame
@@ -236,15 +240,48 @@ static void add_bezier(bGPDstroke *gps,
  * \param resolution: Resolution of curves
  * \param thickness: Thickness of the stroke
  */
-void ED_gpencil_trace_data_to_gp(potrace_state_t *st,
-                                 Object *ob,
-                                 bGPDframe *gpf,
-                                 int offset[2],
-                                 const float scale,
-                                 const float sample,
-                                 const int resolution,
-                                 const int thickness)
+void ED_gpencil_trace_data_to_strokes(Main *bmain,
+                                      potrace_state_t *st,
+                                      Object *ob,
+                                      bGPDframe *gpf,
+                                      int offset[2],
+                                      const float scale,
+                                      const float sample,
+                                      const int resolution,
+                                      const int thickness)
 {
+  /* If the object has materials means it was created in a previous run.
+   * Check only filled slots.  */
+  int mat_fill_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Stroke");
+  int mat_mask_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Mask");
+
+  const float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  int r_idx;
+  /* Stroke and Fill material. */
+  if (mat_fill_idx == -1) {
+    Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Stroke", &r_idx);
+    MaterialGPencilStyle *gp_style = mat_gp->gp_style;
+
+    linearrgb_to_srgb_v4(gp_style->stroke_rgba, default_color);
+    gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
+    gp_style->flag |= GP_MATERIAL_FILL_SHOW;
+    mat_fill_idx = ob->totcol - 1;
+  }
+  /* Masking material. */
+  if (mat_mask_idx == -1) {
+    Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Mask", &r_idx);
+    MaterialGPencilStyle *gp_style = mat_gp->gp_style;
+
+    linearrgb_to_srgb_v4(gp_style->stroke_rgba, default_color);
+    gp_style->stroke_rgba[3] = 0.0f;
+    gp_style->fill_rgba[3] = 0.0f;
+    gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
+    gp_style->flag |= GP_MATERIAL_FILL_SHOW;
+    gp_style->flag |= GP_MATERIAL_IS_STROKE_MASK;
+    gp_style->flag |= GP_MATERIAL_IS_FILL_MASK;
+    mat_mask_idx = ob->totcol - 1;
+  }
+
   potrace_path_t *path = st->plist;
   int n, *tag;
   potrace_dpoint_t(*c)[3];
@@ -256,8 +293,9 @@ void ED_gpencil_trace_data_to_gp(potrace_state_t *st,
     n = path->curve.n;
     tag = path->curve.tag;
     c = path->curve.c;
+    int mat_idx = path->sign == '+' ? 0 : 1;
     /* Create a new stroke. */
-    bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, 0, 0, thickness, false);
+    bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, mat_idx, 0, thickness, false);
     /* Last point that is equals to start point. */
     float start_point[2], last[2];
     start_point[0] = c[n - 1][2].x;

@@ -28,6 +28,7 @@
 struct bGPDframe;
 struct FILE;
 struct ImBuf;
+struct Main;
 struct Object;
 
 #include "potracelib.h"
@@ -64,13 +65,15 @@ void ED_gpencil_trace_bm_invert(const potrace_bitmap_t *bm);
 void ED_gpencil_trace_image_to_bm(struct ImBuf *ibuf,
                                   const potrace_bitmap_t *bm,
                                   const float threshold);
-void ED_gpencil_trace_data_to_gp(potrace_state_t *st,
-                                 struct Object *ob,
-                                 struct bGPDframe *gpf,
-                                 int offset[2],
-                                 const float scale,
-                                 const float sample,
-                                 const int resolution,
-                                 const int thickness);
+
+void ED_gpencil_trace_data_to_strokes(struct Main *bmain,
+                                      potrace_state_t *st,
+                                      struct Object *ob,
+                                      struct bGPDframe *gpf,
+                                      int offset[2],
+                                      const float scale,
+                                      const float sample,
+                                      const int resolution,
+                                      const int thickness);
 
 #endif /* __GPENCIL_TRACE_H__ */
