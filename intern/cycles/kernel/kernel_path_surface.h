@@ -101,7 +101,7 @@ ccl_device void accum_light_tree_contribution(KernelGlobals *kg,
          * see comment in light_tree_sample() for this piece of code */
         float sum = 0.0f;
         for (int i = 0; i < num_emitters; ++i) {
-          sum += calc_light_importance(kg, P, N, offset, i);
+          sum += calc_light_importance(kg, -1.0f, P, N, offset, i);
         }
 
         if (sum == 0.0f) {
@@ -115,7 +115,7 @@ ccl_device void accum_light_tree_contribution(KernelGlobals *kg,
         float prob = 0.0f;
         int light = num_emitters - 1;
         for (int i = 1; i < num_emitters + 1; ++i) {
-          prob = calc_light_importance(kg, P, N, offset, i - 1) * sum_inv;
+          prob = calc_light_importance(kg, -1.0f, P, N, offset, i - 1) * sum_inv;
           cdf_R = cdf_L + prob;
           if (randu < cdf_R) {
             light = i - 1;
@@ -194,8 +194,8 @@ ccl_device void accum_light_tree_contribution(KernelGlobals *kg,
         /* go down one of the child nodes */
 
         /* evaluate the importance of each of the child nodes */
-        float I_L = calc_node_importance(kg, P, N, child_offsetL);
-        float I_R = calc_node_importance(kg, P, N, child_offsetR);
+        float I_L = calc_node_importance(kg, -1.0f, P, N, child_offsetL);
+        float I_R = calc_node_importance(kg, -1.0f, P, N, child_offsetR);
 
         if ((I_L == 0.0f) && (I_R == 0.0f)) {
           return;
@@ -396,9 +396,9 @@ ccl_device_noinline_cpu void kernel_branched_path_surface_connect_light(
                            sd->time,
                            sd->P_pick,
                            sd->N_pick,
+                           -1.0f,
                            state->bounce,
-                           &ls,
-                           false)) {
+                           &ls)) {
             /* The sampling probability returned by lamp_light_sample assumes that all lights were
              * sampled. However, this code only samples lamps, so if the scene also had mesh
              * lights, the real probability is twice as high. */
@@ -534,9 +534,9 @@ ccl_device_inline void kernel_path_surface_connect_light(KernelGlobals *kg,
                      sd->time,
                      sd->P_pick,
                      sd->N_pick,
+                     -1.0f,
                      state->bounce,
-                     &ls,
-                     has_volume)) {
+                     &ls)) {
       float terminate = path_state_rng_light_termination(kg, state);
       accum_light_contribution(kg,
                                sd,
@@ -601,7 +601,7 @@ ccl_device bool kernel_path_surface_bounce(KernelGlobals *kg,
 
     /* setup ray */
     ray->P = ray_offset(sd->P, (label & LABEL_TRANSMIT) ? -sd->Ng : sd->Ng);
-    kernel_update_light_picking(kg, sd, state);
+    kernel_update_light_picking(kg, sd, state, NULL);
     ray->D = normalize(bsdf_omega_in);
 
     if (state->bounce == 0)
@@ -634,7 +634,7 @@ ccl_device bool kernel_path_surface_bounce(KernelGlobals *kg,
 
     /* setup ray position, direction stays unchanged */
     ray->P = ray_offset(sd->P, -sd->Ng);
-    kernel_update_light_picking(kg, sd, state);
+    kernel_update_light_picking(kg, sd, state, NULL);
 
 #  ifdef __RAY_DIFFERENTIALS__
     ray->dP = sd->dP;

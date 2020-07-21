@@ -942,6 +942,8 @@ typedef ccl_addr_space struct ccl_align(16) ShaderData
   float3 P_pick;
   /* normal used in light picking */
   float3 N_pick;
+  /* ray dist used for light picking */
+  float t_pick;
   /* view/incoming direction */
   float3 I;
   /* shader id */

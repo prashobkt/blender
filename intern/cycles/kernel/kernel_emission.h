@@ -228,7 +228,12 @@ ccl_device_noinline float3 indirect_primitive_emission(KernelGlobals *kg,
     /* multiple importance sampling, get triangle light pdf,
      * and compute weight with respect to BSDF pdf */
     float pdf = triangle_light_pdf(kg, sd, t);
-    pdf *= light_distribution_pdf(kg, P, N, sd->prim, sd->object, has_volume);
+    if ((path_flag & PATH_RAY_VOLUME_SCATTER) && sd->t_pick > 0.0f) {
+      pdf *= light_distribution_pdf(kg, sd->P_pick, sd->N_pick, sd->t_pick, sd->prim, sd->object);
+    }
+    else {
+      pdf *= light_distribution_pdf(kg, P, N, -1.0f, sd->prim, sd->object);
+    }
     float mis_weight = power_heuristic(bsdf_pdf, pdf);
 
     return L * mis_weight;
@@ -269,7 +274,6 @@ ccl_device_noinline_cpu void indirect_lamp_emission(KernelGlobals *kg,
     float3 lamp_L = direct_emissive_eval(
         kg, emission_sd, &ls, state, -ray->D, ray->dD, ls.t, ray->time);
 
-    bool has_volume = false;
 #ifdef __VOLUME__
     if (state->volume_stack[0].shader != SHADER_NONE) {
       /* shadow attenuation */
@@ -280,7 +284,6 @@ ccl_device_noinline_cpu void indirect_lamp_emission(KernelGlobals *kg,
       lamp_L *= volume_tp;
     }
 
-    has_volume = ((emission_sd->flag & SD_HAS_VOLUME) != 0);
 #endif
 
     if (!(state->flag & PATH_RAY_MIS_SKIP)) {
@@ -288,7 +291,13 @@ ccl_device_noinline_cpu void indirect_lamp_emission(KernelGlobals *kg,
        * and compute weight with respect to BSDF pdf */
 
       /* multiply with light picking probablity to pdf */
-      ls.pdf *= light_distribution_pdf(kg, ray->P, N, ~ls.lamp, -1, has_volume);
+      if ((state->flag & PATH_RAY_VOLUME_SCATTER) && emission_sd->t_pick > 0.0f) {
+        ls.pdf *= light_distribution_pdf(
+            kg, emission_sd->P_pick, emission_sd->N_pick, emission_sd->t_pick, ~ls.lamp, -1);
+      }
+      else {
+        ls.pdf *= light_distribution_pdf(kg, ray->P, N, -1.0f, ~ls.lamp, -1);
+      }
       float mis_weight = power_heuristic(state->ray_pdf, ls.pdf);
       lamp_L *= mis_weight;
     }
@@ -321,11 +330,6 @@ ccl_device_noinline_cpu float3 indirect_background(KernelGlobals *kg,
       return make_float3(0.0f, 0.0f, 0.0f);
   }
 
-  bool has_volume = false;
-#  if defined(__BACKGROUND_MIS__) && defined(__VOLUME__)
-  /* This has to be done before shader_setup_* below. */
-  has_volume = ((emission_sd->flag & SD_HAS_VOLUME) != 0);
-#  endif
   /* Evaluate background shader. */
   float3 L = make_float3(0.0f, 0.0f, 0.0f);
   if (!shader_constant_emission_eval(kg, shader, &L)) {
@@ -360,7 +364,7 @@ ccl_device_noinline_cpu float3 indirect_background(KernelGlobals *kg,
      * direction, and compute weight with respect to BSDF pdf */
     float pdf = background_light_pdf(kg, P_pick, ray->D);
     int background_index = kernel_data.integrator.background_light_index;
-    pdf *= light_distribution_pdf(kg, P_pick, N_pick, ~background_index, -1, has_volume);
+    pdf *= light_distribution_pdf(kg, P_pick, N_pick, -1.0f, ~background_index, -1);
     float mis_weight = power_heuristic(state->ray_pdf, pdf);
 
     return L * mis_weight;

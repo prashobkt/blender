@@ -50,9 +50,9 @@ ccl_device_inline void kernel_path_volume_connect_light(KernelGlobals *kg,
                      sd->time,
                      sd->P_pick,
                      sd->N_pick,
+                     sd->t_pick,
                      state->bounce,
-                     &ls,
-                     true)) {
+                     &ls)) {
       float terminate = path_state_rng_light_termination(kg, state);
       has_emission = direct_emission(
           kg, sd, emission_sd, &ls, state, &light_ray, &L_light, &is_lamp, terminate);
@@ -160,7 +160,6 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
   for (int i = 0; i < num_lights; ++i) {
     /* sample one light at random */
     int num_samples = 1;
-    int num_all_lights = 1;
     uint lamp_rng_hash = state->rng_hash;
     bool double_pdf = false;
     bool is_mesh_light = false;
@@ -173,8 +172,6 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
         if (UNLIKELY(light_select_reached_max_bounces(kg, i, state->bounce))) {
           continue;
         }
-        num_samples = light_select_num_samples(kg, i);
-        num_all_lights = kernel_data.integrator.num_all_lights;
         lamp_rng_hash = cmj_hash(state->rng_hash, i);
         double_pdf = kernel_data.integrator.pdf_triangles != 0.0f;
       }
@@ -216,11 +213,11 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
                      light_u,
                      light_v,
                      sd->time,
-                     sd->P_pick,
-                     sd->N_pick,
+                     ray->P + ray->D * ray->t,
+                     -ray->D,
+                     ray->t,
                      state->bounce,
-                     &ls,
-                     true);
+                     &ls);
 
         /* sample position on volume segment */
         float rphase = path_branched_rng_1D(
@@ -249,9 +246,9 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
                            sd->time,
                            sd->P_pick,
                            sd->N_pick,
+                           -1.0,
                            state->bounce,
-                           &ls,
-                           true)) {
+                           &ls)) {
             if (double_pdf) {
               ls.pdf *= 2.0f;
             }
