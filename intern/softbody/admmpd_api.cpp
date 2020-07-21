@@ -39,9 +39,9 @@
 #include <memory>
 
 struct ADMMPDInternalData {
-  admmpd::Options *options;
-  admmpd::SolverData *data;
-  admmpd::Collision *collision;
+  std::shared_ptr<admmpd::Options> options;
+  std::shared_ptr<admmpd::SolverData> data;
+  std::shared_ptr<admmpd::Collision> collision;
   std::shared_ptr<admmpd::Mesh> mesh;
   int in_totverts; // number of input verts
 };
@@ -52,17 +52,12 @@ void admmpd_dealloc(ADMMPDInterfaceData *iface)
     return;
 
   iface->totverts = 0; // output vertices
-
   if (iface->idata)
   {
+    iface->idata->options.reset();
+    iface->idata->data.reset();
+    iface->idata->collision.reset();
     iface->idata->mesh.reset();
-    if (iface->idata->options)
-      delete iface->idata->options;
-    if (iface->idata->data)
-      delete iface->idata->data;
-    if (iface->idata->collision)
-      delete iface->idata->collision;
-    delete iface->idata;
   }
 
   iface->idata = NULL;
@@ -140,6 +135,9 @@ static int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, float *in_verts,
     return 0;
   }
 
+  std::shared_ptr<admmpd::EmbeddedMesh> emb_msh = std::dynamic_pointer_cast<admmpd::EmbeddedMesh>(iface->idata->mesh);
+  iface->idata->collision = std::make_shared<admmpd::EmbeddedMeshCollision>(emb_msh);
+
   return 1;
 }
 
@@ -159,11 +157,8 @@ int admmpd_init(ADMMPDInterfaceData *iface, ADMMPDInitData *in_mesh)
 
   // Generate solver data
   iface->idata = new ADMMPDInternalData();
-  iface->idata->options = new admmpd::Options();
-  admmpd::Options *options = iface->idata->options;
-  iface->idata->data = new admmpd::SolverData();
-  admmpd::SolverData *data = iface->idata->data;
-  iface->idata->collision = NULL;
+  iface->idata->options = std::make_shared<admmpd::Options>();
+  iface->idata->data = std::make_shared<admmpd::SolverData>();
 
   int gen_success = 0;
   switch (iface->init_mode)
@@ -174,7 +169,6 @@ int admmpd_init(ADMMPDInterfaceData *iface, ADMMPDInitData *in_mesh)
     } break;
     case 1: {
       gen_success = admmpd_init_with_lattice(iface,in_mesh->verts,in_mesh->faces);
-//      iface->idata->collision = new admmpd::EmbeddedMeshCollision(iface->idata->embmesh);
     } break;
   }
   if (!gen_success || iface->totverts==0)
@@ -189,8 +183,8 @@ int admmpd_init(ADMMPDInterfaceData *iface, ADMMPDInitData *in_mesh)
   {
     init_success = admmpd::Solver().init(
       iface->idata->mesh.get(),
-      options,
-      data);
+      iface->idata->options.get(),
+      iface->idata->data.get());
   }
   catch(const std::exception &e)
   {
@@ -307,16 +301,16 @@ void admmpd_solve(ADMMPDInterfaceData *iface)
   if (iface == NULL)
     return;
 
-  if (iface->idata == NULL || iface->idata->options == NULL || iface->idata->data == NULL)
+  if (iface->idata == NULL || !iface->idata->options || !iface->idata->data)
     return;
 
   try
   {
     admmpd::Solver().solve(
         iface->idata->mesh.get(),
-        iface->idata->options,
-        iface->idata->data,
-        iface->idata->collision);
+        iface->idata->options.get(),
+        iface->idata->data.get(),
+        iface->idata->collision.get());
   }
   catch(const std::exception &e)
   {

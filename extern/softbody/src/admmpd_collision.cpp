@@ -90,7 +90,14 @@ Collision::detect_against_obs(
 	return ret;
 }
 
-#if 0
+EmbeddedMeshCollision::EmbeddedMeshCollision(std::shared_ptr<EmbeddedMesh> mesh_) :
+	mesh(mesh_)
+{
+	mesh_emb_V0 = mesh->rest_facet_verts();
+	mesh_F = mesh->facets();
+	mesh_T = mesh->prims();
+}
+
 
 int EmbeddedMeshCollision::detect(
 	const Eigen::MatrixXd *x0,
@@ -110,7 +117,7 @@ int EmbeddedMeshCollision::detect(
 
 	// We store the results of the collisions in a per-vertex buffer.
 	// This is a workaround so we can create them in threads.
-	int nev = mesh->emb_rest_x.rows();
+	int nev = mesh->rest_facet_verts().rows();
 	if ((int)per_vertex_pairs.size() != nev)
 		per_vertex_pairs.resize(nev, std::vector<VFCollisionPair>());
 
@@ -143,7 +150,7 @@ int EmbeddedMeshCollision::detect(
 
 		std::vector<VFCollisionPair> &vi_pairs = td->per_vertex_pairs->at(vi);
 		vi_pairs.clear();
-		Vector3d pt_t1 = td->embmesh->get_mapped_vertex(td->x1,vi);
+		Vector3d pt_t1 = td->embmesh->get_mapped_facet_vertex(*td->x1,vi);
 
 		// Special case, check if we are below the floor
 		if (td->settings->floor_collision)
@@ -191,7 +198,7 @@ int EmbeddedMeshCollision::detect(
 		.settings = &settings,
 		.collision = this,
 		.tetmesh = nullptr,
-		.embmesh = mesh,
+		.embmesh = mesh.get(),
 		.obsdata = &obsdata,
 		.x0 = x0,
 		.x1 = x1,
@@ -219,7 +226,7 @@ void EmbeddedMeshCollision::init_bvh(
 {
 
 	(void)(x0);
-	int nt = mesh->lat_tets.rows();
+	int nt = mesh->prims().rows();
 	if (nt==0)
 		throw std::runtime_error("EmbeddedMeshCollision::init_bvh: No tets");
 
@@ -229,7 +236,7 @@ void EmbeddedMeshCollision::init_bvh(
 	// Update leaf boxes
 	for (int i=0; i<nt; ++i)
 	{
-		RowVector4i tet = mesh->lat_tets.row(i);
+		RowVector4i tet = mesh->prims().row(i);
 		tet_boxes[i].setEmpty();
 		tet_boxes[i].extend(x1->row(tet[0]).transpose());
 		tet_boxes[i].extend(x1->row(tet[1]).transpose());
@@ -250,14 +257,14 @@ void EmbeddedMeshCollision::update_bvh(
 		return;
 	}
 
-	int nt = mesh->lat_tets.rows();
+	int nt = mesh->prims().rows();
 	if ((int)tet_boxes.size() != nt)
 		tet_boxes.resize(nt);
 
 	// Update leaf boxes
 	for (int i=0; i<nt; ++i)
 	{
-		RowVector4i tet = mesh->lat_tets.row(i);
+		RowVector4i tet = mesh->prims().row(i);
 		tet_boxes[i].setEmpty();
 		tet_boxes[i].extend(x1->row(tet[0]).transpose());
 		tet_boxes[i].extend(x1->row(tet[1]).transpose());
@@ -302,17 +309,18 @@ EmbeddedMeshCollision::detect_against_self(
 	std::pair<bool,VFCollisionPair> ret = 
 		std::make_pair(false, VFCollisionPair());
 
-	int self_tet_idx = mesh->emb_vtx_to_tet[pt_idx];
-	RowVector4i self_tet = mesh->lat_tets.row(self_tet_idx);
+	int self_tet_idx = mesh->emb_vtx_to_tet()[pt_idx];
+	RowVector4i self_tet = mesh->prims().row(self_tet_idx);
 	std::vector<int> skip_tet_inds = {self_tet[0],self_tet[1],self_tet[2],self_tet[3]};
-	PointInTetMeshTraverse<double> pt_in_tet(pt,x,&mesh->lat_tets,skip_tet_inds);
+	
+	PointInTetMeshTraverse<double> pt_in_tet(pt,x,&mesh_T,skip_tet_inds);
 	bool in_mesh = tet_tree.traverse(pt_in_tet);
 	if (!in_mesh)
 		return ret;
 
 	// Transform point to rest shape
 	int tet_idx = pt_in_tet.output.prim;
-	RowVector4i tet = mesh->lat_tets.row(tet_idx);
+	RowVector4i tet = mesh->prims().row(tet_idx);
 	Vector4d barys = geom::point_tet_barys(pt,
 		x->row(tet[0]), x->row(tet[1]),
 		x->row(tet[2]), x->row(tet[3]));
@@ -323,28 +331,28 @@ EmbeddedMeshCollision::detect_against_self(
 	}
 
 	Vector3d rest_pt =
-		barys[0]*mesh->lat_rest_x.row(tet[0])+
-		barys[1]*mesh->lat_rest_x.row(tet[1])+
-		barys[2]*mesh->lat_rest_x.row(tet[2])+
-		barys[3]*mesh->lat_rest_x.row(tet[3]);
+		barys[0]*mesh->rest_prim_verts().row(tet[0])+
+		barys[1]*mesh->rest_prim_verts().row(tet[1])+
+		barys[2]*mesh->rest_prim_verts().row(tet[2])+
+		barys[3]*mesh->rest_prim_verts().row(tet[3]);
 
 	// Find triangle surface projection that doesn't
 	// include the penetration vertex
 	std::vector<int> skip_tri_inds = {pt_idx};
 	NearestTriangleTraverse<double> nearest_tri(rest_pt,
-		&mesh->emb_rest_x,&mesh->emb_faces,skip_tri_inds);
-	mesh->emb_rest_tree.traverse(nearest_tri);
+		&mesh_emb_V0,&mesh_F,skip_tri_inds);
+	mesh->emb_rest_tree().traverse(nearest_tri);
 
 	if (nearest_tri.output.prim<0)
 		throw std::runtime_error("EmbeddedMeshCollision: Failed to find triangle");
 
 	// If we're on the "wrong" side of the nearest
 	// triangle, we're probably outside the mesh.
-	RowVector3i hit_face = mesh->emb_faces.row(nearest_tri.output.prim);
+	RowVector3i hit_face = mesh->facets().row(nearest_tri.output.prim);
 	Vector3d tri_v[3] = {
-		mesh->emb_rest_x.row(hit_face[0]),
-		mesh->emb_rest_x.row(hit_face[1]),
-		mesh->emb_rest_x.row(hit_face[2])
+		mesh->rest_facet_verts().row(hit_face[0]),
+		mesh->rest_facet_verts().row(hit_face[1]),
+		mesh->rest_facet_verts().row(hit_face[2])
 	};
 
 	Vector3d tri_n = (tri_v[1]-tri_v[0]).cross(tri_v[2]-tri_v[0]);
@@ -362,11 +370,11 @@ EmbeddedMeshCollision::detect_against_self(
 	ret.second.q_pt = nearest_tri.output.pt_on_tri;
 
 	// Compute barycoords of projection
-	RowVector3i f = mesh->emb_faces.row(nearest_tri.output.prim);
+	RowVector3i f = mesh->facets().row(nearest_tri.output.prim);
 	Vector3d v3[3] = {
-		mesh->emb_rest_x.row(f[0]),
-		mesh->emb_rest_x.row(f[1]),
-		mesh->emb_rest_x.row(f[2])};
+		mesh->rest_facet_verts().row(f[0]),
+		mesh->rest_facet_verts().row(f[1]),
+		mesh->rest_facet_verts().row(f[2])};
 	ret.second.q_bary = geom::point_triangle_barys<double>(
 		nearest_tri.output.pt_on_tri, v3[0], v3[1], v3[2]);
 	if (ret.second.q_bary.minCoeff()<-1e-8 || ret.second.q_bary.sum() > 1+1e-8)
@@ -386,7 +394,7 @@ void EmbeddedMeshCollision::graph(
 	if (np==0)
 		return;
 
-	int nv = mesh->lat_rest_x.rows();
+	int nv = mesh->rest_prim_verts().rows();
 	if ((int)g.size() < nv)
 		g.resize(nv, std::set<int>());
 
@@ -398,8 +406,8 @@ void EmbeddedMeshCollision::graph(
 
 		if (!pair.p_is_obs)
 		{
-			int tet_idx = mesh->emb_vtx_to_tet[pair.p_idx];
-			RowVector4i tet = mesh->lat_tets.row(tet_idx);
+			int tet_idx = mesh->emb_vtx_to_tet()[pair.p_idx];
+			RowVector4i tet = mesh->prims().row(tet_idx);
 			stencil.emplace(tet[0]);
 			stencil.emplace(tet[1]);
 			stencil.emplace(tet[2]);
@@ -407,11 +415,11 @@ void EmbeddedMeshCollision::graph(
 		}
 		if (!pair.q_is_obs)
 		{
-			RowVector3i emb_face = mesh->emb_faces.row(pair.q_idx);
+			RowVector3i emb_face = mesh->facets().row(pair.q_idx);
 			for (int j=0; j<3; ++j)
 			{
-				int tet_idx = mesh->emb_vtx_to_tet[emb_face[j]];
-				RowVector4i tet = mesh->lat_tets.row(tet_idx);
+				int tet_idx = mesh->emb_vtx_to_tet()[emb_face[j]];
+				RowVector4i tet = mesh->prims().row(tet_idx);
 				stencil.emplace(tet[0]);
 				stencil.emplace(tet[1]);
 				stencil.emplace(tet[2]);
@@ -454,7 +462,7 @@ void EmbeddedMeshCollision::linearize(
 		const Vector2i &pair_idx = vf_pairs[i];
 		VFCollisionPair &pair = per_vertex_pairs[pair_idx[0]][pair_idx[1]];
 		int emb_p_idx = pair.p_idx;
-		Vector3d p_pt = mesh->get_mapped_vertex(x,emb_p_idx);
+		Vector3d p_pt = mesh->get_mapped_facet_vertex(*x,emb_p_idx);
 
 		//
 		// If we collided with an obstacle
@@ -486,9 +494,9 @@ void EmbeddedMeshCollision::linearize(
 
 			// Get the four deforming verts that embed
 			// the surface vertices, and add constraints on those.
-			RowVector4d bary = mesh->emb_barys.row(emb_p_idx);
-			int tet_idx = mesh->emb_vtx_to_tet[emb_p_idx];
-			RowVector4i tet = mesh->lat_tets.row(tet_idx);
+			RowVector4d bary = mesh->emb_barycoords().row(emb_p_idx);
+			int tet_idx = mesh->emb_vtx_to_tet()[emb_p_idx];
+			RowVector4i tet = mesh->prims().row(tet_idx);
 			int c_idx = d->size();
 			d->emplace_back(q_n.dot(pair.q_pt));
 			for (int j=0; j<4; ++j)
@@ -505,18 +513,18 @@ void EmbeddedMeshCollision::linearize(
 			d->emplace_back(0);
 
 			// Compute the normal in the deformed space
-			RowVector3i q_face = mesh->emb_faces.row(pair.q_idx);
-			Vector3d q_v0 = mesh->get_mapped_vertex(x,q_face[0]);
-			Vector3d q_v1 = mesh->get_mapped_vertex(x,q_face[1]);
-			Vector3d q_v2 = mesh->get_mapped_vertex(x,q_face[2]);
+			RowVector3i q_face = mesh->facets().row(pair.q_idx);
+			Vector3d q_v0 = mesh->get_mapped_facet_vertex(*x,q_face[0]);
+			Vector3d q_v1 = mesh->get_mapped_facet_vertex(*x,q_face[1]);
+			Vector3d q_v2 = mesh->get_mapped_facet_vertex(*x,q_face[2]);
 			Vector3d q_n = (q_v1-q_v0).cross(q_v2-q_v0);
 			q_n.normalize();
 
 			// The penetrating vertex:
 			{
-				int tet_idx = mesh->emb_vtx_to_tet[emb_p_idx];
-				RowVector4d bary = mesh->emb_barys.row(emb_p_idx);
-				RowVector4i tet = mesh->lat_tets.row(tet_idx);
+				int tet_idx = mesh->emb_vtx_to_tet()[emb_p_idx];
+				RowVector4d bary = mesh->emb_barycoords().row(emb_p_idx);
+				RowVector4i tet = mesh->prims().row(tet_idx);
 				for (int j=0; j<4; ++j)
 				{
 					trips->emplace_back(c_idx, tet[j]*3+0, bary[j]*q_n[0]);
@@ -529,9 +537,9 @@ void EmbeddedMeshCollision::linearize(
 			for (int j=0; j<3; ++j)
 			{
 				int emb_q_idx = q_face[j];
-				RowVector4d bary = mesh->emb_barys.row(emb_q_idx);
-				int tet_idx = mesh->emb_vtx_to_tet[emb_q_idx];
-				RowVector4i tet = mesh->lat_tets.row(tet_idx);
+				RowVector4d bary = mesh->emb_barycoords().row(emb_q_idx);
+				int tet_idx = mesh->emb_vtx_to_tet()[emb_q_idx];
+				RowVector4i tet = mesh->prims().row(tet_idx);
 				for (int k=0; k<4; ++k)
 				{
 					trips->emplace_back(c_idx, tet[k]*3+0, -pair.q_bary[j]*bary[k]*q_n[0]);
@@ -546,73 +554,4 @@ void EmbeddedMeshCollision::linearize(
 
 } // end jacobian
 
-#endif
-
 } // namespace admmpd
-
-/*
-std::pair<bool,VFCollisionPair>
-Collision::detect_point_against_mesh(
-        int pt_idx,
-        bool pt_is_obs,
-        const Eigen::Vector3d &pt,
-        bool mesh_is_obs,
-        const EmbeddedMesh *emb_mesh,
-        const Eigen::MatrixXd *mesh_tets_x,
-        const AABBTree<double,3> *mesh_tets_tree) const
-{
-	std::pair<bool,VFCollisionPair> ret = 
-		std::make_pair(false, VFCollisionPair());
-
-	if (mesh_tets_x->rows()==0)
-		return ret;
-
-	// Point in tet?
-	PointInTetMeshTraverse<double> pt_in_tet(pt,mesh_tets_x,&emb_mesh->lat_tets);
-	bool in_mesh = mesh_tets_tree->traverse(pt_in_tet);
-	if (!in_mesh)
-		return ret;
-
-	// Transform to rest shape
-	int tet_idx = pt_in_tet.output.prim;
-	RowVector4i tet = emb_mesh->lat_tets.row(tet_idx);
-	Vector4d barys = geom::point_tet_barys(pt,
-		mesh_tets_x->row(tet[0]), mesh_tets_x->row(tet[1]),
-		mesh_tets_x->row(tet[2]), mesh_tets_x->row(tet[3]));
-	Vector3d rest_pt =
-		barys[0]*emb_mesh->lat_rest_x.row(tet[0])+
-		barys[1]*emb_mesh->lat_rest_x.row(tet[1])+
-		barys[2]*emb_mesh->lat_rest_x.row(tet[2])+
-		barys[3]*emb_mesh->lat_rest_x.row(tet[3]);
-
-	// We are inside the lattice. Find nearest
-	// face and see if we are on the inside of the mesh.
-	NearestTriangleTraverse<double> nearest_tri(rest_pt,
-		&emb_mesh->emb_rest_x,&emb_mesh->emb_faces);
-	emb_mesh->emb_rest_tree.traverse(nearest_tri);
-
-	if (nearest_tri.output.prim < 0)
-		throw std::runtime_error("detect_point_against_mesh failed to project out");
-
-	RowVector3i f = emb_mesh->emb_faces.row(nearest_tri.output.prim);
-	Vector3d fv[3] = {
-		emb_mesh->emb_rest_x.row(f[0]),
-		emb_mesh->emb_rest_x.row(f[1]),
-		emb_mesh->emb_rest_x.row(f[2])
-	};
-	Vector3d n = (fv[1]-fv[0]).cross(fv[2]-fv[0]);
-	n.normalize();
-	if ((rest_pt-fv[0]).dot(n)>0)
-		return ret; // outside of surface
-
-	ret.first = true;
-	ret.second.p_idx = pt_idx;
-	ret.second.p_is_obs = pt_is_obs;
-	ret.second.q_idx = 
-	ret.second.q_is_obs = mesh_is_obs;
-	ret.second.q_bary = geom::point_triangle_barys<double>(
-		nearest_tri.output.pt_on_tri, fv[0], fv[1], fv[2]);
-
-	return ret;
-} // end detect_point_against_mesh
-*/

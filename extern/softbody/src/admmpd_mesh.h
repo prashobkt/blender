@@ -33,7 +33,7 @@ public:
     // it's just one-to-one, but embedded meshes use bary weighting.
     virtual Eigen::Vector3d get_mapped_facet_vertex(
         Eigen::Ref<const Eigen::MatrixXd> prim_verts,
-        int facet_vertex_idx) = 0;
+        int facet_vertex_idx) const = 0;
 
     // ====================
     //  Utility
@@ -98,14 +98,15 @@ public:
 
     Eigen::Ref<const Eigen::MatrixXi> prims() const { return lat_T; }
     Eigen::Ref<const Eigen::MatrixXd> rest_prim_verts() const { return lat_V0; }
-
-    // Facets are the embedded faces of the tet mesh
     Eigen::Ref<const Eigen::MatrixXi> facets() const { return emb_F; }
     Eigen::Ref<const Eigen::MatrixXd> rest_facet_verts() const { return emb_V0; }
+    Eigen::Ref<const Eigen::VectorXi> emb_vtx_to_tet() const { return emb_v_to_tet; }
+    Eigen::Ref<const Eigen::MatrixXd> emb_barycoords() const { return emb_barys; }
+    const admmpd::AABBTree<double,3> &emb_rest_tree() const { return emb_rest_facet_tree; }
 
     Eigen::Vector3d get_mapped_facet_vertex(
         Eigen::Ref<const Eigen::MatrixXd> prim_verts,
-        int facet_vertex_idx);
+        int facet_vertex_idx) const;
 
     void compute_masses(
         Eigen::Ref<const Eigen::MatrixXd> x,
@@ -160,7 +161,7 @@ public:
 
     Eigen::Vector3d get_mapped_facet_vertex(
         Eigen::Ref<const Eigen::MatrixXd> prim_verts,
-        int facet_vertex_idx)
+        int facet_vertex_idx) const
         { return prim_verts.row(facet_vertex_idx); }
 
     void compute_masses(

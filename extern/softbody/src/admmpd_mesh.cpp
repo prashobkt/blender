@@ -308,7 +308,7 @@ bool EmbeddedMesh::compute_embedding()
 
 Eigen::Vector3d EmbeddedMesh::get_mapped_facet_vertex(
 	Eigen::Ref<const Eigen::MatrixXd> prim_verts,
-	int facet_vertex_idx)
+	int facet_vertex_idx) const
 {
     int t_idx = emb_v_to_tet[facet_vertex_idx];
     RowVector4i tet = lat_T.row(t_idx);

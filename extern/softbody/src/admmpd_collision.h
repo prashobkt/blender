@@ -6,6 +6,7 @@
 
 #include "admmpd_bvh.h"
 #include "admmpd_types.h"
+#include "admmpd_mesh.h"
 #include <set>
 
 namespace admmpd {
@@ -89,7 +90,7 @@ public:
     virtual void set_floor(double z) { settings.floor_z=z; }
     virtual double get_floor() const { return settings.floor_z; }
 
-    // Linearize the constraints and return Jacobian.
+    // Linearize the constraints about x and return Jacobian.
     virtual void linearize(
         const Eigen::MatrixXd *x,
     	std::vector<Eigen::Triplet<double> > *trips,
@@ -109,12 +110,10 @@ public:
         const Eigen::MatrixXd *x) const = 0;
 };
 
-#if 0
-
 // Collision detection against multiple meshes
 class EmbeddedMeshCollision : public Collision {
 public:
-    EmbeddedMeshCollision(const EmbeddedMesh *mesh_) : mesh(mesh_){}
+    EmbeddedMeshCollision(std::shared_ptr<EmbeddedMesh> mesh_);
 
     // Performs collision detection and stores pairs
     int detect(
@@ -148,9 +147,15 @@ public:
 
 protected:
     // A ptr to the embedded mesh data
-    const EmbeddedMesh *mesh;
+    std::shared_ptr<EmbeddedMesh> mesh;
     std::vector<Eigen::AlignedBox<double,3> > tet_boxes;
     AABBTree<double,3> tet_tree;
+
+    // Copies for now because I don't know how to 
+    // go from Eigen::Ref to pointer
+    Eigen::MatrixXd mesh_emb_V0;
+    Eigen::MatrixXi mesh_F;
+    Eigen::MatrixXi mesh_T;
 
     // Pairs are compute on detect
     std::vector<Eigen::Vector2i> vf_pairs; // index into per_vertex_pairs
@@ -162,8 +167,6 @@ protected:
         const Eigen::Vector3d &pt,
         const Eigen::MatrixXd *x) const;
 };
-
-#endif
 
 } // namespace admmpd
 
