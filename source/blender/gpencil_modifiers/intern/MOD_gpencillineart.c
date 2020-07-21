@@ -122,6 +122,20 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
   bGPdata *gpd = ob->data;
 
+  /* Guard early, don't trigger calculation when no gpencil frame is present. Probably should
+   * disable in the isModifierDisabled() function but we need addtional arg for depsgraph and
+   * gpd.*/
+  bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
+  if (gpl == NULL) {
+    return;
+  }
+  /* Need to call this or we don't get active frame? */
+  BKE_gpencil_frame_active_set(depsgraph, gpd);
+  bGPDframe *gpf = gpl->actframe;
+  if (gpf == NULL) {
+    return;
+  }
+
   bool is_render = (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER);
 
   if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_IGNORE)) {
@@ -166,15 +180,6 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
 
   /* If we reach here, means calculation is finished (LRT_SYNC_FRESH), we grab cache. flag reset is
    * done by calculation function.*/
-
-  bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
-  if (gpl == NULL) {
-    return;
-  }
-  bGPDframe *gpf = gpl->actframe;
-  if (gpf == NULL) {
-    return;
-  }
 
   generate_strokes_actual(md, depsgraph, ob, gpl, gpf);
 
