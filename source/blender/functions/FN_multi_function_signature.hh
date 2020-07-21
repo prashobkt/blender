@@ -33,9 +33,10 @@ namespace blender::fn {
 struct MFSignature {
   std::string function_name;
   /* Use RawAllocator so that a MultiFunction can have static storage duration. */
-  Vector<std::string, 4, RawAllocator> param_names;
-  Vector<MFParamType, 4, RawAllocator> param_types;
-  Vector<int, 4, RawAllocator> param_data_indices;
+  RawVector<std::string> param_names;
+  RawVector<MFParamType> param_types;
+  RawVector<int> param_data_indices;
+  bool depends_on_context = false;
 
   int data_index(int param_index) const
   {
@@ -156,6 +157,15 @@ class MFSignatureBuilder {
         data_.param_data_indices.append(vector_array_count_++);
         break;
     }
+  }
+
+  /* Context */
+
+  /** This indicates that the function accesses the context. This disables optimizations that
+   * depend on the fact that the function always performes the same operation. */
+  void depends_on_context()
+  {
+    data_.depends_on_context = true;
   }
 };
 

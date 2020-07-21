@@ -24,6 +24,8 @@
 
 #include "FN_attributes_ref.hh"
 
+#include "BKE_persistent_data_handle.hh"
+
 #include "particle_allocator.hh"
 #include "time_interval.hh"
 
@@ -50,6 +52,7 @@ struct SimulationInfluences {
   Map<std::string, Vector<const ParticleForce *>> particle_forces;
   Map<std::string, fn::AttributesInfoBuilder *> particle_attributes_builder;
   Vector<const ParticleEmitter *> particle_emitters;
+  VectorSet<ID *> used_data_blocks;
 };
 
 class SimulationSolveContext {
@@ -57,13 +60,58 @@ class SimulationSolveContext {
   Simulation &simulation_;
   Depsgraph &depsgraph_;
   const SimulationInfluences &influences_;
+  TimeInterval solve_interval_;
+  const bke::PersistentDataHandleMap &id_handle_map_;
 
  public:
   SimulationSolveContext(Simulation &simulation,
                          Depsgraph &depsgraph,
-                         const SimulationInfluences &influences)
-      : simulation_(simulation), depsgraph_(depsgraph), influences_(influences)
+                         const SimulationInfluences &influences,
+                         TimeInterval solve_interval,
+                         const bke::PersistentDataHandleMap &handle_map)
+      : simulation_(simulation),
+        depsgraph_(depsgraph),
+        influences_(influences),
+        solve_interval_(solve_interval),
+        id_handle_map_(handle_map)
   {
+  }
+
+  TimeInterval solve_interval() const
+  {
+    return solve_interval_;
+  }
+
+  const SimulationInfluences &influences() const
+  {
+    return influences_;
+  }
+
+  const bke::PersistentDataHandleMap &handle_map() const
+  {
+    return id_handle_map_;
+  }
+};
+
+class ParticleAllocators {
+ private:
+  Map<std::string, std::unique_ptr<ParticleAllocator>> &allocators_;
+
+ public:
+  ParticleAllocators(Map<std::string, std::unique_ptr<ParticleAllocator>> &allocators)
+      : allocators_(allocators)
+  {
+  }
+
+  ParticleAllocator *try_get_allocator(StringRef particle_simulation_name)
+  {
+    auto *ptr = allocators_.lookup_ptr_as(particle_simulation_name);
+    if (ptr != nullptr) {
+      return ptr->get();
+    }
+    else {
+      return nullptr;
+    }
   }
 };
 
@@ -97,12 +145,12 @@ class ParticleChunkContext {
 class ParticleEmitterContext {
  private:
   SimulationSolveContext &solve_context_;
-  Map<std::string, std::unique_ptr<ParticleAllocator>> &particle_allocators_;
+  ParticleAllocators &particle_allocators_;
   TimeInterval simulation_time_interval_;
 
  public:
   ParticleEmitterContext(SimulationSolveContext &solve_context,
-                         Map<std::string, std::unique_ptr<ParticleAllocator>> &particle_allocators,
+                         ParticleAllocators &particle_allocators,
                          TimeInterval simulation_time_interval)
       : solve_context_(solve_context),
         particle_allocators_(particle_allocators),
@@ -110,15 +158,14 @@ class ParticleEmitterContext {
   {
   }
 
+  SimulationSolveContext &solve_context()
+  {
+    return solve_context_;
+  }
+
   ParticleAllocator *try_get_particle_allocator(StringRef particle_simulation_name)
   {
-    auto *ptr = particle_allocators_.lookup_ptr_as(particle_simulation_name);
-    if (ptr != nullptr) {
-      return ptr->get();
-    }
-    else {
-      return nullptr;
-    }
+    return particle_allocators_.try_get_allocator(particle_simulation_name);
   }
 
   TimeInterval simulation_time_interval() const
@@ -141,6 +188,11 @@ class ParticleForceContext {
         particle_chunk_context_(particle_chunk_context),
         force_dst_(force_dst)
   {
+  }
+
+  SimulationSolveContext &solve_context()
+  {
+    return solve_context_;
   }
 
   const ParticleChunkContext &particle_chunk() const
