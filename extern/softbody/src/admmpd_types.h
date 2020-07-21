@@ -28,7 +28,7 @@ struct Options {
     double poisson; // Poisson ratio // TODO variable per-tet
     Eigen::Vector3d grav;
     Options() :
-        timestep_s(1.0/100.0),
+        timestep_s(1.0/24.0),
         max_admm_iters(30),
         max_cg_iters(10),
         max_gs_iters(100),
@@ -37,7 +37,7 @@ struct Options {
         mult_pk(0.01),
         min_res(1e-8),
         youngs(1000000),
-        poisson(0.299),
+        poisson(0.199),
         grav(0,0,-9.8)
         {}
 };

@@ -35,7 +35,7 @@ public:
             floor_z(-std::numeric_limits<double>::max()),
             floor_collision(true),
             obs_collision(true),
-            self_collision(true)
+            self_collision(false)
             {}
     } settings;
 

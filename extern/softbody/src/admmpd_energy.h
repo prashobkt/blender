@@ -10,9 +10,15 @@
 
 namespace admmpd {
 
+enum ELASTIC_ENERGY
+{
+	ELASTIC_ARAP, // As-rigid-as-possible
+	ELASTIC_NH // NeoHookean
+};
+
 class Lame {
 public:
-	int m_model; // 0=ARAP
+	ELASTIC_ENERGY m_model;
 	double m_mu;
 	double m_lambda;
 	double m_bulk_mod;
@@ -49,6 +55,30 @@ public:
 		double &volume,
 		double &weight,
 		std::vector< Eigen::Triplet<double> > &triplets);
+
+	// Solves proximal energy function
+	void solve_prox(
+		int index,
+		const Lame &lame,
+		const Eigen::Vector3d &s0,
+		Eigen::Vector3d &s);
+
+	// Returns gradient and energy (+ADMM penalty)
+	// of a material evaluated at s (singular values).
+	double energy_density(
+		const Lame &lame,
+		bool add_admm_penalty,
+		const Eigen::Vector3d &s0,
+		const Eigen::Vector3d &s,
+		Eigen::Vector3d *g=nullptr);
+
+	// Returns the Hessian of a material at S
+	// projected to nearest SPD
+	void hessian_spd(
+		const Lame &lame,
+		bool add_admm_penalty,
+		const Eigen::Vector3d &s,
+		Eigen::Matrix3d &H);
 
 };
 
