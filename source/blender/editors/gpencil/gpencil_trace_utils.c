@@ -250,8 +250,7 @@ void ED_gpencil_trace_data_to_strokes(Main *bmain,
                                       const int resolution,
                                       const int thickness)
 {
-  /* If the object has materials means it was created in a previous run.
-   * Check only filled slots.  */
+  /* Find materials and create them if not found.  */
   int mat_fill_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Stroke");
   int mat_mask_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Mask");
 
