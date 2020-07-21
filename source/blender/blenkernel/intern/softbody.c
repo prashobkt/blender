@@ -3566,6 +3566,7 @@ static void init_admmpd_interface(Object *ob, float (*vertexCos)[3])
   sb->admmpd->mesh_totfaces = totfaces;
   float default_goal = 0.7f;
   int defgroup_index = me->dvert ? (sb->vertgroup - 1) : -1;
+  int defgroup_index_spring = me->dvert ? BKE_object_defgroup_name_index(ob, sb->namedVG_Spring_K) : -1;
 
   // Initialize input vertices
   for (int i=0; i<me->totvert; ++i)
@@ -3579,14 +3580,10 @@ static void init_admmpd_interface(Object *ob, float (*vertexCos)[3])
     for (int j=0; j<3; ++j)
       in_verts[i*3+j] = vi[j];
 
-//    float goal = 0.f;
-//    if (ob->softflag & OB_SB_GOAL) {
-//      goal = default_goal;
+//    if (defgroup_index_spring != -1) {
+//      float stiff = BKE_defvert_find_weight(&me->dvert[i], defgroup_index_spring);
+//      printf("idx: %d/%d, stiff:% f\n", i, me->totvert, stiff);
 //    }
-//    if ((ob->softflag & OB_SB_GOAL) && (defgroup_index != -1)) {
-//      goal *= BKE_defvert_find_weight(&me->dvert[i], defgroup_index);
-//    }
-//    in_goals[i] = goal;
 
   } // end loop input surface verts
 

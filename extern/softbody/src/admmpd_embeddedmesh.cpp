@@ -1,5 +1,6 @@
 // Copyright Matt Overby 2020.
 // Distributed under the MIT License.
+#if 0
 
 #include "admmpd_embeddedmesh.h"
 #include "admmpd_geom.h"
@@ -380,3 +381,5 @@ Eigen::Vector3d EmbeddedMesh::get_mapped_vertex(
 }
 
 } // namespace admmpd
+
+#endif

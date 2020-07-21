@@ -285,8 +285,8 @@ typename Octree<T,DIM>::Node* Octree<T,DIM>::create_children(
                 node->prims.emplace_back(p_idx);
         }
         // Create children only if prims intersect
-        int np = node->prims.size();
-        for (int i=0; i<nchild && np>0; ++i)
+        bool has_prims = node->prims.size()>0;
+        for (int i=0; i<nchild && has_prims; ++i)
         {
 
             T step = node->halfwidth * 0.5;

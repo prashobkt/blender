@@ -90,6 +90,8 @@ Collision::detect_against_obs(
 	return ret;
 }
 
+#if 0
+
 int EmbeddedMeshCollision::detect(
 	const Eigen::MatrixXd *x0,
 	const Eigen::MatrixXd *x1)
@@ -543,6 +545,8 @@ void EmbeddedMeshCollision::linearize(
 	} // end loop pairs
 
 } // end jacobian
+
+#endif
 
 } // namespace admmpd
 

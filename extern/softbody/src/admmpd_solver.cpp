@@ -20,38 +20,33 @@ namespace admmpd {
 using namespace Eigen;
 
 bool Solver::init(
-    const Eigen::MatrixXd &V,
-	const Eigen::MatrixXi &T,
-	const Eigen::VectorXd &m,
+	const Mesh *mesh,
     const Options *options,
     SolverData *data)
 {
 	BLI_assert(data != NULL);
 	BLI_assert(options != NULL);
-	BLI_assert(V.rows() > 0);
-	BLI_assert(V.cols() == 3);
-	BLI_assert(T.rows() > 0);
-	BLI_assert(T.cols() == 4);
-	BLI_assert(m.rows() == V.rows());
+	BLI_assert(mesh);
+	BLI_assert(mesh->prims().cols()==4);
 
-	data->x = V;
-	data->v.resize(V.rows(),3);
+	data->x = mesh->rest_prim_verts();
+	data->v.resize(data->x.rows(), 3);
 	data->v.setZero();
-	data->tets = T;
-	data->m = m;
+	data->tets = mesh->prims();
+	mesh->compute_masses(data->x, options->density_kgm3, data->m);
 	if (!compute_matrices(options,data))
 		return false;
 
-	printf("Solver::init:\n\tNum tets: %d\n\tNum verts: %d\n",(int)T.rows(),(int)V.rows());
+	printf("Solver::init:\n\tNum tets: %d\n\tNum verts: %d\n",(int)data->tets.rows(),(int)data->x.rows());
 
 	return true;
 } // end init
 
 int Solver::solve(
+	const Mesh *mesh,
 	const Options *options,
 	SolverData *data,
-	Collision *collision,
-	Pin *pin)
+	Collision *collision)
 {
 	BLI_assert(data != NULL);
 	BLI_assert(options != NULL);
@@ -63,7 +58,7 @@ int Solver::solve(
 	// Init the solve which computes
 	// quantaties like M_xbar and makes sure
 	// the variables are sized correctly.
-	init_solve(options,data,collision,pin);
+	init_solve(mesh,options,data,collision);
 
 	// Begin solver loop
 	int iters = 0;
@@ -90,10 +85,10 @@ int Solver::solve(
 } // end solve
 
 void Solver::init_solve(
+	const Mesh *mesh,
 	const Options *options,
 	SolverData *data,
-	Collision *collision,
-    Pin *pin)
+	Collision *collision)
 {
 	BLI_assert(data != NULL);
 	BLI_assert(options != NULL);
@@ -119,29 +114,25 @@ void Solver::init_solve(
 	}
 
 	// Create pin constraint matrix
-	if (pin)
-	{
-		std::vector<Triplet<double> > trips;
-		std::vector<double> q_coeffs;
-		pin->linearize(&data->x, &trips, &q_coeffs);
-		if (q_coeffs.size()==0) // no springs
-		{
-			data->PtP.resize(nx*3,nx*3);
-			data->PtP.setZero();
-			data->Ptq.resize(nx*3);
-			data->Ptq.setZero();
-		}
-		else
-		{
-			// Scale stiffness by A diagonal max
-			double pin_k_scale = options->mult_pk * data->A_diag_max;
-			int np = q_coeffs.size();
-			RowSparseMatrix<double> P(np, nx*3);
-			P.setFromTriplets(trips.begin(), trips.end());
-			data->PtP = pin_k_scale * P.transpose()*P;
-			VectorXd q = Map<VectorXd>(q_coeffs.data(), q_coeffs.size());
-			data->Ptq = pin_k_scale * P.transpose()*q;
-		}
+	std::vector<Triplet<double> > trips;
+	std::vector<double> q_coeffs;
+	mesh->linearize_pins(trips, q_coeffs);
+	if (q_coeffs.size()==0)
+	{ // no springs
+		data->PtP.resize(nx*3,nx*3);
+		data->PtP.setZero();
+		data->Ptq.resize(nx*3);
+		data->Ptq.setZero();
+	}
+	else
+	{ // Scale stiffness by A diagonal max
+		double pin_k_scale = options->mult_pk * data->A_diag_max;
+		int np = q_coeffs.size();
+		RowSparseMatrix<double> P(np, nx*3);
+		P.setFromTriplets(trips.begin(), trips.end());
+		data->PtP = pin_k_scale * P.transpose()*P;
+		VectorXd q = Map<VectorXd>(q_coeffs.data(), q_coeffs.size());
+		data->Ptq = pin_k_scale * P.transpose()*q;
 	}
 
 	if (collision)
@@ -295,7 +286,7 @@ bool Solver::compute_matrices(
 	data->ldltA.compute(data->A);
 	data->b.resize(nx,3);
 	data->b.setZero();
-	data->A_diag_max = data->A.diagonal().maxCoeff();
+	data->A_diag_max = data->A.diagonal().lpNorm<Infinity>();
 
 	// Constraint data
 	data->C.resize(1,nx*3);

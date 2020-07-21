@@ -1,5 +1,6 @@
 // Copyright Matt Overby 2020.
 // Distributed under the MIT License.
+#if 0
 
 #ifndef ADMMPD_EMBEDDEDMESH_H_
 #define ADMMPD_EMBEDDEDMESH_H_
@@ -51,3 +52,4 @@ protected:
 } // namespace admmpd
 
 #endif // ADMMPD_EMBEDDEDMESH_H_
+#endif

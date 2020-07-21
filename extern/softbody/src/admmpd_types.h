@@ -4,6 +4,7 @@
 #ifndef ADMMPD_TYPES_H_
 #define ADMMPD_TYPES_H_
 
+//#include "admmpd_mesh.h"
 #include <Eigen/Geometry>
 #include <Eigen/Sparse>
 #include <Eigen/SparseCholesky>
@@ -26,18 +27,20 @@ struct Options {
     double min_res; // exit tolerance for global step
     double youngs; // Young's modulus // TODO variable per-tet
     double poisson; // Poisson ratio // TODO variable per-tet
+    double density_kgm3; // density of deformables
     Eigen::Vector3d grav;
     Options() :
-        timestep_s(1.0/24.0),
+        timestep_s(1.0/100.0),
         max_admm_iters(30),
         max_cg_iters(10),
         max_gs_iters(100),
         gs_omega(1),
         mult_ck(3),
-        mult_pk(0.01),
+        mult_pk(1),
         min_res(1e-8),
-        youngs(1000000),
-        poisson(0.199),
+        youngs(10000000),
+        poisson(0.399),
+        density_kgm3(1100),
         grav(0,0,-9.8)
         {}
 };

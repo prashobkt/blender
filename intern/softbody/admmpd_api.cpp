@@ -24,10 +24,9 @@
 #include "admmpd_api.h"
 #include "admmpd_types.h"
 #include "admmpd_solver.h"
-#include "admmpd_tetmesh.h"
+#include "admmpd_mesh.h"
 #include "admmpd_embeddedmesh.h"
 #include "admmpd_collision.h"
-#include "admmpd_pin.h"
 
 #include "tetgen_api.h"
 #include "DNA_mesh_types.h" // Mesh
@@ -38,14 +37,13 @@
 #include "MEM_guardedalloc.h" // 
 
 #include <iostream>
+#include <memory>
 
 struct ADMMPDInternalData {
   admmpd::Options *options;
   admmpd::SolverData *data;
-  admmpd::TetMeshData *tetmesh; // init_mode=0
-  admmpd::EmbeddedMesh *embmesh; // init_mode=1
   admmpd::Collision *collision;
-  admmpd::Pin *pin;
+  std::shared_ptr<admmpd::Mesh> mesh;
   int in_totverts; // number of input verts
 };
 
@@ -58,14 +56,15 @@ void admmpd_dealloc(ADMMPDInterfaceData *iface)
 
   if (iface->idata)
   {
+    iface->idata->mesh.reset();
     if (iface->idata->options)
       delete iface->idata->options;
     if (iface->idata->data)
       delete iface->idata->data;
-    if (iface->idata->tetmesh)
-      delete iface->idata->tetmesh;
-    if (iface->idata->embmesh)
-      delete iface->idata->embmesh;
+//    if (iface->idata->tetmesh)
+//      delete iface->idata->tetmesh;
+//    if (iface->idata->embmesh)
+//      delete iface->idata->embmesh;
     if (iface->idata->collision)
       delete iface->idata->collision;
     delete iface->idata;
@@ -74,9 +73,7 @@ void admmpd_dealloc(ADMMPDInterfaceData *iface)
   iface->idata = NULL;
 }
 
-static int admmpd_init_with_tetgen(
-  ADMMPDInterfaceData *iface, float *in_verts, unsigned int *in_faces,
-  Eigen::MatrixXd *V, Eigen::MatrixXi *T, Eigen::VectorXd *m)
+static int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, float *in_verts, unsigned int *in_faces)
 {
   TetGenRemeshData tg;
   init_tetgenremeshdata(&tg);
@@ -86,48 +83,43 @@ static int admmpd_init_with_tetgen(
   tg.in_totfaces = iface->mesh_totfaces;
   bool success = tetgen_resmesh(&tg);
   if (!success || tg.out_tottets==0)
-    return 0;
-  
-  // Create initializer for ADMMPD
-  iface->totverts = tg.out_totverts;
-  int nv = tg.out_totverts;
-  int nt = tg.out_tottets;
-  V->resize(nv,3);
-  T->resize(nt,4);
-  V->setZero();
-  iface->idata->tetmesh->faces.resize(iface->mesh_totfaces,3);
-  iface->idata->tetmesh->x_rest.resize(nv,3);
-  iface->idata->tetmesh->tets.resize(nt,3);
-  for (int i=0; i<iface->mesh_totfaces; ++i)
   {
-    for (int j=0; j<3; ++j)
-    {
-      iface->idata->tetmesh->faces(i,j) = in_faces[i*3+j];
-    } 
+    printf("TetGen failed to generate\n");
+    return 0;
   }
 
-  for (int i=0; i<nv; ++i)
+  // Double check assumption, the first
+  // mesh_totverts vertices remain the same
+  // for input and output mesh.
+  for (int i=0; i<tg.in_totverts; ++i)
   {
     for (int j=0; j<3; ++j)
     {
-      V->operator()(i,j) = tg.out_verts[i*3+j];
-      iface->idata->tetmesh->x_rest(i,j) = tg.out_verts[i*3+j];
+      float diff = std::abs(in_verts[i*3+j]-tg.out_verts[i*3+j]);
+      if (diff > 1e-10)
+      {
+        printf("TetGen assumption error: changed surface verts\n");
+      }
     }
   }
-  T->setZero();
-  for (int i=0; i<nt; ++i)
+
+  iface->totverts = tg.out_totverts;
+  iface->idata->mesh = std::make_shared<admmpd::TetMesh>();
+  success = iface->idata->mesh->create(
+    tg.out_verts,
+    tg.out_totverts,
+    tg.out_facets,
+    tg.out_totfacets,
+    tg.out_tets,
+    tg.out_tottets);
+
+  if (!success || iface->totverts==0)
   {
-    T->operator()(i,0) = tg.out_tets[i*4+0];
-    T->operator()(i,1) = tg.out_tets[i*4+1];
-    T->operator()(i,2) = tg.out_tets[i*4+2];
-    T->operator()(i,3) = tg.out_tets[i*4+3];
-    iface->idata->tetmesh->tets.row(i) = T->row(i);
+    printf("TetMesh failed to create\n");
+    return 0;
   }
 
-  admmpd::TetMesh().compute_masses(
-       iface->idata->tetmesh, V, m);
-
-  // Clean up tetgen data
+  // Clean up tetgen output data
   MEM_freeN(tg.out_tets);
   MEM_freeN(tg.out_facets);
   MEM_freeN(tg.out_verts);
@@ -138,7 +130,7 @@ static int admmpd_init_with_lattice(
   ADMMPDInterfaceData *iface, float *in_verts, unsigned int *in_faces,
   Eigen::MatrixXd *V, Eigen::MatrixXi *T, Eigen::VectorXd *m)
 {
-
+/*
   int nv = iface->mesh_totverts;
   Eigen::MatrixXd in_V(nv,3);
   for (int i=0; i<nv; ++i)
@@ -170,7 +162,7 @@ static int admmpd_init_with_lattice(
     iface->totverts = V->rows();
     return 1;
   }
-
+*/
   return 0;
 }
 
@@ -183,6 +175,8 @@ int admmpd_init(ADMMPDInterfaceData *iface, ADMMPDInitData *in_mesh)
   if (iface->mesh_totverts<=0 || iface->mesh_totfaces<=0)
     return 0;
 
+//iface->init_mode = 0;
+
   // Delete any existing data
   admmpd_dealloc(iface);
 
@@ -192,29 +186,23 @@ int admmpd_init(ADMMPDInterfaceData *iface, ADMMPDInitData *in_mesh)
   admmpd::Options *options = iface->idata->options;
   iface->idata->data = new admmpd::SolverData();
   admmpd::SolverData *data = iface->idata->data;
-  iface->idata->tetmesh = new admmpd::TetMeshData();
-  iface->idata->embmesh = new admmpd::EmbeddedMesh();
+  //iface->idata->tetmesh = new admmpd::TetMeshData();
+//  iface->idata->embmesh = new admmpd::EmbeddedMesh();
   iface->idata->collision = NULL;
-  iface->idata->pin = NULL;
 
-  // Generate tets and vertices
-  Eigen::MatrixXd V; // defo verts
-  Eigen::MatrixXi T; // defo tets
-  Eigen::VectorXd m; // masses
   int gen_success = 0;
-  switch (iface->init_mode)
-  {
-    default:
-    case 0: {
-      gen_success = admmpd_init_with_tetgen(iface,in_mesh->verts,in_mesh->faces,&V,&T,&m);
-      //iface->idata->collision = new admmpd::TetMeshCollision();
-      } break;
-    case 1: {
-      gen_success = admmpd_init_with_lattice(iface,in_mesh->verts,in_mesh->faces,&V,&T,&m);
-      iface->idata->collision = new admmpd::EmbeddedMeshCollision(iface->idata->embmesh);
-      iface->idata->pin = new admmpd::EmbeddedMeshPin(iface->idata->embmesh);
-    } break;
-  }
+//  switch (iface->init_mode)
+//  {
+//    default:
+//    case 0: {
+      gen_success = admmpd_init_with_tetgen(iface,in_mesh->verts,in_mesh->faces);
+//    } break;
+//    case 1: {
+//      gen_success = admmpd_init_with_lattice(iface,in_mesh->verts,in_mesh->faces,&V,&T,&m);
+//      iface->idata->collision = new admmpd::EmbeddedMeshCollision(iface->idata->embmesh);
+ //     iface->idata->pin = new admmpd::EmbeddedMeshPin(iface->idata->embmesh);
+//    } break;
+//  }
   if (!gen_success || iface->totverts==0)
   {
     printf("**ADMMPD Failed to generate tets\n");
@@ -225,7 +213,10 @@ int admmpd_init(ADMMPDInterfaceData *iface, ADMMPDInitData *in_mesh)
   bool init_success = false;
   try
   {
-    init_success = admmpd::Solver().init(V, T, m, options, data);
+    init_success = admmpd::Solver().init(
+      iface->idata->mesh.get(),
+      options,
+      data);
   }
   catch(const std::exception &e)
   {
@@ -286,7 +277,7 @@ void admmpd_update_goals(
       return;
     if (iface->idata==NULL)
       return;
-    if (iface->idata->pin==NULL)
+    if (!iface->idata->mesh)
       return;
 
     for (int i=0; i<nv; ++i)
@@ -296,7 +287,7 @@ void admmpd_update_goals(
 
       Eigen::Vector3d ki = Eigen::Vector3d::Ones() * goal_k[i];
       Eigen::Vector3d qi(goal_pos[i*3+0], goal_pos[i*3+1], goal_pos[i*3+2]);
-      iface->idata->pin->set_pin(i,qi,ki);
+      iface->idata->mesh->set_pin(i,qi,ki);
     }
 }
 
@@ -306,6 +297,7 @@ void admmpd_copy_to_bodypoint_and_object(ADMMPDInterfaceData *iface, BodyPoint *
   if (iface == NULL)
     return;
 
+  // Map the deforming vertices to BodyPoint
   for (int i=0; i<iface->totverts; ++i)
   {
     if (pts != NULL)
@@ -317,26 +309,16 @@ void admmpd_copy_to_bodypoint_and_object(ADMMPDInterfaceData *iface, BodyPoint *
         pt->vec[j] = iface->idata->data->v(i,j);
       }
     }
+  }
 
-    // If we're using TetGen, then we know the first
-    // n vertices of the tet mesh are the input surface mesh.
-    if (vertexCos != NULL && iface->init_mode==0 && i<iface->mesh_totverts)
-    {
-      vertexCos[i][0] = iface->idata->data->x(i,0);
-      vertexCos[i][1] = iface->idata->data->x(i,1);
-      vertexCos[i][2] = iface->idata->data->x(i,2);
-    }
-  } // end loop all verts
-
-  // If using lattice, get the embedded vertex position
-  // from the deformed lattice.
-  if (vertexCos != NULL && iface->init_mode==1)
+  // Map the facet vertices 
+  if (vertexCos != NULL)
   {
       for (int i=0; i<iface->mesh_totverts; ++i)
       {
-        
-        Eigen::Vector3d xi = iface->idata->embmesh->get_mapped_vertex(
-          &iface->idata->data->x, i);
+        Eigen::Vector3d xi =
+          iface->idata->mesh->get_mapped_facet_vertex(
+          iface->idata->data->x, i);
         vertexCos[i][0] = xi[0];
         vertexCos[i][1] = xi[1];
         vertexCos[i][2] = xi[2];
@@ -357,10 +339,10 @@ void admmpd_solve(ADMMPDInterfaceData *iface)
   try
   {
     admmpd::Solver().solve(
+        iface->idata->mesh.get(),
         iface->idata->options,
         iface->idata->data,
-        iface->idata->collision,
-        iface->idata->pin);
+        iface->idata->collision);
   }
   catch(const std::exception &e)
   {

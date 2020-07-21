@@ -107,8 +107,8 @@ bool tetgen_resmesh(TetGenRemeshData *tg)
 	std::stringstream switches;
 //	switches << "Q"; // quiet
 //    switches << "a" << maxvol;
-	if (quality>0)
-        switches << "q" << quality;
+//	if (quality>0)
+//        switches << "q" << quality;
 
 
     tetgenio in;

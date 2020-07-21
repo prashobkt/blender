@@ -6,7 +6,7 @@
 
 #include "admmpd_types.h"
 #include "admmpd_collision.h"
-#include "admmpd_pin.h"
+#include "admmpd_mesh.h"
 
 namespace admmpd {
 
@@ -16,9 +16,7 @@ public:
     // variable is resized it is initialized to zero.
     // Returns true on success
     bool init(
-        const Eigen::MatrixXd &V, // vertices
-        const Eigen::MatrixXi &T, // tets
-        const Eigen::VectorXd &m, // per-vert masses
+        const Mesh *mesh,
         const Options *options,
         SolverData *data);
 
@@ -27,10 +25,10 @@ public:
     // Collision ptr can be null.
     // Pin ptr can be null
     int solve(
+        const Mesh *mesh,
         const Options *options,
         SolverData *data,
-        Collision *collision,
-        Pin *pin);
+        Collision *collision);
 
 protected:
 
@@ -40,10 +38,10 @@ protected:
         Collision *collision);
 
     void init_solve(
+        const Mesh *mesh,
         const Options *options,
         SolverData *data,
-        Collision *collision,
-        Pin *pin);
+        Collision *collision);
 
 	void solve_local_step(
         const Options *options,

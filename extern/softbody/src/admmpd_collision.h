@@ -110,6 +110,8 @@ public:
         const Eigen::MatrixXd *x) const = 0;
 };
 
+#if 0
+
 // Collision detection against multiple meshes
 class EmbeddedMeshCollision : public Collision {
 public:
@@ -161,6 +163,8 @@ protected:
         const Eigen::Vector3d &pt,
         const Eigen::MatrixXd *x) const;
 };
+
+#endif
 
 } // namespace admmpd
 
