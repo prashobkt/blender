@@ -98,16 +98,16 @@ class PhysicsSpec:
 
 class FluidSpec:
     """
-    Holds one Physics modifier and its parameters.
+    Holds a Fluid modifier and its parameters.
     """
 
     def __init__(self, modifier_name: str, fluid_type: str, modifier_parameters: dict, frame_end: int):
         """
-        Constructs a physics spec.
+        Constructs a Fluid spec.
         :param modifier_name: str - name of object modifier, e.g. "FLUID"
         :param fluid_type: str - type of fluid, e.g. "Domain"
-        :param modifier_parameters: dict - {name : val} dictionary giving modifier parameters, e.g. {"quality" : 4}
-        :param frame_end:int - the last frame of the simulation at which it is baked
+        :param modifier_parameters: dict - {name : val} dictionary giving modifier parameters, e.g. {"use_mesh" : True}
+        :param frame_end:int - the frame at which the modifier is "applied"
         """
         self.modifier_name = modifier_name
         self.fluid_type = fluid_type
@@ -116,7 +116,7 @@ class FluidSpec:
         self.frame_end = frame_end
 
     def __str__(self):
-        return "Physics Modifier: " + self.modifier_name + " of type " + self.modifier_type + \
+        return "Fluid Modifier: " + self.modifier_name + " of type " + self.modifier_type + \
                " with parameters: " + str(self.modifier_parameters) + " with frame end: " + str(self.frame_end)
 
 
@@ -383,13 +383,16 @@ class MeshTest:
         scene.frame_set(1)
         modifier = test_object.modifiers.new(fluid_spec.modifier_name,
                                              fluid_spec.modifier_type)
-        # fluid_settings = str(fluid_spec.fluid_type).lower() + "_settings"
-        # physics_setting = modifier + str(".") + fluid_settings
+
         modifier.fluid_type = fluid_spec.fluid_type
 
-        if str(fluid_spec.fluid_type).lower() == "domain":
+        if str(fluid_spec.fluid_type) == "DOMAIN":
             physics_setting = modifier.domain_settings
-            # modifier.fluid_type = fluid_spec.fluid_type
+        elif str(fluid_spec.fluid_type) == "FLOW":
+            physics_setting = modifier.flow_settings
+        elif str(fluid_spec.fluid_type) == "EFFECTOR":
+            physics_setting = modifier.effector_settings
+
 
         if self.verbose:
             print("Created modifier '{}' of type '{}'.".
@@ -407,8 +410,9 @@ class MeshTest:
                 raise AttributeError("Modifier '{}' has no parameter named '{}'".
                                      format(fluid_spec.modifier_type, param_name))
 
-        # bpy.ops.fluid.free_all()
         bpy.ops.fluid.bake_all()
+
+        # Jump to the frame specified by user to apply the modifier.
         scene.frame_set(fluid_spec.frame_end)
 
         if self.apply_modifier:
