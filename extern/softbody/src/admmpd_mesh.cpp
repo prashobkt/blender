@@ -98,6 +98,8 @@ bool EmbeddedMesh::create(
 		return false;
 	if (nf<=0 || faces == nullptr)
 		return false;
+	(void)(tets);
+	(void)(nt);
 
 	emb_V0.resize(nv,3);
 	for (int i=0; i<nv; ++i)
@@ -114,8 +116,7 @@ bool EmbeddedMesh::create(
 		emb_F(i,0) = faces[i*3+0];
 		emb_F(i,1) = faces[i*3+1];
 		emb_F(i,2) = faces[i*3+2];
-		emb_leaves.emplace_back();
-		AlignedBox<double,3> &box = emb_leaves.back();
+		AlignedBox<double,3> &box = emb_leaves[i];
 		box.extend(emb_V0.row(emb_F(i,0)).transpose());
 		box.extend(emb_V0.row(emb_F(i,1)).transpose());
 		box.extend(emb_V0.row(emb_F(i,2)).transpose());
@@ -326,18 +327,18 @@ void EmbeddedMesh::compute_masses(
 {
 	density_kgm3 = std::abs(density_kgm3);
 
-	int nx = lat_V0.rows();
+	int nx = x.rows();
 	m.resize(nx);
 	m.setZero();
 	int n_tets = lat_T.rows();
 	for (int t=0; t<n_tets; ++t)
 	{
 		RowVector4i tet = lat_T.row(t);
-		RowVector3d tet_v0 = lat_V0.row(tet[0]);
+		RowVector3d tet_v0 = x.row(tet[0]);
 		Matrix3d edges;
-		edges.col(0) = lat_V0.row(tet[1]) - tet_v0;
-		edges.col(1) = lat_V0.row(tet[2]) - tet_v0;
-		edges.col(2) = lat_V0.row(tet[3]) - tet_v0;
+		edges.col(0) = x.row(tet[1]) - tet_v0;
+		edges.col(1) = x.row(tet[2]) - tet_v0;
+		edges.col(2) = x.row(tet[3]) - tet_v0;
 		double vol = std::abs((edges).determinant()/6.f);
 		double tet_mass = density_kgm3 * vol;
 		m[tet[0]] += tet_mass / 4.f;
@@ -353,6 +354,50 @@ void EmbeddedMesh::compute_masses(
 		{
 			printf("**EmbeddedMesh::compute_masses Error: unreferenced vertex\n");
 			m[i]=1;
+		}
+	}
+}
+
+void EmbeddedMesh::set_pin(
+	int idx,
+	const Eigen::Vector3d &p,
+	const Eigen::Vector3d &k)
+{
+	if (idx<0 || idx>=emb_V0.rows())
+		return;
+
+	if (k.maxCoeff()<=0)
+		return;
+
+	emb_pin_k[idx] = k;
+	emb_pin_pos[idx] = p;
+}
+
+void EmbeddedMesh::linearize_pins(
+	std::vector<Eigen::Triplet<double> > &trips,
+	std::vector<double> &q) const
+{
+	int np = emb_pin_k.size();
+	trips.reserve((int)trips.size() + np*3*4);
+	q.reserve((int)q.size() + np*3);
+
+	std::unordered_map<int,Eigen::Vector3d>::const_iterator it_k = emb_pin_k.begin();
+	for (; it_k != emb_pin_k.end(); ++it_k)
+	{
+		int emb_idx = it_k->first;
+		const Vector3d &qi = emb_pin_pos.at(emb_idx);
+		const Vector3d &ki = it_k->second;
+
+		int tet_idx = emb_v_to_tet[emb_idx];
+		RowVector4d bary = emb_barys.row(emb_idx);
+		RowVector4i tet = lat_T.row(tet_idx);
+
+		for (int i=0; i<3; ++i)
+		{
+			int p_idx = q.size();
+			q.emplace_back(qi[i]*ki[i]);
+			for (int j=0; j<4; ++j)
+				trips.emplace_back(p_idx, tet[j]*3+i, bary[j]*ki[i]);
 		}
 	}
 }
@@ -388,7 +433,7 @@ bool TetMesh::create(
 		F(i,1) = faces[i*3+1];
 		F(i,2) = faces[i*3+2];
 		leaves.emplace_back();
-		AlignedBox<double,3> &box = leaves.back();
+		AlignedBox<double,3> &box = leaves[i];
 		box.extend(V0.row(F(i,0)).transpose());
 		box.extend(V0.row(F(i,1)).transpose());
 		box.extend(V0.row(F(i,2)).transpose());

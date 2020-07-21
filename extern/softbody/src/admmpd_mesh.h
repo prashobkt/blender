@@ -114,10 +114,11 @@ public:
 
     int num_pins() const { return emb_pin_k.size(); }
 
+    // Set the position of an embedded pin
     void set_pin(
         int idx,
         const Eigen::Vector3d &p,
-        const Eigen::Vector3d &k){}
+        const Eigen::Vector3d &k);
 
     void clear_pins()
     {
@@ -128,7 +129,7 @@ public:
     // Px=q with stiffnesses baked in
     void linearize_pins(
         std::vector<Eigen::Triplet<double> > &trips,
-        std::vector<double> &q) const {}
+        std::vector<double> &q) const;
 
 }; // class EmbeddedMesh
 

@@ -25,7 +25,6 @@
 #include "admmpd_types.h"
 #include "admmpd_solver.h"
 #include "admmpd_mesh.h"
-#include "admmpd_embeddedmesh.h"
 #include "admmpd_collision.h"
 
 #include "tetgen_api.h"
@@ -61,10 +60,6 @@ void admmpd_dealloc(ADMMPDInterfaceData *iface)
       delete iface->idata->options;
     if (iface->idata->data)
       delete iface->idata->data;
-//    if (iface->idata->tetmesh)
-//      delete iface->idata->tetmesh;
-//    if (iface->idata->embmesh)
-//      delete iface->idata->embmesh;
     if (iface->idata->collision)
       delete iface->idata->collision;
     delete iface->idata;
@@ -168,23 +163,20 @@ int admmpd_init(ADMMPDInterfaceData *iface, ADMMPDInitData *in_mesh)
   admmpd::Options *options = iface->idata->options;
   iface->idata->data = new admmpd::SolverData();
   admmpd::SolverData *data = iface->idata->data;
-  //iface->idata->tetmesh = new admmpd::TetMeshData();
-//  iface->idata->embmesh = new admmpd::EmbeddedMesh();
   iface->idata->collision = NULL;
 
   int gen_success = 0;
-//  switch (iface->init_mode)
-//  {
-//    default:
-//    case 0: {
-//      gen_success = admmpd_init_with_tetgen(iface,in_mesh->verts,in_mesh->faces);
-//    } break;
-//    case 1: {
+  switch (iface->init_mode)
+  {
+    default:
+    case 0: {
+      gen_success = admmpd_init_with_tetgen(iface,in_mesh->verts,in_mesh->faces);
+    } break;
+    case 1: {
       gen_success = admmpd_init_with_lattice(iface,in_mesh->verts,in_mesh->faces);
 //      iface->idata->collision = new admmpd::EmbeddedMeshCollision(iface->idata->embmesh);
- //     iface->idata->pin = new admmpd::EmbeddedMeshPin(iface->idata->embmesh);
-//    } break;
-//  }
+    } break;
+  }
   if (!gen_success || iface->totverts==0)
   {
     printf("**ADMMPD Failed to generate tets\n");

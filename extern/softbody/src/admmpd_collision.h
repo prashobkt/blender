@@ -6,7 +6,6 @@
 
 #include "admmpd_bvh.h"
 #include "admmpd_types.h"
-#include "admmpd_embeddedmesh.h"
 #include <set>
 
 namespace admmpd {

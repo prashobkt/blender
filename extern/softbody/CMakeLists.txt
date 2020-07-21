@@ -47,16 +47,12 @@ set(SRC
 	src/admmpd_bvh_traverse.cpp
 	src/admmpd_collision.h
 	src/admmpd_collision.cpp
-#	src/admmpd_embeddedmesh.h
-#	src/admmpd_embeddedmesh.cpp
 	src/admmpd_energy.h
 	src/admmpd_energy.cpp
 	src/admmpd_geom.h
 	src/admmpd_geom.cpp
 	src/admmpd_linsolve.h
 	src/admmpd_linsolve.cpp
-#	src/admmpd_pin.h
-#	src/admmpd_pin.cpp
 	src/admmpd_sdf.h
 	src/admmpd_sdf.cpp
 	src/admmpd_solver.h
