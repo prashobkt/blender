@@ -91,7 +91,7 @@ void main()
 
   /* Masking materials. */
   if (GP_FLAG_TEST(matFlag, GP_STROKE_MASK | GP_FILL_MASK)) {
-    revealColor = vec4(1.0 - fragColor.aaa, fragColor.a);
+    revealColor = vec4(1.0 - fragColor.aaa, 1.0);
     fragColor = vec4(fragColor.rgb, 1.0);
   }
   else {
