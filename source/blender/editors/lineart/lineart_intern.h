@@ -68,7 +68,6 @@ void tmat_make_ortho_matrix_44d(double (*mProjection)[4],
 void tmat_make_perspective_matrix_44d(
     double (*mProjection)[4], double fFov_rad, double fAspect, double zMin, double zMax);
 
-int lineart_count_this_line(struct LineartRenderLine *rl, struct LineartLineLayer *ll);
 int lineart_count_intersection_segment_count(struct LineartRenderBuffer *rb);
 
 #endif

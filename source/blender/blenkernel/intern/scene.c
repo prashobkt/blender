@@ -224,30 +224,14 @@ static void scene_init_data(ID *id)
 static void BKE_lineart_free_everything(Scene *s)
 {
   SceneLineart *lineart = &s->lineart;
-  LineartLineLayer *ll;
-
-  while ((ll = BLI_pophead(&lineart->line_layers)) != NULL) {
-    MEM_freeN(ll);
-  }
+  /* Nothing to free. Reserved for future. */
 }
 
 static void BKE_lineart_copy_data(const Scene *from, Scene *to)
 {
   const SceneLineart *lineart = &from->lineart;
-  LineartLineLayer *ll, *new_ll;
 
-  to->lineart.line_layers.first = to->lineart.line_layers.last = NULL;
-  memset(&to->lineart.line_layers, 0, sizeof(ListBase));
-
-  for (ll = lineart->line_layers.first; ll; ll = ll->next) {
-    new_ll = MEM_callocN(sizeof(LineartLineLayer), "Copied Line Layer");
-    memcpy(new_ll, ll, sizeof(LineartLineLayer));
-    new_ll->next = new_ll->prev = NULL;
-    new_ll->batch = NULL;
-    BLI_addtail(&to->lineart.line_layers, new_ll);
-  }
-
-  /*  render_buffer now only accessible from lineart_share */
+  /*  Line layer removed. Currently nothing to do. Reserved for future. */
 }
 
 static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)

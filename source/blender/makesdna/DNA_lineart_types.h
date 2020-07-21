@@ -53,87 +53,13 @@ typedef enum eLineartEdgeFlag {
 
 #define LRT_EDGE_FLAG_ALL_TYPE 0x3f
 
-typedef enum eLineartTaperSettings {
-  LRT_USE_DIFFERENT_TAPER = 0,
-  LRT_USE_SAME_TAPER = 1,
-} eLineartTaperSettings;
-
-typedef enum eLineartNomalEffect {
-  /* Shouldn't have access to zero value. */
-  /* Enable/disable is another flag. */
-  LRT_NORMAL_DIRECTIONAL = 1,
-  LRT_NORMAL_POINT = 2,
-} eLineartNomalEffect;
-
-typedef enum eLineartComponentMode {
-  LRT_COMPONENT_MODE_ALL = 0,
-  LRT_COMPONENT_MODE_OBJECT = 1,
-  LRT_COMPONENT_MODE_MATERIAL = 2,
-  LRT_COMPONENT_MODE_COLLECTION = 3,
-} eLineartComponentMode;
-
-typedef enum eLineartComponentUsage {
-  LRT_COMPONENT_INCLUSIVE = 0,
-  LRT_COMPONENT_EXCLUSIVE = 1,
-} eLineartComponentUsage;
-
-typedef enum eLineartComponentLogic {
-  LRT_COMPONENT_LOGIG_OR = 0,
-  LRT_COMPONENT_LOGIC_AND = 1,
-} eLineartComponentLogic;
-
-struct DRWShadingGroup;
-
-typedef struct LineartLineType {
-  int use;
-  float thickness;
-  float color[4];
-} LineartLineType;
-
-typedef enum eLineartLineLayerFlags {
+typedef enum eLineartModeFlags {
   LRT_LINE_LAYER_USE_SAME_STYLE = (1 << 0),      /* Share with object lineart flags */
   LRT_LINE_LAYER_USE_MULTIPLE_LEVELS = (1 << 1), /* Share with object lineart flags */
   LRT_LINE_LAYER_NORMAL_ENABLED = (1 << 2),
   LRT_LINE_LAYER_NORMAL_INVERSE = (1 << 3),
   LRT_LINE_LAYER_REPLACE_STROKES = (1 << 4),
   LRT_LINE_LAYER_COLLECTION_FORCE = (1 << 5),
-} eLineartLineLayerFlags;
-
-typedef struct LineartLineLayer {
-  struct LineartLineLayer *next, *prev;
-
-  int flags;
-  int _pad1;
-  int level_start;
-  int level_end;
-
-  /** To be displayed on the list */
-  char name[64];
-
-  LineartLineType contour;
-  LineartLineType crease;
-  LineartLineType edge_mark;
-  LineartLineType material_separate;
-  LineartLineType intersection;
-
-  float thickness;
-
-  float color[4];
-
-  int normal_mode;
-  float normal_ramp_begin;
-  float normal_ramp_end;
-  float normal_thickness_start;
-  float normal_thickness_end;
-  struct Object *normal_control_object;
-
-  /** For component evaluation */
-  int logic_mode;
-  int _pad3;
-
-  struct DRWShadingGroup *shgrp;
-  struct GPUBatch *batch;
-
-} LineartLineLayer;
+} eLineartModeFlags;
 
 #endif

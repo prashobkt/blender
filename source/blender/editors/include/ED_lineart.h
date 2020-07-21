@@ -504,9 +504,6 @@ void ED_lineart_compute_feature_lines_background(struct Depsgraph *dg,
 
 struct Scene;
 
-int ED_lineart_max_occlusion_in_line_layers(struct SceneLineart *lineart);
-LineartLineLayer *ED_lineart_new_line_layer(struct SceneLineart *lineart);
-
 LineartBoundingArea *ED_lineart_get_point_bounding_area(LineartRenderBuffer *rb,
                                                         double x,
                                                         double y);
@@ -551,9 +548,6 @@ void ED_lineart_post_frame_update_external(struct bContext *C,
 struct SceneLineart;
 
 void ED_lineart_update_render_progress(int nr, const char *info);
-
-void ED_lineart_calculate_normal_object_vector(LineartLineLayer *ll,
-                                               float *normal_object_direction);
 
 float ED_lineart_chain_compute_length(LineartRenderLineChain *rlc);
 

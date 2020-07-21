@@ -2743,10 +2743,6 @@ static void write_scene(BlendWriter *writer, Scene *sce, const void *id_address)
     write_lightcache(writer, sce->eevee.light_cache_data);
   }
 
-  /* Line Art Line Layers */
-  for (LineartLineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
-    writestruct(writer->wd, DATA, LineartLineLayer, 1, ll);
-  }
   write_view3dshading(writer, &sce->display.shading);
 
   /* Freed on doversion. */

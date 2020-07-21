@@ -7297,53 +7297,10 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
                            "GPencil Overwrite",
                            "Overwrite existing strokes in the current frame of target GP objects");
 
-  prop = RNA_def_property(srna, "depth_width_influence", PROP_FLOAT, PROP_PERCENTAGE);
-  RNA_def_property_float_default(prop, 0.3f);
-  RNA_def_property_ui_text(prop, "Width Influence", "Use camera distance to control line width");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.05, 2);
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "depth_width_curve", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_default(prop, 0.3f);
-  RNA_def_property_ui_text(prop, "Width Curve", "Width curve");
-  RNA_def_property_ui_range(prop, -5.0f, 0.90f, 0.1f, 1);
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "depth_alpha_influence", PROP_FLOAT, PROP_PERCENTAGE);
-  RNA_def_property_float_default(prop, 0.3f);
-  RNA_def_property_ui_text(prop, "Alpha Influence", "Use camera distance to control line alpha");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.05f, 2);
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "depth_alpha_curve", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_default(prop, 0.3f);
-  RNA_def_property_ui_text(prop, "Alpha Curve", "alpha curve");
-  RNA_def_property_ui_range(prop, -5.0f, 0.90f, 0.1f, 1);
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
-  prop = RNA_def_property(srna, "line_color", PROP_FLOAT, PROP_COLOR);
-  RNA_def_property_float_default(prop, 1.0f);
-  RNA_def_property_array(prop, 4);
-  RNA_def_property_ui_text(prop, "Line Color", "Drawing lines using this color");
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 2);
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, NULL);
-
   prop = RNA_def_property(srna, "crease_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.5f);
   RNA_def_property_ui_text(prop, "Crease Threshold", "cosine value of face angle");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01f, 2);
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
-
-  prop = RNA_def_property(srna, "crease_fade_threshold", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_default(prop, 0.5f);
-  RNA_def_property_ui_text(prop, "Crease Fade", "cosine value of face angle");
-  RNA_def_property_ui_range(prop, -1.0f, 1.0f, 0.01f, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 

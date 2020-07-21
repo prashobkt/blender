@@ -6268,10 +6268,6 @@ static void lib_link_scene(BlendLibReader *reader, Scene *sce)
     }
   }
 
-  for (LineartLineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
-    BLO_read_id_address(reader, sce->id.lib, &ll->normal_control_object);
-  }
-
   /* Motion Tracking */
   BLO_read_id_address(reader, sce->id.lib, &sce->clip);
   if (sce->nodetree) {
@@ -6704,13 +6700,6 @@ static void direct_link_scene(BlendDataReader *reader, Scene *sce)
     }
   }
   EEVEE_lightcache_info_update(&sce->eevee);
-
-  BLO_read_data_address(reader, &sce->lineart.active_layer);
-  BLO_read_list(reader, &(sce->lineart.line_layers));
-  for (LineartLineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
-    ll->batch = NULL;
-    ll->shgrp = NULL;
-  }
 
   direct_link_view3dshading(reader, &sce->display.shading);
 
@@ -10932,12 +10921,6 @@ static void expand_scene(BlendExpander *expander, Scene *sce)
         BLO_expand(expander, lineset->group);
       }
       BLO_expand(expander, lineset->linestyle);
-    }
-  }
-
-  for (LineartLineLayer *ll = sce->lineart.line_layers.first; ll; ll = ll->next) {
-    if (ll->normal_control_object) {
-      BLO_expand(expander, ll->normal_control_object);
     }
   }
 

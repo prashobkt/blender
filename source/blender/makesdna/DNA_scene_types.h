@@ -1693,8 +1693,6 @@ typedef struct SceneEEVEE {
 
 /* Line Art Global Config */
 
-struct LineartLineLayer;
-
 typedef enum eLineartPostProcessingStatus {
   LRT_POST_PROCESSING_DISABLED = 0,
   LRT_POST_PROCESSING_ENABLED = 1,
@@ -1716,23 +1714,14 @@ typedef enum eLineartMainFlags {
 typedef struct SceneLineart {
 
   int flags;
+  int _pad;
 
   /* shared */
 
-  float contour_fade;          /* for dpix contour fading,reserved for future usage */
-  float crease_threshold;      /* 0-1 range for cosine angle */
-  float crease_fade_threshold; /* for dpix crease fading */
-
-  float line_color[4];
-
-  float depth_width_influence;
-  float depth_width_curve;
-  float depth_alpha_influence;
-  float depth_alpha_curve;
+  float contour_fade;     /* for dpix contour fading,reserved for future usage */
+  float crease_threshold; /* 0-1 range for cosine angle */
 
   /* CPU mode */
-  ListBase line_layers;
-  struct LineartLineLayer *active_layer;
   float chaining_geometry_threshold;
   float chaining_image_threshold;
 } SceneLineart;
