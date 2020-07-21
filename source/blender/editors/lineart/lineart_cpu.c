@@ -75,22 +75,37 @@ LineartSharedResource lineart_share;
 
 /* Own functions */
 
-static LineartBoundingArea *lineart_get_first_possible_bounding_area(LineartRenderBuffer *rb,
-                                                                     LineartRenderLine *rl);
+/* 2D Bounding area accelerator structure */
 
-static void lineart_link_line_with_bounding_area(LineartRenderBuffer *rb,
-                                                 LineartBoundingArea *root_ba,
-                                                 LineartRenderLine *rl);
+static LineartBoundingArea *linear_bounding_areat_first_possible(LineartRenderBuffer *rb,
+                                                                 LineartRenderLine *rl);
 
-static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *This,
-                                                           LineartRenderLine *rl,
-                                                           double x,
-                                                           double y,
-                                                           double k,
-                                                           int positive_x,
-                                                           int positive_y,
-                                                           double *next_x,
-                                                           double *next_y);
+static void lineart_bounding_area_link_line(LineartRenderBuffer *rb,
+                                            LineartBoundingArea *root_ba,
+                                            LineartRenderLine *rl);
+
+static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *This,
+                                                       LineartRenderLine *rl,
+                                                       double x,
+                                                       double y,
+                                                       double k,
+                                                       int positive_x,
+                                                       int positive_y,
+                                                       double *next_x,
+                                                       double *next_y);
+
+static int lineart_get_line_bounding_areas(LineartRenderBuffer *rb,
+                                           LineartRenderLine *rl,
+                                           int *rowbegin,
+                                           int *rowend,
+                                           int *colbegin,
+                                           int *colend);
+
+static void lineart_bounding_area_link_triangle(LineartRenderBuffer *rb,
+                                                LineartBoundingArea *root_ba,
+                                                LineartRenderTriangle *rt,
+                                                double *LRUB,
+                                                int recursive);
 
 static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *spl,
                                                             const LineartRenderTriangle *rt,
@@ -104,82 +119,66 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *spl,
                                                             double *from,
                                                             double *to);
 
-static int lineart_get_line_bounding_areas(LineartRenderBuffer *rb,
-                                           LineartRenderLine *rl,
-                                           int *rowbegin,
-                                           int *rowend,
-                                           int *colbegin,
-                                           int *colend);
-
-/* Layer operations */
-
-static void lineart_line_layer_unique_name(ListBase *list,
-                                           LineartLineLayer *ll,
-                                           const char *defname)
-{
-  BLI_uniquename(list, ll, defname, '.', offsetof(LineartLineLayer, name), sizeof(ll->name));
-}
-
 /* Geometry */
 
 int use_smooth_contour_modifier_contour = 0; /*  debug purpose */
 
-static void lineart_cut_render_line(LineartRenderBuffer *rb,
+static void lineart_render_line_cut(LineartRenderBuffer *rb,
                                     LineartRenderLine *rl,
-                                    double begin,
+                                    double start,
                                     double end)
 {
   LineartRenderLineSegment *rls = rl->segments.first, *irls;
-  LineartRenderLineSegment *begin_segment = 0, *end_segment = 0;
+  LineartRenderLineSegment *start_segment = 0, *end_segment = 0;
   LineartRenderLineSegment *ns = 0, *ns2 = 0;
   int untouched = 0;
 
-  if (TNS_DOUBLE_CLOSE_ENOUGH(begin, end)) {
+  if (LRT_DOUBLE_CLOSE_ENOUGH(start, end)) {
     return;
   }
 
-  if (begin != begin) {
-    begin = 0;
+  if (start != start) {
+    start = 0;
   }
   if (end != end) {
     end = 0;
   }
 
-  if (begin > end) {
-    double t = begin;
-    begin = end;
+  if (start > end) {
+    double t = start;
+    start = end;
     end = t;
   }
 
   /* Keeping the loop in this function for clarity in iterating through the segments. */
   for (rls = rl->segments.first; rls; rls = rls->next) {
-    if (TNS_DOUBLE_CLOSE_ENOUGH(rls->at, begin)) {
-      begin_segment = rls;
-      ns = begin_segment;
+    if (LRT_DOUBLE_CLOSE_ENOUGH(rls->at, start)) {
+      start_segment = rls;
+      ns = start_segment;
       break;
     }
     if (rls->next == NULL) {
       break;
     }
     irls = rls->next;
-    if (irls->at > begin + 1e-09 && begin > rls->at) {
-      begin_segment = irls;
+    if (irls->at > start + 1e-09 && start > rls->at) {
+      start_segment = irls;
       ns = mem_static_aquire_thread(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
       break;
     }
   }
-  if (!begin_segment && TNS_DOUBLE_CLOSE_ENOUGH(1, end)) {
+  if (!start_segment && LRT_DOUBLE_CLOSE_ENOUGH(1, end)) {
     untouched = 1;
   }
-  for (rls = begin_segment; rls; rls = rls->next) {
-    if (TNS_DOUBLE_CLOSE_ENOUGH(rls->at, end)) {
+  for (rls = start_segment; rls; rls = rls->next) {
+    if (LRT_DOUBLE_CLOSE_ENOUGH(rls->at, end)) {
       end_segment = rls;
       ns2 = end_segment;
       break;
     }
     /*  irls = rls->next; */
     /*  added this to prevent rls->at == 1.0 (we don't need an end point for this) */
-    if (!rls->next && TNS_DOUBLE_CLOSE_ENOUGH(1, end)) {
+    if (!rls->next && LRT_DOUBLE_CLOSE_ENOUGH(1, end)) {
       end_segment = rls;
       ns2 = end_segment;
       untouched = 1;
@@ -204,10 +203,10 @@ static void lineart_cut_render_line(LineartRenderBuffer *rb,
       ns2 = mem_static_aquire_thread(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
   }
 
-  if (begin_segment) {
-    if (begin_segment != ns) {
-      ns->occlusion = begin_segment->prev ? (irls = begin_segment->prev)->occlusion : 0;
-      BLI_insertlinkbefore(&rl->segments, (void *)begin_segment, (void *)ns);
+  if (start_segment) {
+    if (start_segment != ns) {
+      ns->occlusion = start_segment->prev ? (irls = start_segment->prev)->occlusion : 0;
+      BLI_insertlinkbefore(&rl->segments, (void *)start_segment, (void *)ns);
     }
   }
   else {
@@ -225,7 +224,7 @@ static void lineart_cut_render_line(LineartRenderBuffer *rb,
     BLI_addtail(&rl->segments, ns2);
   }
 
-  ns->at = begin;
+  ns->at = start;
   if (!untouched) {
     ns2->at = end;
   }
@@ -244,8 +243,7 @@ static void lineart_cut_render_line(LineartRenderBuffer *rb,
   rl->min_occ = min_occ;
 }
 
-static int lineart_make_next_occlusion_task_info(LineartRenderBuffer *rb,
-                                                 LineartRenderTaskInfo *rti)
+static int lineart_occlusion_make_task_info(LineartRenderBuffer *rb, LineartRenderTaskInfo *rti)
 {
   LinkData *data;
   int i;
@@ -338,12 +336,12 @@ static int lineart_make_next_occlusion_task_info(LineartRenderBuffer *rb,
   return res;
 }
 
-static void lineart_calculate_single_line_occlusion(LineartRenderBuffer *rb,
-                                                    LineartRenderLine *rl,
-                                                    int thread_id)
+static void lineart_occlusion_single_line(LineartRenderBuffer *rb,
+                                          LineartRenderLine *rl,
+                                          int thread_id)
 {
   double x = rl->l->fbcoord[0], y = rl->l->fbcoord[1];
-  LineartBoundingArea *ba = lineart_get_first_possible_bounding_area(rb, rl);
+  LineartBoundingArea *ba = linear_bounding_areat_first_possible(rb, rl);
   LineartBoundingArea *nba = ba;
   LineartRenderTriangleThread *rt;
 
@@ -377,14 +375,14 @@ static void lineart_calculate_single_line_occlusion(LineartRenderBuffer *rb,
                                                            rb->shift_y,
                                                            &l,
                                                            &r)) {
-        lineart_cut_render_line(rb, rl, l, r);
+        lineart_render_line_cut(rb, rl, l, r);
         if (rl->min_occ > rb->max_occlusion_level) {
           return; /* No need to caluclate any longer. */
         }
       }
     }
 
-    nba = lineart_get_next_bounding_area(nba, rl, x, y, k, positive_x, positive_y, &x, &y);
+    nba = lineart_bounding_area_next(nba, rl, x, y, k, positive_x, positive_y, &x, &y);
   }
 }
 
@@ -403,17 +401,16 @@ static bool lineart_calculation_is_canceled(void)
   return is_canceled;
 }
 
-static void lineart_calculate_line_occlusion_worker(TaskPool *__restrict UNUSED(pool),
-                                                    LineartRenderTaskInfo *rti)
+static void lineart_occlusion_worker(TaskPool *__restrict UNUSED(pool), LineartRenderTaskInfo *rti)
 {
   LineartRenderBuffer *rb = lineart_share.render_buffer_shared;
   LinkData *lip;
 
-  while (lineart_make_next_occlusion_task_info(rb, rti)) {
+  while (lineart_occlusion_make_task_info(rb, rti)) {
 
     for (lip = (void *)rti->contour; lip && lip->prev != rti->contour_pointers.last;
          lip = lip->next) {
-      lineart_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
+      lineart_occlusion_single_line(rb, lip->data, rti->thread_id);
     }
 
     /* Monitoring cancelation flag every once a while. */
@@ -422,7 +419,7 @@ static void lineart_calculate_line_occlusion_worker(TaskPool *__restrict UNUSED(
 
     for (lip = (void *)rti->crease; lip && lip->prev != rti->crease_pointers.last;
          lip = lip->next) {
-      lineart_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
+      lineart_occlusion_single_line(rb, lip->data, rti->thread_id);
     }
 
     if (lineart_calculation_is_canceled())
@@ -430,7 +427,7 @@ static void lineart_calculate_line_occlusion_worker(TaskPool *__restrict UNUSED(
 
     for (lip = (void *)rti->intersection; lip && lip->prev != rti->intersection_pointers.last;
          lip = lip->next) {
-      lineart_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
+      lineart_occlusion_single_line(rb, lip->data, rti->thread_id);
     }
 
     if (lineart_calculation_is_canceled())
@@ -438,7 +435,7 @@ static void lineart_calculate_line_occlusion_worker(TaskPool *__restrict UNUSED(
 
     for (lip = (void *)rti->material; lip && lip->prev != rti->material_pointers.last;
          lip = lip->next) {
-      lineart_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
+      lineart_occlusion_single_line(rb, lip->data, rti->thread_id);
     }
 
     if (lineart_calculation_is_canceled())
@@ -446,7 +443,7 @@ static void lineart_calculate_line_occlusion_worker(TaskPool *__restrict UNUSED(
 
     for (lip = (void *)rti->edge_mark; lip && lip->prev != rti->edge_mark_pointers.last;
          lip = lip->next) {
-      lineart_calculate_single_line_occlusion(rb, lip->data, rti->thread_id);
+      lineart_occlusion_single_line(rb, lip->data, rti->thread_id);
     }
 
     if (lineart_calculation_is_canceled())
@@ -454,7 +451,7 @@ static void lineart_calculate_line_occlusion_worker(TaskPool *__restrict UNUSED(
   }
 }
 
-static void lineart_calculate_line_occlusion_begin(LineartRenderBuffer *rb)
+static void lineart_occlusion_begin_calculation(LineartRenderBuffer *rb)
 {
   int thread_count = rb->thread_count;
   LineartRenderTaskInfo *rti = MEM_callocN(sizeof(LineartRenderTaskInfo) * thread_count,
@@ -471,8 +468,7 @@ static void lineart_calculate_line_occlusion_begin(LineartRenderBuffer *rb)
 
   for (i = 0; i < thread_count; i++) {
     rti[i].thread_id = i;
-    BLI_task_pool_push(
-        tp, (TaskRunFunction)lineart_calculate_line_occlusion_worker, &rti[i], 0, NULL);
+    BLI_task_pool_push(tp, (TaskRunFunction)lineart_occlusion_worker, &rti[i], 0, NULL);
   }
   BLI_task_pool_work_and_wait(tp);
   BLI_task_pool_free(tp);
@@ -516,7 +512,7 @@ static int lineart_point_on_lined(double v[2], double v0[2], double v1[2])
   c1 = tmat_get_linear_ratio(v0[0], v1[0], v[0]);
   c2 = tmat_get_linear_ratio(v0[1], v1[1], v[1]);
 
-  if (TNS_DOUBLE_CLOSE_ENOUGH(c1, c2) && c1 >= 0 && c1 <= 1) {
+  if (LRT_DOUBLE_CLOSE_ENOUGH(c1, c2) && c1 >= 0 && c1 <= 1) {
     return 1;
   }
 
@@ -600,7 +596,7 @@ static int lineart_point_inside_triangle3de(double v[3], double v0[3], double v1
   return 1;
 }
 
-static LineartRenderElementLinkNode *lineart_new_cull_triangle_space64(LineartRenderBuffer *rb)
+static LineartRenderElementLinkNode *lineart_memory_get_triangle_space(LineartRenderBuffer *rb)
 {
   LineartRenderElementLinkNode *reln;
 
@@ -618,7 +614,7 @@ static LineartRenderElementLinkNode *lineart_new_cull_triangle_space64(LineartRe
   return reln;
 }
 
-static LineartRenderElementLinkNode *lineart_new_cull_point_space64(LineartRenderBuffer *rb)
+static LineartRenderElementLinkNode *lineart_memory_get_vert_space(LineartRenderBuffer *rb)
 {
   LineartRenderElementLinkNode *reln;
 
@@ -635,7 +631,7 @@ static LineartRenderElementLinkNode *lineart_new_cull_point_space64(LineartRende
   return reln;
 }
 
-static void lineart_assign_render_line_with_triangle(LineartRenderTriangle *rt)
+static void lineart_render_line_assign_with_triangle(LineartRenderTriangle *rt)
 {
   if (rt->rl[0]->tl == NULL) {
     rt->rl[0]->tl = rt;
@@ -659,7 +655,7 @@ static void lineart_assign_render_line_with_triangle(LineartRenderTriangle *rt)
   }
 }
 
-static void lineart_post_triangle(LineartRenderTriangle *rt, LineartRenderTriangle *orig)
+static void lineart_triangle_post(LineartRenderTriangle *rt, LineartRenderTriangle *orig)
 {
   if (rt->v[0]) {
     add_v3_v3_db(rt->gc, rt->v[0]->fbcoord);
@@ -675,13 +671,11 @@ static void lineart_post_triangle(LineartRenderTriangle *rt, LineartRenderTriang
   copy_v3_v3_db(rt->gn, orig->gn);
 }
 
-#define RT_AT(head, rb, offset) ((unsigned char *)head + offset * rb->triangle_size)
-
 /** This function cuts triangles that are (partially or fully) behind near clipping plane.
  * for triangles that crossing the near plane, it will generate new 1 or 2 triangles with
  * new topology that represents the trimmed triangle. (which then became a triangle or square)
  */
-static void lineart_cull_triangles(LineartRenderBuffer *rb)
+static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
 {
   LineartRenderLine *rl;
   LineartRenderTriangle *rt, *rt1, *rt2;
@@ -705,8 +699,8 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
   mul_v3db_db(clip_advance, -clip_start);
   add_v3_v3_db(cam_pos, clip_advance);
 
-  veln = lineart_new_cull_point_space64(rb);
-  teln = lineart_new_cull_triangle_space64(rb);
+  veln = lineart_memory_get_vert_space(rb);
+  teln = lineart_memory_get_triangle_space(rb);
   rv = &((LineartRenderVert *)veln->pointer)[v_count];
   rt1 = (void *)(((unsigned char *)teln->pointer) + rb->triangle_size * t_count);
 
@@ -737,12 +731,12 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
       /* Additional memory space for storing generated points and triangles */
       if (v_count > 60) {
         veln->element_count = v_count;
-        veln = lineart_new_cull_point_space64(rb);
+        veln = lineart_memory_get_vert_space(rb);
         v_count = 0;
       }
       if (t_count > 60) {
         teln->element_count = t_count;
-        teln = lineart_new_cull_triangle_space64(rb);
+        teln = lineart_memory_get_triangle_space(rb);
         t_count = 0;
       }
 
@@ -866,7 +860,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rt1->v[1] = &rv[1];
             rt1->v[2] = &rv[0];
 
-            lineart_post_triangle(rt1, rt);
+            lineart_triangle_post(rt1, rt);
 
             v_count += 2;
             t_count += 1;
@@ -932,7 +926,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rt1->v[1] = &rv[1];   /*rt->v[2];*/
             rt1->v[2] = rt->v[2]; /*&rv[0];*/
 
-            lineart_post_triangle(rt1, rt);
+            lineart_triangle_post(rt1, rt);
 
             v_count += 2;
             t_count += 1;
@@ -998,7 +992,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rt1->v[1] = rt->v[1]; /*&rv[1];*/
             rt1->v[2] = &rv[1];   /*&rv[0];*/
 
-            lineart_post_triangle(rt1, rt);
+            lineart_triangle_post(rt1, rt);
 
             v_count += 2;
             t_count += 1;
@@ -1122,8 +1116,8 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rt2->v[1] = rt->v[1];
             rt2->v[2] = rt->v[2];
 
-            lineart_post_triangle(rt1, rt);
-            lineart_post_triangle(rt2, rt);
+            lineart_triangle_post(rt1, rt);
+            lineart_triangle_post(rt2, rt);
 
             v_count += 2;
             t_count += 2;
@@ -1205,8 +1199,8 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rt2->v[1] = rt->v[2];
             rt2->v[2] = rt->v[0];
 
-            lineart_post_triangle(rt1, rt);
-            lineart_post_triangle(rt2, rt);
+            lineart_triangle_post(rt1, rt);
+            lineart_triangle_post(rt2, rt);
 
             v_count += 2;
             t_count += 2;
@@ -1288,8 +1282,8 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
             rt2->v[1] = rt->v[0];
             rt2->v[2] = rt->v[1];
 
-            lineart_post_triangle(rt1, rt);
-            lineart_post_triangle(rt2, rt);
+            lineart_triangle_post(rt1, rt);
+            lineart_triangle_post(rt2, rt);
 
             v_count += 2;
             t_count += 2;
@@ -1303,7 +1297,7 @@ static void lineart_cull_triangles(LineartRenderBuffer *rb)
   }
 }
 
-static void lineart_perspective_division(LineartRenderBuffer *rb)
+static void lineart_main_perspective_division(LineartRenderBuffer *rb)
 {
   LineartRenderVert *rv;
   int i;
@@ -1324,7 +1318,7 @@ static void lineart_perspective_division(LineartRenderBuffer *rb)
   }
 }
 
-static void lineart_transform_render_vert(
+static void lineart_vert_transform(
     BMVert *v, int index, LineartRenderVert *RvBuf, double (*mv_mat)[4], double (*mvp_mat)[4])
 {
   double co[4];
@@ -1334,11 +1328,11 @@ static void lineart_transform_render_vert(
   mul_v4_m4v3_db(rv->fbcoord, mvp_mat, co);
 }
 
-static void lineart_make_render_geometry_buffers_object(Object *ob,
-                                                        double (*mv_mat)[4],
-                                                        double (*mvp_mat)[4],
-                                                        LineartRenderBuffer *rb,
-                                                        int override_usage)
+static void lineart_geometry_object_load(Object *ob,
+                                         double (*mv_mat)[4],
+                                         double (*mvp_mat)[4],
+                                         LineartRenderBuffer *rb,
+                                         int override_usage)
 {
   BMesh *bm;
   BMVert *v;
@@ -1423,7 +1417,7 @@ static void lineart_make_render_geometry_buffers_object(Object *ob,
 
     for (i = 0; i < bm->totvert; i++) {
       v = BM_vert_at_index(bm, i);
-      lineart_transform_render_vert(v, i, orv, new_mv, new_mvp);
+      lineart_vert_transform(v, i, orv, new_mv, new_mvp);
     }
 
     rl = orl;
@@ -1481,7 +1475,7 @@ static void lineart_make_render_geometry_buffers_object(Object *ob,
       copy_v3db_v3fl(gn, f->no);
       mul_v3_mat3_m4v3_db(rt->gn, normal, gn);
       normalize_v3_d(rt->gn);
-      lineart_assign_render_line_with_triangle(rt);
+      lineart_render_line_assign_with_triangle(rt);
 
       rt = (LineartRenderTriangle *)(((unsigned char *)rt) + rb->triangle_size);
     }
@@ -1543,11 +1537,10 @@ int ED_lineart_object_collection_usage_check(Collection *c, Object *ob)
   return OBJECT_FEATURE_LINE_INHERENT;
 }
 
-static void lineart_make_render_geometry_buffers(
-    Depsgraph *depsgraph,
-    Scene *scene,
-    Object *camera /* Still use camera arg for convenience */,
-    LineartRenderBuffer *rb)
+static void lineart_main_load_geometries(Depsgraph *depsgraph,
+                                         Scene *scene,
+                                         Object *camera /* Still use camera arg for convenience */,
+                                         LineartRenderBuffer *rb)
 {
   double proj[4][4], view[4][4], result[4][4];
   float inv[4][4];
@@ -1591,18 +1584,18 @@ static void lineart_make_render_geometry_buffers(
   DEG_OBJECT_ITER_FOR_RENDER_ENGINE_BEGIN (depsgraph, ob) {
     int usage = ED_lineart_object_collection_usage_check(scene->master_collection, ob);
 
-    lineart_make_render_geometry_buffers_object(ob, view, proj, rb, usage);
+    lineart_geometry_object_load(ob, view, proj, rb, usage);
   }
   DEG_OBJECT_ITER_FOR_RENDER_ENGINE_END;
 }
 
 #define INTERSECT_SORT_MIN_TO_MAX_3(ia, ib, ic, lst) \
   { \
-    lst[0] = TNS_MIN3_INDEX(ia, ib, ic); \
+    lst[0] = LRT_MIN3_INDEX(ia, ib, ic); \
     lst[1] = (((ia <= ib && ib <= ic) || (ic <= ib && ib <= ia)) ? \
                   1 : \
                   (((ic <= ia && ia <= ib) || (ib < ia && ia <= ic)) ? 0 : 2)); \
-    lst[2] = TNS_MAX3_INDEX(ia, ib, ic); \
+    lst[2] = LRT_MAX3_INDEX(ia, ib, ic); \
   }
 
 /*  ia ib ic are ordered */
@@ -1635,7 +1628,7 @@ static LineartRenderLine *lineart_another_edge(const LineartRenderTriangle *rt,
   }
   return 0;
 }
-static int lineart_share_edge_direct(const LineartRenderTriangle *rt, const LineartRenderLine *rl)
+static int lineart_triangle_has_edge(const LineartRenderTriangle *rt, const LineartRenderLine *rl)
 {
   if (rt->rl[0] == rl || rt->rl[1] == rl || rt->rl[2] == rl) {
     return 1;
@@ -1688,7 +1681,7 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl
   }
 
   /* If the the line is one of the edge in the triangle, then it'scene not occludded. */
-  if (lineart_share_edge_direct(rt, rl)) {
+  if (lineart_triangle_has_edge(rt, rl)) {
     return 0;
   }
 
@@ -1797,7 +1790,7 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl
     }
     else if (st_r == 0) {
       INTERSECT_JUST_GREATER(is, order, DBL_TRIANGLE_LIM, RCross);
-      if (TNS_ABC(RCross) && is[RCross] > (DBL_TRIANGLE_LIM)) {
+      if (LRT_ABC(RCross) && is[RCross] > (DBL_TRIANGLE_LIM)) {
         INTERSECT_JUST_SMALLER(is, order, DBL_TRIANGLE_LIM, LCross);
       }
       else {
@@ -1813,7 +1806,7 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl
     }
     else if (st_r == 1) {
       INTERSECT_JUST_SMALLER(is, order, 1 - DBL_TRIANGLE_LIM, LCross);
-      if (TNS_ABC(LCross) && is[LCross] < (1 - DBL_TRIANGLE_LIM)) {
+      if (LRT_ABC(LCross) && is[LCross] < (1 - DBL_TRIANGLE_LIM)) {
         INTERSECT_JUST_GREATER(is, order, 1 - DBL_TRIANGLE_LIM, RCross);
       }
       else {
@@ -1823,7 +1816,7 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl
     }
     else if (st_r == 0) {
       INTERSECT_JUST_GREATER(is, order, 0, LCross);
-      if (TNS_ABC(LCross) && is[LCross] > 0) {
+      if (LRT_ABC(LCross) && is[LCross] > 0) {
         INTERSECT_JUST_GREATER(is, order, is[LCross], RCross);
       }
       else {
@@ -1968,9 +1961,9 @@ static LineartRenderVert *lineart_triangle_line_intersection_test(LineartRenderB
 
   interp_v3_v3v3_db(gloc, l->gloc, r->gloc, dot_l / (dot_l + dot_r));
 
-  if (last && TNS_DOUBLE_CLOSE_ENOUGH(last->gloc[0], gloc[0]) &&
-      TNS_DOUBLE_CLOSE_ENOUGH(last->gloc[1], gloc[1]) &&
-      TNS_DOUBLE_CLOSE_ENOUGH(last->gloc[2], gloc[2])) {
+  if (last && LRT_DOUBLE_CLOSE_ENOUGH(last->gloc[0], gloc[0]) &&
+      LRT_DOUBLE_CLOSE_ENOUGH(last->gloc[1], gloc[1]) &&
+      LRT_DOUBLE_CLOSE_ENOUGH(last->gloc[2], gloc[2])) {
 
     last->intersecting_line2 = rl;
     return NULL;
@@ -2130,8 +2123,7 @@ static LineartRenderLine *lineart_triangle_generate_intersection_line_only(
   if (lineart_get_line_bounding_areas(rb, result, &r1, &r2, &c1, &c2)) {
     for (row = r1; row != r2 + 1; row++) {
       for (col = c1; col != c2 + 1; col++) {
-        lineart_link_line_with_bounding_area(
-            rb, &rb->initial_bounding_areas[row * 4 + col], result);
+        lineart_bounding_area_link_line(rb, &rb->initial_bounding_areas[row * 4 + col], result);
       }
     }
   }
@@ -2141,9 +2133,9 @@ static LineartRenderLine *lineart_triangle_generate_intersection_line_only(
   return result;
 }
 
-static void lineart_triangle_calculate_intersections_in_bounding_area(LineartRenderBuffer *rb,
-                                                                      LineartRenderTriangle *rt,
-                                                                      LineartBoundingArea *ba)
+static void lineart_triangle_intersections_in_bounding_area(LineartRenderBuffer *rb,
+                                                            LineartRenderTriangle *rt,
+                                                            LineartBoundingArea *ba)
 {
   LineartRenderTriangle *testing_triangle;
   LinkData *lip, *next_lip;
@@ -2151,10 +2143,10 @@ static void lineart_triangle_calculate_intersections_in_bounding_area(LineartRen
   double *FBC0 = rt->v[0]->fbcoord, *FBC1 = rt->v[1]->fbcoord, *FBC2 = rt->v[2]->fbcoord;
 
   if (ba->child) {
-    lineart_triangle_calculate_intersections_in_bounding_area(rb, rt, &ba->child[0]);
-    lineart_triangle_calculate_intersections_in_bounding_area(rb, rt, &ba->child[1]);
-    lineart_triangle_calculate_intersections_in_bounding_area(rb, rt, &ba->child[2]);
-    lineart_triangle_calculate_intersections_in_bounding_area(rb, rt, &ba->child[3]);
+    lineart_triangle_intersections_in_bounding_area(rb, rt, &ba->child[0]);
+    lineart_triangle_intersections_in_bounding_area(rb, rt, &ba->child[1]);
+    lineart_triangle_intersections_in_bounding_area(rb, rt, &ba->child[2]);
+    lineart_triangle_intersections_in_bounding_area(rb, rt, &ba->child[3]);
     return;
   }
 
@@ -2290,8 +2282,7 @@ static void lineart_compute_scene_contours(LineartRenderBuffer *rb, const float 
       if (lineart_get_line_bounding_areas(rb, rl, &r1, &r2, &c1, &c2)) {
         for (row = r1; row != r2 + 1; row++) {
           for (col = c1; col != c2 + 1; col++) {
-            lineart_link_line_with_bounding_area(
-                rb, &rb->initial_bounding_areas[row * 4 + col], rl);
+            lineart_bounding_area_link_line(rb, &rb->initial_bounding_areas[row * 4 + col], rl);
           }
         }
       }
@@ -2418,7 +2409,7 @@ void ED_lineart_init_locks()
   }
 }
 
-void ED_lineart_calculation_set_flag(eLineartRenderStatus flag)
+void ED_lineart_calculation_flag_set(eLineartRenderStatus flag)
 {
   BLI_spin_lock(&lineart_share.lock_render_status);
 
@@ -2441,7 +2432,7 @@ bool ED_lineart_calculation_flag_check(eLineartRenderStatus flag)
   return match;
 }
 
-void ED_lineart_modifier_sync_set_flag(eLineartModifierSyncStatus flag, bool is_from_modifier)
+void ED_lineart_modifier_sync_flag_set(eLineartModifierSyncStatus flag, bool is_from_modifier)
 {
   BLI_spin_lock(&lineart_share.lock_render_status);
 
@@ -2459,7 +2450,7 @@ bool ED_lineart_modifier_sync_flag_check(eLineartModifierSyncStatus flag)
   return match;
 }
 
-static int lineart_get_max_occlusion_level(Depsgraph *dg)
+static int lineart_occlusion_get_max_level(Depsgraph *dg)
 {
   LineartGpencilModifierData *lmd;
   int max_occ = 0;
@@ -2495,7 +2486,7 @@ static int lineart_get_max_occlusion_level(Depsgraph *dg)
   return max_occ;
 }
 
-static int lineart_get_render_triangle_size(LineartRenderBuffer *rb, const Scene *scene)
+static int lineart_triangle_size_get(LineartRenderBuffer *rb, const Scene *scene)
 {
   if (rb->thread_count == 0) {
     rb->thread_count = BKE_render_num_threads(&scene->r);
@@ -2503,43 +2494,10 @@ static int lineart_get_render_triangle_size(LineartRenderBuffer *rb, const Scene
   return sizeof(LineartRenderTriangle) + (sizeof(LineartRenderLine *) * rb->thread_count);
 }
 
-int ED_lineart_count_leveled_edge_segment_count(const ListBase *line_list,
-                                                const LineartLineLayer *ll)
-{
-  LineartRenderLine *rl;
-  int count = 0;
-  LISTBASE_FOREACH (LinkData *, lip, line_list) {
-    rl = lip->data;
-
-    LISTBASE_FOREACH (LineartRenderLineSegment *, rls, &rl->segments) {
-
-      if (!(ll->flags & LRT_LINE_LAYER_USE_MULTIPLE_LEVELS)) {
-        if (rls->occlusion == ll->level_start) {
-          count++;
-        }
-      }
-      else {
-        if (rls->occlusion >= ll->level_start && rls->occlusion <= ll->level_end) {
-          count++;
-        }
-      }
-    }
-  }
-  return count;
-}
-int lineart_count_intersection_segment_count(LineartRenderBuffer *rb)
-{
-  int count = 0;
-  LISTBASE_FOREACH (LineartRenderLine *, rl, &rb->intersection_lines) {
-    count++;
-  }
-  return count;
-}
-
-#define TNS_BOUND_AREA_CROSSES(b1, b2) \
+#define LRT_BOUND_AREA_CROSSES(b1, b2) \
   ((b1)[0] < (b2)[1] && (b1)[1] > (b2)[0] && (b1)[3] < (b2)[2] && (b1)[2] > (b2)[3])
 
-static void lineart_make_initial_bounding_areas(LineartRenderBuffer *rb)
+static void lineart_bounding_area_make_initial(LineartRenderBuffer *rb)
 {
   int sp_w = 4; /*  20; */
   int sp_h = 4; /*  rb->H / (rb->W / sp_w); */
@@ -2589,7 +2547,7 @@ static void lineart_make_initial_bounding_areas(LineartRenderBuffer *rb)
   }
 }
 
-static void lineart_connect_new_bounding_areas(LineartRenderBuffer *rb, LineartBoundingArea *root)
+static void lineart_bounding_areas_connect_new(LineartRenderBuffer *rb, LineartBoundingArea *root)
 {
   LineartBoundingArea *ba = root->child, *tba;
   LinkData *lip2, *next_lip;
@@ -2734,12 +2692,7 @@ static void lineart_connect_new_bounding_areas(LineartRenderBuffer *rb, LineartB
     ;
 }
 
-static void lineart_link_triangle_with_bounding_area(LineartRenderBuffer *rb,
-                                                     LineartBoundingArea *root_ba,
-                                                     LineartRenderTriangle *rt,
-                                                     double *LRUB,
-                                                     int recursive);
-static void lineart_split_bounding_area(LineartRenderBuffer *rb, LineartBoundingArea *root)
+static void lineart_bounding_area_split(LineartRenderBuffer *rb, LineartBoundingArea *root)
 {
   LineartBoundingArea *ba = mem_static_aquire(&rb->render_data_pool,
                                               sizeof(LineartBoundingArea) * 4);
@@ -2776,7 +2729,7 @@ static void lineart_split_bounding_area(LineartRenderBuffer *rb, LineartBounding
 
   root->child = ba;
 
-  lineart_connect_new_bounding_areas(rb, root);
+  lineart_bounding_areas_connect_new(rb, root);
 
   while ((rt = list_pop_pointer_no_free(&root->linked_triangles)) != NULL) {
     LineartBoundingArea *cba = root->child;
@@ -2785,28 +2738,28 @@ static void lineart_split_bounding_area(LineartRenderBuffer *rb, LineartBounding
     b[1] = MAX3(rt->v[0]->fbcoord[0], rt->v[1]->fbcoord[0], rt->v[2]->fbcoord[0]);
     b[2] = MAX3(rt->v[0]->fbcoord[1], rt->v[1]->fbcoord[1], rt->v[2]->fbcoord[1]);
     b[3] = MIN3(rt->v[0]->fbcoord[1], rt->v[1]->fbcoord[1], rt->v[2]->fbcoord[1]);
-    if (TNS_BOUND_AREA_CROSSES(b, &cba[0].l)) {
-      lineart_link_triangle_with_bounding_area(rb, &cba[0], rt, b, 0);
+    if (LRT_BOUND_AREA_CROSSES(b, &cba[0].l)) {
+      lineart_bounding_area_link_triangle(rb, &cba[0], rt, b, 0);
     }
-    if (TNS_BOUND_AREA_CROSSES(b, &cba[1].l)) {
-      lineart_link_triangle_with_bounding_area(rb, &cba[1], rt, b, 0);
+    if (LRT_BOUND_AREA_CROSSES(b, &cba[1].l)) {
+      lineart_bounding_area_link_triangle(rb, &cba[1], rt, b, 0);
     }
-    if (TNS_BOUND_AREA_CROSSES(b, &cba[2].l)) {
-      lineart_link_triangle_with_bounding_area(rb, &cba[2], rt, b, 0);
+    if (LRT_BOUND_AREA_CROSSES(b, &cba[2].l)) {
+      lineart_bounding_area_link_triangle(rb, &cba[2], rt, b, 0);
     }
-    if (TNS_BOUND_AREA_CROSSES(b, &cba[3].l)) {
-      lineart_link_triangle_with_bounding_area(rb, &cba[3], rt, b, 0);
+    if (LRT_BOUND_AREA_CROSSES(b, &cba[3].l)) {
+      lineart_bounding_area_link_triangle(rb, &cba[3], rt, b, 0);
     }
   }
 
   while ((rl = list_pop_pointer_no_free(&root->linked_lines)) != NULL) {
-    lineart_link_line_with_bounding_area(rb, root, rl);
+    lineart_bounding_area_link_line(rb, root, rl);
   }
 
   rb->bounding_area_count += 3;
 }
 
-static int lineart_line_crosses_bounding_area(LineartRenderBuffer *UNUSED(fb),
+static int lineart_bounding_area_line_crossed(LineartRenderBuffer *UNUSED(fb),
                                               double l[2],
                                               double r[2],
                                               LineartBoundingArea *ba)
@@ -2854,9 +2807,9 @@ static int lineart_line_crosses_bounding_area(LineartRenderBuffer *UNUSED(fb),
 
   return 0;
 }
-static int lineart_triangle_covers_bounding_area(LineartRenderBuffer *fb,
-                                                 LineartRenderTriangle *rt,
-                                                 LineartBoundingArea *ba)
+static int lineart_bounding_area_triangle_covered(LineartRenderBuffer *fb,
+                                                  LineartRenderTriangle *rt,
+                                                  LineartBoundingArea *ba)
 {
   double p1[2], p2[2], p3[2], p4[2];
   double *FBC1 = rt->v[0]->fbcoord, *FBC2 = rt->v[1]->fbcoord, *FBC3 = rt->v[2]->fbcoord;
@@ -2879,31 +2832,31 @@ static int lineart_triangle_covers_bounding_area(LineartRenderBuffer *fb,
     return 1;
   }
 
-  if ((lineart_line_crosses_bounding_area(fb, FBC1, FBC2, ba)) ||
-      (lineart_line_crosses_bounding_area(fb, FBC2, FBC3, ba)) ||
-      (lineart_line_crosses_bounding_area(fb, FBC3, FBC1, ba))) {
+  if ((lineart_bounding_area_line_crossed(fb, FBC1, FBC2, ba)) ||
+      (lineart_bounding_area_line_crossed(fb, FBC2, FBC3, ba)) ||
+      (lineart_bounding_area_line_crossed(fb, FBC3, FBC1, ba))) {
     return 1;
   }
 
   return 0;
 }
-static void lineart_link_triangle_with_bounding_area(LineartRenderBuffer *rb,
-                                                     LineartBoundingArea *root_ba,
-                                                     LineartRenderTriangle *rt,
-                                                     double *LRUB,
-                                                     int recursive)
+static void lineart_bounding_area_link_triangle(LineartRenderBuffer *rb,
+                                                LineartBoundingArea *root_ba,
+                                                LineartRenderTriangle *rt,
+                                                double *LRUB,
+                                                int recursive)
 {
-  if (!lineart_triangle_covers_bounding_area(rb, rt, root_ba)) {
+  if (!lineart_bounding_area_triangle_covered(rb, rt, root_ba)) {
     return;
   }
   if (root_ba->child == NULL) {
     list_append_pointer_static_pool(&rb->render_data_pool, &root_ba->linked_triangles, rt);
     root_ba->triangle_count++;
     if (root_ba->triangle_count > 200 && recursive) {
-      lineart_split_bounding_area(rb, root_ba);
+      lineart_bounding_area_split(rb, root_ba);
     }
     if (recursive && rb->use_intersections) {
-      lineart_triangle_calculate_intersections_in_bounding_area(rb, rt, root_ba);
+      lineart_triangle_intersections_in_bounding_area(rb, rt, root_ba);
     }
   }
   else {
@@ -2917,43 +2870,43 @@ static void lineart_link_triangle_with_bounding_area(LineartRenderBuffer *rb,
       b[3] = MIN3(rt->v[0]->fbcoord[1], rt->v[1]->fbcoord[1], rt->v[2]->fbcoord[1]);
       B1 = b;
     }
-    if (TNS_BOUND_AREA_CROSSES(B1, &ba[0].l)) {
-      lineart_link_triangle_with_bounding_area(rb, &ba[0], rt, B1, recursive);
+    if (LRT_BOUND_AREA_CROSSES(B1, &ba[0].l)) {
+      lineart_bounding_area_link_triangle(rb, &ba[0], rt, B1, recursive);
     }
-    if (TNS_BOUND_AREA_CROSSES(B1, &ba[1].l)) {
-      lineart_link_triangle_with_bounding_area(rb, &ba[1], rt, B1, recursive);
+    if (LRT_BOUND_AREA_CROSSES(B1, &ba[1].l)) {
+      lineart_bounding_area_link_triangle(rb, &ba[1], rt, B1, recursive);
     }
-    if (TNS_BOUND_AREA_CROSSES(B1, &ba[2].l)) {
-      lineart_link_triangle_with_bounding_area(rb, &ba[2], rt, B1, recursive);
+    if (LRT_BOUND_AREA_CROSSES(B1, &ba[2].l)) {
+      lineart_bounding_area_link_triangle(rb, &ba[2], rt, B1, recursive);
     }
-    if (TNS_BOUND_AREA_CROSSES(B1, &ba[3].l)) {
-      lineart_link_triangle_with_bounding_area(rb, &ba[3], rt, B1, recursive);
+    if (LRT_BOUND_AREA_CROSSES(B1, &ba[3].l)) {
+      lineart_bounding_area_link_triangle(rb, &ba[3], rt, B1, recursive);
     }
   }
 }
-static void lineart_link_line_with_bounding_area(LineartRenderBuffer *rb,
-                                                 LineartBoundingArea *root_ba,
-                                                 LineartRenderLine *rl)
+static void lineart_bounding_area_link_line(LineartRenderBuffer *rb,
+                                            LineartBoundingArea *root_ba,
+                                            LineartRenderLine *rl)
 {
   if (root_ba->child == NULL) {
     list_append_pointer_static_pool(&rb->render_data_pool, &root_ba->linked_lines, rl);
   }
   else {
-    if (lineart_line_crosses_bounding_area(
+    if (lineart_bounding_area_line_crossed(
             rb, rl->l->fbcoord, rl->r->fbcoord, &root_ba->child[0])) {
-      lineart_link_line_with_bounding_area(rb, &root_ba->child[0], rl);
+      lineart_bounding_area_link_line(rb, &root_ba->child[0], rl);
     }
-    if (lineart_line_crosses_bounding_area(
+    if (lineart_bounding_area_line_crossed(
             rb, rl->l->fbcoord, rl->r->fbcoord, &root_ba->child[1])) {
-      lineart_link_line_with_bounding_area(rb, &root_ba->child[1], rl);
+      lineart_bounding_area_link_line(rb, &root_ba->child[1], rl);
     }
-    if (lineart_line_crosses_bounding_area(
+    if (lineart_bounding_area_line_crossed(
             rb, rl->l->fbcoord, rl->r->fbcoord, &root_ba->child[2])) {
-      lineart_link_line_with_bounding_area(rb, &root_ba->child[2], rl);
+      lineart_bounding_area_link_line(rb, &root_ba->child[2], rl);
     }
-    if (lineart_line_crosses_bounding_area(
+    if (lineart_bounding_area_line_crossed(
             rb, rl->l->fbcoord, rl->r->fbcoord, &root_ba->child[3])) {
-      lineart_link_line_with_bounding_area(rb, &root_ba->child[3], rl);
+      lineart_bounding_area_link_line(rb, &root_ba->child[3], rl);
     }
   }
 }
@@ -3133,7 +3086,7 @@ static void lineart_add_triangles(LineartRenderBuffer *rb)
       if (lineart_get_triangle_bounding_areas(rb, rt, &y1, &y2, &x1, &x2)) {
         for (co = x1; co <= x2; co++) {
           for (r = y1; r <= y2; r++) {
-            lineart_link_triangle_with_bounding_area(
+            lineart_bounding_area_link_triangle(
                 rb, &rb->initial_bounding_areas[r * 4 + co], rt, 0, 1);
           }
         }
@@ -3145,15 +3098,15 @@ static void lineart_add_triangles(LineartRenderBuffer *rb)
 
 /** This march along one render line in image space and
  * get the next bounding area the line is crossing. */
-static LineartBoundingArea *lineart_get_next_bounding_area(LineartBoundingArea *this,
-                                                           LineartRenderLine *rl,
-                                                           double x,
-                                                           double y,
-                                                           double k,
-                                                           int positive_x,
-                                                           int positive_y,
-                                                           double *next_x,
-                                                           double *next_y)
+static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this,
+                                                       LineartRenderLine *rl,
+                                                       double x,
+                                                       double y,
+                                                       double k,
+                                                       int positive_x,
+                                                       int positive_y,
+                                                       double *next_x,
+                                                       double *next_y)
 {
   double rx, ry, ux, uy, lx, ly, bx, by;
   double r1, r2;
@@ -3402,8 +3355,8 @@ static LineartBoundingArea *lineart_get_bounding_area(LineartRenderBuffer *rb, d
   }
   return iba;
 }
-static LineartBoundingArea *lineart_get_first_possible_bounding_area(LineartRenderBuffer *rb,
-                                                                     LineartRenderLine *rl)
+static LineartBoundingArea *linear_bounding_areat_first_possible(LineartRenderBuffer *rb,
+                                                                 LineartRenderLine *rl)
 {
   LineartBoundingArea *iba;
   double data[2] = {rl->l->fbcoord[0], rl->l->fbcoord[1]};
@@ -3451,7 +3404,7 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
   rb = ED_lineart_create_render_buffer(scene);
 
   /* Has to be set after render buffer creation, to avoid locking from editor undo. */
-  ED_lineart_calculation_set_flag(LRT_RENDER_RUNNING);
+  ED_lineart_calculation_flag_set(LRT_RENDER_RUNNING);
 
   lineart_share.render_buffer_shared = rb;
 
@@ -3459,15 +3412,15 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
   rb->h = scene->r.ysch;
   rb->use_intersections = (lineart->flags & LRT_USE_INTERSECTIONS);
 
-  rb->triangle_size = lineart_get_render_triangle_size(rb, scene);
+  rb->triangle_size = lineart_triangle_size_get(rb, scene);
 
-  rb->max_occlusion_level = lineart_get_max_occlusion_level(depsgraph);
+  rb->max_occlusion_level = lineart_occlusion_get_max_level(depsgraph);
 
   if (show_frame_progress) {
     ED_lineart_update_render_progress(0, "LRT: Loading geometries.");
   }
 
-  lineart_make_render_geometry_buffers(depsgraph, scene, scene->camera, rb);
+  lineart_main_load_geometries(depsgraph, scene, scene->camera, rb);
 
   /** We had everything we need,
    * Unlock parent thread, it'scene safe to run independently from now. */
@@ -3482,11 +3435,11 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
   }
 
   lineart_compute_view_vector(rb);
-  lineart_cull_triangles(rb);
+  lineart_main_cull_triangles(rb);
 
-  lineart_perspective_division(rb);
+  lineart_main_perspective_division(rb);
 
-  lineart_make_initial_bounding_areas(rb);
+  lineart_bounding_area_make_initial(rb);
 
   if (show_frame_progress) {
     ED_lineart_update_render_progress(10, "LRT: Computing contour lines.");
@@ -3507,7 +3460,7 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
   }
 
   if (!intersections_only) {
-    lineart_calculate_line_occlusion_begin(rb);
+    lineart_occlusion_begin_calculation(rb);
   }
 
   if (show_frame_progress) {
@@ -3519,31 +3472,31 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
     float t_image = scene->lineart.chaining_image_threshold;
     float t_geom = scene->lineart.chaining_geometry_threshold;
 
-    ED_lineart_NO_THREAD_chain_feature_lines(rb);
+    ED_lineart_chain_feature_lines(rb);
 
     // if (is_lineart_engine) {
     //  /* Enough with it. We can provide an option after we have Line Art internal smoothing */
-    //  ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
+    //  ED_lineart_calculation_flag_set(LRT_RENDER_FINISHED);
     //  return OPERATOR_FINISHED;
     //}
 
     /* Below are simply for better GPencil experience. */
 
-    ED_lineart_split_chains_for_fixed_occlusion(rb);
+    ED_lineart_chain_split_for_fixed_occlusion(rb);
 
     if (t_image < FLT_EPSILON && t_geom < FLT_EPSILON) {
       t_geom = 0.0f;
       t_image = 0.01f;
     }
 
-    ED_lineart_connect_chains(rb, 1);
-    ED_lineart_connect_chains(rb, 0);
+    ED_lineart_chain_connect(rb, 1);
+    ED_lineart_chain_connect(rb, 0);
 
     /* This configuration ensures there won't be accidental lost of short segments */
-    ED_lineart_discard_short_chains(rb, MIN3(t_image, t_geom, 0.01f) - FLT_EPSILON);
+    ED_lineart_chain_discard_short(rb, MIN3(t_image, t_geom, 0.01f) - FLT_EPSILON);
   }
   // Set after GP done.
-  // ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
+  // ED_lineart_calculation_flag_set(LRT_RENDER_FINISHED);
 
   if (show_frame_progress) {
     ED_lineart_update_render_progress(100, "LRT: Finished.");
@@ -3558,9 +3511,7 @@ typedef struct LRT_FeatureLineWorker {
   int show_frame_progress;
 } LRT_FeatureLineWorker;
 
-static void lineart_update_gpencil_strokes_actual(Scene *scene, Depsgraph *dg);
-
-static void lineart_notify_gpencil_targets(Depsgraph *dg);
+static void lineart_gpencil_notify_targets(Depsgraph *dg);
 
 static void lineart_compute_feature_lines_worker(TaskPool *__restrict UNUSED(pool),
                                                  LRT_FeatureLineWorker *worker_data)
@@ -3570,11 +3521,11 @@ static void lineart_compute_feature_lines_worker(TaskPool *__restrict UNUSED(poo
   ED_lineart_chain_clear_picked_flag(lineart_share.render_buffer_shared);
 
   /* Calculation is done, give fresh data. */
-  ED_lineart_modifier_sync_set_flag(LRT_SYNC_FRESH, false);
+  ED_lineart_modifier_sync_flag_set(LRT_SYNC_FRESH, false);
 
-  lineart_notify_gpencil_targets(worker_data->dg);
+  lineart_gpencil_notify_targets(worker_data->dg);
 
-  ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
+  ED_lineart_calculation_flag_set(LRT_RENDER_FINISHED);
 }
 
 void ED_lineart_compute_feature_lines_background(Depsgraph *dg, const int show_frame_progress)
@@ -3619,7 +3570,7 @@ static bool lineart_camera_exists(bContext *c)
 
 /* Grease Pencil bindings */
 
-static void lineart_notify_gpencil_targets(Depsgraph *dg)
+static void lineart_gpencil_notify_targets(Depsgraph *dg)
 {
   DEG_OBJECT_ITER_BEGIN (dg,
                          ob,
@@ -3655,7 +3606,7 @@ static int lineart_object_line_types(Object *ob)
   return result;
 }
 
-void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
+void ED_lineart_gpencil_generate_from_chain(Depsgraph *depsgraph,
                                             Object *ob,
                                             bGPDlayer *UNUSED(gpl),
                                             bGPDframe *gpf,
@@ -3732,7 +3683,7 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
     /* rlc->picked = 1; */
 
     int array_idx = 0;
-    int count = ED_lineart_count_chain(rlc);
+    int count = ED_lineart_chain_count(rlc);
     bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, color_idx, count, thickness, false);
 
     float *stroke_data = MEM_callocN(sizeof(float) * count * GP_PRIM_DATABUF_SIZE,
@@ -3756,7 +3707,8 @@ void ED_lineart_generate_gpencil_from_chain(Depsgraph *depsgraph,
   /* release render lock so cache is free to be manipulated. */
   BLI_spin_unlock(&lineart_share.lock_render_status);
 }
-static void lineart_clear_gpencil_flags(Depsgraph *dg, int frame)
+
+static void lineart_gpencil_clear_flags(Depsgraph *dg, int frame)
 {
   DEG_OBJECT_ITER_BEGIN (dg,
                          ob,
@@ -3776,18 +3728,18 @@ static void lineart_clear_gpencil_flags(Depsgraph *dg, int frame)
   DEG_OBJECT_ITER_END;
 }
 
-void ED_generate_strokes_direct(Depsgraph *depsgraph,
-                                Object *ob,
-                                bGPDlayer *gpl,
-                                bGPDframe *gpf,
-                                char source_type,
-                                void *source_reference,
-                                int level_start,
-                                int level_end,
-                                int mat_nr,
-                                short line_types,
-                                short thickness,
-                                float opacity)
+void ED_lineart_gpencil_generate_strokes_direct(Depsgraph *depsgraph,
+                                                Object *ob,
+                                                bGPDlayer *gpl,
+                                                bGPDframe *gpf,
+                                                char source_type,
+                                                void *source_reference,
+                                                int level_start,
+                                                int level_end,
+                                                int mat_nr,
+                                                short line_types,
+                                                short thickness,
+                                                float opacity)
 {
 
   if (!gpl || !gpf || !source_reference || !ob) {
@@ -3806,7 +3758,7 @@ void ED_generate_strokes_direct(Depsgraph *depsgraph,
     source_collection = (Collection *)source_reference;
     use_types = line_types;
   }
-  ED_lineart_generate_gpencil_from_chain(depsgraph,
+  ED_lineart_gpencil_generate_from_chain(depsgraph,
                                          source_object,
                                          gpl,
                                          gpf,
@@ -3819,7 +3771,7 @@ void ED_generate_strokes_direct(Depsgraph *depsgraph,
                                          opacity);
 }
 
-static int lineart_update_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op))
+static int lineart_gpencil_update_strokes_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
 
@@ -3832,7 +3784,7 @@ static int lineart_update_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(o
   return OPERATOR_FINISHED;
 }
 
-static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op))
+static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
@@ -3851,8 +3803,8 @@ static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op)
 
     /* Reset flags. LRT_SYNC_IGNORE prevent any line art modifiers run calculation function when
      * depsgraph calls for modifier evalurates. */
-    ED_lineart_modifier_sync_set_flag(LRT_SYNC_IGNORE, false);
-    ED_lineart_calculation_set_flag(LRT_RENDER_IDLE);
+    ED_lineart_modifier_sync_flag_set(LRT_SYNC_IGNORE, false);
+    ED_lineart_calculation_flag_set(LRT_RENDER_IDLE);
 
     BKE_scene_frame_set(scene, frame);
     BKE_scene_graph_update_for_newframe(dg, CTX_data_main(C));
@@ -3889,7 +3841,7 @@ static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op)
               cleared = 1;
             }
 
-            ED_generate_strokes_direct(
+            ED_lineart_gpencil_generate_strokes_direct(
                 dg,
                 ob,
                 gpl,
@@ -3916,8 +3868,8 @@ static int lineart_bake_gpencil_strokes_exec(bContext *C, wmOperator *UNUSED(op)
   BKE_scene_frame_set(scene, frame_orig);
   BKE_scene_graph_update_for_newframe(dg, CTX_data_main(C));
 
-  ED_lineart_modifier_sync_set_flag(LRT_SYNC_IDLE, false);
-  ED_lineart_calculation_set_flag(LRT_RENDER_FINISHED);
+  ED_lineart_modifier_sync_flag_set(LRT_SYNC_IDLE, false);
+  ED_lineart_calculation_flag_set(LRT_RENDER_FINISHED);
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
 
@@ -3953,7 +3905,7 @@ void SCENE_OT_lineart_update_strokes(wmOperatorType *ot)
   ot->description = "Update strokes for Line Art grease pencil targets";
   ot->idname = "SCENE_OT_lineart_update_strokes";
 
-  ot->exec = lineart_update_gpencil_strokes_exec;
+  ot->exec = lineart_gpencil_update_strokes_exec;
 }
 
 /* All frames in range */
@@ -3963,7 +3915,7 @@ void SCENE_OT_lineart_bake_strokes(wmOperatorType *ot)
   ot->description = "Bake Line Art into grease pencil strokes for all frames";
   ot->idname = "SCENE_OT_lineart_bake_strokes";
 
-  ot->exec = lineart_bake_gpencil_strokes_exec;
+  ot->exec = lineart_gpencil_bake_strokes_exec;
 }
 
 void ED_lineart_post_frame_update_external(bContext *C, Scene *scene, Depsgraph *dg)
@@ -3997,7 +3949,7 @@ void ED_lineart_post_frame_update_external(bContext *C, Scene *scene, Depsgraph 
   }
   else if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_FRESH)) {
     /* At this stage GP should have all the data. We clear the flag */
-    ED_lineart_modifier_sync_set_flag(LRT_SYNC_IDLE, false);
+    ED_lineart_modifier_sync_flag_set(LRT_SYNC_IDLE, false);
   }
 }
 

@@ -392,21 +392,21 @@ typedef struct LineartBoundingArea {
   ListBase linked_chains;
 } LineartBoundingArea;
 
-#define TNS_TILE(tile, r, c, CCount) tile[r * CCount + c]
+#define LRT_TILE(tile, r, c, CCount) tile[r * CCount + c]
 
-#define TNS_CLAMP(a, Min, Max) a = a < Min ? Min : (a > Max ? Max : a)
+#define LRT_CLAMP(a, Min, Max) a = a < Min ? Min : (a > Max ? Max : a)
 
-#define TNS_MAX3_INDEX(a, b, c) (a > b ? (a > c ? 0 : (b > c ? 1 : 2)) : (b > c ? 1 : 2))
+#define LRT_MAX3_INDEX(a, b, c) (a > b ? (a > c ? 0 : (b > c ? 1 : 2)) : (b > c ? 1 : 2))
 
-#define TNS_MIN3_INDEX(a, b, c) (a < b ? (a < c ? 0 : (b < c ? 1 : 2)) : (b < c ? 1 : 2))
+#define LRT_MIN3_INDEX(a, b, c) (a < b ? (a < c ? 0 : (b < c ? 1 : 2)) : (b < c ? 1 : 2))
 
-#define TNS_MAX3_INDEX_ABC(x, y, z) (x > y ? (x > z ? a : (y > z ? b : c)) : (y > z ? b : c))
+#define LRT_MAX3_INDEX_ABC(x, y, z) (x > y ? (x > z ? a : (y > z ? b : c)) : (y > z ? b : c))
 
-#define TNS_MIN3_INDEX_ABC(x, y, z) (x < y ? (x < z ? a : (y < z ? b : c)) : (y < z ? b : c))
+#define LRT_MIN3_INDEX_ABC(x, y, z) (x < y ? (x < z ? a : (y < z ? b : c)) : (y < z ? b : c))
 
-#define TNS_ABC(index) (index == 0 ? a : (index == 1 ? b : c))
+#define LRT_ABC(index) (index == 0 ? a : (index == 1 ? b : c))
 
-#define TNS_DOUBLE_CLOSE_ENOUGH(a, b) (((a) + DBL_EDGE_LIM) >= (b) && ((a)-DBL_EDGE_LIM) <= (b))
+#define LRT_DOUBLE_CLOSE_ENOUGH(a, b) (((a) + DBL_EDGE_LIM) >= (b) && ((a)-DBL_EDGE_LIM) <= (b))
 
 BLI_INLINE double tmat_get_linear_ratio(double l, double r, double from_l);
 BLI_INLINE int lineart_LineIntersectTest2d(
@@ -483,27 +483,17 @@ void ED_lineart_destroy_render_data_external(void);
 
 int ED_lineart_object_collection_usage_check(struct Collection *c, struct Object *o);
 
-void ED_lineart_NO_THREAD_chain_feature_lines(LineartRenderBuffer *rb);
-void ED_lineart_split_chains_for_fixed_occlusion(LineartRenderBuffer *rb);
-void ED_lineart_connect_chains(LineartRenderBuffer *rb, const int do_geometry_space);
-void ED_lineart_discard_short_chains(LineartRenderBuffer *rb, const float threshold);
-int ED_lineart_count_chain(const LineartRenderLineChain *rlc);
+void ED_lineart_chain_feature_lines(LineartRenderBuffer *rb);
+void ED_lineart_chain_split_for_fixed_occlusion(LineartRenderBuffer *rb);
+void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_space);
+void ED_lineart_chain_discard_short(LineartRenderBuffer *rb, const float threshold);
+int ED_lineart_chain_count(const LineartRenderLineChain *rlc);
 void ED_lineart_chain_clear_picked_flag(struct LineartRenderBuffer *rb);
 
-int ED_lineart_count_leveled_edge_segment_count(const ListBase *line_list,
-                                                const struct LineartLineLayer *ll);
-void *ED_lineart_make_leveled_edge_vertex_array(struct LineartRenderBuffer *rb,
-                                                const ListBase *line_list,
-                                                float *vertex_array,
-                                                float *normal_array,
-                                                float **next_normal,
-                                                const LineartLineLayer *ll,
-                                                const float componet_id);
-
-void ED_lineart_calculation_set_flag(eLineartRenderStatus flag);
+void ED_lineart_calculation_flag_set(eLineartRenderStatus flag);
 bool ED_lineart_calculation_flag_check(eLineartRenderStatus flag);
 
-void ED_lineart_modifier_sync_set_flag(eLineartModifierSyncStatus flag, bool is_from_modifier);
+void ED_lineart_modifier_sync_flag_set(eLineartModifierSyncStatus flag, bool is_from_modifier);
 bool ED_lineart_modifier_sync_flag_check(eLineartModifierSyncStatus flag);
 
 int ED_lineart_compute_feature_lines_internal(struct Depsgraph *depsgraph,
@@ -528,7 +518,7 @@ struct bGPDlayer;
 struct bGPDframe;
 struct GpencilModifierData;
 
-void ED_lineart_generate_gpencil_from_chain(struct Depsgraph *depsgraph,
+void ED_lineart_gpencil_generate_from_chain(struct Depsgraph *depsgraph,
                                             struct Object *ob,
                                             struct bGPDlayer *UNUSED(gpl),
                                             struct bGPDframe *gpf,
@@ -539,18 +529,18 @@ void ED_lineart_generate_gpencil_from_chain(struct Depsgraph *depsgraph,
                                             int types,
                                             short thickness,
                                             float opacity);
-void ED_generate_strokes_direct(struct Depsgraph *depsgraph,
-                                struct Object *ob,
-                                struct bGPDlayer *gpl,
-                                struct bGPDframe *gpf,
-                                char source_type,
-                                void *source_reference,
-                                int level_start,
-                                int level_end,
-                                int mat_nr,
-                                short line_types,
-                                short thickness,
-                                float opacity);
+void ED_lineart_gpencil_generate_strokes_direct(struct Depsgraph *depsgraph,
+                                                struct Object *ob,
+                                                struct bGPDlayer *gpl,
+                                                struct bGPDframe *gpf,
+                                                char source_type,
+                                                void *source_reference,
+                                                int level_start,
+                                                int level_end,
+                                                int mat_nr,
+                                                short line_types,
+                                                short thickness,
+                                                float opacity);
 
 struct bContext;
 
@@ -565,7 +555,7 @@ void ED_lineart_update_render_progress(int nr, const char *info);
 void ED_lineart_calculate_normal_object_vector(LineartLineLayer *ll,
                                                float *normal_object_direction);
 
-float ED_lineart_compute_chain_length(LineartRenderLineChain *rlc);
+float ED_lineart_chain_compute_length(LineartRenderLineChain *rlc);
 
 struct wmOperatorType;
 
