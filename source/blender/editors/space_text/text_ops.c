@@ -1345,7 +1345,7 @@ static int text_convert_whitespace_exec(bContext *C, wmOperator *op)
 
     BLI_assert(tmp->line);
 
-    flatten_string(st, &fs, tmp->line);
+    flatten_string(&fs, st->tabnumber, tmp->line);
     new_line = BLI_strdup(fs.buf);
     flatten_string_free(&fs);
 
@@ -1419,7 +1419,7 @@ static int text_convert_whitespace_exec(bContext *C, wmOperator *op)
 #ifndef NDEBUG
         BLI_assert(tmp_line_cur - tmp_line <= max_len);
 
-        flatten_string(st, &fs, tmp_line);
+        flatten_string(&fs, st->tabnumber, tmp_line);
         BLI_assert(STREQ(fs.buf, tmp->line));
         flatten_string_free(&fs);
 #endif

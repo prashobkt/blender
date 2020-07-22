@@ -175,7 +175,7 @@ static char txtfmt_lua_format_identifier(const char *str)
   return fmt;
 }
 
-static void txtfmt_lua_format_line(SpaceText *st, TextLine *line, const bool do_next)
+static void txtfmt_lua_format_line(TextLine *line, int tabnumber, const bool do_next)
 {
   FlattenString fs;
   const char *str;
@@ -203,7 +203,7 @@ static void txtfmt_lua_format_line(SpaceText *st, TextLine *line, const bool do_
     cont_orig = 0xFF;
   }
 
-  len = flatten_string(st, &fs, line->line);
+  len = flatten_string(&fs, tabnumber, line->line);
   str = fs.buf;
   if (!text_check_format_len(line, len)) {
     flatten_string_free(&fs);
@@ -339,7 +339,7 @@ static void txtfmt_lua_format_line(SpaceText *st, TextLine *line, const bool do_
 
   /* If continuation has changed and we're allowed, process the next line */
   if (cont != cont_orig && do_next && line->next) {
-    txtfmt_lua_format_line(st, line->next, do_next);
+    txtfmt_lua_format_line(line->next, tabnumber, do_next);
   }
 
   flatten_string_free(&fs);

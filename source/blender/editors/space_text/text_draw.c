@@ -430,7 +430,7 @@ static int text_draw_wrapped(const SpaceText *st,
   /* don't draw lines below this */
   const int clip_min_y = -(int)(st->runtime.lheight_px - 1);
 
-  flatten_string(st, &fs, str);
+  flatten_string(&fs, st->tabnumber, str);
   str = fs.buf;
   max = w / st->runtime.cwidth_px;
   if (max < 8) {
@@ -520,7 +520,7 @@ static void text_draw(const SpaceText *st,
   int columns, size, n, w = 0, padding, amount = 0;
   const char *in = NULL;
 
-  for (n = flatten_string(st, &fs, str), str = fs.buf; n > 0; n--) {
+  for (n = flatten_string(&fs, st->tabnumber, str), str = fs.buf; n > 0; n--) {
     columns = BLI_str_utf8_char_width_safe(str);
     size = BLI_str_utf8_size_safe(str);
 
@@ -1599,7 +1599,7 @@ void draw_text_main(SpaceText *st, ARegion *region)
   lineno = 0;
   for (i = 0; i < st->top && tmp; i++) {
     if (tdc.syntax_highlight && !tmp->format) {
-      tft->format_line(st, tmp, false);
+      tft->format_line(tmp, st->tabnumber, false);
     }
 
     if (st->wordwrap) {
@@ -1658,7 +1658,7 @@ void draw_text_main(SpaceText *st, ARegion *region)
 
   for (i = 0; y > clip_min_y && i < viewlines && tmp; i++, tmp = tmp->next) {
     if (tdc.syntax_highlight && !tmp->format) {
-      tft->format_line(st, tmp, false);
+      tft->format_line(tmp, st->tabnumber, false);
     }
 
     if (st->showlinenrs && !wrap_skip) {
