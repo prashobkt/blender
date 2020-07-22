@@ -343,7 +343,11 @@ static void property_search_other_tabs(const bContext *C,
     UI_blocklist_free(C_copy, &region_copy->uiblocks);
   }
 
+  printf("\nPROPERTY_SEARCH_OTHER_TABS\n");
   for (int i = 0; i < tabs_tot; i++) {
+    if (context_tabs_array[i] == -1) {
+      printf("- - -\n");
+    }
     printf("tab value: %d, unfiltered: %s\n",
            context_tabs_array[i],
            (sbuts->context_search_filter_active & (1 << i)) ? "true" : "else");
