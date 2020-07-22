@@ -679,10 +679,10 @@ void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_spa
 
   while ((rlc = BLI_pophead(&swap)) != NULL) {
     rlc->next = rlc->prev = NULL;
-    BLI_addtail(&rb->chains, rlc);
     if (rlc->picked) {
       continue;
     }
+    BLI_addtail(&rb->chains, rlc);
 
     rlc->picked = 1;
 
