@@ -24,6 +24,9 @@
 
 #include "FN_attributes_ref.hh"
 
+#include "BKE_persistent_data_handle.hh"
+#include "BKE_simulation.h"
+
 #include "particle_allocator.hh"
 #include "time_interval.hh"
 
@@ -50,6 +53,55 @@ struct SimulationInfluences {
   Map<std::string, Vector<const ParticleForce *>> particle_forces;
   Map<std::string, fn::AttributesInfoBuilder *> particle_attributes_builder;
   Vector<const ParticleEmitter *> particle_emitters;
+  VectorSet<ID *> used_data_blocks;
+};
+
+class SimulationStateMap {
+ private:
+  Map<StringRefNull, SimulationState *> states_by_name_;
+  Map<StringRefNull, Vector<SimulationState *>> states_by_type_;
+
+ public:
+  void add(SimulationState *state)
+  {
+    states_by_name_.add_new(state->name, state);
+    states_by_type_.lookup_or_add_default(state->type).append(state);
+  }
+
+  template<typename StateType> StateType *lookup(StringRef name) const
+  {
+    const char *type = BKE_simulation_get_state_type_name<StateType>();
+    return (StateType *)this->lookup_name_type(name, type);
+  }
+
+  template<typename StateType> Span<StateType *> lookup() const
+  {
+    const char *type = BKE_simulation_get_state_type_name<StateType>();
+    return this->lookup_type(type).cast<StateType *>();
+  }
+
+  SimulationState *lookup_name_type(StringRef name, StringRef type) const
+  {
+    SimulationState *state = states_by_name_.lookup_default_as(name, nullptr);
+    if (state == nullptr) {
+      return nullptr;
+    }
+    if (state->type == type) {
+      return state;
+    }
+    return nullptr;
+  }
+
+  Span<SimulationState *> lookup_type(StringRef type) const
+  {
+    const Vector<SimulationState *> *states = states_by_type_.lookup_ptr_as(type);
+    if (states == nullptr) {
+      return {};
+    }
+    else {
+      return states->as_span();
+    }
+  }
 };
 
 class SimulationSolveContext {
@@ -58,16 +110,22 @@ class SimulationSolveContext {
   Depsgraph &depsgraph_;
   const SimulationInfluences &influences_;
   TimeInterval solve_interval_;
+  const SimulationStateMap &state_map_;
+  const bke::PersistentDataHandleMap &id_handle_map_;
 
  public:
   SimulationSolveContext(Simulation &simulation,
                          Depsgraph &depsgraph,
                          const SimulationInfluences &influences,
-                         TimeInterval solve_interval)
+                         TimeInterval solve_interval,
+                         const SimulationStateMap &state_map,
+                         const bke::PersistentDataHandleMap &handle_map)
       : simulation_(simulation),
         depsgraph_(depsgraph),
         influences_(influences),
-        solve_interval_(solve_interval)
+        solve_interval_(solve_interval),
+        state_map_(state_map),
+        id_handle_map_(handle_map)
   {
   }
 
@@ -79,6 +137,16 @@ class SimulationSolveContext {
   const SimulationInfluences &influences() const
   {
     return influences_;
+  }
+
+  const bke::PersistentDataHandleMap &handle_map() const
+  {
+    return id_handle_map_;
+  }
+
+  const SimulationStateMap &state_map() const
+  {
+    return state_map_;
   }
 };
 
@@ -147,6 +215,11 @@ class ParticleEmitterContext {
   {
   }
 
+  SimulationSolveContext &solve_context()
+  {
+    return solve_context_;
+  }
+
   ParticleAllocator *try_get_particle_allocator(StringRef particle_simulation_name)
   {
     return particle_allocators_.try_get_allocator(particle_simulation_name);
@@ -172,6 +245,11 @@ class ParticleForceContext {
         particle_chunk_context_(particle_chunk_context),
         force_dst_(force_dst)
   {
+  }
+
+  SimulationSolveContext &solve_context()
+  {
+    return solve_context_;
   }
 
   const ParticleChunkContext &particle_chunk() const
