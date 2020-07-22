@@ -2,6 +2,8 @@
 // Distributed under the MIT License.
 
 #include "admmpd_energy.h"
+#include "admmpd_types.h"
+#include "svd/ImplicitQRSVD.h"
 #include <iostream>
 #include <Eigen/Eigenvalues> 
 
@@ -26,27 +28,49 @@ void EnergyTerm::signed_svd(
 	Eigen::Matrix<double,3,1> &S, 
 	Eigen::Matrix<double,3,3> &V)
 {
-	JacobiSVD<Matrix3d> svd(A, ComputeFullU | ComputeFullV);
-	S = svd.singularValues();
-	U = svd.matrixU();
-	V = svd.matrixV();
-	Matrix3d J = Matrix3d::Identity();
-	J(2,2) = -1.0;
-	if (U.determinant() < 0.0)
-	{
-		U = U * J;
-		S[2] = -S[2];
-	}
-	if (V.determinant() < 0.0)
-	{
-		Matrix3d Vt = V.transpose();
-		Vt = J * Vt;
-		V = Vt.transpose();
-		S[2] = -S[2];
-	}
+    JIXIE::singularValueDecomposition(A,U,S,V);
+	// Should replace this with 
+//	JacobiSVD<Matrix3d> svd(A, ComputeFullU | ComputeFullV);
+//	S = svd.singularValues();
+//	U = svd.matrixU();
+//	V = svd.matrixV();
+//	Matrix3d J = Matrix3d::Identity();
+//	J(2,2) = -1.0;
+//	if (U.determinant() < 0.0)
+//	{
+//		U = U * J;
+//		S[2] = -S[2];
+//	}
+//	if (V.determinant() < 0.0)
+//	{
+//		Matrix3d Vt = V.transpose();
+//		Vt = J * Vt;
+//		V = Vt.transpose();
+//		S[2] = -S[2];
+//	}
 }
 
 void EnergyTerm::update(
+	int index,
+	int energyterm_type,
+	const Lame &lame,
+	double rest_volume,
+	double weight,
+	const Eigen::MatrixXd *x,
+	const Eigen::MatrixXd *Dx,
+	Eigen::MatrixXd *z,
+	Eigen::MatrixXd *u)
+{
+	switch (energyterm_type)
+	{
+		default:
+		case ENERGYTERM_TET: {
+			update_tet(index,lame,rest_volume,weight,x,Dx,z,u);
+		} break;
+	}
+} // end EnergyTerm::update
+
+void EnergyTerm::update_tet(
 	int index,
 	const Lame &lame,
 	double rest_volume,
@@ -147,10 +171,12 @@ void EnergyTerm::solve_prox(
 	const double eps = 1e-6;
 
 	int iter = 0;
-	for(; iter<10; ++iter)
+	for(; iter<20; ++iter)
 	{
 		g.setZero();
 		energy_k = energy_density(lame,add_admm_pen,s0,s,&g); // e and g
+
+		// Converged because low gradient
 		if (g.norm() < eps)
 			break;
 
@@ -176,13 +202,17 @@ void EnergyTerm::solve_prox(
 		// Sometimes flattened tets will have a hard time
 		// uninverting, in which case they get linesearch
 		// blocked. There are ways around this, but for now
-		// simply quitting is sufficient.
+		// simply quitting is fine. I've tried a few tricks
+		// to get past this, but in the end it doesn't really
+		// matter. The global step will smooth things over
+		// and get us in a better state next time ;)
 		if (ls_iter>=max_ls_iter)
 		{
 			s = s_prev;
 			break;
 		}
 
+		// Stopped making progress
 		if ((s-s_prev).norm() < eps)
 			break;
 

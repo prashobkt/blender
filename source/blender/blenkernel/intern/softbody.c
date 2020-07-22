@@ -3772,8 +3772,12 @@ void sbObjectStep_admmpd(
   int startframe = -1;
   int endframe = -1;
   float timescale = 0.f;
+
   BKE_ptcache_id_from_softbody(&pid, ob, sb);
   BKE_ptcache_id_time(&pid, scene, framenr, &startframe, &endframe, &timescale);
+
+//  float dtime = framedelta * timescale;
+//  printf("\n\ndtime:%f\n\n",dtime);
 
   // check for changes in mesh, should only happen in case the mesh
   // structure changes during an animation.

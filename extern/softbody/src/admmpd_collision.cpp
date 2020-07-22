@@ -107,10 +107,14 @@ int EmbeddedMeshCollision::detect(
 		return 0;
 
 	// Do we even need to process collisions?
-	if (!this->settings.floor_collision &&
-		(!this->settings.obs_collision || !obsdata.has_obs()) &&
+	if ((!this->settings.obs_collision || !obsdata.has_obs()) &&
 		!this->settings.self_collision)
-		return 0;
+	{
+		if (x1->col(1).minCoeff() > this->settings.floor_z)
+		{
+			return 0;
+		}
+	}
 
 	if (!tet_tree.root())
 		throw std::runtime_error("EmbeddedMeshCollision::Detect: No tree");
@@ -127,7 +131,6 @@ int EmbeddedMeshCollision::detect(
 	typedef struct {
 		const Collision::Settings *settings;
 		const Collision *collision;
-		const TetMeshData *tetmesh;
 		const EmbeddedMesh *embmesh;
 		const Collision::ObstacleData *obsdata;
 		const Eigen::MatrixXd *x0;
@@ -197,7 +200,6 @@ int EmbeddedMeshCollision::detect(
 	DetectThreadData thread_data = {
 		.settings = &settings,
 		.collision = this,
-		.tetmesh = nullptr,
 		.embmesh = mesh.get(),
 		.obsdata = &obsdata,
 		.x0 = x0,

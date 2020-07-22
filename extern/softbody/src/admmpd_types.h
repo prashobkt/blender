@@ -16,6 +16,10 @@
 namespace admmpd {
 template <typename T> using RowSparseMatrix = Eigen::SparseMatrix<T,Eigen::RowMajor>;
 
+enum EnergyTermType {
+    ENERGYTERM_TET = 0
+};
+
 struct Options {
     double timestep_s; // TODO: Figure out delta time from blender api
     int max_admm_iters;
@@ -27,10 +31,10 @@ struct Options {
     double min_res; // exit tolerance for global step
     double youngs; // Young's modulus // TODO variable per-tet
     double poisson; // Poisson ratio // TODO variable per-tet
-    double density_kgm3; // density of deformables
+    double density_kgm3; // density of mesh
     Eigen::Vector3d grav;
     Options() :
-        timestep_s(1.0/100.0),
+        timestep_s(1.0/24.0),
         max_admm_iters(30),
         max_cg_iters(10),
         max_gs_iters(100),
@@ -40,20 +44,9 @@ struct Options {
         min_res(1e-8),
         youngs(10000000),
         poisson(0.399),
-        density_kgm3(1100),
+        density_kgm3(1522),
         grav(0,0,-9.8)
         {}
-};
-
-// I think eventually I'll make the mesh
-// a virtual class with mapping functions.
-// That might clean up the API/interface a bit.
-// Will work out what we need for collisions and such first.
-
-struct TetMeshData {
-    Eigen::MatrixXd x_rest; // verts at rest
-    Eigen::MatrixXi faces; // surface elements, m x 3
-    Eigen::MatrixXi tets; // internal elements, m x 4
 };
 
 struct SolverData {
@@ -95,7 +88,7 @@ struct SolverData {
     } gsdata;
     // Set in append_energies:
     std::vector<std::set<int> > energies_graph; // per-vertex adjacency list (graph)
-	std::vector<Eigen::Vector2i> indices; // per-energy index into D (row, num rows)
+	std::vector<Eigen::Vector3i> indices; // per-energy index into D (row, num rows, type)
 	std::vector<double> rest_volumes; // per-energy rest volume
 	std::vector<double> weights; // per-energy weights
 };

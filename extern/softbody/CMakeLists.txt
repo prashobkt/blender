@@ -60,6 +60,8 @@ set(SRC
 	src/admmpd_mesh.h
 	src/admmpd_mesh.cpp
 	src/admmpd_types.h
+	src/svd/ImplicitQRSVD.h
+	src/svd/Tools.h
 	${SDFGEN_SRC}
 )
 

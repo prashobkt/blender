@@ -135,7 +135,8 @@ static int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, float *in_verts,
     return 0;
   }
 
-  std::shared_ptr<admmpd::EmbeddedMesh> emb_msh = std::dynamic_pointer_cast<admmpd::EmbeddedMesh>(iface->idata->mesh);
+  std::shared_ptr<admmpd::EmbeddedMesh> emb_msh =
+    std::dynamic_pointer_cast<admmpd::EmbeddedMesh>(iface->idata->mesh);
   iface->idata->collision = std::make_shared<admmpd::EmbeddedMeshCollision>(emb_msh);
 
   return 1;

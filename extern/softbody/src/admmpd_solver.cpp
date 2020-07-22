@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <unordered_map>
+#include <numeric>
 
 #include "BLI_task.h" // threading
 #include "BLI_assert.h"
@@ -109,7 +110,7 @@ void Solver::init_solve(
 	{
 		data->v.row(i) += dt*options->grav;
 		RowVector3d xbar_i = data->x.row(i) + dt*data->v.row(i);
-		data->M_xbar.row(i) = data->m[i]*xbar_i;
+		data->M_xbar.row(i) = data->m[i]*xbar_i / (dt*dt);
 		data->x.row(i) = xbar_i; // initial guess
 	}
 
@@ -170,6 +171,7 @@ void Solver::solve_local_step(
 		lame.set_from_youngs_poisson(td->options->youngs,td->options->poisson);
 		EnergyTerm().update(
 			td->data->indices[i][0],
+			td->data->indices[i][2],
 			lame,
 			td->data->rest_volumes[i],
 			td->data->weights[i],
@@ -271,7 +273,7 @@ bool Solver::compute_matrices(
 	int ne = data->indices.size();
 	for (int i=0; i<ne; ++i)
 	{
-		const Vector2i &idx = data->indices[i];
+		const Vector3i &idx = data->indices[i];
 		for (int j=0; j<idx[1]; ++j)
 			W2.coeffRef(idx[0]+j,idx[0]+j) = data->weights[i]*data->weights[i];
 	}
@@ -279,10 +281,10 @@ bool Solver::compute_matrices(
 	// Mass weighted Laplacian
 	data->D.resize(n_row_D,nx);
 	data->D.setFromTriplets(trips.begin(), trips.end());
-	data->DtW2 = dt2 * data->D.transpose() * W2;
+	data->DtW2 = data->D.transpose() * W2;
 	data->A = data->DtW2 * data->D;
 	for (int i=0; i<nx; ++i)
-		data->A.coeffRef(i,i) += data->m[i];
+		data->A.coeffRef(i,i) += data->m[i]/dt2;
 	data->ldltA.compute(data->A);
 	data->b.resize(nx,3);
 	data->b.setZero();
@@ -365,7 +367,7 @@ void Solver::append_energies(
 				data->energies_graph[ej].emplace(ek);
 			}
 		}
-		data->indices.emplace_back(energy_index, energy_dim);
+		data->indices.emplace_back(energy_index, energy_dim, ENERGYTERM_TET);
 		energy_index += energy_dim;
 	}
 

@@ -38,6 +38,17 @@ public:
 	// Updates the z and u variables for an element energy.
 	void update(
 		int index,
+		int energyterm_type,
+		const Lame &lame,
+		double rest_volume,
+		double weight,
+		const Eigen::MatrixXd *x,
+		const Eigen::MatrixXd *Dx,
+		Eigen::MatrixXd *z,
+		Eigen::MatrixXd *u);
+
+	void update_tet(
+		int index,
 		const Lame &lame,
 		double rest_volume,
 		double weight,
