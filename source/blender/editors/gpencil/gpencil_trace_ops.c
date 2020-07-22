@@ -60,6 +60,83 @@
 #include "gpencil_trace.h"
 #include "potracelib.h"
 
+/**
+ * Trace a image.
+ * \param C: Context
+ * \param op: Operator
+ * \param ob: Grease pencil object, can be NULL
+ * \param ima: Image
+ * \param gpf: Destination frame
+ */
+static bool gpencil_trace_image(
+    bContext *C, wmOperator *op, Object *ob, Image *ima, bGPDframe *gpf)
+{
+  Main *bmain = CTX_data_main(C);
+
+  potrace_bitmap_t *bm = NULL;
+  potrace_param_t *param = NULL;
+  potrace_state_t *st = NULL;
+
+  const float threshold = RNA_float_get(op->ptr, "threshold");
+  const float scale = RNA_float_get(op->ptr, "scale");
+  const float sample = RNA_float_get(op->ptr, "sample");
+  const int resolution = RNA_int_get(op->ptr, "resolution");
+  const int thickness = RNA_int_get(op->ptr, "thickness");
+  const int turnpolicy = RNA_enum_get(op->ptr, "turnpolicy");
+
+  ImBuf *ibuf;
+  void *lock;
+  ibuf = BKE_image_acquire_ibuf(ima, NULL, &lock);
+
+  /* Create an empty BW bitmap. */
+  bm = ED_gpencil_trace_bm_new(ibuf->x, ibuf->y);
+  if (!bm) {
+    return false;
+  }
+
+  /* Set tracing parameters, starting from defaults */
+  param = potrace_param_default();
+  if (!param) {
+    return false;
+  }
+  param->turdsize = 0;
+  param->turnpolicy = turnpolicy;
+
+  /* Load BW bitmap with image. */
+  ED_gpencil_trace_image_to_bm(ibuf, bm, threshold);
+
+  /* Trace the bitmap. */
+  st = potrace_trace(param, bm);
+  if (!st || st->status != POTRACE_STATUS_OK) {
+    ED_gpencil_trace_bm_free(bm);
+    if (st) {
+      potrace_state_free(st);
+    }
+    potrace_param_free(param);
+    return false;
+  }
+  /* Free BW bitmap. */
+  ED_gpencil_trace_bm_free(bm);
+
+  /* Convert the trace to strokes. */
+  int offset[2];
+  offset[0] = ibuf->x / 2;
+  offset[1] = ibuf->y / 2;
+  ED_gpencil_trace_data_to_strokes(
+      bmain, st, ob, gpf, offset, scale, sample, resolution, thickness);
+
+  /* Free memory. */
+  potrace_state_free(st);
+  potrace_param_free(param);
+
+  /* Release ibuf. */
+  if (ibuf) {
+    BKE_image_release_ibuf(ima, ibuf, lock);
+  }
+
+  return true;
+}
+
 /* Trace Image to Grease Pencil. */
 static bool gpencil_trace_image_poll(bContext *C)
 {
@@ -78,105 +155,52 @@ static int gpencil_trace_image_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   View3D *v3d = CTX_wm_view3d(C);
   SpaceImage *sima = CTX_wm_space_image(C);
-  Object *ob_gpencil = NULL;
+  Object *ob = NULL;
+  bool ob_created = false;
 
-  potrace_bitmap_t *bm = NULL;
-  potrace_param_t *param = NULL;
-  potrace_state_t *st = NULL;
+  if (sima->image->type != IMA_TYPE_IMAGE) {
+    BKE_report(op->reports, RPT_ERROR, "Image format not supported");
+    return OPERATOR_CANCELLED;
+  }
 
   char target[64];
   RNA_string_get(op->ptr, "target", target);
   const int frame_target = RNA_int_get(op->ptr, "frame_target");
-  const float threshold = RNA_float_get(op->ptr, "threshold");
-  const float scale = RNA_float_get(op->ptr, "scale");
-  const float sample = RNA_float_get(op->ptr, "sample");
-  const int resolution = RNA_int_get(op->ptr, "resolution");
-  const int thickness = RNA_int_get(op->ptr, "thickness");
-  const int turnpolicy = RNA_enum_get(op->ptr, "turnpolicy");
-
-  ImBuf *ibuf;
-  void *lock;
-  ibuf = BKE_image_acquire_ibuf(sima->image, NULL, &lock);
-
-  /* Create an empty BW bitmap. */
-  bm = ED_gpencil_trace_bm_new(ibuf->x, ibuf->y);
-  if (!bm) {
-    return OPERATOR_CANCELLED;
-  }
-
-  /* Set tracing parameters, starting from defaults */
-  param = potrace_param_default();
-  if (!param) {
-    return OPERATOR_CANCELLED;
-  }
-  param->turdsize = 0;
-  param->turnpolicy = turnpolicy;
 
   /* Create a new grease pencil object in origin. */
-  bool newob = false;
-  if (STREQ(target, "*NEW")) {
-    ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
-    float loc[3] = {0.0f, 0.0f, 0.0f};
-    ob_gpencil = ED_gpencil_add_object(C, loc, local_view_bits);
-    newob = true;
-  }
-  else {
-    ob_gpencil = BLI_findstring(&bmain->objects, target, offsetof(ID, name) + 2);
+  if (ob == NULL) {
+    if (STREQ(target, "*NEW")) {
+      ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+      float loc[3] = {0.0f, 0.0f, 0.0f};
+      ob = ED_gpencil_add_object(C, loc, local_view_bits);
+      ob_created = true;
+    }
+    else {
+      ob = BLI_findstring(&bmain->objects, target, offsetof(ID, name) + 2);
+    }
   }
 
-  if ((ob_gpencil == NULL) || (ob_gpencil->type != OB_GPENCIL)) {
+  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
     BKE_report(op->reports, RPT_ERROR, "Target grease pencil object not valid");
     return OPERATOR_CANCELLED;
   }
-  bGPdata *gpd = (bGPdata *)ob_gpencil->data;
 
-  /* Create Layer and frame. */
-  bGPDlayer *gpl = NULL;
-  if (!newob) {
-    gpl = BKE_gpencil_layer_active_get(gpd);
-  }
-
+  /* Create Layer. */
+  bGPdata *gpd = (bGPdata *)ob->data;
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
   if (gpl == NULL) {
     gpl = BKE_gpencil_layer_addnew(gpd, DATA_("Trace"), true);
   }
+
+  /* Create frame. */
   bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, frame_target, GP_GETFRAME_ADD_NEW);
-
-  /* Load BW bitmap with image. */
-  ED_gpencil_trace_image_to_bm(ibuf, bm, threshold);
-
-  /* Trace the bitmap. */
-  st = potrace_trace(param, bm);
-  if (!st || st->status != POTRACE_STATUS_OK) {
-    ED_gpencil_trace_bm_free(bm);
-    if (st) {
-      potrace_state_free(st);
-    }
-    potrace_param_free(param);
-    return OPERATOR_CANCELLED;
-  }
-  /* Free BW bitmap. */
-  ED_gpencil_trace_bm_free(bm);
-
-  /* Convert the trace to strokes. */
-  int offset[2];
-  offset[0] = ibuf->x / 2;
-  offset[1] = ibuf->y / 2;
-  ED_gpencil_trace_data_to_strokes(
-      bmain, st, ob_gpencil, gpf, offset, scale, sample, resolution, thickness);
-
-  /* Free memory. */
-  potrace_state_free(st);
-  potrace_param_free(param);
-
-  /* Release ibuf. */
-  if (ibuf) {
-    BKE_image_release_ibuf(sima->image, ibuf, lock);
-  }
+  gpencil_trace_image(C, op, ob, sima->image, gpf);
 
   /* notifiers */
-  if (newob) {
+  if (ob_created) {
     DEG_relations_tag_update(bmain);
   }
+
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
 

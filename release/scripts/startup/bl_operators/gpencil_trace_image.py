@@ -116,16 +116,19 @@ class GPENCIL_OT_trace(Operator):
         return context.space_data.type == 'IMAGE_EDITOR'
 
     def execute(self, context):
-        bpy.ops.gpencil.trace_image(
-            target=self.target,
-            frame_target=self.frame_target,
-            thickness=self.thickness,
-            resolution=self.resolution,
-            scale=self.scale,
-            sample=self.sample,
-            threshold=self.threshold,
-            turnpolicy=self.turnpolicy
-        )
+        try:
+            bpy.ops.gpencil.trace_image(
+                target=self.target,
+                frame_target=self.frame_target,
+                thickness=self.thickness,
+                resolution=self.resolution,
+                scale=self.scale,
+                sample=self.sample,
+                threshold=self.threshold,
+                turnpolicy=self.turnpolicy
+            )
+        except:
+            print("Unable to complete trace")
 
         return {'FINISHED'}
 
