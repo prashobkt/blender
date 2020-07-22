@@ -50,7 +50,7 @@
  * \param f: Output handle. Use stderr for printing
  * \param bm: Trace bitmap
  */
-void ED_gpencil_trace_bm_print(FILE *f, const potrace_bitmap_t *bm)
+void ED_gpencil_trace_bitmap_print(FILE *f, const potrace_bitmap_t *bm)
 {
   int x, y;
   int xx, yy;
@@ -82,7 +82,7 @@ void ED_gpencil_trace_bm_print(FILE *f, const potrace_bitmap_t *bm)
  * \param h: Height in pixels
  * \return: Trace bitmap
  */
-potrace_bitmap_t *ED_gpencil_trace_bm_new(int w, int h)
+potrace_bitmap_t *ED_gpencil_trace_bitmap_new(int w, int h)
 {
   potrace_bitmap_t *bm;
   int dy = (w + BM_WORDBITS - 1) / BM_WORDBITS;
@@ -107,7 +107,7 @@ potrace_bitmap_t *ED_gpencil_trace_bm_new(int w, int h)
  * Free a trace bitmap
  * \param bm: Trace bitmap
  */
-void ED_gpencil_trace_bm_free(const potrace_bitmap_t *bm)
+void ED_gpencil_trace_bitmap_free(const potrace_bitmap_t *bm)
 {
   if (bm != NULL) {
     free(bm->map);
@@ -166,7 +166,9 @@ static void pixel_at_index(const ImBuf *ibuf, const int idx, float r_col[4])
  * \param ibuf: ImBuf of the image
  * \param bm: Trace bitmap
  */
-void ED_gpencil_trace_image_to_bm(ImBuf *ibuf, const potrace_bitmap_t *bm, const float threshold)
+void ED_gpencil_trace_image_to_bitmap(ImBuf *ibuf,
+                                      const potrace_bitmap_t *bm,
+                                      const float threshold)
 {
   float rgba[4];
   int pixel = 0;

@@ -89,7 +89,7 @@ static bool gpencil_trace_image(
   ibuf = BKE_image_acquire_ibuf(ima, NULL, &lock);
 
   /* Create an empty BW bitmap. */
-  bm = ED_gpencil_trace_bm_new(ibuf->x, ibuf->y);
+  bm = ED_gpencil_trace_bitmap_new(ibuf->x, ibuf->y);
   if (!bm) {
     return false;
   }
@@ -103,12 +103,12 @@ static bool gpencil_trace_image(
   param->turnpolicy = turnpolicy;
 
   /* Load BW bitmap with image. */
-  ED_gpencil_trace_image_to_bm(ibuf, bm, threshold);
+  ED_gpencil_trace_image_to_bitmap(ibuf, bm, threshold);
 
   /* Trace the bitmap. */
   st = potrace_trace(param, bm);
   if (!st || st->status != POTRACE_STATUS_OK) {
-    ED_gpencil_trace_bm_free(bm);
+    ED_gpencil_trace_bitmap_free(bm);
     if (st) {
       potrace_state_free(st);
     }
@@ -116,7 +116,7 @@ static bool gpencil_trace_image(
     return false;
   }
   /* Free BW bitmap. */
-  ED_gpencil_trace_bm_free(bm);
+  ED_gpencil_trace_bitmap_free(bm);
 
   /* Convert the trace to strokes. */
   int offset[2];

@@ -56,15 +56,15 @@ struct Object;
 #define BM_INV(bm, x, y) (bm_safe(bm, x, y) ? BM_UINV(bm, x, y) : 0)
 #define BM_PUT(bm, x, y, b) (bm_safe(bm, x, y) ? BM_UPUT(bm, x, y, b) : 0)
 
-void ED_gpencil_trace_bm_print(FILE *f, const potrace_bitmap_t *bm);
+void ED_gpencil_trace_bitmap_print(FILE *f, const potrace_bitmap_t *bm);
 
-potrace_bitmap_t *ED_gpencil_trace_bm_new(int w, int h);
-void ED_gpencil_trace_bm_free(const potrace_bitmap_t *bm);
+potrace_bitmap_t *ED_gpencil_trace_bitmap_new(int w, int h);
+void ED_gpencil_trace_bitmap_free(const potrace_bitmap_t *bm);
 void ED_gpencil_trace_bm_invert(const potrace_bitmap_t *bm);
 
-void ED_gpencil_trace_image_to_bm(struct ImBuf *ibuf,
-                                  const potrace_bitmap_t *bm,
-                                  const float threshold);
+void ED_gpencil_trace_image_to_bitmap(struct ImBuf *ibuf,
+                                      const potrace_bitmap_t *bm,
+                                      const float threshold);
 
 void ED_gpencil_trace_data_to_strokes(struct Main *bmain,
                                       potrace_state_t *st,
