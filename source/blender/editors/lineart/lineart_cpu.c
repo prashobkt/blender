@@ -2394,6 +2394,11 @@ LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *scene)
   rb->chaining_image_threshold = scene->lineart.chaining_image_threshold;
   rb->chaining_geometry_threshold = scene->lineart.chaining_geometry_threshold;
 
+  rb->fuzzy_intersections = (scene->lineart.flags & LRT_INTERSECTION_AS_CONTOUR) != 0;
+  rb->fuzzy_everything = (scene->lineart.flags & LRT_EVERYTHING_AS_CONTOUR) != 0;
+
+  rb->use_intersections = (scene->lineart.flags & LRT_USE_INTERSECTIONS) != 0;
+
   BLI_spin_init(&rb->lock_task);
   BLI_spin_init(&rb->render_data_pool.lock_mem);
 
@@ -3410,7 +3415,6 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
 
   rb->w = scene->r.xsch;
   rb->h = scene->r.ysch;
-  rb->use_intersections = (lineart->flags & LRT_USE_INTERSECTIONS);
 
   rb->triangle_size = lineart_triangle_size_get(rb, scene);
 

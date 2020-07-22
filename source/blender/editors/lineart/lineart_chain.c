@@ -615,6 +615,14 @@ static void lineart_chain_connect(LineartRenderBuffer *UNUSED(rb),
                                   int reverse_2)
 {
   LineartRenderLineChainItem *rlci;
+  if (onto->object_ref && !sub->object_ref) {
+    sub->object_ref = onto->object_ref;
+    sub->type = onto->type;
+  }
+  else if (sub->object_ref && !onto->object_ref) {
+    onto->object_ref = sub->object_ref;
+    onto->type = sub->type;
+  }
   if (!reverse_1) {  /*  L--R L-R */
     if (reverse_2) { /*  L--R R-L */
       BLI_listbase_reverse(&sub->chain);
@@ -690,17 +698,37 @@ void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_spa
         dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
         next_cre = cre->next;
         if (cre->rlc->object_ref != rlc->object_ref) {
-          continue;
+          if (rb->fuzzy_everything || rb->fuzzy_intersections) {
+            /* if both have object_ref, then none is intersection line. */
+            if (cre->rlc->object_ref && rlc->object_ref) {
+              continue; /* We don't want to chain along different objects at the moment. */
+            }
+          }
+          else {
+            continue;
+          }
         }
         if (cre->rlc->picked) {
           BLI_remlink(&ba->linked_chains, cre);
           continue;
         }
-        if (cre->rlc == rlc || (!cre->rlc->chain.first) ||
-            ((LineartRenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion ||
-            (cre->rlc->type != rlc->type)) {
+        if (cre->rlc == rlc || (!cre->rlc->chain.first) || (cre->rlc->level != occlusion)) {
           continue;
         }
+        if (!rb->fuzzy_everything) {
+          if (cre->rlc->type != rlc->type) {
+            if (rb->fuzzy_intersections) {
+              if (!(cre->rlc->type == LRT_EDGE_FLAG_INTERSECTION ||
+                    rlc->type == LRT_EDGE_FLAG_INTERSECTION)) {
+                continue; /* fuzzy intersetions but no intersection line found. */
+              }
+            }
+            else { /* line type different but no fuzzy */
+              continue;
+            }
+          }
+        }
+
         float new_len = do_geometry_space ? len_v3v3(cre->rlci->gpos, rlci->gpos) :
                                             len_v2v2(cre->rlci->pos, rlci->pos);
         if (new_len < dist) {
@@ -736,16 +764,35 @@ void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_spa
         dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
         next_cre = cre->next;
         if (cre->rlc->object_ref != rlc->object_ref) {
-          continue;
+          if (rb->fuzzy_everything || rb->fuzzy_intersections) {
+            /* if both have object_ref, then none is intersection line. */
+            if (cre->rlc->object_ref && rlc->object_ref) {
+              continue; /* We don't want to chain along different objects at the moment. */
+            }
+          }
+          else {
+            continue;
+          }
         }
         if (cre->rlc->picked) {
           BLI_remlink(&ba->linked_chains, cre);
           continue;
         }
-        if (cre->rlc == rlc || (!cre->rlc->chain.first) ||
-            ((LineartRenderLineChainItem *)cre->rlc->chain.first)->occlusion != occlusion ||
-            (cre->rlc->type != rlc->type)) {
+        if (cre->rlc == rlc || (!cre->rlc->chain.first) || (cre->rlc->level != occlusion)) {
           continue;
+        }
+        if (!rb->fuzzy_everything) {
+          if (cre->rlc->type != rlc->type) {
+            if (rb->fuzzy_intersections) {
+              if (!(cre->rlc->type == LRT_EDGE_FLAG_INTERSECTION ||
+                    rlc->type == LRT_EDGE_FLAG_INTERSECTION)) {
+                continue; /* fuzzy intersetions but no intersection line found. */
+              }
+            }
+            else { /* line type different but no fuzzy */
+              continue;
+            }
+          }
         }
         float new_len = do_geometry_space ? len_v3v3(cre->rlci->gpos, rlci->gpos) :
                                             len_v2v2(cre->rlci->pos, rlci->pos);

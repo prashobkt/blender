@@ -1709,6 +1709,8 @@ typedef enum eLineartMainFlags {
   LRT_USE_INTERSECTIONS = (1 << 5),
   /* Overwrite existing strokes in this frame. */
   LRT_GPENCIL_OVERWRITE = (1 << 6),
+  LRT_INTERSECTION_AS_CONTOUR = (1 << 7),
+  LRT_EVERYTHING_AS_CONTOUR = (1 << 8),
 } eLineartMainFlags;
 
 typedef struct SceneLineart {

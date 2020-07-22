@@ -70,10 +70,6 @@ class COLLECTION_PT_lineart_collection(CollectionButtonsPanel, Panel):
     bl_label = "Collection Line Art"
     COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES'}
 
-    @classmethod
-    def poll(cls, context):
-        return context.scene.lineart.enabled
-
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True

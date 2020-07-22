@@ -232,13 +232,9 @@ typedef struct LineartRenderBuffer {
   int draw_material_preview;
   double material_transparency;
 
-  int show_line;
-  int show_fast;
-  int show_material;
-  int override_display;
-
-  int use_intersections;
-  int _pad;
+  char use_intersections;
+  char fuzzy_intersections;
+  char fuzzy_everything;
 
   /** Keep an copy of these data so the scene can be freed when lineart is runnning. */
   char cam_is_persp;

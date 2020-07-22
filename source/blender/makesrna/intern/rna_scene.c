@@ -7297,6 +7297,23 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
                            "GPencil Overwrite",
                            "Overwrite existing strokes in the current frame of target GP objects");
 
+  prop = RNA_def_property(srna, "fuzzy_intersections", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_INTERSECTION_AS_CONTOUR);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Intersection As Contour",
+      "Treat intersection lines as contour so those lines can be chained together.");
+  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
+
+  prop = RNA_def_property(srna, "fuzzy_everything", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_EVERYTHING_AS_CONTOUR);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_ui_text(prop,
+                           "Everything As Contour",
+                           "Treat all lines as contour so those lines can be chained together.");
+  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
+
   prop = RNA_def_property(srna, "crease_threshold", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.5f);
   RNA_def_property_ui_text(prop, "Crease Threshold", "cosine value of face angle");

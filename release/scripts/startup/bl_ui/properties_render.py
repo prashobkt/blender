@@ -728,6 +728,14 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
             layout.prop(lineart, "chaining_image_threshold")
             layout.prop(lineart, "chaining_geometry_threshold")
 
+            if lineart.use_intersections:
+                row = layout.row(align=False)
+                row.active = not lineart.fuzzy_everything
+                row.prop(lineart, "fuzzy_intersections")
+
+            row = layout.row(align=False)
+            row.prop(lineart, "fuzzy_everything")
+
 
 class RENDER_PT_lineart_baking(RenderButtonsPanel, Panel):
     bl_label = "Baking"

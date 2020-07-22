@@ -82,7 +82,13 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 static void generate_strokes_actual(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+  int line_types = ((scene->flag & LRT_EVERYTHING_AS_CONTOUR) ?
+                        LRT_EDGE_FLAG_ALL_TYPE :
+                        ((scene->flag & LRT_INTERSECTION_AS_CONTOUR) ?
+                             (lmd->line_types & LRT_EDGE_FLAG_INTERSECTION) :
+                             lmd->line_types));
   ED_lineart_gpencil_generate_strokes_direct(
       depsgraph,
       ob,
@@ -284,6 +290,7 @@ static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, 
 static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
+  Scene *scene = CTX_data_scene(C);
 
   PointerRNA ptr, ob_ptr;
   gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
@@ -303,11 +310,21 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemR(layout, &ptr, "source_collection", 0, NULL, ICON_GROUP);
   }
 
-  uiItemR(layout, &ptr, "use_contour", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_crease", 0, "Crease", ICON_NONE);
-  uiItemR(layout, &ptr, "use_material", 0, "Material", ICON_NONE);
-  uiItemR(layout, &ptr, "use_edge_mark", 0, "Edge Marks", ICON_NONE);
-  uiItemR(layout, &ptr, "use_intersection", 0, "Intersection", ICON_NONE);
+  if (scene->lineart.flags & LRT_EVERYTHING_AS_CONTOUR) {
+    uiItemL(layout, "Line types are fuzzy", ICON_NONE);
+  }
+  else {
+    uiItemR(layout, &ptr, "use_contour", 0, NULL, ICON_NONE);
+    uiItemR(layout, &ptr, "use_crease", 0, "Crease", ICON_NONE);
+    uiItemR(layout, &ptr, "use_material", 0, "Material", ICON_NONE);
+    uiItemR(layout, &ptr, "use_edge_mark", 0, "Edge Marks", ICON_NONE);
+    if (scene->lineart.flags & LRT_INTERSECTION_AS_CONTOUR) {
+      uiItemL(layout, "Intersection is fuzzy", ICON_NONE);
+    }
+    else {
+      uiItemR(layout, &ptr, "use_intersection", 0, "Intersection", ICON_NONE);
+    }
+  }
 
   uiItemPointerR(layout, &ptr, "target_layer", &obj_data_ptr, "layers", NULL, ICON_GREASEPENCIL);
   uiItemPointerR(
