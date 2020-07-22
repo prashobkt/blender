@@ -283,6 +283,40 @@ static Object *outliner_object_from_tree_element_and_parents(TreeElement *te, Tr
   return NULL;
 }
 
+static bPoseChannel *outliner_bone_from_tree_element_and_parents(TreeElement *te,
+                                                                 TreeElement **r_te)
+{
+  TreeStoreElem *tselem;
+  while (te != NULL) {
+    tselem = TREESTORE(te);
+    if (tselem->type == TSE_POSE_CHANNEL) {
+      *r_te = te;
+      return (bPoseChannel *)te->directdata;
+    }
+    te = te->parent;
+  }
+  return NULL;
+}
+
+static int outliner_get_insert_index(TreeElement *te,
+                                     TreeElementInsertType insert_type,
+                                     ListBase *listbase)
+{
+  /* Find the element to insert after. NULL is the start of the list. */
+  if (insert_type == TE_INSERT_BEFORE) {
+    te = te->prev;
+  }
+  else if (insert_type == TE_INSERT_AFTER) {
+    te = te->next;
+  }
+
+  if (te == NULL) {
+    return 0;
+  }
+
+  return BLI_findindex(listbase, te->directdata);
+}
+
 /* ******************** Parent Drop Operator *********************** */
 
 static bool parent_drop_allowed(bContext *C,
@@ -781,13 +815,29 @@ static bool uistack_drop_poll(bContext *C,
   }
   TreeStoreElem *tselem_target = TREESTORE(te_target);
 
+  if (drop_data->drag_tselem == tselem_target) {
+    return false;
+  }
+
   TreeElement *object_te;
+  TreeElement *bone_te;
   Object *ob = outliner_object_from_tree_element_and_parents(te_target, &object_te);
+  bPoseChannel *pchan = outliner_bone_from_tree_element_and_parents(te_target, &bone_te);
+  if (pchan) {
+    ob = NULL;
+  }
 
   /* Drag a base. */
   if (ELEM(
           drop_data->drag_tselem->type, TSE_MODIFIER_BASE, TSE_CONSTRAINT_BASE, TSE_EFFECT_BASE)) {
-    if (ob && ob != drop_data->ob_parent) {
+    if (pchan && pchan != drop_data->bone_parent) {
+      *r_tooltip = TIP_("Link all to bone");
+      drop_data->insert_type = TE_INSERT_INTO;
+      drop_data->drop_action = UI_STACK_DROP_LINK;
+      drop_data->drop_te = bone_te;
+      tselem_target = TREESTORE(bone_te);
+    }
+    else if (ob && ob != drop_data->ob_parent) {
       *r_tooltip = TIP_("Link all to object");
       drop_data->insert_type = TE_INSERT_INTO;
       drop_data->drop_action = UI_STACK_DROP_LINK;
@@ -798,9 +848,16 @@ static bool uistack_drop_poll(bContext *C,
       return false;
     }
   }
-  else if (ob) {
+  else if (ob || pchan) {
     /* Drag a single item. */
-    if (ob != drop_data->ob_parent) {
+    if (pchan && pchan != drop_data->bone_parent) {
+      *r_tooltip = TIP_("Copy to bone");
+      drop_data->insert_type = TE_INSERT_INTO;
+      drop_data->drop_action = UI_STACK_DROP_COPY;
+      drop_data->drop_te = bone_te;
+      tselem_target = TREESTORE(bone_te);
+    }
+    else if (ob && ob != drop_data->ob_parent) {
       *r_tooltip = TIP_("Copy to object");
       drop_data->insert_type = TE_INSERT_INTO;
       drop_data->drop_action = UI_STACK_DROP_COPY;
@@ -860,6 +917,8 @@ static void uistack_drop_link(bContext *C, OutlinerDropData *drop_data)
 
 static void uistack_drop_copy(bContext *C, OutlinerDropData *drop_data)
 {
+  Main *bmain = CTX_data_main(C);
+
   TreeStoreElem *tselem = TREESTORE(drop_data->drop_te);
   Object *ob_dst = (Object *)tselem->id;
 
@@ -875,7 +934,15 @@ static void uistack_drop_copy(bContext *C, OutlinerDropData *drop_data)
     DEG_id_tag_update(&ob_dst->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
   }
   else if (drop_data->drag_tselem->type == TSE_CONSTRAINT) {
-    BKE_constraint_copy_for_object(ob_dst, drop_data->drag_directdata);
+    if (tselem->type == TSE_POSE_CHANNEL) {
+      BKE_constraint_copy_for_pose(
+          ob_dst, drop_data->drop_te->directdata, drop_data->drag_directdata);
+    }
+    else {
+      BKE_constraint_copy_for_object(ob_dst, drop_data->drag_directdata);
+    }
+
+    ED_object_constraint_dependency_tag_update(bmain, ob_dst, drop_data->drag_directdata);
     WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT | NA_ADDED, ob_dst);
   }
   else if (drop_data->drag_tselem->type == TSE_EFFECT) {
@@ -886,17 +953,18 @@ static void uistack_drop_reorder(bContext *C, ReportList *reports, OutlinerDropD
 {
   TreeStoreElem *tselem = TREESTORE(drop_data->drop_te);
   Object *ob_dst = (Object *)tselem->id;
-
   Object *ob = drop_data->ob_parent;
-  int index = (drop_data->insert_type == TE_INSERT_BEFORE) ? drop_data->drop_te->index :
-                                                             drop_data->drop_te->index + 1;
-  index = (index > drop_data->drag_index) ? index - 1 : index;
 
+  int index = 0;
   if (drop_data->drag_tselem->type == TSE_MODIFIER) {
-    if (drop_data->ob_parent->type == OB_GPENCIL && ob_dst->type == OB_GPENCIL) {
+    if (ob->type == OB_GPENCIL && ob_dst->type == OB_GPENCIL) {
+      index = outliner_get_insert_index(
+          drop_data->drop_te, drop_data->insert_type, &ob->greasepencil_modifiers);
       ED_object_gpencil_modifier_move_to_index(reports, ob, drop_data->drag_directdata, index);
     }
-    else if (drop_data->ob_parent->type != OB_GPENCIL && ob_dst->type != OB_GPENCIL) {
+    else if (ob->type != OB_GPENCIL && ob_dst->type != OB_GPENCIL) {
+      index = outliner_get_insert_index(
+          drop_data->drop_te, drop_data->insert_type, &ob->modifiers);
       ED_object_modifier_move_to_index(reports, ob, drop_data->drag_directdata, index);
     }
 
@@ -904,10 +972,19 @@ static void uistack_drop_reorder(bContext *C, ReportList *reports, OutlinerDropD
     WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
   }
   else if (drop_data->drag_tselem->type == TSE_CONSTRAINT) {
+    if (drop_data->bone_parent) {
+      index = outliner_get_insert_index(
+          drop_data->drop_te, drop_data->insert_type, &drop_data->bone_parent->constraints);
+    }
+    else {
+      index = outliner_get_insert_index(
+          drop_data->drop_te, drop_data->insert_type, &ob->constraints);
+    }
     ED_object_constraint_move_to_index(reports, ob, drop_data->drag_directdata, index);
     WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT, ob);
   }
   else if (drop_data->drag_tselem->type == TSE_EFFECT) {
+    index = outliner_get_insert_index(drop_data->drop_te, drop_data->insert_type, &ob->shader_fx);
     ED_object_shaderfx_move_to_index(reports, ob, drop_data->drag_directdata, index);
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_OBJECT | ND_SHADERFX, ob);
