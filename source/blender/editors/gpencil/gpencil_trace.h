@@ -60,7 +60,7 @@ void ED_gpencil_trace_bitmap_print(FILE *f, const potrace_bitmap_t *bm);
 
 potrace_bitmap_t *ED_gpencil_trace_bitmap_new(int w, int h);
 void ED_gpencil_trace_bitmap_free(const potrace_bitmap_t *bm);
-void ED_gpencil_trace_bm_invert(const potrace_bitmap_t *bm);
+void ED_gpencil_trace_bitmap_invert(const potrace_bitmap_t *bm);
 
 void ED_gpencil_trace_image_to_bitmap(struct ImBuf *ibuf,
                                       const potrace_bitmap_t *bm,

@@ -119,7 +119,7 @@ void ED_gpencil_trace_bitmap_free(const potrace_bitmap_t *bm)
  * Invert the given bitmap (Black to White)
  * \param bm: Trace bitmap
  */
-void ED_gpencil_trace_bm_invert(const potrace_bitmap_t *bm)
+void ED_gpencil_trace_bitmap_invert(const potrace_bitmap_t *bm)
 {
   int dy = bm->dy;
   int y;
