@@ -304,10 +304,10 @@ static void panel_draw(const bContext *C, Panel *panel)
   }
 
   uiItemR(layout, &ptr, "use_contour", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_crease", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_material", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_edge_mark", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_intersection", 0, NULL, ICON_NONE);
+  uiItemR(layout, &ptr, "use_crease", 0, "Crease", ICON_NONE);
+  uiItemR(layout, &ptr, "use_material", 0, "Material", ICON_NONE);
+  uiItemR(layout, &ptr, "use_edge_mark", 0, "Edge Marks", ICON_NONE);
+  uiItemR(layout, &ptr, "use_intersection", 0, "Intersection", ICON_NONE);
 
   uiItemPointerR(layout, &ptr, "target_layer", &obj_data_ptr, "layers", NULL, ICON_GREASEPENCIL);
   uiItemPointerR(
