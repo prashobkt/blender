@@ -42,7 +42,7 @@ struct Options {
         mult_ck(3),
         mult_pk(1),
         min_res(1e-8),
-        youngs(10000000),
+        youngs(1000000),
         poisson(0.399),
         density_kgm3(1522),
         grav(0,0,-9.8)
