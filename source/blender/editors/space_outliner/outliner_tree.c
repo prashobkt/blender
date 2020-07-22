@@ -1957,7 +1957,8 @@ static void outliner_collections_children_sort(ListBase *lb)
 static bool outliner_is_sort_item(TreeElement *te)
 {
   TreeStoreElem *tselem = TREESTORE(te);
-  return (tselem->type == 0 && te->idcode == ID_OB) || outliner_is_collection_tree_element(te);
+  return (tselem->type == 0 && te->idcode == ID_OB) || outliner_is_collection_tree_element(te) ||
+         (ELEM(tselem->type, TSE_BONE, TSE_EBONE, TSE_POSE_CHANNEL));
 }
 
 /* Sort collections and objects separately on each outliner subtree. */
@@ -1968,7 +1969,7 @@ static void outliner_tree_sort(SpaceOutliner *soops, ListBase *tree)
   }
 
   TreeElement *te_last = tree->last;
-  TreeStoreElem *tselem = TREESTORE(te_last);
+  TreeStoreElem *tselem;
 
   /* Only sort collections and objects */
   if (outliner_is_sort_item(te_last)) {
