@@ -105,13 +105,13 @@ static LineartRenderLineChain *lineart_chain_create(LineartRenderBuffer *rb)
 static bool lineart_point_overlapping(LineartRenderLineChainItem *rlci,
                                       float x,
                                       float y,
-                                      float threshold)
+                                      double threshold)
 {
   if (!rlci) {
     return false;
   }
-  if (rlci->pos[0] + threshold > x && rlci->pos[0] - threshold < x &&
-      rlci->pos[1] + threshold > y && rlci->pos[1] - threshold < y) {
+  if (((rlci->pos[0] + threshold) >= x) && ((rlci->pos[0] - threshold) <= x) &&
+      ((rlci->pos[1] + threshold) >= y) && ((rlci->pos[1] - threshold) <= y)) {
     return true;
   }
   return false;
@@ -130,9 +130,9 @@ static LineartRenderLineChainItem *lineart_chain_append_point(LineartRenderBuffe
 {
   LineartRenderLineChainItem *rlci;
 
-  if (lineart_point_overlapping(rlc->chain.last, x, y, 1e-10)) {
-    /* Because segment type is determined by the leading chain point, so we need to ensure the type
-     * and occlusion is correct after omitting overlapping point*/
+  if (lineart_point_overlapping(rlc->chain.last, x, y, 1e-5)) {
+    /* Because segment type is determined by the leading chain point, so we need to ensure the
+     * type and occlusion is correct after omitting overlapping point*/
     LineartRenderLineChainItem *old_rlci = rlc->chain.last;
     old_rlci->line_type = type;
     old_rlci->occlusion = level;
@@ -169,7 +169,7 @@ static LineartRenderLineChainItem *lineart_chain_push_point(LineartRenderBuffer 
 {
   LineartRenderLineChainItem *rlci;
 
-  if (lineart_point_overlapping(rlc->chain.first, x, y, 1e-10)) {
+  if (lineart_point_overlapping(rlc->chain.first, x, y, 1e-5)) {
     return rlc->chain.first;
   }
 
@@ -567,10 +567,14 @@ void ED_lineart_chain_split_for_fixed_occlusion(LineartRenderBuffer *rb)
       next_rlci = rlci->next;
       prev_rlci = rlci->prev;
       if (rlci->occlusion != fixed_occ) {
-        if (lineart_point_overlapping(prev_rlci, rlci->pos[0], rlci->pos[1], 1e-10)) {
-          fixed_occ = rlci->occlusion;
-          rlc->level = fixed_occ;
-          continue;
+        if (next_rlci) {
+          if (lineart_point_overlapping(next_rlci, rlci->pos[0], rlci->pos[1], 1e-5)) {
+            // next_rlci = next_rlci->next;
+            continue;
+          }
+        }
+        else {
+          break; /* No need to split at the last point anyway.*/
         }
         new_rlc = lineart_chain_create(rb);
         new_rlc->chain.first = rlci;
@@ -616,7 +620,7 @@ static void lineart_chain_connect(LineartRenderBuffer *UNUSED(rb),
       BLI_listbase_reverse(&sub->chain);
     }
     rlci = sub->chain.first;
-    if (lineart_point_overlapping(onto->chain.last, rlci->pos[0], rlci->pos[1], 1e-10)) {
+    if (lineart_point_overlapping(onto->chain.last, rlci->pos[0], rlci->pos[1], 1e-5)) {
       BLI_pophead(&sub->chain);
       if (sub->chain.first == NULL) {
         return;
@@ -631,7 +635,7 @@ static void lineart_chain_connect(LineartRenderBuffer *UNUSED(rb),
       BLI_listbase_reverse(&sub->chain);
     }
     rlci = onto->chain.first;
-    if (lineart_point_overlapping(sub->chain.last, rlci->pos[0], rlci->pos[1], 1e-10)) {
+    if (lineart_point_overlapping(sub->chain.last, rlci->pos[0], rlci->pos[1], 1e-5)) {
       BLI_pophead(&onto->chain);
       if (onto->chain.first == NULL) {
         return;
@@ -678,12 +682,12 @@ void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_spa
 
     rlci = rlc->chain.last;
     while (rlci && ((ba = lineart_bounding_area_get_end_point(rb, rlci)) != NULL)) {
-      dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
       closest_cre = NULL;
       if (ba->linked_chains.first == NULL) {
         break;
       }
       for (cre = ba->linked_chains.first; cre; cre = next_cre) {
+        dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
         next_cre = cre->next;
         if (cre->rlc->object_ref != rlc->object_ref) {
           continue;
@@ -724,12 +728,12 @@ void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_spa
 
     rlci = rlc->chain.first;
     while (rlci && ((ba = lineart_bounding_area_get_end_point(rb, rlci)) != NULL)) {
-      dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
       closest_cre = NULL;
       if (ba->linked_chains.first == NULL) {
         break;
       }
       for (cre = ba->linked_chains.first; cre; cre = next_cre) {
+        dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
         next_cre = cre->next;
         if (cre->rlc->object_ref != rlc->object_ref) {
           continue;
