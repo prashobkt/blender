@@ -263,10 +263,13 @@ def main():
         ["BalloonLaplacianSmooth", "testBalloonLaplacianSmooth", "expectedBalloonLaplacianSmooth",
          [ModifierSpec('laplaciansmooth', 'LAPLACIANSMOOTH', {'lambda_factor': 12, 'lambda_border': 12})]],
 
-        ["WavePlane", "testObjPlaneWave", "expObjPlaneWave",
-         [ModifierSpec('wave', 'WAVE', {})]],
+        # Not reproducible anymore
+        # ["WavePlane", "testObjPlaneWave", "expObjPlaneWave",
+        #  [ModifierSpec('wave', 'WAVE', {})]],
 
-        #### CURVES ####
+        #############################################
+        # CURVES Generate Modifiers
+        #############################################
         # Caution: Make sure test object has no modifier in "added" state, the test may fail.
         ["BezCurveArray", "testObjBezierCurveArray", "expObjBezierCurveArray",
          [ModifierSpec('array', 'ARRAY', {})]],
@@ -299,8 +302,38 @@ def main():
          [ModifierSpec('triangulate', 'TRIANGULATE', {})]],
 
         # Test 60
+        # Caution Weld: if the distance is increased beyond a limit, the object disappears
         ["CurveWeld", "testObjBezierCurveWeld", "expObjBezierCurveWeld",
          [ModifierSpec('weld', 'WELD', {})]],
+
+        ["CurveWeld2", "testObjBezierCurveWeld2", "expObjBezierCurveWeld2",
+         [ModifierSpec('weld', 'WELD', {})]],
+
+        #############################################
+        # Curves Deform Modifiers
+        #############################################
+        # Test 62
+        ["CurveCast", "testObjBezierCurveCast", "expObjBezierCurveCast",
+         [ModifierSpec('Cast', 'CAST', {'cast_type': 'CYLINDER', 'factor': 10})]],
+
+        ["CurveShrinkWrap", "testObjBezierCurveShrinkWrap", "expObjBezierCurveShrinkWrap",
+         [ModifierSpec('ShrinkWrap', 'SHRINKWRAP', {'target': bpy.data.objects['testShrinkWrapHelperSuzanne']})]],
+
+        ["CurveSimpleDeform", "testObjBezierCurveSimpleDeform", "expObjBezierCurveSimpleDeform",
+         [ModifierSpec('simple_deform', 'SIMPLE_DEFORM', {'angle': math.radians(90)})]],
+
+
+        ["CurveSmooth", "testObjBezierCurveSmooth", "expObjBezierCurveSmooth",
+         [ModifierSpec('smooth', 'SMOOTH', {'factor': 10})]],
+
+        ["CurveWave", "testObjBezierCurveWave", "expObjBezierCurveWave",
+         [ModifierSpec('curve_wave', 'WAVE', {'time_offset': -1.5})]],
+
+        ["CurveCurve", "testObjBezierCurveCurve", "expObjBezierCurveCurve",
+         [ModifierSpec('curve_Curve', 'CURVE', {'object': bpy.data.objects['NurbsCurve']})]],
+
+
+
 
 
     ]

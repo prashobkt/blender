@@ -47,7 +47,36 @@ tests = [
                                                    {'object_from': bpy.data.objects["From"], 'object_to': bpy.data.objects["To"],
                                                     })])]),
 
+    #############################################
+    # Curves Deform Modifiers
+    #############################################
+    MeshTest("CurveArmature", "testObjBezierCurveArmature", "expObjBezierCurveArmature",
+             [DeformModifierSpec(10, [ModifierSpec('curve_armature', 'ARMATURE',
+                                                   {'object': bpy.data.objects['testArmatureHelper'],'use_vertex_groups': False, 'use_bone_envelopes': True})])]),
 
+    MeshTest("CurveLattice", "testObjBezierCurveLattice", "expObjBezierCurveLattice",
+             [DeformModifierSpec(10, [ModifierSpec('curve_lattice', 'LATTICE',
+                                                   {'object': bpy.data.objects['testLatticeCurve']})])]),
+
+
+    # HOOK for Curves can't be tested with current framework, as it requires going to Edit Mode to select vertices,
+    # here is no equivalent of a vertex group in Curves.
+    # Dummy test for Hook, can also be called corner case
+    MeshTest("CurveHook", "testObjBezierCurveHook", "expObjBezierCurveHook",
+             [DeformModifierSpec(10, [ModifierSpec('curve_Hook', 'HOOK', {'object': bpy.data.objects['EmptyCurve']})])]),
+
+
+
+    MeshTest("MeshDeformCurve", "testObjCurveMeshDeform", "expObjCurveMeshDeform",
+             [DeformModifierSpec(10, [ModifierSpec('mesh_deform_curve', 'MESH_DEFORM', {'object': bpy.data.objects["Cylinder"],
+                                                                                  'precision': 2})],
+                                 ObjectOperatorSpec('meshdeform_bind', {'modifier': 'mesh_deform_curve'}))]),
+
+
+    MeshTest("WarpCurve", "testObjBezierCurveWarp", "expObjBezierCurveWarp",
+             [DeformModifierSpec(10, [ModifierSpec('warp_curve', 'WARP',
+                                                   {'object_from': bpy.data.objects["From_curve"],
+                                                    'object_to': bpy.data.objects["To_curve"]})])]),
 
 ]
 
