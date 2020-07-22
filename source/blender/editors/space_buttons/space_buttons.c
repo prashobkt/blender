@@ -350,7 +350,7 @@ static void property_search_other_tabs(const bContext *C,
     }
     printf("tab value: %d, unfiltered: %s\n",
            context_tabs_array[i],
-           (sbuts->context_search_filter_active & (1 << i)) ? "true" : "else");
+           (sbuts->context_search_filter_active & (1 << i)) ? "true" : "false");
   }
 
   BKE_area_region_free(CTX_wm_area(C_copy)->type, region_copy);

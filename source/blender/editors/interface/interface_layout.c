@@ -920,6 +920,8 @@ static void ui_item_enum_expand_tabs(uiLayout *layout,
                                      uiBlock *block,
                                      PointerRNA *ptr,
                                      PropertyRNA *prop,
+                                     PointerRNA *ptr_highlight,
+                                     PropertyRNA *prop_highlight,
                                      const char *uiname,
                                      const int h,
                                      const bool icon_only)
@@ -928,8 +930,26 @@ static void ui_item_enum_expand_tabs(uiLayout *layout,
 
   ui_item_enum_expand_exec(layout, block, ptr, prop, uiname, h, UI_BTYPE_TAB, icon_only, NULL);
   BLI_assert(last != block->buttons.last);
+
+  const bool use_custom_highlight = (prop_highlight != NULL);
+
+  int custom_highlight_flag = 0; /* Max of 32 tabs. */
+  if (use_custom_highlight) {
+    BLI_assert(prop_highlight != NULL);
+    BLI_assert(RNA_property_flag(prop_highlight) & PROP_ENUM_FLAG);
+    custom_highlight_flag = RNA_property_enum_get(ptr_highlight, prop_highlight);
+  }
+
+  int i = 0;
   for (uiBut *tab = last ? last->next : block->buttons.first; tab; tab = tab->next) {
     UI_but_drawflag_enable(tab, ui_but_align_opposite_to_area_align_get(CTX_wm_region(C)));
+
+    if (use_custom_highlight) {
+      if (!(custom_highlight_flag & (1 << i))) {
+        tab->flag |= UI_BUT_INACTIVE;
+      }
+    }
+    i++;
   }
 }
 
@@ -3564,13 +3584,19 @@ void uiItemMenuEnumR(
   uiItemMenuEnumR_prop(layout, ptr, prop, name, icon);
 }
 
-void uiItemTabsEnumR_prop(
-    uiLayout *layout, bContext *C, PointerRNA *ptr, PropertyRNA *prop, bool icon_only)
+void uiItemTabsEnumR_prop(uiLayout *layout,
+                          bContext *C,
+                          PointerRNA *ptr,
+                          PropertyRNA *prop,
+                          PointerRNA *ptr_highlight,
+                          PropertyRNA *prop_highlight,
+                          bool icon_only)
 {
   uiBlock *block = layout->root->block;
 
   UI_block_layout_set_current(block, layout);
-  ui_item_enum_expand_tabs(layout, C, block, ptr, prop, NULL, UI_UNIT_Y, icon_only);
+  ui_item_enum_expand_tabs(
+      layout, C, block, ptr, prop, ptr_highlight, prop_highlight, NULL, UI_UNIT_Y, icon_only);
 }
 
 /** \} */

@@ -2420,6 +2420,8 @@ void uiItemTabsEnumR_prop(uiLayout *layout,
                           struct bContext *C,
                           struct PointerRNA *ptr,
                           PropertyRNA *prop,
+                          struct PointerRNA *ptr_highlight,
+                          PropertyRNA *prop_highlight,
                           bool icon_only);
 
 /* UI Operators */
