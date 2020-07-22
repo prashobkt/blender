@@ -1909,6 +1909,7 @@ static void outliner_sort(ListBase *lb)
   }
 }
 
+/* TODO (Nathan): Should children still be sorted? */
 static void outliner_collections_children_sort(ListBase *lb)
 {
   TreeElement *te;
@@ -2037,18 +2038,6 @@ static void outliner_tree_sort(SpaceOutliner *soops, ListBase *tree)
             break;
         }
       }
-
-      // /* just sort alphabetically */
-      // if (tree_sort->idcode == 1) {
-      //   qsort(tree_sort, num_elems, sizeof(tTreeSort), treesort_alpha);
-      // }
-      // else {
-      //   /* keep beginning of list */
-
-      //   if (skip < num_elems) {
-      //     qsort(tree_sort + skip, num_elems - skip, sizeof(tTreeSort), treesort_alpha_ob);
-      //   }
-      // }
 
       /* Copy sorted list back into tree */
       BLI_listbase_clear(tree);
