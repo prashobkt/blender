@@ -246,6 +246,9 @@ foreach(child ${children})
   endif()
 endforeach()
 
+set(PUGIXML_LIBRARIES optimized ${LIBDIR}/pugixml/lib/pugixml.lib debug ${LIBDIR}/pugixml/lib/pugixml_d.lib)
+set(PUGIXML_INCLUDE_DIRS ${LIBDIR}/pugixml/include)
+
 set(ZLIB_INCLUDE_DIRS ${LIBDIR}/zlib/include)
 set(ZLIB_LIBRARIES ${LIBDIR}/zlib/lib/libz_st.lib)
 set(ZLIB_INCLUDE_DIR ${LIBDIR}/zlib/include)
@@ -643,11 +646,10 @@ if(WITH_CYCLES_OSL)
     optimized ${OSL_LIB_COMP}
     optimized ${OSL_LIB_EXEC}
     optimized ${OSL_LIB_QUERY}
-    optimized ${CYCLES_OSL}/lib/pugixml.lib
     debug ${OSL_LIB_EXEC_DEBUG}
     debug ${OSL_LIB_COMP_DEBUG}
     debug ${OSL_LIB_QUERY_DEBUG}
-    debug ${CYCLES_OSL}/lib/pugixml_d.lib
+    ${PUGIXML_LIBRARIES}
   )
   find_path(OSL_INCLUDE_DIR OSL/oslclosure.h PATHS ${CYCLES_OSL}/include)
   find_program(OSL_COMPILER NAMES oslc PATHS ${CYCLES_OSL}/bin)

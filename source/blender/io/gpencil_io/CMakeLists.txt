@@ -14,27 +14,47 @@
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-# The Original Code is Copyright (C) 2020, Blender Foundation
+# The Original Code is Copyright (C) 2006, Blender Foundation
 # All rights reserved.
 # ***** END GPL LICENSE BLOCK *****
 
-add_subdirectory(common)
+set(INC
+  .
+  ../common
+  ../../blenkernel
+  ../../blenlib
+  ../../blenloader
+  ../../bmesh
+  ../../depsgraph
+  ../../editors/include
+  ../../makesdna
+  ../../makesrna
+  ../../windowmanager
+  ../../../../intern/clog
+  ../../../../intern/guardedalloc
+  ../../../../intern/utfconv
+)
 
-if(WITH_ALEMBIC)
-  add_subdirectory(alembic)
-endif()
+set(INC_SYS
+  ${PUGIXML_INCLUDE_DIRS}
+)
 
-if(WITH_CODEC_AVI)
-  add_subdirectory(avi)
-endif()
+set(SRC
+ intern/gpencil_io_capi.cc
 
-if(WITH_OPENCOLLADA)
-  add_subdirectory(collada)
-endif()
+ gpencil_io_exporter.h
+)
 
-if(WITH_USD)
-  add_subdirectory(usd)
-endif()
+set(LIB
+  bf_blenkernel
+  bf_blenlib
+  bf_io_common
 
-add_subdirectory(gpencil_io)
+  #${PUGIXML_LIBRARIES}
+)
 
+list(APPEND LIB
+  ${BOOST_LIBRARIES}
+)
+
+blender_add_lib(bf_gpencil_io "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
