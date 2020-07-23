@@ -1806,27 +1806,6 @@ static const EnumPropertyItem *rna_SpaceProperties_context_itemf(bContext *UNUSE
   return item;
 }
 
-// static const int rna_SpaceProperties_context_search_filter_active_get(PointerRNA *ptr)
-// {
-//   SpaceProperties *sbuts = (SpaceProperties *)(ptr->data);
-
-//   int context_tabs_array[32];
-//   int totitem = ED_buttons_tabs_list(sbuts, context_tabs_array);
-
-//   int retval = 0;
-//   for (int i = 0; i < totitem; i++) {
-//     if (context_tabs_array[i] == -1) {
-//       continue;
-//     }
-//     int tab_context = context_tabs_array[i];
-//     if (sbuts->context_search_filter_active & (1 << tab_context)) {
-//       retval |= (1 << i);
-//     }
-//   }
-
-//   return retval;
-// }
-
 static void rna_SpaceProperties_context_update(Main *UNUSED(bmain),
                                                Scene *UNUSED(scene),
                                                PointerRNA *ptr)

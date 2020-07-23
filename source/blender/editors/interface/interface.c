@@ -3356,7 +3356,7 @@ uiBlock *UI_block_begin(const bContext *C, ARegion *region, const char *name, sh
   block->dt = dt;
   block->evil_C = (void *)C; /* XXX */
 
-  /* Set the search filter int he properties area. */
+  /* Set the search filter in the properties editor. */
   if ((region && region->regiontype == RGN_TYPE_WINDOW) &&
       (area && area->spacetype == SPACE_PROPERTIES)) {
     SpaceProperties *sbuts = CTX_wm_space_properties(C);

@@ -2171,6 +2171,7 @@ void uiItemFullR(uiLayout *layout,
 
   /* Split the label / property. */
   uiLayout *layout_parent = layout;
+
   if (use_prop_sep) {
     uiLayout *layout_row = NULL;
 #ifdef UI_PROP_DECORATE
@@ -5979,9 +5980,6 @@ void uiLayoutSetFunc(uiLayout *layout, uiMenuHandleFunc handlefunc, void *argv)
   layout->root->argv = argv;
 }
 
-/**
- * Finish the layout process and solve for the size of a block.
- */
 void UI_block_layout_resolve(uiBlock *block, int *r_x, int *r_y)
 {
   uiLayoutRoot *root;
