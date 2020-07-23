@@ -4165,7 +4165,7 @@ static void direct_link_curve(BlendDataReader *reader, Curve *cu)
   direct_link_animdata(reader, cu->adt);
 
   /* Protect against integer overflow vulnerability. */
-  CLAMP(cu->len_wchar, 0, INT_MAX - 4);
+  CLAMP(cu->len_char32, 0, INT_MAX - 4);
 
   BLO_read_pointer_array(reader, (void **)&cu->mat);
 
@@ -8697,8 +8697,12 @@ static void direct_link_volume(BlendDataReader *reader, Volume *volume)
 /** \name Read ID: Simulation
  * \{ */
 
-static void lib_link_simulation(BlendLibReader *UNUSED(reader), Simulation *UNUSED(simulation))
+static void lib_link_simulation(BlendLibReader *reader, Simulation *simulation)
 {
+  LISTBASE_FOREACH (
+      PersistentDataHandleItem *, handle_item, &simulation->persistent_data_handles) {
+    BLO_read_id_address(reader, simulation->id.lib, &handle_item->id);
+  }
 }
 
 static void direct_link_simulation(BlendDataReader *reader, Simulation *simulation)
@@ -8709,16 +8713,14 @@ static void direct_link_simulation(BlendDataReader *reader, Simulation *simulati
   BLO_read_list(reader, &simulation->states);
   LISTBASE_FOREACH (SimulationState *, state, &simulation->states) {
     BLO_read_data_address(reader, &state->name);
-    switch ((eSimulationStateType)state->type) {
-      case SIM_STATE_TYPE_PARTICLES: {
-        ParticleSimulationState *particle_state = (ParticleSimulationState *)state;
-        direct_link_customdata(reader, &particle_state->attributes, particle_state->tot_particles);
-        direct_link_pointcache_list(
-            reader, &particle_state->ptcaches, &particle_state->point_cache, 0);
-        break;
-      };
+    BLO_read_data_address(reader, &state->type);
+    if (STREQ(state->type, SIM_TYPE_NAME_PARTICLE_SIMULATION)) {
+      ParticleSimulationState *particle_state = (ParticleSimulationState *)state;
+      direct_link_customdata(reader, &particle_state->attributes, particle_state->tot_particles);
     }
   }
+
+  BLO_read_list(reader, &simulation->persistent_data_handles);
 }
 
 /** \} */
@@ -11138,6 +11140,10 @@ static void expand_simulation(BlendExpander *expander, Simulation *simulation)
 {
   if (simulation->adt) {
     expand_animdata(expander, simulation->adt);
+  }
+  LISTBASE_FOREACH (
+      PersistentDataHandleItem *, handle_item, &simulation->persistent_data_handles) {
+    BLO_expand(expander, handle_item->id);
   }
 }
 

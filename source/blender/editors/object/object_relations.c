@@ -2244,8 +2244,8 @@ void OBJECT_OT_make_local(wmOperatorType *ot)
 
 static bool make_override_library_ovject_overridable_check(Main *bmain, Object *object)
 {
-  /* An object is actually overridable only if it is in at least one local collections...
-   * Unfortunatly 'direct link' flag is not enough here. */
+  /* An object is actually overrideable only if it is in at least one local collections.
+   * Unfortunately 'direct link' flag is not enough here. */
   LISTBASE_FOREACH (Collection *, collection, &bmain->collections) {
     if (!ID_IS_LINKED(collection) && BKE_collection_has_object(collection, object)) {
       return true;
@@ -2303,6 +2303,7 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *obact = CTX_data_active_object(C);
   ID *id_root = NULL;
+  bool is_override_instancing_object = false;
 
   if (!ID_IS_LINKED(obact) && obact->instance_collection != NULL &&
       ID_IS_LINKED(obact->instance_collection)) {
@@ -2315,6 +2316,7 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
     }
 
     id_root = &obact->instance_collection->id;
+    is_override_instancing_object = true;
   }
   else if (!make_override_library_ovject_overridable_check(bmain, obact)) {
     const int i = RNA_property_enum_get(op->ptr, op->type->prop);
@@ -2352,7 +2354,7 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
 
   /* Remove the instance empty from this scene, the items now have an overridden collection
    * instead. */
-  if (success && id_root != &obact->id) {
+  if (success && is_override_instancing_object) {
     ED_object_base_free_and_unlink(bmain, scene, obact);
   }
 
