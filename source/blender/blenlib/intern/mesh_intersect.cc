@@ -2519,6 +2519,9 @@ Mesh trimesh_nary_intersect(
       BLI_assert(f->is_tri());
       UNUSED_VARS_NDEBUG(f);
     }
+    if (dbg_level > 1) {
+      std::cout << "input mesh:\n" << tm_in;
+    }
   }
   if (has_degenerate_tris(tm_in)) {
     std::cout << "IMPLEMENT ME - remove degenerate and illegal tris\n";

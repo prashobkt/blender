@@ -99,62 +99,180 @@ static Mesh mesh_from_bm(BMesh *bm,
   return Mesh(face);
 }
 
+static bool bmvert_attached_to_wire(const BMVert *bmv)
+{
+  /* This is not quite right. It returns true if the only edges
+   * Attached to bmv are wire edges. TODO: iterate through edges
+   * attached to bmv and check BM_edge_is_wire.
+   */
+  return BM_vert_is_wire(bmv);
+}
+
+/* Use the unused _BM_ELEM_TAG_ALT bmflag to mark geometry we will keep. */
+constexpr uint KEEP_FLAG = (1 << 6);
+
 static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
 {
   /* Change BMesh bm to have the mesh match m_out. Return true if there were any changes at all.
-   *
-   * For now, just for testing, just kill the whole old mesh and create the new one.
-   * No attempt yet to use proper examples for the new elements so that they inherit the
-   * proper attributes.
-   * No attempt yet to leave the correct geometric elements selected.
    */
+  bool any_change = false;
 
   m_out.populate_vert();
 
-  /* This is not quite the right test for "no changes" but will do for now. */
-  if (m_out.vert_size() == bm->totvert && m_out.face_size() == bm->totface) {
-    return false;
-  }
-
-  /* The BM_ITER_... macros need attention to work in C++. For now, copy the old BMVerts. */
-  int totvert_orig = bm->totvert;
-  Array<BMVert *> orig_bmv(totvert_orig);
+  /* Initially mark all existing verts as "don't keep", except hidden verts
+   * and verts attached to wire edges.
+   */
   for (int v = 0; v < bm->totvert; ++v) {
-    orig_bmv[v] = BM_vert_at_index(bm, v);
-  }
-  for (int v = 0; v < totvert_orig; ++v) {
-    BM_vert_kill(bm, orig_bmv[v]);
+    BMVert *bmv = BM_vert_at_index(bm, v);
+    if (BM_elem_flag_test(bmv, BM_ELEM_HIDDEN) || bmvert_attached_to_wire(bmv)) {
+      BM_elem_flag_enable(bmv, KEEP_FLAG);
+    }
+    else {
+      BM_elem_flag_disable(bmv, KEEP_FLAG);
+    }
   }
 
-  if (m_out.vert_size() > 0 && m_out.face_size() > 0) {
-    Array<BMVert *> new_bmv(m_out.vert_size());
-    for (int v : m_out.vert_index_range()) {
-      Vertp vertp = m_out.vert(v);
+  /* Reuse old or make new BMVerts, depending on if there's an orig or not.
+   * For those reused, mark them "keep".
+   * Store needed old BMVerts in new_bmvs first, as the table may be unusable after
+   * creating a new BMVert.
+   */
+  Array<BMVert *> new_bmvs(m_out.vert_size());
+  for (int v : m_out.vert_index_range()) {
+    Vertp vertp = m_out.vert(v);
+    int orig = vertp->orig;
+    if (orig != NO_INDEX) {
+      BLI_assert(orig >= 0 && orig < bm->totvert);
+      BMVert *bmv = BM_vert_at_index(bm, orig);
+      new_bmvs[v] = bmv;
+      BM_elem_flag_enable(bmv, KEEP_FLAG);
+    }
+    else {
+      new_bmvs[v] = NULL;
+    }
+  }
+  for (int v : m_out.vert_index_range()) {
+    Vertp vertp = m_out.vert(v);
+    if (new_bmvs[v] == NULL) {
       float co[3];
       const double3 &d_co = vertp->co;
       for (int i = 0; i < 3; ++i) {
         co[i] = static_cast<float>(d_co[i]);
       }
-      new_bmv[v] = BM_vert_create(bm, co, NULL, BM_CREATE_NOP);
-    }
-    int maxflen = 0;
-    for (Facep f : m_out.faces()) {
-      maxflen = max_ii(maxflen, static_cast<int>(f->size()));
-    }
-    Array<BMVert *> face_bmverts(maxflen);
-    for (Facep f : m_out.faces()) {
-      const Face &face = *f;
-      int flen = static_cast<int>(face.size());
-      for (int i = 0; i < flen; ++i) {
-        Vertp v = face[i];
-        int v_index = m_out.lookup_vert(v);
-        BLI_assert(v_index < new_bmv.size());
-        face_bmverts[i] = new_bmv[v_index];
-      }
-      BM_face_create_ngon_verts(bm, face_bmverts.begin(), flen, NULL, BM_CREATE_NOP, true, true);
+      BMVert *bmv = BM_vert_create(bm, co, NULL, BM_CREATE_NOP);
+      new_bmvs[v] = bmv;
+      BM_elem_flag_enable(bmv, KEEP_FLAG);
+      any_change = true;
     }
   }
-  return true;
+
+  /* Initially mark all existing faces as "don't keep", except hidden faces.
+   * Also, save current BMFace pointers as creating faces will disturb the table.
+   */
+  Array<BMFace *> old_bmfs(bm->totface);
+  for (int f = 0; f < bm->totface; ++f) {
+    BMFace *bmf = BM_face_at_index(bm, f);
+    old_bmfs[f] = bmf;
+    if (BM_elem_flag_test(bmf, BM_ELEM_HIDDEN)) {
+      BM_elem_flag_enable(bmf, KEEP_FLAG);
+    }
+    else {
+      BM_elem_flag_disable(bmf, KEEP_FLAG);
+    }
+  }
+
+  /* Reuse or make new BMFaces, as the faces are identical to old ones or not.
+   * If reusing, mark them as "keep". First find the maximum face length
+   * so we can declare some arrays outside of the face-creating loop.
+   */
+  int maxflen = 0;
+  for (Facep f : m_out.faces()) {
+    maxflen = max_ii(maxflen, static_cast<int>(f->size()));
+  }
+  Array<BMVert *> face_bmverts(maxflen);
+  Array<BMEdge *> face_bmedges(maxflen);
+  for (Facep f : m_out.faces()) {
+    const Face &face = *f;
+    int flen = static_cast<int>(face.size());
+    for (int i = 0; i < flen; ++i) {
+      Vertp v = face[i];
+      int v_index = m_out.lookup_vert(v);
+      BLI_assert(v_index < new_bmvs.size());
+      face_bmverts[i] = new_bmvs[v_index];
+    }
+    BMFace *bmf = BM_face_exists(face_bmverts.data(), flen);
+    if (bmf != NULL) {
+      BM_elem_flag_enable(bmf, KEEP_FLAG);
+    }
+    else {
+      int orig = face.orig;
+      // BLI_assert(orig != NO_INDEX && orig >= 0 && orig < bm->totface);
+      // BMFace *orig_face = old_bmfs[orig];
+      // TODO(howard): figure out why not all faces have an orig.
+      BMFace *orig_face;
+      if (orig != NO_INDEX) {
+        orig_face = old_bmfs[orig];
+      }
+      else {
+        orig_face = NULL;
+      }
+      /* Make or find BMEdges. */
+      for (int i = 0; i < flen; ++i) {
+        BMVert *bmv1 = face_bmverts[i];
+        BMVert *bmv2 = face_bmverts[(i + 1) % flen];
+        BMEdge *bme = BM_edge_exists(bmv1, bmv2);
+        if (bme == NULL) {
+          /* TODO(howard): fetch face.edge_orig[i] and use it to fetch example BMEdge,
+           * but will have to store all the BMEdges somewhere before this whole loop.
+           */
+          bme = BM_edge_create(bm, bmv1, bmv2, NULL, BM_CREATE_NOP);
+        }
+        face_bmedges[i] = bme;
+      }
+      BMFace *bmf = BM_face_create(
+          bm, face_bmverts.data(), face_bmedges.data(), flen, orig_face, BM_CREATE_NOP);
+      BM_elem_flag_enable(bmf, KEEP_FLAG);
+      any_change = true;
+    }
+  }
+
+  /* Now kill the unused faces and verts, and clear flags for kept ones. */
+  /* BM_ITER_MESH_MUTABLE macro needs type casts for C++, so expand here.
+   * TODO(howard): make some nice C++ iterators for BMesh.
+   */
+  BMIter iter;
+  BMFace *bmf = static_cast<BMFace *>(BM_iter_new(&iter, bm, BM_FACES_OF_MESH, NULL));
+  while (bmf != NULL) {
+#ifdef DEBUG
+    iter.count = BM_iter_mesh_count(BM_FACES_OF_MESH, bm);
+#endif
+    BMFace *bmf_next = static_cast<BMFace *>(BM_iter_step(&iter));
+    if (BM_elem_flag_test(bmf, KEEP_FLAG)) {
+      BM_elem_flag_disable(bmf, KEEP_FLAG);
+    }
+    else {
+      BM_face_kill(bm, bmf);
+      any_change = true;
+    }
+    bmf = bmf_next;
+  }
+  BMVert *bmv = static_cast<BMVert *>(BM_iter_new(&iter, bm, BM_VERTS_OF_MESH, NULL));
+  while (bmv != NULL) {
+#ifdef DEBUG
+    iter.count = BM_iter_mesh_count(BM_VERTS_OF_MESH, bm);
+#endif
+    BMVert *bmv_next = static_cast<BMVert *>(BM_iter_step(&iter));
+    if (BM_elem_flag_test(bmv, KEEP_FLAG)) {
+      BM_elem_flag_disable(bmv, KEEP_FLAG);
+    }
+    else {
+      BM_vert_kill(bm, bmv);
+      any_change = true;
+    }
+    bmv = bmv_next;
+  }
+
+  return any_change;
 }
 
 static bool bmesh_boolean(BMesh *bm,

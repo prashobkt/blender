@@ -1528,6 +1528,7 @@ static void init_face_merge_state(FaceMergeState *fms, const Vector<int> &tris, 
     mf.vert.append(tri[0]);
     mf.vert.append(tri[1]);
     mf.vert.append(tri[2]);
+    mf.orig = tri.orig;
     int f = static_cast<int>(fms->face.append_and_get_index(mf));
     for (int i = 0; i < 3; ++i) {
       int inext = (i + 1) % 3;
@@ -1972,6 +1973,7 @@ Mesh boolean_trimesh(Mesh &tm_in,
     std::cout << "BOOLEAN of " << nshapes << " operand" << (nshapes == 1 ? "" : "s")
               << " op=" << bool_optype_name(op) << "\n";
     if (dbg_level > 1) {
+      tm_in.populate_vert();
       std::cout << "boolean_trimesh input:\n" << tm_in;
       write_obj_mesh(tm_in, "boolean_in");
     }
@@ -2035,6 +2037,12 @@ Mesh boolean_mesh(Mesh &pm,
                   Mesh *pm_triangulated,
                   MArena *arena)
 {
+  constexpr int dbg_level = 0;
+  if (dbg_level > 0) {
+    std::cout << "\nBOOLEAN_MESH\n"
+              << nshapes << " operand" << (nshapes == 1 ? "" : "s")
+              << " op=" << bool_optype_name(op) << "\n";
+  }
   Mesh *tm_in = pm_triangulated;
   Mesh our_triangulation;
   if (tm_in == nullptr) {
@@ -2043,6 +2051,9 @@ Mesh boolean_mesh(Mesh &pm,
   }
   Mesh tm_out = boolean_trimesh(*tm_in, op, nshapes, shape_fn, use_self, arena);
   Mesh ans = polymesh_from_trimesh_with_dissolve(tm_out, pm, arena);
+  if (dbg_level > 0) {
+    std::cout << "boolean_mesh output:\n" << ans;
+  }
   return ans;
 }
 
