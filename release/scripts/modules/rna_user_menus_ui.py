@@ -26,7 +26,6 @@ import bpy
 from bpy.app.translations import pgettext_iface as iface_
 from bpy.app.translations import contexts as i18n_contexts
 
-
 def _indented_layout(layout, level):
     indentpx = 16
     if level == 0:
@@ -37,6 +36,24 @@ def _indented_layout(layout, level):
     col = split.column()
     col = split.column()
     return col
+
+def get_keymap(context, index):
+    prefs = context.preferences
+    um = prefs.user_menus
+
+    if index < 0:
+        index = menu_id(context, um.active_group)
+
+    for km in context.window_manager.keyconfigs.user.keymaps:
+        for kmi in km.keymap_items:
+            if kmi.idname == "wm.call_user_menu":
+                if kmi.properties.index == index:
+                    return kmi
+    km = context.window_manager.keyconfigs.user.keymaps['Window']
+    kmi = km.keymap_items.new("wm.call_user_menu",'RIGHTMOUSE', 'PRESS', shift=True, ctrl=True, alt=True)
+    kmi.properties.index = index
+    kmi.active = True
+    return kmi
 
 def draw_button(context, box, item):
     prefs = context.preferences
@@ -140,11 +157,21 @@ def draw_item_editor(context, row):
     else:
         col.label(text="No item selected.")
 
-def draw_user_menu_preference(context, layout):
+def draw_user_menu_preference_expanded(context, layout):
     prefs = context.preferences
     um = prefs.user_menus
     umg = um.active_group
     kmi = umg.keymap
+
+    layout.prop(kmi, "idname", text="")
+    layout.prop(kmi.properties, "index", text="")
+
+
+def draw_user_menu_preference(context, layout):
+    prefs = context.preferences
+    um = prefs.user_menus
+    umg = um.active_group
+    kmi = get_keymap(context, -1)
 
     col = _indented_layout(layout, 0)
     row = col.row()
@@ -157,9 +184,57 @@ def draw_user_menu_preference(context, layout):
         pie_text = "Pie"
     row.prop(umg, "is_pie", text=pie_text, toggle=True)
 
-    #row.prop(kmi, )
+    row.prop(kmi, "map_type", text="")
+    map_type = kmi.map_type
+    if map_type == 'KEYBOARD':
+        row.prop(kmi, "type", text="", full_event=True)
+    elif map_type == 'MOUSE':
+        row.prop(kmi, "type", text="", full_event=True)
+    elif map_type == 'NDOF':
+        row.prop(kmi, "type", text="", full_event=True)
+    elif map_type == 'TWEAK':
+        subrow = row.row()
+        subrow.prop(kmi, "type", text="")
+        subrow.prop(kmi, "value", text="")
+    elif map_type == 'TIMER':
+        row.prop(kmi, "type", text="")
+    else:
+        row.label()
+
+    if um.expanded:
+        box = col.box()
+        draw_user_menu_preference_expanded(context=context, layout=box)
+
+
+def menu_id(context, umg):
+    prefs = context.preferences
+    um = prefs.user_menus
+
+    i = 0
+    for item in um.menus:
+        if item == umg:
+            return i
+        i = i + 1
+    return -1
 
     
+def ensure_keymap(context):
+    prefs = context.preferences
+    um = prefs.user_menus
+    umg = um.active_group
+    index = menu_id(context, umg)
+
+    for km in context.window_manager.keyconfigs.user.keymaps:
+        for kmi in km.keymap_items:
+            if kmi.idname == "wm.call_user_menu":
+                if kmi.properties.index == index:
+                    umg.set_keymap(kmi=kmi)
+    if not umg.keymap:
+        km = context.window_manager.keyconfigs.user.keymaps['Window']
+        kmi = km.keymap_items.new("wm.call_user_menu",'RIGHTMOUSE', 'PRESS', shift=True, ctrl=True, alt=True)
+        kmi.properties.index = index
+        kmi.active = True
+        umg.set_keymap(kmi=kmi)
 
 
 def draw_user_menus(context, layout):
@@ -168,6 +243,8 @@ def draw_user_menus(context, layout):
 
     if not um.active_group:
         um.active_group = um.menus[0]
+    if not um.active_group.keymap:
+        ensure_keymap(context)
 
     split = layout.split(factor=0.4)
 
@@ -206,13 +283,3 @@ def draw_user_menus(context, layout):
 
     layout.separator()
 
-    #km = bpy.context.window_manager.keyconfigs.user.keymaps['Window']
-    #for kmi in km.keymap_items:
-    #    if kmi.idname == "wm.call_menu":
-    #        if um.is_pie and kmi.properties.name == "SCREEN_MT_user_menu":
-    #            kmi.idname = "wm.call_menu_pie"
-    #            kmi.properties.name = "PIE_MT_user_menu"
-    #    if kmi.idname == "wm.call_menu_pie":
-    #        if kmi.properties.name == "PIE_MT_user_menu" and not um.is_pie:
-    #            kmi.idname = "wm.call_menu"
-    #            kmi.properties.name = "SCREEN_MT_user_menu"

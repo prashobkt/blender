@@ -1126,6 +1126,11 @@ static void rna_UserDef_usermenus_set_group(UserDef *userdef, bUserMenusGroup *u
   userdef->runtime.umg_select = umg;
 }
 
+static void rna_UserDef_usermenus_set_keymap(bUserMenusGroup *umg, wmKeyMapItem *kmi)
+{
+  umg->shortcut = kmi;
+}
+
 static void rna_UserDef_usermenus_add_group(UserDef *userdef)
 {
   bUserMenusGroup *umg = MEM_mallocN(sizeof(*umg), __func__);
@@ -1164,87 +1169,6 @@ static bool rna_UserDef_usermenus_has_item(UserDef *userdef)
   if (!umi)
     return false;
   return true;
-}
-
-static void rna_UserDef_usermenus_buttons_delete(ListBase *lb, bUserMenuItem_But *umib)
-{
-  BLI_remlink(lb, umib);
-  MEM_freeN(umib);
-}
-
-static void rna_UserDef_usermenus_buttons_free_list(ListBase *lb)
-{
-  bUserMenuItem_But *umib = lb->first;
-
-  if (!umib)
-    return;
-  for (bUserMenuItem_But *next_umib; umib; umib = next_umib) {
-    next_umib = umib->next;
-    if (umib->item->type == USER_MENU_TYPE_MENU)
-      rna_UserDef_usermenus_buttons_free_list(&umib->subbut);
-    rna_UserDef_usermenus_buttons_delete(lb, umib);
-  }
-}
-
-static void rna_UserDef_usermenus_buttons_refresh_list(UserDef *userdef,
-                                                       ListBase *list_umi,
-                                                       ListBase *list_umib);
-
-static void rna_UserDef_usermenus_refresh_submenu(UserDef *userdef, bUserMenuItem_But *umib)
-{
-  bUserMenuItem *umi = umib->item;
-  if (!umi || umi->type != USER_MENU_TYPE_SUBMENU)
-    return;
-  bUserMenuItem_SubMenu *umi_sm = (bUserMenuItem_SubMenu *)umi;
-  rna_UserDef_usermenus_buttons_refresh_list(userdef, &umi_sm->items, &umib->subbut);
-}
-
-static void rna_UserDef_usermenus_buttons_refresh_list(UserDef *userdef,
-                                                       ListBase *list_umi,
-                                                       ListBase *list_umib)
-{
-  int index = 0;
-  bUserMenuItem_But *umib = list_umib->first;
-  for (bUserMenuItem *umi = list_umi->first; umi; umi = umi->next, index++) {
-    if (umib && umib->item == umi) {
-      umib->pressed = (userdef->runtime.um_item_select == umi) ? true : false;
-      umib->index = index;
-      rna_UserDef_usermenus_refresh_submenu(userdef, umib);
-      umib = umib->next;
-    }
-    else {
-      bUserMenuItem_But *new_umib = MEM_callocN(sizeof(bUserMenuItem_But), __func__);
-      new_umib->pressed = (userdef->runtime.um_item_select == umi) ? true : false;
-      new_umib->item = umi;
-      new_umib->index = index;
-      BLI_listbase_clear(&new_umib->subbut);
-      if (umib) {
-        BLI_insertlinkafter(list_umib, umib, new_umib);
-        rna_UserDef_usermenus_buttons_delete(list_umib, umib);
-      }
-      else {
-        BLI_addtail(list_umib, new_umib);
-      }
-      rna_UserDef_usermenus_refresh_submenu(userdef, new_umib);
-      umib = new_umib->next;
-    }
-  }
-  for (bUserMenuItem_But *next_umib; umib; umib = next_umib) {
-    next_umib = umib->next;
-    rna_UserDef_usermenus_buttons_delete(list_umib, umib);
-  }
-}
-
-static void rna_UserDef_usermenus_buttons_refresh(UserDef *userdef)
-{
-  ListBase *buttons = &userdef->runtime.um_buttons;
-
-  bUserMenu *um = rna_UserDef_usermenus_get_current(userdef, false);
-  if (!um) {
-    rna_UserDef_usermenus_buttons_free_list(buttons);
-    return;
-  }
-  rna_UserDef_usermenus_buttons_refresh_list(userdef, &um->items, buttons);
 }
 
 static int rna_UserDef_usermenus_items_length(UserDef *userdef)
@@ -1540,12 +1464,6 @@ static void rna_UserDef_usermenu_items_begin(CollectionPropertyIterator *iter, P
   rna_iterator_listbase_begin(iter, &bum->items, NULL);
 }
 
-static void rna_UserDef_usermenu_subbut_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
-{
-  bUserMenuItem_But *umib = (bUserMenuItem_But *)ptr->data;
-  rna_iterator_listbase_begin(iter, &umib->subbut, NULL);
-}
-
 static void rna_UserDef_usermenu_submenu_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   bUserMenuItem_SubMenu *umi_sm = (bUserMenuItem_SubMenu *)ptr->data;
@@ -1586,12 +1504,6 @@ static void rna_UserDef_usermenu_menus_begin(CollectionPropertyIterator *iter, P
 {
   UserDef *userdef = (UserDef *)ptr->data;
   rna_iterator_listbase_begin(iter, &userdef->user_menus, NULL);
-}
-
-static void rna_UserDef_usermenu_buttons_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
-{
-  UserDef *userdef = (UserDef *)ptr->data;
-  rna_iterator_listbase_begin(iter, &userdef->runtime.um_buttons, NULL);
 }
 
 int rna_show_statusbar_vram_editable(struct PointerRNA *UNUSED(ptr), const char **UNUSED(r_info))
@@ -6627,40 +6539,14 @@ static void rna_def_userdef_usermenu(BlenderRNA *brna)
   RNA_def_function_return(func, parm);
 
   rna_def_userdef_usermenus_items_subtypes(brna);
-
-  /* user menu item button */
-  srna = RNA_def_struct(brna, "UserMenuItemButton", NULL);
-  RNA_def_struct_sdna(srna, "bUserMenuItem_But");
-  RNA_def_struct_ui_text(srna, "User Menu Item Button", "User Menu item Button");
-
-  prop = RNA_def_property(srna, "pressed", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "pressed", 0);
-  RNA_def_property_ui_text(prop, "is item selected", "true item is selected");
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_UserDef_usermenus_active_item_set");
-
-  prop = RNA_def_property(srna, "item", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, NULL, "item");
-  RNA_def_property_struct_type(prop, "UserMenuItem");
-  RNA_def_property_ui_text(prop, "item", "");
-
-  prop = RNA_def_property(srna, "subbut", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_struct_type(prop, "UserMenuItemButton");
-  RNA_def_property_ui_text(prop, "sub button", "list of the items of the menu");
-  RNA_def_property_collection_funcs(prop,
-                                    "rna_UserDef_usermenu_subbut_begin",
-                                    "rna_iterator_listbase_next",
-                                    NULL,
-                                    "rna_iterator_listbase_get",
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    NULL);
 }
 
 static void rna_def_userdef_usermenusgroup(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
+  FunctionRNA *func;
+  PropertyRNA *parm;
 
   /* user menus group */
   srna = RNA_def_struct(brna, "UserMenusGroup", NULL);
@@ -6685,6 +6571,10 @@ static void rna_def_userdef_usermenusgroup(BlenderRNA *brna)
   RNA_def_property_pointer_sdna(prop, NULL, "shortcut");
   RNA_def_property_struct_type(prop, "KeyMapItem");
   RNA_def_property_ui_text(prop, "item", "");
+
+  func = RNA_def_function(srna, "set_keymap", "rna_UserDef_usermenus_set_keymap");
+  RNA_def_function_ui_description(func, "set the keymap of the menu");
+  parm = RNA_def_pointer(func, "kmi", "KeyMapItem", "", "the new keymap");
 }
 
 static void rna_def_userdef_usermenus_editor(BlenderRNA *brna)

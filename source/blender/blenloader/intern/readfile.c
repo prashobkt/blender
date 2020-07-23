@@ -9806,6 +9806,7 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
 
   LISTBASE_FOREACH (bUserMenusGroup *, umg, &user->user_menus) {
     BLI_listbase_clear(&umg->menus);
+    umg->shortcut = NULL;
     BLO_read_list(reader, &umg->menus);
     LISTBASE_FOREACH (bUserMenu *, um, &umg->menus) {
       BLI_listbase_clear(&um->items);
@@ -9834,7 +9835,6 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   user->runtime.um_context_select = 1;
   user->runtime.um_item_select = NULL;
   user->runtime.umg_select = user->user_menus.first;
-  BLI_listbase_clear(&user->runtime.um_buttons);
 
   /* free fd->datamap again */
   oldnewmap_clear(fd->datamap);
