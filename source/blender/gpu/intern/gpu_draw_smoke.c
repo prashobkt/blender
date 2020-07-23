@@ -312,6 +312,11 @@ static bool get_smoke_velocity_field(FluidDomainSettings *fds,
       *r_velocity_y = manta_get_guide_velocity_y(fds->fluid);
       *r_velocity_z = manta_get_guide_velocity_z(fds->fluid);
       break;
+    case VECTOR_DRAW_GRID_FORCE:
+      *r_velocity_x = manta_get_force_x(fds->fluid);
+      *r_velocity_y = manta_get_force_y(fds->fluid);
+      *r_velocity_z = manta_get_force_z(fds->fluid);
+      break;
   }
 
   return *r_velocity_x && *r_velocity_y && *r_velocity_z;

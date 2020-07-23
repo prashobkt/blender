@@ -1086,6 +1086,27 @@ static const EnumPropertyItem *rna_Fluid_cobafield_itemf(bContext *UNUSED(C),
   tmp.description = "Z component of the velocity field";
   RNA_enum_item_add(&item, &totitem, &tmp);
 
+  tmp.value = FLUID_DOMAIN_FIELD_FORCE_X;
+  tmp.identifier = "FORCE_X";
+  tmp.icon = 0;
+  tmp.name = "X Force";
+  tmp.description = "X component of the force field";
+  RNA_enum_item_add(&item, &totitem, &tmp);
+
+  tmp.value = FLUID_DOMAIN_FIELD_FORCE_Y;
+  tmp.identifier = "FORCE_Y";
+  tmp.icon = 0;
+  tmp.name = "Y Force";
+  tmp.description = "Y component of the force field";
+  RNA_enum_item_add(&item, &totitem, &tmp);
+
+  tmp.value = FLUID_DOMAIN_FIELD_FORCE_Z;
+  tmp.identifier = "FORCE_Z";
+  tmp.icon = 0;
+  tmp.name = "Z Force";
+  tmp.description = "Z component of the force field";
+  RNA_enum_item_add(&item, &totitem, &tmp);
+
   if (settings->type == FLUID_DOMAIN_TYPE_GAS) {
     tmp.value = FLUID_DOMAIN_FIELD_COLOR_R;
     tmp.identifier = "COLOR_R";
@@ -1329,6 +1350,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
        0,
        "Guide Velocity",
        "Display guide velocity grid"},
+      {VECTOR_DRAW_GRID_FORCE, "FORCE", 0, "Force", "Display external forces"},
       {0, NULL, 0, NULL, NULL},
   };
 
