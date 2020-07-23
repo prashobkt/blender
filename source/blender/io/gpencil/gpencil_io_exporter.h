@@ -26,16 +26,25 @@ extern "C" {
 struct Scene;
 struct bContext;
 
+typedef enum eGpencilExport_Modes {
+  GP_EXPORT_TO_SVG = 0,
+} eGpencilExport_Modes;
+
 struct GpencilExportParams {
-  double frame_start;
-  double frame_end;
+  bContext *C;
   /** Grease pencil object. */
   struct Object *ob;
+  /** Output filename.  */
+  char *filename;
+  /** Export mode.  */
+  short mode;
+  /** Start frame.  */
+  double frame_start;
+  /** End frame.  */
+  double frame_end;
 };
 
-bool gpencil_io_export(struct bContext *C,
-                       const char *filepath,
-                       const struct GpencilExportParams *params);
+bool gpencil_io_export(const struct GpencilExportParams *params);
 
 #ifdef __cplusplus
 }

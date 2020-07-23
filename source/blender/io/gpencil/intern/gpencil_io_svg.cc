@@ -43,32 +43,60 @@ namespace io {
 namespace gpencil {
 
 /* Constructor. */
-GpencilSVGwriter::GpencilSVGwriter(void)
+Gpencilwriter::Gpencilwriter(const struct GpencilExportParams *params)
 {
-  std::cout << "Constructor\n";
+  this->params = GpencilExportParams();
+  this->params.frame_start = params->frame_start;
+  this->params.frame_end = params->frame_end;
+  this->params.ob = params->ob;
+  this->params.C = params->C;
+  this->params.filename = params->filename;
+  this->params.mode = params->mode;
 }
 
-bool GpencilSVGwriter::write(struct bContext *C,
-                             const char *filepath,
-                             const struct GpencilExportParams *params)
+/**
+ * Select type of export
+ * @return
+ */
+bool Gpencilwriter::export_object(void)
 {
-  Main *bmain = CTX_data_main(C);
+  switch (this->params.mode) {
+    case GP_EXPORT_TO_SVG: {
+      GpencilwriterSVG writter = GpencilwriterSVG(&params);
+      writter.write();
+      break;
+    }
+    default:
+      break;
+  }
+
+  return true;
+}
+
+/* Constructor. */
+GpencilwriterSVG::GpencilwriterSVG(struct GpencilExportParams *params)
+{
+  this->params = params;
+}
+
+/* Main write method for SVG format. */
+bool GpencilwriterSVG::write(void)
+{
+  Main *bmain = CTX_data_main(this->params->C);
   char svg_filename[FILE_MAX];
-  BLI_strncpy(svg_filename, filepath, FILE_MAX);
+  BLI_strncpy(svg_filename, this->params->filename, FILE_MAX);
   BLI_path_abs(svg_filename, BKE_main_blendfile_path(bmain));
 
-  Object *ob = params->ob;
+  Object *ob = this->params->ob;
 
   //#ifdef WIN32
   //  UTF16_ENCODE(svg_filename);
   //#endif
 
   /* Create simple XML. */
-  pugi::xml_document doc;
-
   // tag::code[]
   // add node with some name
-  pugi::xml_node node = doc.append_child("node");
+  pugi::xml_node node = this->doc.append_child("node");
 
   // add description node with text child
   pugi::xml_node descr = node.append_child("object");

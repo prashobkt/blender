@@ -18,6 +18,7 @@
 /** \file
  * \ingroup bgpencil
  */
+#include "pugixml.hpp"
 
 struct Main;
 struct GpencilExportParams;
@@ -26,11 +27,25 @@ namespace blender {
 namespace io {
 namespace gpencil {
 
-class GpencilSVGwriter {
+class Gpencilwriter {
 
  public:
-  GpencilSVGwriter(void);
-  bool write(struct bContext *C, const char *filepath, const struct GpencilExportParams *params);
+  Gpencilwriter(const struct GpencilExportParams *params);
+  bool export_object(void);
+
+ private:
+  GpencilExportParams params;
+};
+
+class GpencilwriterSVG {
+
+ public:
+  GpencilwriterSVG(struct GpencilExportParams *params);
+  bool write(void);
+
+ private:
+  GpencilExportParams *params;
+  pugi::xml_document doc;
 };
 
 }  // namespace gpencil

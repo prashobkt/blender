@@ -23,10 +23,10 @@
 
 #include "gpencil_io_svg.h"
 
-bool gpencil_io_export(bContext *C, const char *filepath, const GpencilExportParams *params)
+bool gpencil_io_export(const GpencilExportParams *params)
 {
-  blender::io::gpencil::GpencilSVGwriter mywriter;
-  mywriter.write(C, filepath, params);
+  blender::io::gpencil::Gpencilwriter mywriter(params);
+  mywriter.export_object();
 
   return true;
 }

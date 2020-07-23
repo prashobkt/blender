@@ -100,8 +100,6 @@ static int wm_gpencil_export_invoke(bContext *C, wmOperator *op, const wmEvent *
 
 static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 {
-  Scene *scene = CTX_data_scene(C);
-
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
     BKE_report(op->reports, RPT_ERROR, "No filename given");
     return OPERATOR_CANCELLED;
@@ -112,12 +110,23 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   Object *ob = CTX_data_active_object(C);
 
   struct GpencilExportParams params = {
-      .frame_start = (params.frame_start == INT_MIN) ? SFRA : RNA_int_get(op->ptr, "start"),
-      .frame_end = (params.frame_end == INT_MIN) ? EFRA : RNA_int_get(op->ptr, "end"),
+      .C = C,
       .ob = ob,
+      .filename = filename,
+      .mode = GP_EXPORT_TO_SVG,
+      .frame_start = RNA_int_get(op->ptr, "start"),
+      .frame_end = RNA_int_get(op->ptr, "end"),
   };
+  /* Take some defaults from the scene, if not specified explicitly. */
+  Scene *scene = CTX_data_scene(C);
+  if (params.frame_start == INT_MIN) {
+    params.frame_start = SFRA;
+  }
+  if (params.frame_end == INT_MIN) {
+    params.frame_end = EFRA;
+  }
 
-  gpencil_io_export(C, filename, &params);
+  gpencil_io_export(&params);
 
   return OPERATOR_FINISHED;
 }
