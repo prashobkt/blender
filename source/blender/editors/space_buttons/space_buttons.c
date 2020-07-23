@@ -399,6 +399,7 @@ static void buttons_operatortypes(void)
 {
   WM_operatortype_append(BUTTONS_OT_start_filter);
   WM_operatortype_append(BUTTONS_OT_clear_filter);
+  WM_operatortype_append(BUTTONS_OT_toggle_pin);
   WM_operatortype_append(BUTTONS_OT_context_menu);
   WM_operatortype_append(BUTTONS_OT_file_browse);
   WM_operatortype_append(BUTTONS_OT_directory_browse);

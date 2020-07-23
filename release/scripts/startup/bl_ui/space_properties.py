@@ -36,7 +36,7 @@ class PROPERTIES_HT_header(Header):
         # Note: pin ID doesn't properly work with this simple button in python yet.
         row = layout.row()
         row.emboss = 'NONE'
-        row.prop(view, "use_pin_id", icon=('PINNED' if view.use_pin_id else 'UNPINNED'), text="")
+        row.operator("buttons.toggle_pin", icon=('PINNED' if view.use_pin_id else 'UNPINNED'), text="")
 
 
 class PROPERTIES_PT_navigation_bar(Panel):

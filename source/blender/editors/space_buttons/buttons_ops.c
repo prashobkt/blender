@@ -108,6 +108,33 @@ void BUTTONS_OT_clear_filter(struct wmOperatorType *ot)
   ot->poll = ED_operator_buttons_active;
 }
 
+/********************** pin id operator *********************/
+
+static int toggle_pin_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  SpaceProperties *sbuts = CTX_wm_space_properties(C);
+
+  sbuts->pinid = (sbuts->flag & SB_PIN_CONTEXT) ? NULL : buttons_context_id_path(C);
+
+  sbuts->flag ^= SB_PIN_CONTEXT;
+
+  ED_area_tag_redraw(CTX_wm_area(C));
+
+  return OPERATOR_FINISHED;
+}
+
+void BUTTONS_OT_toggle_pin(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Toggle Pin ID";
+  ot->description = "Keep the current data-block displayed";
+  ot->idname = "BUTTONS_OT_toggle_pin";
+
+  /* api callbacks */
+  ot->exec = toggle_pin_exec;
+  ot->poll = ED_operator_buttons_active;
+}
+
 /********************** context_menu operator *********************/
 
 static int context_menu_invoke(bContext *C, wmOperator *UNUSED(op), const wmEvent *UNUSED(event))
