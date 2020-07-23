@@ -32,6 +32,7 @@
 #  include "GHOST_SystemX11.h"
 #endif
 
+#include <vector>
 #include <vulkan/vulkan.h>
 
 #ifndef GHOST_OPENGL_VK_CONTEXT_FLAGS
@@ -54,7 +55,6 @@ class GHOST_ContextVK : public GHOST_Context {
   GHOST_ContextVK(bool stereoVisual,
 #ifdef _WIN32
                   HWND hwnd,
-                  HINSTANCE hinstance,
 #else
                   Window window,
                   Display *display,
@@ -116,7 +116,6 @@ class GHOST_ContextVK : public GHOST_Context {
  private:
 #ifdef _WIN32
   HWND hwnd;
-  HINSTANCE hinstance;
 #else
   Display *m_display;
   Window m_window;
@@ -127,14 +126,23 @@ class GHOST_ContextVK : public GHOST_Context {
   const int m_useValidationLayers;
 
   VkInstance m_instance;
-  VkSurfaceKHR m_surface;
   VkPhysicalDevice m_physical_device;
+  VkDevice m_device;
+
   uint32_t m_queue_family_graphic;
   uint32_t m_queue_family_present;
 
-  VkDevice m_device;
   VkQueue m_graphic_queue;
   VkQueue m_present_queue;
+
+  /* For display only. */
+  VkSurfaceKHR m_surface;
+  VkSwapchainKHR m_swapchain;
+  std::vector<VkImage> m_swapChainImages;
+  VkFormat m_swapChainImageFormat;
+  VkExtent2D m_swapChainExtent;
+
+  GHOST_TSuccess createSwapChain(void);
 };
 
 #endif  // __GHOST_CONTEXTVK_H__

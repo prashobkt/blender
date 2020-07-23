@@ -112,7 +112,6 @@ static const char *vulkan_error_as_string(VkResult result)
 GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
 #ifdef _WIN32
                                  HWND hwnd,
-                                 HINSTANCE hinstance,
 #else
                                  Window window,
                                  Display *display,
@@ -132,14 +131,18 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
       m_contextMinorVersion(contextMinorVersion),
       m_useValidationLayers(useValidationLayers),
       m_instance(VK_NULL_HANDLE),
-      m_surface(VK_NULL_HANDLE),
       m_physical_device(VK_NULL_HANDLE),
-      m_device(VK_NULL_HANDLE)
+      m_device(VK_NULL_HANDLE),
+      m_surface(VK_NULL_HANDLE),
+      m_swapchain(VK_NULL_HANDLE)
 {
 }
 
 GHOST_ContextVK::~GHOST_ContextVK()
 {
+  if (m_swapchain != VK_NULL_HANDLE) {
+    vkDestroySwapchainKHR(m_device, m_swapchain, NULL);
+  }
   if (m_device != VK_NULL_HANDLE) {
     vkDestroyDevice(m_device, NULL);
   }
@@ -233,7 +236,32 @@ static void enableLayer(vector<VkLayerProperties> &layers_available,
   }
 }
 
-static VkPhysicalDevice pickPhysicalDevice(VkInstance instance)
+static bool device_extensions_support(VkPhysicalDevice device, vector<const char *> required_exts)
+{
+  uint32_t ext_count;
+  vkEnumerateDeviceExtensionProperties(device, NULL, &ext_count, NULL);
+
+  vector<VkExtensionProperties> available_exts(ext_count);
+  vkEnumerateDeviceExtensionProperties(device, NULL, &ext_count, available_exts.data());
+
+  for (const auto &extension_needed : required_exts) {
+    bool found = false;
+    for (const auto &extension : available_exts) {
+      if (strcmp(extension_needed, extension.extensionName) == 0) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static VkPhysicalDevice pickPhysicalDevice(VkInstance instance,
+                                           VkSurfaceKHR surface,
+                                           vector<const char *> required_exts)
 {
   uint32_t device_count = 0;
   vkEnumeratePhysicalDevices(instance, &device_count, NULL);
@@ -256,6 +284,24 @@ static VkPhysicalDevice pickPhysicalDevice(VkInstance instance)
 
     VkPhysicalDeviceFeatures device_features;
     vkGetPhysicalDeviceFeatures(device, &device_features);
+
+    if (!device_extensions_support(device, required_exts)) {
+      continue;
+    }
+
+    if (surface != VK_NULL_HANDLE) {
+      uint32_t format_count;
+      vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, NULL);
+      /* TODO(fclem) This is where we should check for HDR surface format. */
+
+      uint32_t present_count;
+      vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_count, NULL);
+
+      /* For now anything will do. */
+      if (format_count == 0 || present_count == 0) {
+        continue;
+      }
+    }
 
     // List of REQUIRED features.
     if (device_features.geometryShader &&  // Needed for wide lines
@@ -349,6 +395,87 @@ static GHOST_TSuccess getPresetQueueFamily(VkPhysicalDevice device,
   return GHOST_kFailure;
 }
 
+GHOST_TSuccess GHOST_ContextVK::createSwapChain(void)
+{
+  VkPhysicalDevice device = m_physical_device;
+
+  uint32_t format_count;
+  vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_surface, &format_count, NULL);
+  vector<VkSurfaceFormatKHR> formats(format_count);
+  vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_surface, &format_count, formats.data());
+
+  /* TODO choose appropriate format. */
+  VkSurfaceFormatKHR format = formats[0];
+
+  uint32_t present_count;
+  vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_surface, &present_count, NULL);
+  vector<VkPresentModeKHR> presents(present_count);
+  vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_surface, &present_count, presents.data());
+
+  /* TODO choose appropriate present mode . */
+  VkPresentModeKHR present_mode = presents[0];
+
+  VkSurfaceCapabilitiesKHR capabilities;
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, m_surface, &capabilities);
+
+  VkExtent2D extent = capabilities.currentExtent;
+  if (extent.width == UINT32_MAX) {
+    /* Window Manager is going to set the surface size based on the given size.
+     * Choose something between minImageExtent and maxImageExtent. */
+    /* TODO(fclem) choose more wisely. */
+    extent = capabilities.minImageExtent;
+  }
+
+  /* Driver can stall if only using minimal image count. */
+  uint32_t image_count = capabilities.minImageCount;
+  /* Note: maxImageCount == 0 means no limit. */
+  if (image_count > capabilities.maxImageCount && capabilities.maxImageCount > 0) {
+    image_count = capabilities.maxImageCount;
+  }
+
+  VkSwapchainCreateInfoKHR create_info = {
+      .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+      .surface = m_surface,
+      .minImageCount = image_count,
+      .imageFormat = format.format,
+      .imageColorSpace = format.colorSpace,
+      .imageExtent = extent,
+      .imageArrayLayers = 1,
+      .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+      .preTransform = capabilities.currentTransform,  // No transform
+      .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+      .presentMode = present_mode,
+      .clipped = VK_TRUE,
+      .oldSwapchain = VK_NULL_HANDLE,  // TODO Window resize
+  };
+
+  uint32_t queueFamilyIndices[] = {m_queue_family_graphic, m_queue_family_present};
+
+  if (m_queue_family_graphic != m_queue_family_present) {
+    create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+    create_info.queueFamilyIndexCount = 2;
+    create_info.pQueueFamilyIndices = queueFamilyIndices;
+  }
+  else {
+    create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    create_info.queueFamilyIndexCount = 0;   // Optional
+    create_info.pQueueFamilyIndices = NULL;  // Optional
+  }
+
+  VK_CHECK(vkCreateSwapchainKHR(m_device, &create_info, NULL, &m_swapchain));
+
+  /* Save infos for rendering. */
+  m_swapChainImageFormat = format.format;
+  m_swapChainExtent = extent;
+
+  /* image_count may not be what we requested! Getter for final value. */
+  vkGetSwapchainImagesKHR(m_device, m_swapchain, &image_count, NULL);
+  m_swapChainImages.resize(image_count);
+  vkGetSwapchainImagesKHR(m_device, m_swapchain, &image_count, m_swapChainImages.data());
+
+  return GHOST_kSuccess;
+}
+
 GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 {
 #ifdef _WIN32
@@ -365,6 +492,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
     enableLayer(layers_available, layers_enabled, "VK_LAYER_KHRONOS_validation");
   }
 
+  vector<const char *> extensions_device;
   vector<const char *> extensions_enabled;
 
   if (use_window_surface) {
@@ -375,6 +503,8 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 #endif
     requireExtension(extensions_available, extensions_enabled, "VK_KHR_surface");
     requireExtension(extensions_available, extensions_enabled, native_surface_extension_name);
+
+    extensions_device.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
   }
 
   VkApplicationInfo app_info = {
@@ -383,7 +513,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
       .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
       .pEngineName = "Blender",
       .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-      .apiVersion = VK_API_VERSION_1_0,
+      .apiVersion = VK_MAKE_VERSION(m_contextMajorVersion, m_contextMinorVersion, 0),
   };
 
   VkInstanceCreateInfo create_info = {
@@ -397,15 +527,11 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 
   VK_CHECK(vkCreateInstance(&create_info, NULL, &m_instance));
 
-  m_physical_device = pickPhysicalDevice(m_instance);
-
-  vector<VkDeviceQueueCreateInfo> queue_create_infos;
-
   if (use_window_surface) {
 #ifdef _WIN32
     VkWin32SurfaceCreateInfoKHR surface_create_info = {
         .sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-        hinstance = m_hinstance,
+        hinstance = GetModuleHandle(NULL),
         hwnd = m_hwnd,
     };
     VK_CHECK(vkCreateWin32SurfaceKHR(m_instance, &surface_create_info, NULL, &m_surface));
@@ -417,21 +543,15 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
     };
     VK_CHECK(vkCreateXlibSurfaceKHR(m_instance, &surface_create_info, NULL, &m_surface));
 #endif
-
-    /* A present queue is required only if we render to a window. */
-    if (!getPresetQueueFamily(m_physical_device, m_surface, &m_queue_family_present)) {
-      return GHOST_kFailure;
-    }
-
-    float queue_priorities[] = {1.0f};
-    VkDeviceQueueCreateInfo present_queue_create_info = {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = m_queue_family_present,
-        .queueCount = 1,
-        .pQueuePriorities = queue_priorities,
-    };
-    queue_create_infos.push_back(present_queue_create_info);
   }
+
+  m_physical_device = pickPhysicalDevice(m_instance, m_surface, extensions_device);
+
+  if (m_physical_device == VK_NULL_HANDLE) {
+    return GHOST_kFailure;
+  }
+
+  vector<VkDeviceQueueCreateInfo> queue_create_infos;
 
   {
     /* A graphic queue is required to draw anything. */
@@ -446,9 +566,25 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
         .queueCount = 1,
         .pQueuePriorities = queue_priorities,
     };
+    queue_create_infos.push_back(graphic_queue_create_info);
+  }
+
+  if (use_window_surface) {
+    /* A present queue is required only if we render to a window. */
+    if (!getPresetQueueFamily(m_physical_device, m_surface, &m_queue_family_present)) {
+      return GHOST_kFailure;
+    }
+
+    float queue_priorities[] = {1.0f};
+    VkDeviceQueueCreateInfo present_queue_create_info = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = m_queue_family_present,
+        .queueCount = 1,
+        .pQueuePriorities = queue_priorities,
+    };
     /* Eash queue must be unique. */
     if (m_queue_family_graphic != m_queue_family_present) {
-      queue_create_infos.push_back(graphic_queue_create_info);
+      queue_create_infos.push_back(present_queue_create_info);
     }
   }
 
@@ -465,15 +601,19 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
       // Same as instance extensions. Only needed for 1.0 implementations.
       .enabledLayerCount = static_cast<uint32_t>(layers_enabled.size()),
       .ppEnabledLayerNames = layers_enabled.data(),
+      .enabledExtensionCount = static_cast<uint32_t>(extensions_device.size()),
+      .ppEnabledExtensionNames = extensions_device.data(),
       .pEnabledFeatures = &device_features,
   };
 
-  VK_CHECK(vkCreateDevice(m_physical_device, &device_create_info, nullptr, &m_device));
+  VK_CHECK(vkCreateDevice(m_physical_device, &device_create_info, NULL, &m_device));
 
   vkGetDeviceQueue(m_device, m_queue_family_graphic, 0, &m_graphic_queue);
 
   if (use_window_surface) {
     vkGetDeviceQueue(m_device, m_queue_family_present, 0, &m_present_queue);
+
+    createSwapChain();
   }
 
   return GHOST_kFailure;
