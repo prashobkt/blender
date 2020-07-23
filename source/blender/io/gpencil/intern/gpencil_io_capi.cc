@@ -15,7 +15,7 @@
  */
 
 /** \file
- * \ingroup bgpencil_io
+ * \ingroup bgpencil
  */
 
 #include "../gpencil_io_exporter.h"

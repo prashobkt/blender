@@ -66,6 +66,8 @@
 
 #include "io_gpencil.h"
 
+#include "gpencil_io_exporter.h"
+
 static int wm_gpencil_export_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   UNUSED_VARS(event);
@@ -98,7 +100,6 @@ static int wm_gpencil_export_invoke(bContext *C, wmOperator *op, const wmEvent *
 
 static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 {
-#if 0
 
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
     BKE_report(op->reports, RPT_ERROR, "No filename given");
@@ -113,6 +114,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
       .frame_end = RNA_int_get(op->ptr, "end"),
   };
 
+#if 0
   /* Take some defaults from the scene, if not specified explicitly. */
   Scene *scene = CTX_data_scene(C);
   if (params.frame_start == INT_MIN) {

@@ -24,6 +24,7 @@ set(INC
   ../../depsgraph
   ../../io/alembic
   ../../io/collada
+  ../../io/gpencil
   ../../io/usd
   ../../makesdna
   ../../makesrna
@@ -81,6 +82,6 @@ if(WITH_INTERNATIONAL)
   add_definitions(-DWITH_INTERNATIONAL)
 endif()
 
-list(APPEND LIB    bf_gpencil)
+list(APPEND LIB bf_gpencil)
 
 blender_add_lib(bf_editor_io "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

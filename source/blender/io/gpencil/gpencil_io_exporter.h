@@ -16,13 +16,17 @@
 #pragma once
 
 /** \file
- * \ingroup bgpencil_io
+ * \ingroup bgpencil
  */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+struct GpencilExportParams {
+  double frame_start;
+  double frame_end;
+};
 
 #ifdef __cplusplus
 }
