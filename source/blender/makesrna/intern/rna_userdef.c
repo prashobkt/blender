@@ -2591,6 +2591,54 @@ static void rna_def_userdef_theme_space_console(BlenderRNA *brna)
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Selection", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_builtin", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxb");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax Built-in", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_symbols", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxs");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax Symbols", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_special", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxv");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax Special", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_preprocessor", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxd");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax PreProcessor", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_reserved", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxr");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax Reserved", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_comment", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxc");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax Comment", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_string", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxl");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax String", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_numbers", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxn");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax Numbers", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 }
 
 static void rna_def_userdef_theme_space_info(BlenderRNA *brna)
@@ -2685,6 +2733,54 @@ static void rna_def_userdef_theme_space_info(BlenderRNA *brna)
   prop = RNA_def_property(srna, "info_operator_text", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Operator Icon Foreground", "Foreground color of Operator icon");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_builtin", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxb");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax Built-in", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_symbols", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxs");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax Symbols", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_special", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxv");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax Special", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_preprocessor", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxd");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax PreProcessor", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_reserved", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxr");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax Reserved", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_comment", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxc");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax Comment", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_string", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxl");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax String", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "syntax_numbers", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, NULL, "syntaxn");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Syntax Numbers", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 }
 

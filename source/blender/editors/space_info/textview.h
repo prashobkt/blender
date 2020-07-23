@@ -22,11 +22,12 @@
 #define __TEXTVIEW_H__
 
 enum eTextViewContext_LineFlag {
-  TVC_LINE_FG = (1 << 0),
+  TVC_LINE_FG_SIMPLE = (1 << 0),
   TVC_LINE_BG = (1 << 1),
   TVC_LINE_ICON = (1 << 2),
   TVC_LINE_ICON_FG = (1 << 3),
-  TVC_LINE_ICON_BG = (1 << 4)
+  TVC_LINE_ICON_BG = (1 << 4),
+  TVC_LINE_FG_COMPLEX = (1 << 5),
 };
 
 typedef struct TextViewContext {
@@ -52,14 +53,16 @@ typedef struct TextViewContext {
   const void *arg2;
 
   /* iterator */
-  int (*step)(struct TextViewContext *tvc);
+  int (*step)(struct TextViewContext *tvcl, struct ListBase *text_line);
+
   void (*line_get)(struct TextViewContext *tvc, const char **r_line, int *r_len);
-  enum eTextViewContext_LineFlag (*line_data)(struct TextViewContext *tvc,
-                                              uchar fg[4],
-                                              uchar bg[4],
-                                              int *r_icon,
-                                              uchar r_icon_fg[4],
-                                              uchar r_icon_bg[4]);
+  enum eTextViewContext_LineFlag (*line_draw_data)(struct TextViewContext *tvc,
+                                                   struct TextLine *text_line,
+                                                   uchar fg[4],
+                                                   uchar bg[4],
+                                                   int *r_icon,
+                                                   uchar r_icon_fg[4],
+                                                   uchar r_icon_bg[4]);
   void (*draw_cursor)(struct TextViewContext *tvc, int cwidth, int columns);
   /* constant theme colors */
   void (*const_colors)(struct TextViewContext *tvc, unsigned char bg_sel[4]);
@@ -79,5 +82,6 @@ int textview_draw(struct TextViewContext *tvc,
                   const int mval_init[2],
                   void **r_mval_pick_item,
                   int *r_mval_pick_offset);
+void textview_clear_text_lines(ListBase *text_lines);
 
 #endif /* __TEXTVIEW_H__ */

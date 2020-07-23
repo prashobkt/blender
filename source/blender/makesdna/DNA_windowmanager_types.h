@@ -99,6 +99,12 @@ typedef struct Report {
   const char *message;
 } Report;
 
+enum ReportFlags {
+  RPT_FLAG_NONE = (1 << 0),
+  RPT_SELECT = (1 << 1),
+  RPT_PYTHON = (1 << 2), /* report holds only python syntax, mainly for pretty printing */
+};
+
 /* saved in the wm, don't remove */
 typedef struct ReportList {
   ListBase list;

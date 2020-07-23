@@ -19,6 +19,10 @@
  */
 
 #include "MEM_guardedalloc.h"
+#include <BLI_blenlib.h>
+#include <DNA_text_types.h>
+#include <ED_text.h>
+#include <UI_resources.h>
 
 #include "BLF_api.h"
 
@@ -136,10 +140,13 @@ static int textview_wrap_offsets(
 /**
  * return false if the last line is off the screen
  * should be able to use this for any string type.
+ *
+ * for single color string use fg, for full control use str_format (FMT_TYPE_*)
  */
 static bool textview_draw_string(TextViewDrawState *tds,
                                  const char *str,
                                  int str_len,
+                                 const char *str_format,
                                  const uchar fg[4],
                                  const uchar bg[4],
                                  int icon,
@@ -258,9 +265,25 @@ static bool textview_draw_string(TextViewDrawState *tds,
   const int final_offset = offsets[tot_lines - 1];
   len = str_len - final_offset;
   s = str + final_offset;
-  BLF_position(tds->font_id, tds->xy[0], tds->lofs + line_bottom + tds->row_vpadding, 0);
-  BLF_color4ubv(tds->font_id, fg);
-  BLF_draw_mono(tds->font_id, s, len, tds->cwidth);
+  if (fg || str_format == NULL) {
+    BLF_position(tds->font_id, tds->xy[0], tds->lofs + line_bottom + tds->row_vpadding, 0);
+    BLF_color4ubv(tds->font_id, fg);
+    BLF_draw_mono(tds->font_id, s, len, tds->cwidth);
+  }
+  else {
+    const char *format_tmp = str_format + final_offset;
+    int str_shift = tds->xy[0];
+    char fmt_prev = 0xff;
+    for (int j = 0; j < len; j++) {
+      if (format_tmp[j] != fmt_prev) {
+        text_format_draw_font_color(tds->font_id, fmt_prev = format_tmp[j]);
+      }
+      const size_t draw_len = BLI_str_utf8_size_safe(s + j);
+      BLF_position(tds->font_id, str_shift, tds->lofs + line_bottom + tds->row_vpadding, 0);
+      const int columns = BLF_draw_mono(tds->font_id, s + j, draw_len, tds->cwidth);
+      str_shift += tds->cwidth * columns;
+    }
+  }
 
   if (tds->sel[0] != tds->sel[1]) {
     textview_step_sel(tds, -final_offset);
@@ -270,14 +293,32 @@ static bool textview_draw_string(TextViewDrawState *tds,
 
   tds->xy[1] += tds->lheight;
 
-  BLF_color4ubv(tds->font_id, fg);
+  if (fg || str_format == NULL) {
+    BLF_color4ubv(tds->font_id, fg);
+  }
 
   for (i = tot_lines - 1; i > 0; i--) {
     len = offsets[i] - offsets[i - 1];
     s = str + offsets[i - 1];
 
-    BLF_position(tds->font_id, tds->xy[0], tds->lofs + tds->xy[1], 0);
-    BLF_draw_mono(tds->font_id, s, len, tds->cwidth);
+    if (fg || str_format == NULL) {
+      BLF_position(tds->font_id, tds->xy[0], tds->lofs + tds->xy[1], 0);
+      BLF_draw_mono(tds->font_id, s, len, tds->cwidth);
+    }
+    else {
+      const char *format_tmp = str_format + offsets[i - 1];
+      int str_shift = tds->xy[0];
+      char fmt_prev = 0xff;
+      for (int j = 0; j < len; j++) {
+        if (format_tmp[j] != fmt_prev) {
+          text_format_draw_font_color(tds->font_id, fmt_prev = format_tmp[j]);
+        }
+        const size_t draw_len = BLI_str_utf8_size_safe(s + j);
+        BLF_position(tds->font_id, str_shift, tds->lofs + tds->xy[1], 0);
+        const int columns = BLF_draw_mono(tds->font_id, s + j, draw_len, tds->cwidth);
+        str_shift += tds->cwidth * columns;
+      }
+    }
 
     if (tds->sel[0] != tds->sel[1]) {
       textview_step_sel(tds, len);
@@ -381,24 +422,27 @@ int textview_draw(TextViewContext *tvc,
     }
 
     int iter_index = 0;
+    /* provides context for multiline syntax highlighting, can be reset in tvc->step */
+    ListBase text_lines = {NULL, NULL};
     do {
-      const char *ext_line;
-      int ext_len;
       int data_flag = 0;
-
       const int y_prev = xy[1];
+      TextLine *text_line = MEM_callocN(sizeof(*text_line), __func__);
+
+      BLI_addtail(&text_lines, text_line);
+      tvc->line_get(tvc, (const char **)&text_line->line, &text_line->len);
 
       if (do_draw) {
-        data_flag = tvc->line_data(tvc, fg, bg, &icon, icon_fg, icon_bg);
+        text_line->format = MEM_callocN(text_line->len + 2, __func__);
+        data_flag = tvc->line_draw_data(tvc, text_line, fg, bg, &icon, icon_fg, icon_bg);
       }
-
-      tvc->line_get(tvc, &ext_line, &ext_len);
 
       const bool is_out_of_view_y = !textview_draw_string(
           &tds,
-          ext_line,
-          ext_len,
-          (data_flag & TVC_LINE_FG) ? fg : NULL,
+          text_line->line,
+          text_line->len,
+          (data_flag & TVC_LINE_FG_COMPLEX) ? text_line->format : NULL,
+          (data_flag & TVC_LINE_FG_SIMPLE) ? fg : NULL,
           (data_flag & TVC_LINE_BG) ? bg : NULL,
           (data_flag & TVC_LINE_ICON) ? icon : 0,
           (data_flag & TVC_LINE_ICON_FG) ? icon_fg : NULL,
@@ -424,7 +468,8 @@ int textview_draw(TextViewContext *tvc,
 
       iter_index++;
 
-    } while (tvc->step(tvc));
+    } while (tvc->step(tvc, &text_lines));
+    textview_clear_text_lines(&text_lines);
   }
 
   tvc->end(tvc);
@@ -437,4 +482,18 @@ int textview_draw(TextViewContext *tvc,
   xy[1] += tvc->lheight * 2;
 
   return xy[1] - y_orig;
+}
+
+void textview_clear_text_lines(ListBase *text_lines)
+{
+  if (!BLI_listbase_is_empty(text_lines)) {
+    TextLine *text_line_iter = text_lines->first;
+    while (text_line_iter) {
+      if (text_line_iter->format) {
+        MEM_freeN(text_line_iter->format);
+      }
+      text_line_iter = text_line_iter->next;
+    }
+    BLI_listbase_clear(text_lines);
+  }
 }

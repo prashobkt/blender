@@ -216,6 +216,27 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     btheme->tui.transparent_checker_size = U_theme_default.tui.transparent_checker_size;
   }
 
+  if (!USER_VERSION_ATLEAST(290, 6)) {
+    FROM_DEFAULT_V4_UCHAR(space_info.info_active);
+    FROM_DEFAULT_V4_UCHAR(space_info.info_selected);
+    FROM_DEFAULT_V4_UCHAR(space_info.syntaxb);
+    FROM_DEFAULT_V4_UCHAR(space_info.syntaxc);
+    FROM_DEFAULT_V4_UCHAR(space_info.syntaxd);
+    FROM_DEFAULT_V4_UCHAR(space_info.syntaxl);
+    FROM_DEFAULT_V4_UCHAR(space_info.syntaxn);
+    FROM_DEFAULT_V4_UCHAR(space_info.syntaxr);
+    FROM_DEFAULT_V4_UCHAR(space_info.syntaxs);
+    FROM_DEFAULT_V4_UCHAR(space_info.syntaxv);
+    FROM_DEFAULT_V4_UCHAR(space_console.syntaxb);
+    FROM_DEFAULT_V4_UCHAR(space_console.syntaxc);
+    FROM_DEFAULT_V4_UCHAR(space_console.syntaxd);
+    FROM_DEFAULT_V4_UCHAR(space_console.syntaxl);
+    FROM_DEFAULT_V4_UCHAR(space_console.syntaxn);
+    FROM_DEFAULT_V4_UCHAR(space_console.syntaxr);
+    FROM_DEFAULT_V4_UCHAR(space_console.syntaxs);
+    FROM_DEFAULT_V4_UCHAR(space_console.syntaxv);
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *

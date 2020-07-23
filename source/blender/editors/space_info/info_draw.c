@@ -22,6 +22,8 @@
  */
 
 #include <BLI_blenlib.h>
+#include <DNA_text_types.h>
+#include <MEM_guardedalloc.h>
 #include <limits.h>
 #include <string.h>
 
@@ -36,43 +38,56 @@
 #include "UI_resources.h"
 #include "UI_view2d.h"
 
+#include "../space_text/text_format.h"
 #include "GPU_framebuffer.h"
 #include "info_intern.h"
 #include "textview.h"
 
-static enum eTextViewContext_LineFlag report_line_data(TextViewContext *tvc,
-                                                       uchar fg[4],
-                                                       uchar bg[4],
-                                                       int *r_icon,
-                                                       uchar r_icon_fg[4],
-                                                       uchar r_icon_bg[4])
+#define TABNUMBER 2
+
+static enum eTextViewContext_LineFlag report_line_draw_data(TextViewContext *tvc,
+                                                            TextLine *text_line,
+                                                            uchar fg[4],
+                                                            uchar bg[4],
+                                                            int *r_icon,
+                                                            uchar r_icon_fg[4],
+                                                            uchar r_icon_bg[4])
 {
   const Report *report = tvc->iter;
   const SpaceInfo *sinfo = tvc->arg1;
   const ReportList *reports = tvc->arg2;
   const Report *active_report = BLI_findlink((const struct ListBase *)reports,
                                              sinfo->active_report_index);
+  int data_flag = 0;
 
-  /* Same text color no matter what type of report. */
-  UI_GetThemeColor4ubv((report->flag & SELECT) ? TH_INFO_SELECTED_TEXT : TH_TEXT, fg);
+  if (report->flag & RPT_PYTHON) {
+    TextFormatType *py_formatter = ED_text_format_get_by_extension("py");
+    py_formatter->format_line(text_line, TABNUMBER, false);
+    data_flag = TVC_LINE_FG_COMPLEX;
+  }
+  else {
+    /* Same text color no matter what type of report. */
+    UI_GetThemeColor4ubv((report->flag & RPT_SELECT) ? TH_INFO_SELECTED_TEXT : TH_TEXT, fg);
+    data_flag = TVC_LINE_FG_SIMPLE;
+  }
 
   /* Zebra striping for background, only for deselected reports. */
-  if (report->flag & SELECT) {
+  if (report->flag & RPT_SELECT) {
     int bg_id = (report == active_report) ? TH_INFO_ACTIVE : TH_INFO_SELECTED;
     UI_GetThemeColor4ubv(bg_id, bg);
   }
   else {
     if (tvc->iter_tmp % 2) {
       UI_GetThemeColor4ubv(TH_BACK, bg);
-    } else {
+    }
+    else {
       float col_alternating[4];
       UI_GetThemeColor4fv(TH_ROW_ALTERNATE, col_alternating);
       UI_GetThemeColorBlend4ubv(TH_BACK, TH_ROW_ALTERNATE, col_alternating[3], bg);
     }
   }
 
-  /* Icon color and backgound depend of report type. */
-
+  /* Icon color and background depend of report type. */
   int icon_fg_id;
   int icon_bg_id;
 
@@ -108,7 +123,7 @@ static enum eTextViewContext_LineFlag report_line_data(TextViewContext *tvc,
     *r_icon = ICON_NONE;
   }
 
-  if (report->flag & SELECT) {
+  if (report->flag & RPT_SELECT) {
     icon_fg_id = TH_INFO_SELECTED;
     icon_bg_id = TH_INFO_SELECTED_TEXT;
   }
@@ -116,10 +131,10 @@ static enum eTextViewContext_LineFlag report_line_data(TextViewContext *tvc,
   if (*r_icon != ICON_NONE) {
     UI_GetThemeColor4ubv(icon_fg_id, r_icon_fg);
     UI_GetThemeColor4ubv(icon_bg_id, r_icon_bg);
-    return TVC_LINE_FG | TVC_LINE_BG | TVC_LINE_ICON | TVC_LINE_ICON_FG | TVC_LINE_ICON_BG;
+    return data_flag | TVC_LINE_BG | TVC_LINE_ICON | TVC_LINE_ICON_FG | TVC_LINE_ICON_BG;
   }
 
-  return TVC_LINE_FG | TVC_LINE_BG;
+  return data_flag | TVC_LINE_BG;
 }
 
 /* reports! */
@@ -178,7 +193,7 @@ static void report_textview_end(TextViewContext *UNUSED(tvc))
   /* pass */
 }
 
-static int report_textview_step(TextViewContext *tvc)
+static int report_textview_step(TextViewContext *tvc, ListBase *UNUSED(text_lines))
 {
   /* simple case, but no newline support */
   const Report *report = tvc->iter;
@@ -246,7 +261,7 @@ static int info_textview_main__internal(const SpaceInfo *sinfo,
 
   tvc.step = report_textview_step;
   tvc.line_get = report_textview_line_get;
-  tvc.line_data = report_line_data;
+  tvc.line_draw_data = report_line_draw_data;
   tvc.const_colors = NULL;
 
   tvc.arg1 = sinfo;

@@ -18,6 +18,7 @@
  * \ingroup spconsole
  */
 
+#include <DNA_text_types.h>
 #include <string.h>
 
 #include "BLI_blenlib.h"
@@ -37,24 +38,39 @@
 #include "console_intern.h"
 
 #include "../space_info/textview.h"
+#include "../space_text/text_format.h"
 
-static enum eTextViewContext_LineFlag console_line_data(TextViewContext *tvc,
-                                                        uchar fg[4],
-                                                        uchar UNUSED(bg[4]),
-                                                        int *UNUSED(icon),
-                                                        uchar UNUSED(icon_fg[4]),
-                                                        uchar UNUSED(icon_bg[4]))
+#define TABNUMBER 4
+#define PROPMPT_LEN 4
+
+static enum eTextViewContext_LineFlag console_line_draw_data(TextViewContext *tvc,
+                                                             TextLine *text_line,
+                                                             uchar fg[4],
+                                                             uchar UNUSED(bg[4]),
+                                                             int *UNUSED(icon),
+                                                             uchar UNUSED(icon_fg[4]),
+                                                             uchar UNUSED(icon_bg[4]))
 {
   const ConsoleLine *cl_iter = tvc->iter;
+  SpaceConsole *sc = (SpaceConsole *)tvc->arg1;
   int fg_id = TH_TEXT;
 
   switch (cl_iter->type) {
-    case CONSOLE_LINE_OUTPUT:
-      fg_id = TH_CONSOLE_OUTPUT;
-      break;
-    case CONSOLE_LINE_INPUT:
-      fg_id = TH_CONSOLE_INPUT;
-      break;
+    case CONSOLE_LINE_OUTPUT: {
+      TextFormatType *py_formatter = ED_text_format_get_by_extension("py");
+      py_formatter->format_line(text_line, TABNUMBER, false);
+      return TVC_LINE_FG_COMPLEX;
+    }
+    case CONSOLE_LINE_INPUT: {
+      TextFormatType *py_formatter = ED_text_format_get_by_extension("py");
+      py_formatter->format_line(text_line, TABNUMBER, false);
+      /* workaround: formatter formats also prompt >>>, what is not desirable but current
+       * implementation is basic enough so it does not really care */
+      for (int i = 0; i < text_line->len && i < strlen(sc->prompt); ++i) {
+        text_line->format[i] = FMT_TYPE_DEFAULT;
+      }
+      return TVC_LINE_FG_COMPLEX;
+    }
     case CONSOLE_LINE_INFO:
       fg_id = TH_CONSOLE_INFO;
       break;
@@ -64,7 +80,7 @@ static enum eTextViewContext_LineFlag console_line_data(TextViewContext *tvc,
   }
 
   UI_GetThemeColor4ubv(fg_id, fg);
-  return TVC_LINE_FG;
+  return TVC_LINE_FG_SIMPLE;
 }
 
 void console_scrollback_prompt_begin(SpaceConsole *sc, ConsoleLine *cl_dummy)
@@ -106,8 +122,12 @@ static void console_textview_end(TextViewContext *tvc)
   (void)sc;
 }
 
-static int console_textview_step(TextViewContext *tvc)
+static int console_textview_step(TextViewContext *tvc, ListBase *text_lines)
 {
+  const ConsoleLine *cl = tvc->iter;
+  if (cl->prev && cl->prev->type != cl->type) {
+    textview_clear_text_lines(text_lines);
+  }
   return ((tvc->iter = (void *)((Link *)tvc->iter)->prev) != NULL);
 }
 
@@ -116,7 +136,6 @@ static void console_textview_line_get(TextViewContext *tvc, const char **r_line,
   const ConsoleLine *cl = tvc->iter;
   *r_line = cl->line;
   *r_len = cl->len;
-  // printf("'%s' %d\n", *line, cl->len);
   BLI_assert(cl->line[cl->len] == '\0' && (cl->len == 0 || cl->line[cl->len - 1] != '\0'));
 }
 
@@ -213,7 +232,7 @@ static int console_textview_main__internal(SpaceConsole *sc,
 
   tvc.step = console_textview_step;
   tvc.line_get = console_textview_line_get;
-  tvc.line_data = console_line_data;
+  tvc.line_draw_data = console_line_draw_data;
   tvc.draw_cursor = console_textview_draw_cursor;
   tvc.const_colors = console_textview_const_colors;
 
