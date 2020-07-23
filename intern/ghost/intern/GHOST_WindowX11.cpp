@@ -1362,7 +1362,8 @@ GHOST_Context *GHOST_WindowX11::newDrawingContext(GHOST_TDrawingContextType type
     //   try vulkan
     //   fallback to OGL
 #if defined(WITH_VULKAN)
-    context = new GHOST_ContextVK(m_wantStereoVisual);
+    context = new GHOST_ContextVK(
+        m_wantStereoVisual, m_window, m_display, 1, 0, m_is_debug_context);
 
     if (context->initializeDrawingContext())
       return context;

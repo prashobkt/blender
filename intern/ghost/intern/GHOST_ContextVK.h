@@ -26,6 +26,12 @@
 
 #include "GHOST_Context.h"
 
+#ifdef _WIN32
+#  include "GHOST_SystemWin32.h"
+#else
+#  include "GHOST_SystemX11.h"
+#endif
+
 #include <vulkan/vulkan.h>
 
 #ifndef GHOST_OPENGL_VK_CONTEXT_FLAGS
@@ -45,7 +51,17 @@ class GHOST_ContextVK : public GHOST_Context {
   /**
    * Constructor.
    */
-  GHOST_ContextVK(bool stereoVisual);
+  GHOST_ContextVK(bool stereoVisual,
+#ifdef _WIN32
+                  HWND hwnd,
+                  HINSTANCE hinstance,
+#else
+                  Window window,
+                  Display *display,
+#endif
+                  int contextMajorVersion,
+                  int contextMinorVersion,
+                  int useValidationLayers);
 
   /**
    * Destructor.
@@ -98,12 +114,27 @@ class GHOST_ContextVK : public GHOST_Context {
   GHOST_TSuccess getSwapInterval(int &intervalOut);
 
  private:
+#ifdef _WIN32
+  HWND hwnd;
+  HINSTANCE hinstance;
+#else
+  Display *m_display;
+  Window m_window;
+#endif
+
+  const int m_contextMajorVersion;
+  const int m_contextMinorVersion;
+  const int m_useValidationLayers;
+
   VkInstance m_instance;
+  VkSurfaceKHR m_surface;
   VkPhysicalDevice m_physical_device;
   uint32_t m_queue_family_graphic;
+  uint32_t m_queue_family_present;
 
   VkDevice m_device;
   VkQueue m_graphic_queue;
+  VkQueue m_present_queue;
 };
 
 #endif  // __GHOST_CONTEXTVK_H__

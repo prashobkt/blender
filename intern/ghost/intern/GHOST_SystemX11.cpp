@@ -443,7 +443,7 @@ GHOST_IContext *GHOST_SystemX11::createOffscreenContext()
 
 #if defined(WITH_VULKAN)
   {
-    context = new GHOST_ContextVK(false);
+    context = new GHOST_ContextVK(false, (Window)NULL, NULL, 1, 0, 0);
 
     if (context->initializeDrawingContext())
       return context;
