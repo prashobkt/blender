@@ -57,4 +57,4 @@ list(APPEND LIB
   ${BOOST_LIBRARIES}
 )
 
-blender_add_lib(bf_gpencil_io "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+blender_add_lib(bf_gpencil "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

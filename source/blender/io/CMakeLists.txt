@@ -36,5 +36,5 @@ if(WITH_USD)
   add_subdirectory(usd)
 endif()
 
-add_subdirectory(gpencil_io)
+add_subdirectory(gpencil)
 
