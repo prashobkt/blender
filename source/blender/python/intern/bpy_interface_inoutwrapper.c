@@ -37,7 +37,7 @@ PyObject *string_io_buf = NULL;
 PyObject *string_io_getvalue = NULL;
 
 /* TODO (grzelins) move this whole implementation to bpy_capi_utils? */
-PyObject *BPY_intern_init_io_wrapper()
+bool BPY_intern_init_io_wrapper()
 {
   PyImport_ImportModule("sys");
   stdout_backup = PySys_GetObject("stdout"); /* borrowed */
@@ -45,26 +45,25 @@ PyObject *BPY_intern_init_io_wrapper()
   BLI_assert(stderr_backup != NULL);
 
   if (!(string_io_mod = PyImport_ImportModule("io"))) {
-    return NULL;
+    return false;
   }
   else if (!(string_io = PyObject_CallMethod(string_io_mod, "StringIO", NULL))) {
-    return NULL;
+    return false;
   }
   else if (!(string_io_getvalue = PyObject_GetAttrString(string_io, "getvalue"))) {
-    return NULL;
+    return false;
   }
   Py_INCREF(stdout_backup);  // since these were borrowed we don't want them freed when replaced.
   Py_INCREF(stderr_backup);
 
   if (PySys_SetObject("stdout", string_io) == -1) {
-    return NULL;
+    return false;
   }
   if (PySys_SetObject("stderr", string_io) == -1) {
-    return NULL;
+    return false;
   }
 
-  // TODO (grzelins) fix return warning
-  return 1;
+  return true;
 }
 
 PyObject *BPY_intern_get_io_buffer()

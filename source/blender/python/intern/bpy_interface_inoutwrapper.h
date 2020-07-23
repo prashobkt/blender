@@ -19,6 +19,6 @@
 
 void BPY_intern_free_io_twrapper(void);
 PyObject *BPY_intern_get_io_buffer(void);
-PyObject *BPY_intern_init_io_wrapper(void);
+bool BPY_intern_init_io_wrapper(void);
 
 #endif /* __BPY_INTERFACE_INOUTWRAPPER__ */
