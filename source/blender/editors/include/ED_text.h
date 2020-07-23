@@ -35,6 +35,7 @@ struct UndoStep;
 struct UndoType;
 struct bContext;
 
+void text_format_draw_font_color(int font_id, char formatchar);
 bool ED_text_region_location_from_cursor(struct SpaceText *st,
                                          struct ARegion *region,
                                          const int cursor_co[2],

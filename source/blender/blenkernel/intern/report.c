@@ -166,6 +166,14 @@ void BKE_report(ReportList *reports, ReportType type, const char *_message)
     report->type = type;
     report->typestr = BKE_report_type_str(type);
 
+    /* TODO (grzelins) hack: we want to pass flags in argument */
+    if (report->type == RPT_PROPERTY) {
+      report->flag = RPT_PYTHON;
+    }
+    if (report->type == RPT_OPERATOR) {
+      report->flag = RPT_PYTHON;
+    }
+
     len = strlen(message);
     message_alloc = MEM_mallocN(sizeof(char) * (len + 1), "ReportMessage");
     memcpy(message_alloc, message, sizeof(char) * (len + 1));
@@ -210,6 +218,14 @@ void BKE_reportf(ReportList *reports, ReportType type, const char *_format, ...)
     report->len = BLI_dynstr_get_len(message);
     report->type = type;
     report->typestr = BKE_report_type_str(type);
+
+    /* TODO (grzelins) hack: we want to pass flags in argument */
+    if (report->type == RPT_PROPERTY) {
+      report->flag = RPT_PYTHON;
+    }
+    if (report->type == RPT_OPERATOR) {
+      report->flag = RPT_PYTHON;
+    }
 
     BLI_addtail(&reports->list, report);
   }

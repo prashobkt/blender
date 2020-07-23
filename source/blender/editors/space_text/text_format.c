@@ -68,7 +68,7 @@ static void flatten_string_append(FlattenString *fs, const char *c, int accum, i
   fs->pos += len;
 }
 
-int flatten_string(const SpaceText *st, FlattenString *fs, const char *in)
+int flatten_string(FlattenString *fs, int tabnumber, const char *in)
 {
   int r, i, total = 0;
 
@@ -79,7 +79,7 @@ int flatten_string(const SpaceText *st, FlattenString *fs, const char *in)
 
   for (r = 0, i = 0; *in; r++) {
     if (*in == '\t') {
-      i = st->tabnumber - (total % st->tabnumber);
+      i = tabnumber - (total % tabnumber);
       total += i;
 
       while (i--) {
@@ -199,22 +199,30 @@ void ED_text_format_register(TextFormatType *tft)
 
 TextFormatType *ED_text_format_get(Text *text)
 {
-  TextFormatType *tft;
-
   if (text) {
     const char *text_ext = strchr(text->id.name + 2, '.');
     if (text_ext) {
       text_ext++; /* skip the '.' */
-      /* Check all text formats in the static list */
-      for (tft = tft_lb.first; tft; tft = tft->next) {
-        /* All formats should have an ext, but just in case */
-        const char **ext;
-        for (ext = tft->ext; *ext; ext++) {
-          /* If extension matches text name, return the matching tft */
-          if (BLI_strcasecmp(text_ext, *ext) == 0) {
-            return tft;
-          }
-        }
+      return ED_text_format_get_by_extension(text_ext);
+    }
+  }
+
+  /* Return the "default" text format */
+  return tft_lb.first;
+}
+
+TextFormatType *ED_text_format_get_by_extension(const char *extension)
+{
+  TextFormatType *tft;
+
+  /* Check all text formats in the static list */
+  for (tft = tft_lb.first; tft; tft = tft->next) {
+    /* All formats should have an ext, but just in case */
+    const char **ext;
+    for (ext = tft->ext; *ext; ext++) {
+      /* If extension matches text name, return the matching tft */
+      if (BLI_strcasecmp(extension, *ext) == 0) {
+        return tft;
       }
     }
 

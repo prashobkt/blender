@@ -120,38 +120,38 @@ static void txt_format_text(SpaceText *st)
 #endif
 
 /* Sets the current drawing color based on the format character specified */
-static void format_draw_color(const TextDrawContext *tdc, char formatchar)
+void text_format_draw_font_color(int font_id, char formatchar)
 {
   switch (formatchar) {
     case FMT_TYPE_WHITESPACE:
       break;
     case FMT_TYPE_SYMBOL:
-      UI_FontThemeColor(tdc->font_id, TH_SYNTAX_S);
+      UI_FontThemeColor(font_id, TH_SYNTAX_S);
       break;
     case FMT_TYPE_COMMENT:
-      UI_FontThemeColor(tdc->font_id, TH_SYNTAX_C);
+      UI_FontThemeColor(font_id, TH_SYNTAX_C);
       break;
     case FMT_TYPE_NUMERAL:
-      UI_FontThemeColor(tdc->font_id, TH_SYNTAX_N);
+      UI_FontThemeColor(font_id, TH_SYNTAX_N);
       break;
     case FMT_TYPE_STRING:
-      UI_FontThemeColor(tdc->font_id, TH_SYNTAX_L);
+      UI_FontThemeColor(font_id, TH_SYNTAX_L);
       break;
     case FMT_TYPE_DIRECTIVE:
-      UI_FontThemeColor(tdc->font_id, TH_SYNTAX_D);
+      UI_FontThemeColor(font_id, TH_SYNTAX_D);
       break;
     case FMT_TYPE_SPECIAL:
-      UI_FontThemeColor(tdc->font_id, TH_SYNTAX_V);
+      UI_FontThemeColor(font_id, TH_SYNTAX_V);
       break;
     case FMT_TYPE_RESERVED:
-      UI_FontThemeColor(tdc->font_id, TH_SYNTAX_R);
+      UI_FontThemeColor(font_id, TH_SYNTAX_R);
       break;
     case FMT_TYPE_KEYWORD:
-      UI_FontThemeColor(tdc->font_id, TH_SYNTAX_B);
+      UI_FontThemeColor(font_id, TH_SYNTAX_B);
       break;
     case FMT_TYPE_DEFAULT:
     default:
-      UI_FontThemeColor(tdc->font_id, TH_TEXT);
+      UI_FontThemeColor(font_id, TH_TEXT);
       break;
   }
 }
@@ -430,7 +430,7 @@ static int text_draw_wrapped(const SpaceText *st,
   /* don't draw lines below this */
   const int clip_min_y = -(int)(st->runtime.lheight_px - 1);
 
-  flatten_string(st, &fs, str);
+  flatten_string(&fs, st->tabnumber, str);
   str = fs.buf;
   max = w / st->runtime.cwidth_px;
   if (max < 8) {
@@ -465,7 +465,7 @@ static int text_draw_wrapped(const SpaceText *st,
       for (a = fstart, ma = mstart; ma < mend; a++, ma += BLI_str_utf8_size_safe(str + ma)) {
         if (use_syntax) {
           if (fmt_prev != format[a]) {
-            format_draw_color(tdc, fmt_prev = format[a]);
+            text_format_draw_font_color(tdc->font_id, fmt_prev = format[a]);
           }
         }
         x += text_font_draw_character_utf8(tdc, x, y, str + ma);
@@ -494,7 +494,7 @@ static int text_draw_wrapped(const SpaceText *st,
        a++, ma += BLI_str_utf8_size_safe(str + ma)) {
     if (use_syntax) {
       if (fmt_prev != format[a]) {
-        format_draw_color(tdc, fmt_prev = format[a]);
+        text_format_draw_font_color(tdc->font_id, fmt_prev = format[a]);
       }
     }
 
@@ -520,7 +520,7 @@ static void text_draw(const SpaceText *st,
   int columns, size, n, w = 0, padding, amount = 0;
   const char *in = NULL;
 
-  for (n = flatten_string(st, &fs, str), str = fs.buf; n > 0; n--) {
+  for (n = flatten_string(&fs, st->tabnumber, str), str = fs.buf; n > 0; n--) {
     columns = BLI_str_utf8_char_width_safe(str);
     size = BLI_str_utf8_size_safe(str);
 
@@ -556,7 +556,7 @@ static void text_draw(const SpaceText *st,
 
     for (a = 0; a < amount; a++) {
       if (format[a] != fmt_prev) {
-        format_draw_color(tdc, fmt_prev = format[a]);
+        text_format_draw_font_color(tdc->font_id, fmt_prev = format[a]);
       }
       x += text_font_draw_character_utf8(tdc, x, y, in + str_shift);
       str_shift += BLI_str_utf8_size_safe(in + str_shift);
@@ -1218,7 +1218,7 @@ static void draw_suggestion_list(const SpaceText *st, const TextDrawContext *tdc
       immUnbindProgram();
     }
 
-    format_draw_color(tdc, item->type);
+    text_format_draw_font_color(tdc->font_id, item->type);
     text_draw(st, tdc, str, 0, 0, x + margin_x, y - 1, NULL);
 
     if (item == last) {
@@ -1599,7 +1599,7 @@ void draw_text_main(SpaceText *st, ARegion *region)
   lineno = 0;
   for (i = 0; i < st->top && tmp; i++) {
     if (tdc.syntax_highlight && !tmp->format) {
-      tft->format_line(st, tmp, false);
+      tft->format_line(tmp, st->tabnumber, false);
     }
 
     if (st->wordwrap) {
@@ -1658,7 +1658,7 @@ void draw_text_main(SpaceText *st, ARegion *region)
 
   for (i = 0; y > clip_min_y && i < viewlines && tmp; i++, tmp = tmp->next) {
     if (tdc.syntax_highlight && !tmp->format) {
-      tft->format_line(st, tmp, false);
+      tft->format_line(tmp, st->tabnumber, false);
     }
 
     if (st->showlinenrs && !wrap_skip) {

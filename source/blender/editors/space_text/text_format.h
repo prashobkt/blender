@@ -47,7 +47,7 @@ enum {
 #define FMT_CONT_ALL \
   (FMT_CONT_QUOTESINGLE | FMT_CONT_QUOTEDOUBLE | FMT_CONT_TRIPLE | FMT_CONT_COMMENT_C)
 
-int flatten_string(const struct SpaceText *st, FlattenString *fs, const char *in);
+int flatten_string(FlattenString *fs, int tabnumber, const char *in);
 void flatten_string_free(FlattenString *fs);
 int flatten_string_strlen(FlattenString *fs, const char *str);
 
@@ -70,7 +70,7 @@ typedef struct TextFormatType {
    *
    * See: FMT_TYPE_ enums below
    */
-  void (*format_line)(SpaceText *st, TextLine *line, const bool do_next);
+  void (*format_line)(TextLine *line, int tabnumber, const bool do_next);
 
   const char **ext; /* NULL terminated extensions */
 } TextFormatType;
@@ -99,6 +99,7 @@ enum {
 };
 
 TextFormatType *ED_text_format_get(Text *text);
+TextFormatType *ED_text_format_get_by_extension(const char *extension);
 void ED_text_format_register(TextFormatType *tft);
 
 /* formatters */

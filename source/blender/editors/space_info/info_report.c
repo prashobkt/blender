@@ -71,13 +71,13 @@ static void reports_select_all(ReportList *reports,
     if (IS_REPORT_VISIBLE(report, report_mask, search_string)) {
       switch (action) {
         case SEL_SELECT:
-          report->flag = SELECT;
+          report->flag |= RPT_SELECT;
           break;
         case SEL_DESELECT:
-          report->flag = ~SELECT;
+          report->flag &= ~RPT_SELECT;
           break;
         case SEL_INVERT:
-          report->flag ^= SELECT;
+          report->flag ^= RPT_SELECT;
           break;
         default:
           BLI_assert(0);
@@ -122,7 +122,7 @@ static int report_replay_exec(bContext *C, wmOperator *UNUSED(op))
 
   for (report = reports->list.last; report; report = report->prev) {
     if ((report->type & report_mask) && (report->type & RPT_OPERATOR_ALL | RPT_PROPERTY_ALL) &&
-        (report->flag & SELECT)) {
+        (report->flag & RPT_SELECT)) {
       console_history_add_str(sc, report->message, 0);
       WM_operator_name_call(C, "CONSOLE_OT_execute", WM_OP_EXEC_DEFAULT, NULL);
 
@@ -180,14 +180,14 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
 
   const Report *active_report = BLI_findlink((const struct ListBase *)reports,
                                              sinfo->active_report_index);
-  const bool is_active_report_selected = active_report->flag & SELECT;
+  const bool is_active_report_selected = active_report ? active_report->flag & RPT_SELECT : false;
 
   if (deselect_all) {
     reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
   }
 
   if (active_report == NULL) {
-    report->flag = SELECT;
+    report->flag |= RPT_SELECT;
     sinfo->active_report_index = report_index;
 
     ED_area_tag_redraw(CTX_wm_area(C));
@@ -198,13 +198,13 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
     if (is_active_report_selected) {
       if (report_index < sinfo->active_report_index) {
         for (Report *i = report; i && i->prev != active_report; i = i->next) {
-          i->flag = SELECT;
+          i->flag |= RPT_SELECT;
         }
       }
       else {
         for (Report *report_iter = report; report_iter && report_iter->next != active_report;
              report_iter = report_iter->prev) {
-          report_iter->flag = SELECT;
+          report_iter->flag |= RPT_SELECT;
         }
       }
 
@@ -213,7 +213,7 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
     }
     else {
       reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
-      report->flag = SELECT;
+      report->flag |= RPT_SELECT;
       sinfo->active_report_index = report_index;
 
       ED_area_tag_redraw(CTX_wm_area(C));
@@ -221,11 +221,11 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
     }
   }
 
-  if (extend && (report->flag & SELECT) && report_index == sinfo->active_report_index) {
-    report->flag = ~SELECT;
+  if (extend && (report->flag & RPT_SELECT) && report_index == sinfo->active_report_index) {
+    report->flag &= ~RPT_SELECT;
   }
   else {
-    report->flag = SELECT;
+    report->flag |= RPT_SELECT;
     sinfo->active_report_index = BLI_findindex(&reports->list, report);
   }
 
@@ -339,7 +339,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
       if ((report->type & report_mask) == 0) {
         continue;
       }
-      report->flag &= ~SELECT;
+      report->flag &= ~RPT_SELECT;
     }
   }
 
@@ -379,7 +379,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
       if ((report->type & report_mask) == 0) {
         continue;
       }
-      SET_FLAG_FROM_TEST(report->flag, select, SELECT);
+      SET_FLAG_FROM_TEST(report->flag, select, RPT_SELECT);
     }
   }
 
@@ -424,7 +424,7 @@ static int report_delete_exec(bContext *C, wmOperator *UNUSED(op))
 
     report_next = report->next;
 
-    if ((report->type & report_mask) && (report->flag & SELECT)) {
+    if ((report->type & report_mask) && (report->flag & RPT_SELECT)) {
       BLI_remlink(&reports->list, report);
       MEM_freeN((void *)report->message);
       MEM_freeN(report);
@@ -467,7 +467,7 @@ static int report_copy_exec(bContext *C, wmOperator *UNUSED(op))
   char *buf_str;
 
   for (report = reports->list.first; report; report = report->next) {
-    if ((report->type & report_mask) && (report->flag & SELECT)) {
+    if ((report->type & report_mask) && (report->flag & RPT_SELECT)) {
       BLI_dynstr_append(buf_dyn, report->message);
       BLI_dynstr_append(buf_dyn, "\n");
     }
