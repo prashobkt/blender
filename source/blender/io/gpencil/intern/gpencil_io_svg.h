@@ -19,24 +19,20 @@
  * \ingroup bgpencil
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+struct Main;
+struct GpencilExportParams;
 
-struct Scene;
-struct bContext;
+namespace blender {
+namespace io {
+namespace gpencil {
 
-struct GpencilExportParams {
-  double frame_start;
-  double frame_end;
-  /** Grease pencil object. */
-  struct Object *ob;
+class GpencilSVGwriter {
+
+ public:
+  GpencilSVGwriter(void);
+  bool write(struct bContext *C, const char *filepath, const struct GpencilExportParams *params);
 };
 
-bool gpencil_io_export(struct bContext *C,
-                       const char *filepath,
-                       const struct GpencilExportParams *params);
-
-#ifdef __cplusplus
-}
-#endif
+}  // namespace gpencil
+}  // namespace io
+}  // namespace blender

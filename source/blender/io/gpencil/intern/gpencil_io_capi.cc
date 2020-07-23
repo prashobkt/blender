@@ -19,3 +19,14 @@
  */
 
 #include "../gpencil_io_exporter.h"
+#include <stdio.h>
+
+#include "gpencil_io_svg.h"
+
+bool gpencil_io_export(bContext *C, const char *filepath, const GpencilExportParams *params)
+{
+  blender::io::gpencil::GpencilSVGwriter mywriter;
+  mywriter.write(C, filepath, params);
+
+  return true;
+}

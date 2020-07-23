@@ -100,6 +100,7 @@ static int wm_gpencil_export_invoke(bContext *C, wmOperator *op, const wmEvent *
 
 static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 {
+  Scene *scene = CTX_data_scene(C);
 
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
     BKE_report(op->reports, RPT_ERROR, "No filename given");
@@ -108,25 +109,15 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 
   char filename[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filename);
+  Object *ob = CTX_data_active_object(C);
 
   struct GpencilExportParams params = {
-      .frame_start = RNA_int_get(op->ptr, "start"),
-      .frame_end = RNA_int_get(op->ptr, "end"),
+      .frame_start = (params.frame_start == INT_MIN) ? SFRA : RNA_int_get(op->ptr, "start"),
+      .frame_end = (params.frame_end == INT_MIN) ? EFRA : RNA_int_get(op->ptr, "end"),
+      .ob = ob,
   };
 
-#if 0
-  /* Take some defaults from the scene, if not specified explicitly. */
-  Scene *scene = CTX_data_scene(C);
-  if (params.frame_start == INT_MIN) {
-    params.frame_start = SFRA;
-  }
-  if (params.frame_end == INT_MIN) {
-    params.frame_end = EFRA;
-  }
-
-  const bool as_background_job = RNA_boolean_get(op->ptr, "as_background_job");
-  bool ok = ABC_export(scene, C, filename, &params, as_background_job);
-#endif
+  gpencil_io_export(C, filename, &params);
 
   return OPERATOR_FINISHED;
 }
@@ -139,12 +130,6 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
-  // box = uiLayoutBox(layout);
-  // uiItemL(box, IFACE_("Manual Transform"), ICON_NONE);
-
-  // uiItemR(box, imfptr, "global_scale", 0, NULL, ICON_NONE);
-
-  /* Scene Options */
   box = uiLayoutBox(layout);
   row = uiLayoutRow(box, false);
   uiItemL(row, IFACE_("Scene Options"), ICON_SCENE_DATA);
