@@ -70,10 +70,9 @@ static int wm_gpencil_export_invoke(bContext *C, wmOperator *op, const wmEvent *
 {
   UNUSED_VARS(event);
 
-#if 0
-  if (!RNA_struct_property_is_set(op->ptr, "as_background_job")) {
-    RNA_boolean_set(op->ptr, "as_background_job", true);
-  }
+  // if (!RNA_struct_property_is_set(op->ptr, "as_background_job")) {
+  //  RNA_boolean_set(op->ptr, "as_background_job", true);
+  //}
 
   RNA_boolean_set(op->ptr, "init_scene_frame_range", true);
 
@@ -88,12 +87,11 @@ static int wm_gpencil_export_invoke(bContext *C, wmOperator *op, const wmEvent *
       BLI_strncpy(filepath, BKE_main_blendfile_path(bmain), sizeof(filepath));
     }
 
-    BLI_path_extension_replace(filepath, sizeof(filepath), ".abc");
+    BLI_path_extension_replace(filepath, sizeof(filepath), ".svg");
     RNA_string_set(op->ptr, "filepath", filepath);
   }
 
   WM_event_add_fileselect(C, op);
-#endif
 
   return OPERATOR_RUNNING_MODAL;
 }
@@ -133,17 +131,16 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 
 static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
 {
-#if 0
 
   uiLayout *box, *row, *col, *sub;
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
-  box = uiLayoutBox(layout);
-  uiItemL(box, IFACE_("Manual Transform"), ICON_NONE);
+  // box = uiLayoutBox(layout);
+  // uiItemL(box, IFACE_("Manual Transform"), ICON_NONE);
 
-  uiItemR(box, imfptr, "global_scale", 0, NULL, ICON_NONE);
+  // uiItemR(box, imfptr, "global_scale", 0, NULL, ICON_NONE);
 
   /* Scene Options */
   box = uiLayoutBox(layout);
@@ -155,12 +152,10 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
   sub = uiLayoutColumn(col, true);
   uiItemR(sub, imfptr, "start", 0, IFACE_("Frame Start"), ICON_NONE);
   uiItemR(sub, imfptr, "end", 0, IFACE_("End"), ICON_NONE);
-#endif
 }
 
 static void wm_gpencil_export_draw(bContext *C, wmOperator *op)
 {
-#if 0
 
   PointerRNA ptr;
 
@@ -177,7 +172,6 @@ static void wm_gpencil_export_draw(bContext *C, wmOperator *op)
   }
 
   ui_gpencil_export_settings(op->layout, &ptr);
-#endif
 }
 
 static bool wm_gpencil_export_check(bContext *UNUSED(C), wmOperator *op)
@@ -195,18 +189,28 @@ static bool wm_gpencil_export_check(bContext *UNUSED(C), wmOperator *op)
   return false;
 }
 
+bool wm_gpencil_export_poll(bContext *C)
+{
+  if (CTX_wm_window(C) == NULL) {
+    // TODO: Add GPencil check/layer, etc.
+    return false;
+  }
+
+  return true;
+}
+
 void WM_OT_gpencil_export(wmOperatorType *ot)
 {
-  ot->name = "Export Gpencil";
-  ot->description = "Export current scene in an Gpencil archive";
+  ot->name = "Export Grease Pencil";
+  ot->description = "Export current grease pencil";
   ot->idname = "WM_OT_gpencil_export";
 
   ot->invoke = wm_gpencil_export_invoke;
   ot->exec = wm_gpencil_export_exec;
-  ot->poll = WM_operator_winactive;
+  ot->poll = wm_gpencil_export_poll;
   ot->ui = wm_gpencil_export_draw;
   ot->check = wm_gpencil_export_check;
-#if 0
+
   WM_operator_properties_filesel(ot,
                                  FILE_TYPE_FOLDER | FILE_TYPE_ALEMBIC,
                                  FILE_BLENDER,
@@ -241,5 +245,4 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
    * end frame values to that of the scene's, otherwise they are reset at
    * every change, draw update. */
   RNA_def_boolean(ot->srna, "init_scene_frame_range", false, "", "");
-#endif
 }
