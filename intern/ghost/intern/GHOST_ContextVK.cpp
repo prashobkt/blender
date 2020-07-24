@@ -154,6 +154,30 @@ GHOST_ContextVK::~GHOST_ContextVK()
     vkDeviceWaitIdle(m_device);
   }
 
+  destroySwapchain();
+
+  if (m_command_pool != VK_NULL_HANDLE) {
+    vkDestroyCommandPool(m_device, m_command_pool, NULL);
+  }
+  if (m_device != VK_NULL_HANDLE) {
+    vkDestroyDevice(m_device, NULL);
+  }
+  if (m_surface != VK_NULL_HANDLE) {
+    vkDestroySurfaceKHR(m_instance, m_surface, NULL);
+  }
+  if (m_instance != VK_NULL_HANDLE) {
+    vkDestroyInstance(m_instance, NULL);
+  }
+}
+
+GHOST_TSuccess GHOST_ContextVK::destroySwapchain(void)
+{
+  if (m_device != VK_NULL_HANDLE) {
+    vkDeviceWaitIdle(m_device);
+  }
+
+  m_in_flight_images.resize(0);
+
   for (auto semaphore : m_image_available_semaphores) {
     vkDestroySemaphore(m_device, semaphore, NULL);
   }
@@ -169,24 +193,16 @@ GHOST_ContextVK::~GHOST_ContextVK()
   if (m_render_pass != VK_NULL_HANDLE) {
     vkDestroyRenderPass(m_device, m_render_pass, NULL);
   }
+  for (auto command_buffer : m_command_buffers) {
+    vkFreeCommandBuffers(m_device, m_command_pool, 1, &command_buffer);
+  }
   for (auto imageView : m_swapchain_image_views) {
     vkDestroyImageView(m_device, imageView, NULL);
   }
   if (m_swapchain != VK_NULL_HANDLE) {
     vkDestroySwapchainKHR(m_device, m_swapchain, NULL);
   }
-  if (m_command_pool != VK_NULL_HANDLE) {
-    vkDestroyCommandPool(m_device, m_command_pool, NULL);
-  }
-  if (m_device != VK_NULL_HANDLE) {
-    vkDestroyDevice(m_device, NULL);
-  }
-  if (m_surface != VK_NULL_HANDLE) {
-    vkDestroySurfaceKHR(m_instance, m_surface, NULL);
-  }
-  if (m_instance != VK_NULL_HANDLE) {
-    vkDestroyInstance(m_instance, NULL);
-  }
+  return GHOST_kSuccess;
 }
 
 GHOST_TSuccess GHOST_ContextVK::swapBuffers()
@@ -198,12 +214,25 @@ GHOST_TSuccess GHOST_ContextVK::swapBuffers()
   vkWaitForFences(m_device, 1, &m_in_flight_fences[m_currentFrame], VK_TRUE, UINT64_MAX);
 
   uint32_t image_id;
-  VK_CHECK(vkAcquireNextImageKHR(m_device,
-                                 m_swapchain,
-                                 UINT64_MAX,
-                                 m_image_available_semaphores[m_currentFrame],
-                                 VK_NULL_HANDLE,
-                                 &image_id));
+  VkResult result = vkAcquireNextImageKHR(m_device,
+                                          m_swapchain,
+                                          UINT64_MAX,
+                                          m_image_available_semaphores[m_currentFrame],
+                                          VK_NULL_HANDLE,
+                                          &image_id);
+
+  if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+    /* Swapchain is out of date. Recreate swapchain and skip this frame. */
+    destroySwapchain();
+    createSwapchain();
+    return GHOST_kSuccess;
+  }
+  else if (result != VK_SUCCESS) {
+    fprintf(stderr,
+            "Error: Failed to acquire swap chain image : %s\n",
+            vulkan_error_as_string(result));
+    return GHOST_kFailure;
+  }
 
   /* Check if a previous frame is using this image (i.e. there is its fence to wait on) */
   if (m_in_flight_images[image_id] != VK_NULL_HANDLE) {
@@ -238,7 +267,20 @@ GHOST_TSuccess GHOST_ContextVK::swapBuffers()
       .pResults = NULL,
   };
 
-  VK_CHECK(vkQueuePresentKHR(m_present_queue, &present_info));
+  result = vkQueuePresentKHR(m_present_queue, &present_info);
+
+  if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+    /* Swapchain is out of date. Recreate swapchain and skip this frame. */
+    destroySwapchain();
+    createSwapchain();
+    return GHOST_kSuccess;
+  }
+  else if (result != VK_SUCCESS) {
+    fprintf(stderr,
+            "Error: Failed to present swap chain image : %s\n",
+            vulkan_error_as_string(result));
+    return GHOST_kFailure;
+  }
 
   m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -548,7 +590,70 @@ static GHOST_TSuccess selectPresentMode(VkPhysicalDevice device,
   return GHOST_kFailure;
 }
 
-GHOST_TSuccess GHOST_ContextVK::createSwapChain(void)
+/* This is only for testing. */
+GHOST_TSuccess GHOST_ContextVK::recordCommandBuffers(void)
+{
+  for (int i = 0; i < m_command_buffers.size(); i++) {
+    VkCommandBufferBeginInfo begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = 0,
+        .pInheritanceInfo = NULL,
+    };
+
+    VK_CHECK(vkBeginCommandBuffer(m_command_buffers[i], &begin_info));
+    {
+      VkRect2D area = {
+          .offset = {0, 0},
+          .extent = m_render_extent,
+      };
+      VkClearValue clearColor = {0.0f, 0.5f, 0.3f, 1.0f};
+      VkRenderPassBeginInfo render_pass_info = {
+          .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+          .renderPass = m_render_pass,
+          .framebuffer = m_swapchain_framebuffers[i],
+          .renderArea = area,
+          .clearValueCount = 1,
+          .pClearValues = &clearColor,
+      };
+
+      vkCmdBeginRenderPass(m_command_buffers[i], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+      /* TODO draw something. */
+
+      vkCmdEndRenderPass(m_command_buffers[i]);
+    }
+    VK_CHECK(vkEndCommandBuffer(m_command_buffers[i]));
+  }
+  return GHOST_kSuccess;
+}
+
+GHOST_TSuccess GHOST_ContextVK::createCommandBuffers(void)
+{
+  m_command_buffers.resize(m_swapchain_image_views.size());
+
+  VkCommandPoolCreateInfo poolInfo = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+      .flags = 0,
+      .queueFamilyIndex = m_queue_family_graphic,
+  };
+
+  VK_CHECK(vkCreateCommandPool(m_device, &poolInfo, NULL, &m_command_pool));
+
+  VkCommandBufferAllocateInfo alloc_info = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+      .commandPool = m_command_pool,
+      .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+      .commandBufferCount = static_cast<uint32_t>(m_command_buffers.size()),
+  };
+
+  VK_CHECK(vkAllocateCommandBuffers(m_device, &alloc_info, m_command_buffers.data()));
+
+  recordCommandBuffers();
+
+  return GHOST_kSuccess;
+}
+
+GHOST_TSuccess GHOST_ContextVK::createSwapchain(void)
 {
   VkPhysicalDevice device = m_physical_device;
 
@@ -690,6 +795,8 @@ GHOST_TSuccess GHOST_ContextVK::createSwapChain(void)
     VK_CHECK(vkCreateFence(m_device, &fence_info, NULL, &m_in_flight_fences[i]));
   }
 
+  createCommandBuffers();
+
   return GHOST_kSuccess;
 }
 
@@ -829,65 +936,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   if (use_window_surface) {
     vkGetDeviceQueue(m_device, m_queue_family_present, 0, &m_present_queue);
 
-    createSwapChain();
-
-    {
-      /* This is only a test. */
-      m_command_buffers.resize(m_swapchain_image_views.size());
-
-      VkCommandPoolCreateInfo poolInfo = {
-          .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-          .flags = 0,
-          .queueFamilyIndex = m_queue_family_graphic,
-      };
-
-      VK_CHECK(vkCreateCommandPool(m_device, &poolInfo, NULL, &m_command_pool));
-
-      VkCommandBufferAllocateInfo alloc_info = {
-          .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-          .commandPool = m_command_pool,
-          .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-          .commandBufferCount = static_cast<uint32_t>(m_command_buffers.size()),
-      };
-
-      VK_CHECK(vkAllocateCommandBuffers(m_device, &alloc_info, m_command_buffers.data()));
-
-      for (int i = 0; i < m_command_buffers.size(); i++) {
-        VkCommandBufferBeginInfo begin_info = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-            .flags = 0,
-            .pInheritanceInfo = NULL,
-        };
-
-        VK_CHECK(vkBeginCommandBuffer(m_command_buffers[i], &begin_info));
-
-        {
-          VkRect2D area = {
-              .offset = {0, 0},
-              .extent = m_render_extent,
-          };
-
-          VkClearValue clearColor = {0.0f, 0.5f, 0.3f, 1.0f};
-          VkRenderPassBeginInfo render_pass_info = {
-              .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-              .renderPass = m_render_pass,
-              .framebuffer = m_swapchain_framebuffers[i],
-              .renderArea = area,
-              .clearValueCount = 1,
-              .pClearValues = &clearColor,
-          };
-
-          vkCmdBeginRenderPass(
-              m_command_buffers[i], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-
-          /* TODO draw something. */
-
-          vkCmdEndRenderPass(m_command_buffers[i]);
-        }
-
-        VK_CHECK(vkEndCommandBuffer(m_command_buffers[i]));
-      }
-    }
+    createSwapchain();
   }
   return GHOST_kFailure;
 }

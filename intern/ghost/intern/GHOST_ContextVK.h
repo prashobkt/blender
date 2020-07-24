@@ -158,7 +158,10 @@ class GHOST_ContextVK : public GHOST_Context {
   int m_currentFrame = 0;
 
   GHOST_TSuccess pickPhysicalDevice(std::vector<const char *> required_exts);
-  GHOST_TSuccess createSwapChain(void);
+  GHOST_TSuccess createSwapchain(void);
+  GHOST_TSuccess destroySwapchain(void);
+  GHOST_TSuccess createCommandBuffers(void);
+  GHOST_TSuccess recordCommandBuffers(void);
 };
 
 #endif  // __GHOST_CONTEXTVK_H__
