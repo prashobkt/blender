@@ -65,6 +65,8 @@ static int wm_gpencil_export_invoke(bContext *C, wmOperator *op, const wmEvent *
 {
   UNUSED_VARS(event);
 
+  RegionView3D *rv3d = CTX_wm_region_view3d(C);
+
   // if (!RNA_struct_property_is_set(op->ptr, "as_background_job")) {
   //  RNA_boolean_set(op->ptr, "as_background_job", true);
   //}

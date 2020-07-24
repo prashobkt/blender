@@ -24,6 +24,7 @@
 
 struct Main;
 struct GpencilExportParams;
+struct ARegion;
 
 namespace blender {
 namespace io {
@@ -43,6 +44,8 @@ class GpencilExporter {
 class GpencilExporterSVG : public GpencilExporter {
 
  public:
+  ARegion *region;
+
   GpencilExporterSVG(const struct GpencilExportParams *params);
   bool write(void);
 
