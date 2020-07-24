@@ -139,6 +139,9 @@ class GHOST_ContextVK : public GHOST_Context {
   VkSurfaceKHR m_surface;
   VkSwapchainKHR m_swapchain;
   std::vector<VkImage> m_swapChainImages;
+  std::vector<VkImageView> m_swapChainImageViews;
+  std::vector<VkFramebuffer> m_swapChainFramebuffers;
+  VkRenderPass m_renderPass;
   VkFormat m_swapChainImageFormat;
   VkExtent2D m_swapChainExtent;
 

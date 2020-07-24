@@ -134,12 +134,22 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
       m_physical_device(VK_NULL_HANDLE),
       m_device(VK_NULL_HANDLE),
       m_surface(VK_NULL_HANDLE),
-      m_swapchain(VK_NULL_HANDLE)
+      m_swapchain(VK_NULL_HANDLE),
+      m_renderPass(VK_NULL_HANDLE)
 {
 }
 
 GHOST_ContextVK::~GHOST_ContextVK()
 {
+  for (auto framebuffer : m_swapChainFramebuffers) {
+    vkDestroyFramebuffer(m_device, framebuffer, NULL);
+  }
+  if (m_renderPass != VK_NULL_HANDLE) {
+    vkDestroyRenderPass(m_device, m_renderPass, NULL);
+  }
+  for (auto imageView : m_swapChainImageViews) {
+    vkDestroyImageView(m_device, imageView, NULL);
+  }
   if (m_swapchain != VK_NULL_HANDLE) {
     vkDestroySwapchainKHR(m_device, m_swapchain, NULL);
   }
@@ -395,6 +405,45 @@ static GHOST_TSuccess getPresetQueueFamily(VkPhysicalDevice device,
   return GHOST_kFailure;
 }
 
+static GHOST_TSuccess create_render_pass(VkDevice device,
+                                         VkFormat format,
+                                         VkRenderPass *r_renderPass)
+{
+  VkAttachmentDescription colorAttachment = {
+      .format = format,
+      .samples = VK_SAMPLE_COUNT_1_BIT,
+      .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+      .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+  };
+
+  VkAttachmentReference colorAttachmentRef = {
+      .attachment = 0,
+      .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+  };
+
+  VkSubpassDescription subpass = {
+      .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+      .colorAttachmentCount = 1,
+      .pColorAttachments = &colorAttachmentRef,
+  };
+
+  VkRenderPassCreateInfo renderPassInfo = {
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+      .attachmentCount = 1,
+      .pAttachments = &colorAttachment,
+      .subpassCount = 1,
+      .pSubpasses = &subpass,
+  };
+
+  VK_CHECK(vkCreateRenderPass(device, &renderPassInfo, NULL, r_renderPass));
+
+  return GHOST_kSuccess;
+}
+
 GHOST_TSuccess GHOST_ContextVK::createSwapChain(void)
 {
   VkPhysicalDevice device = m_physical_device;
@@ -468,10 +517,54 @@ GHOST_TSuccess GHOST_ContextVK::createSwapChain(void)
   m_swapChainImageFormat = format.format;
   m_swapChainExtent = extent;
 
+  create_render_pass(m_device, format.format, &m_renderPass);
+
   /* image_count may not be what we requested! Getter for final value. */
   vkGetSwapchainImagesKHR(m_device, m_swapchain, &image_count, NULL);
   m_swapChainImages.resize(image_count);
   vkGetSwapchainImagesKHR(m_device, m_swapchain, &image_count, m_swapChainImages.data());
+
+  m_swapChainImageViews.resize(image_count);
+  m_swapChainFramebuffers.resize(image_count);
+  for (int i = 0; i < image_count; i++) {
+    VkImageViewCreateInfo view_create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = m_swapChainImages[i],
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = format.format,
+        .components =
+            {
+                .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+            },
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
+
+    VK_CHECK(vkCreateImageView(m_device, &view_create_info, NULL, &m_swapChainImageViews[i]));
+
+    VkImageView attachments[] = {m_swapChainImageViews[i]};
+
+    VkFramebufferCreateInfo fb_create_info = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = m_renderPass,
+        .attachmentCount = 1,
+        .pAttachments = attachments,
+        .width = m_swapChainExtent.width,
+        .height = m_swapChainExtent.height,
+        .layers = 1,
+    };
+
+    VK_CHECK(vkCreateFramebuffer(m_device, &fb_create_info, NULL, &m_swapChainFramebuffers[i]));
+  }
 
   return GHOST_kSuccess;
 }
