@@ -889,15 +889,3 @@ GHOST_TSuccess GHOST_ContextVK::releaseNativeHandles()
 {
   return GHOST_kSuccess;
 }
-
-GHOST_TSuccess GHOST_ContextVK::setSwapInterval(int interval)
-{
-  (void)interval;
-  return GHOST_kSuccess;
-}
-
-GHOST_TSuccess GHOST_ContextVK::getSwapInterval(int &intervalOut)
-{
-  (void)intervalOut;
-  return GHOST_kSuccess;
-}

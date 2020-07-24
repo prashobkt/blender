@@ -104,14 +104,20 @@ class GHOST_ContextVK : public GHOST_Context {
    * \param interval The swap interval to use.
    * \return A boolean success indicator.
    */
-  GHOST_TSuccess setSwapInterval(int interval);
+  GHOST_TSuccess setSwapInterval(int /* interval */)
+  {
+    return GHOST_kFailure;
+  }
 
   /**
    * Gets the current swap interval for swapBuffers.
    * \param intervalOut Variable to store the swap interval if it can be read.
    * \return Whether the swap interval can be read.
    */
-  GHOST_TSuccess getSwapInterval(int &intervalOut);
+  GHOST_TSuccess getSwapInterval(int &)
+  {
+    return GHOST_kFailure;
+  };
 
  private:
 #ifdef _WIN32
