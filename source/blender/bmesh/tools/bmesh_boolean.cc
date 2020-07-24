@@ -181,6 +181,10 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
     }
   }
 
+  /* Save the original BMEdges so we can use them as examples. */
+  Array<BMEdge *> old_edges(bm->totedge);
+  std::copy(bm->etable, bm->etable + bm->totedge, old_edges.begin());
+
   /* Reuse or make new BMFaces, as the faces are identical to old ones or not.
    * If reusing, mark them as "keep". First find the maximum face length
    * so we can declare some arrays outside of the face-creating loop.
@@ -206,9 +210,6 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
     }
     else {
       int orig = face.orig;
-      // BLI_assert(orig != NO_INDEX && orig >= 0 && orig < bm->totface);
-      // BMFace *orig_face = old_bmfs[orig];
-      // TODO(howard): figure out why not all faces have an orig.
       BMFace *orig_face;
       if (orig != NO_INDEX) {
         orig_face = old_bmfs[orig];
@@ -222,10 +223,11 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
         BMVert *bmv2 = face_bmverts[(i + 1) % flen];
         BMEdge *bme = BM_edge_exists(bmv1, bmv2);
         if (bme == NULL) {
-          /* TODO(howard): fetch face.edge_orig[i] and use it to fetch example BMEdge,
-           * but will have to store all the BMEdges somewhere before this whole loop.
-           */
-          bme = BM_edge_create(bm, bmv1, bmv2, NULL, BM_CREATE_NOP);
+          BMEdge *orig_edge = NULL;
+          if (face.edge_orig[i] != NO_INDEX) {
+            orig_edge = old_edges[face.edge_orig[i]];
+          }
+          bme = BM_edge_create(bm, bmv1, bmv2, orig_edge, BM_CREATE_NOP);
         }
         face_bmedges[i] = bme;
       }
