@@ -62,39 +62,19 @@ void GpencilExporter::set_out_filename(struct bContext *C, char *filename)
   //#endif
 }
 
-static ARegion *get_3d_region(struct bContext *C)
-{
-  bScreen *screen = CTX_wm_screen(C);
-  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-    LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-      if (region->regiontype == RGN_TYPE_WINDOW) {
-        return region;
-      }
-    }
-    // LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-    //  if (sl->spacetype == SPACE_VIEW3D) {
-    //    return (ARegion *)sl->regionbase.first;
-    //  }
-    //}
-  }
-
-  return CTX_wm_region(C);
-}
-
 /* Constructor. */
 GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *params)
 {
   this->params.frame_start = params->frame_start;
   this->params.frame_end = params->frame_end;
   this->params.ob = params->ob;
+  this->region = params->region;
   this->params.C = params->C;
   this->params.filename = params->filename;
   this->params.mode = params->mode;
 
   /* Prepare output filename with full path. */
   set_out_filename(params->C, params->filename);
-
-  this->region = get_3d_region(params->C);
 }
 
 /* Convert to screen space.

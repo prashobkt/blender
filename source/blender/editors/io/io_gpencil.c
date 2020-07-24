@@ -40,6 +40,7 @@
 #include "BKE_gpencil.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
+#include "BKE_screen.h"
 
 #include "BLI_listbase.h"
 #include "BLI_path_util.h"
@@ -65,12 +66,6 @@ static int wm_gpencil_export_invoke(bContext *C, wmOperator *op, const wmEvent *
 {
   UNUSED_VARS(event);
 
-  RegionView3D *rv3d = CTX_wm_region_view3d(C);
-
-  // if (!RNA_struct_property_is_set(op->ptr, "as_background_job")) {
-  //  RNA_boolean_set(op->ptr, "as_background_job", true);
-  //}
-
   RNA_boolean_set(op->ptr, "init_scene_frame_range", true);
 
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
@@ -93,10 +88,33 @@ static int wm_gpencil_export_invoke(bContext *C, wmOperator *op, const wmEvent *
   return OPERATOR_RUNNING_MODAL;
 }
 
+static ARegion *get_invoke_region(bContext *C)
+{
+  bScreen *screen = CTX_wm_screen(C);
+  if (screen == NULL) {
+    return NULL;
+  }
+  ScrArea *area = BKE_screen_find_big_area(screen, SPACE_VIEW3D, 0);
+  if (area == NULL) {
+    return NULL;
+  }
+  ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+
+  return region;
+}
+
 static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 {
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
     BKE_report(op->reports, RPT_ERROR, "No filename given");
+    return OPERATOR_CANCELLED;
+  }
+
+  /*For some reason the region cannot be retrieved from the context.
+   * If a better solution is found in the future, remove this function. */
+  ARegion *region = get_invoke_region(C);
+  if (region == NULL) {
+    BKE_report(op->reports, RPT_ERROR, "Unable to find valid 3D View area");
     return OPERATOR_CANCELLED;
   }
 
@@ -106,6 +124,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 
   struct GpencilExportParams params = {
       .C = C,
+      .region = region,
       .ob = ob,
       .filename = filename,
       .mode = GP_EXPORT_TO_SVG,
@@ -180,7 +199,7 @@ static bool wm_gpencil_export_check(bContext *UNUSED(C), wmOperator *op)
   return false;
 }
 
-bool wm_gpencil_export_poll(bContext *C)
+static bool wm_gpencil_export_poll(bContext *C)
 {
   if (CTX_wm_window(C) == NULL) {
     return false;
@@ -213,7 +232,7 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
   ot->check = wm_gpencil_export_check;
 
   WM_operator_properties_filesel(ot,
-                                 FILE_TYPE_FOLDER | FILE_TYPE_ALEMBIC,
+                                 FILE_TYPE_FOLDER | FILE_TYPE_OBJECT_IO,
                                  FILE_BLENDER,
                                  FILE_SAVE,
                                  WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,

@@ -25,6 +25,7 @@ extern "C" {
 
 struct Scene;
 struct bContext;
+struct ARegion;
 
 typedef enum eGpencilExport_Modes {
   GP_EXPORT_TO_SVG = 0,
@@ -32,6 +33,7 @@ typedef enum eGpencilExport_Modes {
 
 struct GpencilExportParams {
   bContext *C;
+  ARegion *region;
   /** Grease pencil object. */
   struct Object *ob;
   /** Output filename.  */
