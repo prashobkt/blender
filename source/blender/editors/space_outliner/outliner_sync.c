@@ -322,6 +322,14 @@ static void outliner_sync_selection_from_outliner(Scene *scene,
   LISTBASE_FOREACH (TreeElement *, te, tree) {
     TreeStoreElem *tselem = TREESTORE(te);
 
+    outliner_sync_selection_from_outliner(
+        scene, view_layer, &te->subtree, sync_types, selected_items);
+
+    if (tselem->flag & TSE_SKIP_SELECT_SYNC) {
+      tselem->flag &= ~TSE_SKIP_SELECT_SYNC;
+      continue;
+    }
+
     if (tselem->type == 0 && te->idcode == ID_OB) {
       if (sync_types->object) {
         outliner_select_sync_to_object(view_layer, te, tselem, selected_items->objects);
@@ -342,9 +350,6 @@ static void outliner_sync_selection_from_outliner(Scene *scene,
         outliner_select_sync_to_sequence(scene, tselem);
       }
     }
-
-    outliner_sync_selection_from_outliner(
-        scene, view_layer, &te->subtree, sync_types, selected_items);
   }
 }
 

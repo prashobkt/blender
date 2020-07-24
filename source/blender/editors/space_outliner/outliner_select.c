@@ -418,15 +418,9 @@ static eOLDrawState tree_element_set_active_object(bContext *C,
       /* swap select */
       if (base->flag & BASE_SELECTED) {
         ED_object_base_select(base, BA_DESELECT);
-        if (parent_tselem) {
-          parent_tselem->flag &= ~TSE_SELECTED;
-        }
       }
       else {
         ED_object_base_select(base, BA_SELECT);
-        if (parent_tselem) {
-          parent_tselem->flag |= TSE_SELECTED;
-        }
       }
     }
     else {
@@ -442,9 +436,12 @@ static eOLDrawState tree_element_set_active_object(bContext *C,
         BKE_view_layer_base_deselect_all(view_layer);
       }
       ED_object_base_select(base, BA_SELECT);
-      if (parent_tselem) {
-        parent_tselem->flag |= TSE_SELECTED;
-      }
+    }
+
+    /* If a parent base has been selected, ensure it is not unselected by the selection sync from
+     * the outliner. */
+    if (parent_tselem) {
+      parent_tselem->flag |= TSE_SKIP_SELECT_SYNC;
     }
 
     if (recursive) {

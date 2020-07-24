@@ -64,6 +64,8 @@ enum {
   TSE_ACTIVE = (1 << 9),
   /* TSE_ACTIVE_WALK = (1 << 10), */ /* Unused */
   TSE_DRAG_ANY = (TSE_DRAG_INTO | TSE_DRAG_BEFORE | TSE_DRAG_AFTER),
+  /* Prevent a selection sync for the element */
+  TSE_SKIP_SELECT_SYNC = (1 << 10),
 };
 
 /* TreeStoreElem->types */
