@@ -363,6 +363,10 @@ float *manta_get_phi(MANTA *fluid)
 {
   return fluid->getPhi();
 }
+float *manta_get_pressure(MANTA *fluid)
+{
+  return fluid->getPressure();
+}
 
 /* Smoke functions */
 void manta_smoke_export_script(MANTA *smoke, FluidModifierData *fmd)

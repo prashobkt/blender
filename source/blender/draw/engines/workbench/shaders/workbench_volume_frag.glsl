@@ -26,6 +26,7 @@ uniform int sliceAxis; /* -1 is no slice, 0 is X, 1 is Y, 2 is Z. */
 
 uniform bool showPhi = false;
 uniform bool showFlags = false;
+uniform bool showPressure = false;
 
 #ifdef VOLUME_SLICE
 in vec3 localPos;
@@ -155,6 +156,17 @@ void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
     }
     if (tval.rgb == vec3(0.0)) {
       tval.rgb += vec3(0.5, 0.0, 0.0); /* medium red */
+    }
+  }
+  else if (showPressure) {
+    /* Color mapping for pressure */
+    float val = sample_volume_texture(densityTexture, co).r * gridScale;
+
+    if (val > 0) {
+      tval = vec4(val, val, val, 0.06);
+    }
+    else {
+      tval = vec4(-val, 0.0, 0.0, 0.06);
     }
   }
   else {

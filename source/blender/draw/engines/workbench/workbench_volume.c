@@ -100,6 +100,7 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
                          fds->coba_field == FLUID_DOMAIN_FIELD_PHI_OUT ||
                          fds->coba_field == FLUID_DOMAIN_FIELD_PHI_OBSTACLE);
   const bool show_flags = (fds->coba_field == FLUID_DOMAIN_FIELD_FLAGS);
+  const bool show_pressure = (fds->coba_field == FLUID_DOMAIN_FIELD_PRESSURE);
   GPUShader *sh = workbench_shader_volume_get(use_slice, fds->use_coba, cubic_interp, true);
 
   if (use_slice) {
@@ -147,12 +148,13 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
     else {
       DRW_shgroup_uniform_texture(grp, "densityTexture", fds->tex_field);
     }
-    if (!show_phi && !show_flags) {
+    if (!show_phi && !show_flags && !show_pressure) {
       DRW_shgroup_uniform_texture(grp, "transferTexture", fds->tex_coba);
     }
     DRW_shgroup_uniform_float_copy(grp, "gridScale", fds->grid_scale);
     DRW_shgroup_uniform_bool_copy(grp, "showPhi", show_phi);
     DRW_shgroup_uniform_bool_copy(grp, "showFlags", show_flags);
+    DRW_shgroup_uniform_bool_copy(grp, "showPressure", show_pressure);
   }
   else {
     static float white[3] = {1.0f, 1.0f, 1.0f};

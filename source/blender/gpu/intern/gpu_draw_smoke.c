@@ -206,6 +206,10 @@ static GPUTexture *create_field_texture(FluidDomainSettings *fds, bool singlePre
       data_format = GPU_DATA_INT;
       texture_format = GPU_R8UI;
       break;
+    case FLUID_DOMAIN_FIELD_PRESSURE:
+      field = manta_get_pressure(fds->fluid);
+      texture_format = GPU_R16F;
+      break;
     default:
       return NULL;
   }
@@ -385,7 +389,8 @@ void GPU_create_smoke_coba_field(FluidModifierData *fmd)
                             fds->coba_field == FLUID_DOMAIN_FIELD_PHI_IN ||
                             fds->coba_field == FLUID_DOMAIN_FIELD_PHI_OUT ||
                             fds->coba_field == FLUID_DOMAIN_FIELD_PHI_OBSTACLE ||
-                            fds->coba_field == FLUID_DOMAIN_FIELD_FLAGS)) {
+                            fds->coba_field == FLUID_DOMAIN_FIELD_FLAGS ||
+                            fds->coba_field == FLUID_DOMAIN_FIELD_PRESSURE)) {
       fds->tex_coba = create_transfer_function(TFUNC_COLOR_RAMP, fds->coba);
     }
   }

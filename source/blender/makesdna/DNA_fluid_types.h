@@ -132,6 +132,7 @@ enum {
   FLUID_DOMAIN_FIELD_PHI_OUT = 16,
   FLUID_DOMAIN_FIELD_PHI_OBSTACLE = 17,
   FLUID_DOMAIN_FIELD_FLAGS = 18,
+  FLUID_DOMAIN_FIELD_PRESSURE = 19,
 };
 
 /* Fluid gridline display color field types. */

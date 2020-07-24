@@ -130,6 +130,7 @@ MANTA::MANTA(int *res, FluidModifierData *fmd) : mCurrentID(++solverID)
   mFuelIn = nullptr;
   mReactIn = nullptr;
   mEmissionIn = nullptr;
+  mPressure = nullptr;
 
   // Smoke high res grids
   mDensityHigh = nullptr;
@@ -1986,6 +1987,7 @@ void MANTA::updatePointers()
   mForceX = (float *)pyObjectToPointer(callPythonFunction("x_force" + solver_ext, func));
   mForceY = (float *)pyObjectToPointer(callPythonFunction("y_force" + solver_ext, func));
   mForceZ = (float *)pyObjectToPointer(callPythonFunction("z_force" + solver_ext, func));
+  mPressure = (float *)pyObjectToPointer(callPythonFunction("pressure" + solver_ext, func));
 
   if (mUsingOutflow) {
     mPhiOutIn = (float *)pyObjectToPointer(callPythonFunction("phiOutIn" + solver_ext, func));
