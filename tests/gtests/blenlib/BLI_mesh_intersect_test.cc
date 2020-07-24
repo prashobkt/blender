@@ -19,7 +19,7 @@
 
 namespace blender::meshintersect {
 
-constexpr bool DO_OBJ = true;
+constexpr bool DO_OBJ = false;
 
 /* Build and hold a Mesh from a string spec. Also hold and own resources used by Mesh. */
 class MeshBuilder {
@@ -808,7 +808,7 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
   std::cout << "Create time: " << time_create - time_start << "\n";
   std::cout << "Intersect time: " << time_intersect - time_create << "\n";
   std::cout << "Total time: " << time_intersect - time_start << "\n";
-  write_obj_mesh(out, "spheresphere");
+  // write_obj_mesh(out, "spheresphere");
 }
 
 TEST(mesh_intersect_perf, SphereSphere)

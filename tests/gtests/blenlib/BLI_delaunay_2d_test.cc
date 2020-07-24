@@ -252,7 +252,7 @@ template<typename T> std::ostream &operator<<(std::ostream &os, const CDT_result
   return os;
 }
 
-static bool draw_append = false; /* Willbe set to true after first call. */
+static bool draw_append = false; /* Will be set to true after first call. */
 
 template<typename T>
 void graph_draw(const std::string &label,
@@ -260,7 +260,14 @@ void graph_draw(const std::string &label,
                 const Array<std::pair<int, int>> &edges,
                 const Array<Vector<int>> &faces)
 {
+  /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
+   * This is just for developer debugging anyway, and should never be called in production Blender.
+   */
+#if WIN32
+  constexpr const char *drawfile = "./cdt_test_draw.html";
+#else
   constexpr const char *drawfile = "/tmp/cdt_test_draw.html";
+#endif
   constexpr int max_draw_width = 1400;
   constexpr int max_draw_height = 1000;
   constexpr int thin_line = 1;
@@ -358,7 +365,7 @@ void graph_draw(const std::string &label,
 }
 
 /* Should tests draw their output to an html file? */
-constexpr bool DO_DRAW = true;
+constexpr bool DO_DRAW = false;
 
 template<typename T> void expect_coord_near(const vec2<T> &testco, const vec2<T> &refco);
 

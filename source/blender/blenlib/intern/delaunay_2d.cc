@@ -383,7 +383,15 @@ template<typename T> std::ostream &operator<<(std::ostream &os, const CDT_state<
 template<typename T> void cdt_draw(const std::string &label, const CDTArrangement<T> &cdt)
 {
   static bool append = false; /* Will be set to true after first call. */
-  constexpr const char *drawfile = "/tmp/debug_draw.html";
+
+/* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
+ * This is just for developer debugging anyway, and should never be called in production Blender.
+ */
+#  if WIN32
+  const char *drawfile = "./debug_draw.html";
+#  else
+  const char *drawfile = "/tmp/debug_draw.html";
+#  endif
   constexpr int max_draw_width = 1800;
   constexpr int max_draw_height = 1600;
   constexpr double margin_expand = 0.05;

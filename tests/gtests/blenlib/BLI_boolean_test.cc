@@ -17,7 +17,7 @@
 
 namespace blender::meshintersect {
 
-constexpr bool DO_OBJ = true;
+constexpr bool DO_OBJ = false;
 
 /* Build and hold a Mesh from a string spec. Also hold and own resources used by Mesh. */
 class MeshBuilder {
