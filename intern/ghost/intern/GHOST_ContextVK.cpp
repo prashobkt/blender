@@ -109,6 +109,11 @@ static const char *vulkan_error_as_string(VkResult result)
     } \
   } while (0)
 
+#define DEBUG_PRINTF(...) \
+  if (m_debug) { \
+    printf(__VA_ARGS__); \
+  }
+
 /* Tripple buffering. */
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -121,7 +126,7 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
 #endif
                                  int contextMajorVersion,
                                  int contextMinorVersion,
-                                 int useValidationLayers)
+                                 int debug)
     : GHOST_Context(stereoVisual),
 #ifdef _WIN32
       m_hinstance(hinstance),
@@ -132,7 +137,7 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
 #endif
       m_contextMajorVersion(contextMajorVersion),
       m_contextMinorVersion(contextMinorVersion),
-      m_useValidationLayers(useValidationLayers),
+      m_debug(debug),
       m_instance(VK_NULL_HANDLE),
       m_physical_device(VK_NULL_HANDLE),
       m_device(VK_NULL_HANDLE),
@@ -280,7 +285,7 @@ static void requireExtension(vector<VkExtensionProperties> &extensions_available
     extensions_enabled.push_back(extension_name);
   }
   else {
-    cout << "Error : " << extension_name << " not found\n";
+    fprintf(stderr, "Error: %s not found.\n", extension_name);
   }
 }
 
@@ -313,7 +318,7 @@ static void enableLayer(vector<VkLayerProperties> &layers_available,
     layers_enabled.push_back(layer_name);
   }
   else {
-    cout << "Info : " << layer_name << " not supported.\n";
+    fprintf(stderr, "Error: %s not supported.\n", layer_name);
   }
 }
 
@@ -340,91 +345,93 @@ static bool device_extensions_support(VkPhysicalDevice device, vector<const char
   return true;
 }
 
-static VkPhysicalDevice pickPhysicalDevice(VkInstance instance,
-                                           VkSurfaceKHR surface,
-                                           vector<const char *> required_exts)
+GHOST_TSuccess GHOST_ContextVK::pickPhysicalDevice(vector<const char *> required_exts)
 {
+  /* TODO Pick the best GPU by default OR by name from user settings. */
+  m_physical_device = VK_NULL_HANDLE;
+
   uint32_t device_count = 0;
-  vkEnumeratePhysicalDevices(instance, &device_count, NULL);
+  vkEnumeratePhysicalDevices(m_instance, &device_count, NULL);
 
-  if (device_count == 0) {
-    return VK_NULL_HANDLE;
-  }
+  vector<VkPhysicalDevice> physical_devices(device_count);
+  vkEnumeratePhysicalDevices(m_instance, &device_count, physical_devices.data());
 
-  vector<VkPhysicalDevice> devices(device_count);
-  vkEnumeratePhysicalDevices(instance, &device_count, devices.data());
-
-  // TODO Pick the best GPU by default OR by name from user settings.
-  // For now we just select the first suitable gpu.
-  VkPhysicalDevice best_device = VK_NULL_HANDLE;
   int best_device_score = -1;
-
-  for (const auto &device : devices) {
+  for (const auto &physical_device : physical_devices) {
     VkPhysicalDeviceProperties device_properties;
-    vkGetPhysicalDeviceProperties(device, &device_properties);
+    vkGetPhysicalDeviceProperties(physical_device, &device_properties);
 
-    VkPhysicalDeviceFeatures device_features;
-    vkGetPhysicalDeviceFeatures(device, &device_features);
+    VkPhysicalDeviceFeatures features;
+    vkGetPhysicalDeviceFeatures(physical_device, &features);
 
-    if (!device_extensions_support(device, required_exts)) {
+    DEBUG_PRINTF("%s : \n", device_properties.deviceName);
+
+    if (!device_extensions_support(physical_device, required_exts)) {
+      DEBUG_PRINTF("  - Device does not support required device extensions.\n");
       continue;
     }
 
-    if (surface != VK_NULL_HANDLE) {
+    if (m_surface != VK_NULL_HANDLE) {
       uint32_t format_count;
-      vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, NULL);
+      vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, m_surface, &format_count, NULL);
       /* TODO(fclem) This is where we should check for HDR surface format. */
 
       uint32_t present_count;
-      vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_count, NULL);
+      vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, m_surface, &present_count, NULL);
 
       /* For now anything will do. */
       if (format_count == 0 || present_count == 0) {
+        DEBUG_PRINTF("  - Device does not support presentation.\n");
         continue;
       }
     }
 
-    // List of REQUIRED features.
-    if (device_features.geometryShader &&  // Needed for wide lines
-        device_features.dualSrcBlend &&    // Needed by EEVEE
-        device_features.logicOp            // Needed by UI
-    ) {
-      int device_score = 0;
-      switch (device_properties.deviceType) {
-        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
-          device_score = 400;
-          break;
-        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
-          device_score = 300;
-          break;
-        case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
-          device_score = 200;
-          break;
-        case VK_PHYSICAL_DEVICE_TYPE_CPU:
-          device_score = 100;
-          break;
-        default:
-          break;
-      }
-      cout << "Found Vulkan Device : " << device_properties.deviceName << "\n";
-      if (device_score > best_device_score) {
-        best_device = device;
-        best_device_score = device_score;
-      }
+    if (!features.geometryShader) {
+      // Needed for wide lines emulation and barycentric coords and a few others.
+      DEBUG_PRINTF("  - Device does not support geometryShader.\n");
     }
+    if (!features.dualSrcBlend) {
+      DEBUG_PRINTF("  - Device does not support dualSrcBlend.\n");
+    }
+    if (!features.logicOp) {
+      // Needed by UI.
+      DEBUG_PRINTF("  - Device does not support logicOp.\n");
+    }
+
+    if (!features.geometryShader || !features.dualSrcBlend || !features.logicOp) {
+      continue;
+    }
+
+    int device_score = 0;
+    switch (device_properties.deviceType) {
+      case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+        device_score = 400;
+        break;
+      case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+        device_score = 300;
+        break;
+      case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+        device_score = 200;
+        break;
+      case VK_PHYSICAL_DEVICE_TYPE_CPU:
+        device_score = 100;
+        break;
+      default:
+        break;
+    }
+    if (device_score > best_device_score) {
+      m_physical_device = physical_device;
+      best_device_score = device_score;
+    }
+    DEBUG_PRINTF("  - Device suitable.\n");
   }
 
-  if (best_device == VK_NULL_HANDLE) {
-    // TODO debug output of devices and features.
-    cout << "Error: No suitable Vulkan Device found!\n";
-  }
-  else {
-    VkPhysicalDeviceProperties device_properties;
-    vkGetPhysicalDeviceProperties(best_device, &device_properties);
-    cout << "Selected Vulkan Device : " << device_properties.deviceName << "\n";
+  if (m_physical_device == VK_NULL_HANDLE) {
+    fprintf(stderr, "Error: No suitable Vulkan Device found!\n");
+    return GHOST_kFailure;
   }
 
-  return best_device;
+  return GHOST_kSuccess;
 }
 
 static GHOST_TSuccess getGraphicQueueFamily(VkPhysicalDevice device, uint32_t *r_queue_index)
@@ -443,8 +450,7 @@ static GHOST_TSuccess getGraphicQueueFamily(VkPhysicalDevice device, uint32_t *r
     (*r_queue_index)++;
   }
 
-  cout << "Couldn't find any Graphic queue familly on selected device\n";
-
+  fprintf(stderr, "Couldn't find any Graphic queue familly on selected device\n");
   return GHOST_kFailure;
 }
 
@@ -471,8 +477,7 @@ static GHOST_TSuccess getPresetQueueFamily(VkPhysicalDevice device,
     (*r_queue_index)++;
   }
 
-  cout << "Couldn't find any Present queue familly on selected device\n";
-
+  fprintf(stderr, "Couldn't find any Present queue familly on selected device\n");
   return GHOST_kFailure;
 }
 
@@ -538,7 +543,7 @@ static GHOST_TSuccess selectPresentMode(VkPhysicalDevice device,
     }
   }
 
-  cout << "Error: FIFO present mode is not supported by the swap chain!\n";
+  fprintf(stderr, "Error: FIFO present mode is not supported by the swap chain!\n");
 
   return GHOST_kFailure;
 }
@@ -698,7 +703,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   auto extensions_available = getExtensionsAvailable();
 
   vector<const char *> layers_enabled;
-  if (m_useValidationLayers) {
+  if (m_debug) {
     enableLayer(layers_available, layers_enabled, "VK_LAYER_KHRONOS_validation");
   }
 
@@ -755,9 +760,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 #endif
   }
 
-  m_physical_device = pickPhysicalDevice(m_instance, m_surface, extensions_device);
-
-  if (m_physical_device == VK_NULL_HANDLE) {
+  if (!pickPhysicalDevice(extensions_device)) {
     return GHOST_kFailure;
   }
 

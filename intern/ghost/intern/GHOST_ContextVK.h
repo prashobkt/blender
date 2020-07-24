@@ -61,7 +61,7 @@ class GHOST_ContextVK : public GHOST_Context {
 #endif
                   int contextMajorVersion,
                   int contextMinorVersion,
-                  int useValidationLayers);
+                  int m_debug);
 
   /**
    * Destructor.
@@ -129,7 +129,7 @@ class GHOST_ContextVK : public GHOST_Context {
 
   const int m_contextMajorVersion;
   const int m_contextMinorVersion;
-  const int m_useValidationLayers;
+  const int m_debug;
 
   VkInstance m_instance;
   VkPhysicalDevice m_physical_device;
@@ -158,6 +158,7 @@ class GHOST_ContextVK : public GHOST_Context {
   std::vector<VkFence> m_imagesInFlight;
   int m_currentFrame = 0;
 
+  GHOST_TSuccess pickPhysicalDevice(std::vector<const char *> required_exts);
   GHOST_TSuccess createSwapChain(void);
 };
 
