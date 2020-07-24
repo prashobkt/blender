@@ -141,12 +141,10 @@ static int textview_wrap_offsets(
  * return false if the last line is off the screen
  * should be able to use this for any string type.
  *
- * for single color string use fg, for full control use str_format (FMT_TYPE_*)
+ * if fg == NULL, then text_line->format will be used
  */
 static bool textview_draw_string(TextViewDrawState *tds,
-                                 const char *str,
-                                 int str_len,
-                                 const char *str_format,
+                                 TextLine *text_line,
                                  const uchar fg[4],
                                  const uchar bg[4],
                                  int icon,
@@ -156,6 +154,9 @@ static bool textview_draw_string(TextViewDrawState *tds,
 {
   int tot_lines; /* Total number of lines for wrapping. */
   int *offsets;  /* Offsets of line beginnings for wrapping. */
+  const char *str = text_line->line;
+  const char *str_format = text_line->format;
+  int str_len = text_line->len;
 
   str_len = textview_wrap_offsets(str, str_len, tds->columns, &tot_lines, &offsets);
 
@@ -265,7 +266,7 @@ static bool textview_draw_string(TextViewDrawState *tds,
   const int final_offset = offsets[tot_lines - 1];
   len = str_len - final_offset;
   s = str + final_offset;
-  if (fg || str_format == NULL) {
+  if (fg) {
     BLF_position(tds->font_id, tds->xy[0], tds->lofs + line_bottom + tds->row_vpadding, 0);
     BLF_color4ubv(tds->font_id, fg);
     BLF_draw_mono(tds->font_id, s, len, tds->cwidth);
@@ -293,7 +294,7 @@ static bool textview_draw_string(TextViewDrawState *tds,
 
   tds->xy[1] += tds->lheight;
 
-  if (fg || str_format == NULL) {
+  if (fg) {
     BLF_color4ubv(tds->font_id, fg);
   }
 
@@ -301,7 +302,7 @@ static bool textview_draw_string(TextViewDrawState *tds,
     len = offsets[i] - offsets[i - 1];
     s = str + offsets[i - 1];
 
-    if (fg || str_format == NULL) {
+    if (fg) {
       BLF_position(tds->font_id, tds->xy[0], tds->lofs + tds->xy[1], 0);
       BLF_draw_mono(tds->font_id, s, len, tds->cwidth);
     }
@@ -427,27 +428,42 @@ int textview_draw(TextViewContext *tvc,
     do {
       int data_flag = 0;
       const int y_prev = xy[1];
-      TextLine *text_line = MEM_callocN(sizeof(*text_line), __func__);
 
-      BLI_addtail(&text_lines, text_line);
-      tvc->line_get(tvc, (const char **)&text_line->line, &text_line->len);
+      tvc->lines_get(tvc, &text_lines);
+      BLI_assert(!BLI_listbase_is_empty(&text_lines));
 
       if (do_draw) {
-        text_line->format = MEM_callocN(text_line->len + 2, __func__);
-        data_flag = tvc->line_draw_data(tvc, text_line, fg, bg, &icon, icon_fg, icon_bg);
+        TextLine *text_line_iter = text_lines.first;
+        while (text_line_iter) {
+          text_line_iter->format = MEM_callocN(text_line_iter->len + 2, __func__);
+          text_line_iter = text_line_iter->next;
+        }
+        data_flag = tvc->line_draw_data(tvc, text_lines.first, fg, bg, &icon, icon_fg, icon_bg);
+        assert(data_flag & TVC_LINE_FG_SIMPLE || data_flag & TVC_LINE_FG_COMPLEX);
       }
 
-      const bool is_out_of_view_y = !textview_draw_string(
+      TextLine *text_line_iter = text_lines.last;
+      bool is_out_of_view_y = !textview_draw_string(
           &tds,
-          text_line->line,
-          text_line->len,
-          (data_flag & TVC_LINE_FG_COMPLEX) ? text_line->format : NULL,
+          text_line_iter,
           (data_flag & TVC_LINE_FG_SIMPLE) ? fg : NULL,
           (data_flag & TVC_LINE_BG) ? bg : NULL,
           (data_flag & TVC_LINE_ICON) ? icon : 0,
           (data_flag & TVC_LINE_ICON_FG) ? icon_fg : NULL,
           (data_flag & TVC_LINE_ICON_BG) ? icon_bg : NULL,
           bg_sel);
+      while (text_line_iter->prev) {
+        text_line_iter = text_line_iter->prev;
+        is_out_of_view_y |= !textview_draw_string(
+            &tds,
+            text_line_iter,
+            (data_flag & TVC_LINE_FG_SIMPLE) ? fg : NULL,
+            (data_flag & TVC_LINE_BG) ? bg : NULL,
+            0,
+            NULL,
+            NULL,
+            bg_sel);
+      }
 
       if (do_draw) {
         /* We always want the cursor to draw. */
@@ -468,8 +484,8 @@ int textview_draw(TextViewContext *tvc,
 
       iter_index++;
 
+      textview_clear_text_lines(&text_lines);
     } while (tvc->step(tvc, &text_lines));
-    textview_clear_text_lines(&text_lines);
   }
 
   tvc->end(tvc);

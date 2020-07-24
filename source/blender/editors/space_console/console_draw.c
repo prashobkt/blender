@@ -41,7 +41,6 @@
 #include "../space_text/text_format.h"
 
 #define TABNUMBER 4
-#define PROPMPT_LEN 4
 
 static enum eTextViewContext_LineFlag console_line_draw_data(TextViewContext *tvc,
                                                              TextLine *text_line,
@@ -51,24 +50,24 @@ static enum eTextViewContext_LineFlag console_line_draw_data(TextViewContext *tv
                                                              uchar UNUSED(icon_fg[4]),
                                                              uchar UNUSED(icon_bg[4]))
 {
-  const ConsoleLine *cl_iter = tvc->iter;
-  SpaceConsole *sc = (SpaceConsole *)tvc->arg1;
+  const ConsoleLine *cl = tvc->iter;
   int fg_id = TH_TEXT;
 
-  switch (cl_iter->type) {
-    case CONSOLE_LINE_OUTPUT: {
-      TextFormatType *py_formatter = ED_text_format_get_by_extension("py");
-      py_formatter->format_line(text_line, TABNUMBER, false);
-      return TVC_LINE_FG_COMPLEX;
-    }
+  switch (cl->type) {
+    case CONSOLE_LINE_OUTPUT:
     case CONSOLE_LINE_INPUT: {
       TextFormatType *py_formatter = ED_text_format_get_by_extension("py");
-      py_formatter->format_line(text_line, TABNUMBER, false);
-      /* workaround: formatter formats also prompt >>>, what is not desirable but current
-       * implementation is basic enough so it does not really care */
-      for (int i = 0; i < text_line->len && i < strlen(sc->prompt); ++i) {
-        text_line->format[i] = FMT_TYPE_DEFAULT;
+      TextLine *text_line_iter = text_line;
+      while (text_line_iter) {
+        py_formatter->format_line(text_line_iter, TABNUMBER, false);
+        text_line_iter = text_line_iter->next;
       }
+      /* workaround: formatter formats also prompt >>> ... what is not desirable but current
+       * implementation treats it as keyword, so no big deal */
+      // SpaceConsole *sc = (SpaceConsole *)tvc->arg1;
+      // for (int i = 0; i < text_line->len && i < strlen(sc->prompt); ++i) {
+      //   text_line->format[i] = FMT_TYPE_DEFAULT;
+      // }
       return TVC_LINE_FG_COMPLEX;
     }
     case CONSOLE_LINE_INFO:
@@ -122,21 +121,33 @@ static void console_textview_end(TextViewContext *tvc)
   (void)sc;
 }
 
+/** one step for console is printing one "chunk" at a time. Chunk is line with the same type */
 static int console_textview_step(TextViewContext *tvc, ListBase *text_lines)
 {
-  const ConsoleLine *cl = tvc->iter;
-  if (cl->prev && cl->prev->type != cl->type) {
-    textview_clear_text_lines(text_lines);
-  }
-  return ((tvc->iter = (void *)((Link *)tvc->iter)->prev) != NULL);
+  const ConsoleLine *cl_current = tvc->iter;
+  const ConsoleLine *cl_iter = tvc->iter;
+  do {
+    cl_iter = cl_iter->prev;
+  } while (cl_iter && cl_iter->type == cl_current->type);
+  tvc->iter = cl_iter;
+
+  return (tvc->iter != NULL);
 }
 
-static void console_textview_line_get(TextViewContext *tvc, const char **r_line, int *r_len)
+static void console_textview_line_get(TextViewContext *tvc, ListBase *text_lines)
 {
-  const ConsoleLine *cl = tvc->iter;
-  *r_line = cl->line;
-  *r_len = cl->len;
-  BLI_assert(cl->line[cl->len] == '\0' && (cl->len == 0 || cl->line[cl->len - 1] != '\0'));
+  const ConsoleLine *cl_current = tvc->iter;
+  const ConsoleLine *cl_iter = tvc->iter;
+  do {
+    TextLine *text_line = MEM_callocN(sizeof(*text_line), __func__);
+    text_line->line = cl_iter->line;
+    text_line->len = cl_iter->len;
+    BLI_addhead(text_lines, text_line);
+    cl_iter = cl_iter->prev;
+  } while (cl_iter && cl_iter->type == cl_current->type);
+
+  //  BLI_assert(cl_iter->line[cl_iter->len] == '\0' &&
+  //             (cl_iter->len == 0 || cl_iter->line[cl_iter->len - 1] != '\0'));
 }
 
 static void console_cursor_wrap_offset(
@@ -231,7 +242,7 @@ static int console_textview_main__internal(SpaceConsole *sc,
   tvc.end = console_textview_end;
 
   tvc.step = console_textview_step;
-  tvc.line_get = console_textview_line_get;
+  tvc.lines_get = console_textview_line_get;
   tvc.line_draw_data = console_line_draw_data;
   tvc.draw_cursor = console_textview_draw_cursor;
   tvc.const_colors = console_textview_const_colors;

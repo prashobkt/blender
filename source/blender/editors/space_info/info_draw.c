@@ -43,7 +43,7 @@
 #include "info_intern.h"
 #include "textview.h"
 
-#define TABNUMBER 2
+#define TABNUMBER 4
 
 static enum eTextViewContext_LineFlag report_line_draw_data(TextViewContext *tvc,
                                                             TextLine *text_line,
@@ -219,11 +219,13 @@ static int report_textview_step(TextViewContext *tvc, ListBase *UNUSED(text_line
   return true;
 }
 
-static void report_textview_line_get(TextViewContext *tvc, const char **r_line, int *r_len)
+static void report_textview_line_get(TextViewContext *tvc, ListBase *text_lines)
 {
   const Report *report = tvc->iter;
-  *r_line = report->message + tvc->iter_char_begin;
-  *r_len = tvc->iter_char_end - tvc->iter_char_begin;
+  TextLine *text_line = MEM_callocN(sizeof(*text_line), __func__);
+  text_line->line = report->message + tvc->iter_char_begin;
+  text_line->len = tvc->iter_char_end - tvc->iter_char_begin;
+  BLI_addhead(text_lines, text_line);
 }
 
 static void info_textview_draw_rect_calc(const ARegion *region,
@@ -260,7 +262,7 @@ static int info_textview_main__internal(const SpaceInfo *sinfo,
   tvc.end = report_textview_end;
 
   tvc.step = report_textview_step;
-  tvc.line_get = report_textview_line_get;
+  tvc.lines_get = report_textview_line_get;
   tvc.line_draw_data = report_line_draw_data;
   tvc.const_colors = NULL;
 
