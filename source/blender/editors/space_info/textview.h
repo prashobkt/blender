@@ -82,6 +82,5 @@ int textview_draw(struct TextViewContext *tvc,
                   const int mval_init[2],
                   void **r_mval_pick_item,
                   int *r_mval_pick_offset);
-void textview_clear_text_lines(ListBase *text_lines);
 
 #endif /* __TEXTVIEW_H__ */

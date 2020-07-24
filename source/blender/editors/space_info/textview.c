@@ -344,6 +344,22 @@ static bool textview_draw_string(TextViewDrawState *tds,
   return true;
 }
 
+static void textview_clear_text_lines(ListBase *text_lines)
+{
+  if (!BLI_listbase_is_empty(text_lines)) {
+    TextLine *text_line_iter = text_lines->first;
+    while (text_line_iter) {
+      TextLine *text_line_next = text_line_iter->next;
+      if (text_line_iter->format) {
+        MEM_freeN(text_line_iter->format);
+      }
+      MEM_freeN(text_line_iter);
+      text_line_iter = text_line_next;
+    }
+    BLI_listbase_clear(text_lines);
+  }
+}
+
 /**
  * \param r_mval_pick_item: The resulting item clicked on using \a mval_init.
  * Set from the void pointer which holds the current iterator.
@@ -498,20 +514,4 @@ int textview_draw(TextViewContext *tvc,
   xy[1] += tvc->lheight * 2;
 
   return xy[1] - y_orig;
-}
-
-void textview_clear_text_lines(ListBase *text_lines)
-{
-  if (!BLI_listbase_is_empty(text_lines)) {
-    TextLine *text_line_iter = text_lines->first;
-    while (text_line_iter) {
-      TextLine *text_line_next = text_line_iter->next;
-      if (text_line_iter->format) {
-        MEM_freeN(text_line_iter->format);
-      }
-      MEM_freeN(text_line_iter);
-      text_line_iter = text_line_next;
-    }
-    BLI_listbase_clear(text_lines);
-  }
 }
