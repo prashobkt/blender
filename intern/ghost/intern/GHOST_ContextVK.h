@@ -128,6 +128,7 @@ class GHOST_ContextVK : public GHOST_Context {
   VkInstance m_instance;
   VkPhysicalDevice m_physical_device;
   VkDevice m_device;
+  VkCommandPool m_commandPool;
 
   uint32_t m_queue_family_graphic;
   uint32_t m_queue_family_present;
@@ -141,9 +142,15 @@ class GHOST_ContextVK : public GHOST_Context {
   std::vector<VkImage> m_swapChainImages;
   std::vector<VkImageView> m_swapChainImageViews;
   std::vector<VkFramebuffer> m_swapChainFramebuffers;
+  std::vector<VkCommandBuffer> m_commandBuffers;
   VkRenderPass m_renderPass;
   VkFormat m_swapChainImageFormat;
   VkExtent2D m_swapChainExtent;
+  std::vector<VkSemaphore> m_imageAvailableSemaphores;
+  std::vector<VkSemaphore> m_renderFinishedSemaphores;
+  std::vector<VkFence> m_inFlightFences;
+  std::vector<VkFence> m_imagesInFlight;
+  int m_currentFrame = 0;
 
   GHOST_TSuccess createSwapChain(void);
 };

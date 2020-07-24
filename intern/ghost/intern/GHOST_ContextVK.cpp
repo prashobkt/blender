@@ -109,6 +109,9 @@ static const char *vulkan_error_as_string(VkResult result)
     } \
   } while (0)
 
+/* Tripple buffering. */
+const int MAX_FRAMES_IN_FLIGHT = 2;
+
 GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
 #ifdef _WIN32
                                  HWND hwnd,
@@ -133,6 +136,7 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
       m_instance(VK_NULL_HANDLE),
       m_physical_device(VK_NULL_HANDLE),
       m_device(VK_NULL_HANDLE),
+      m_commandPool(VK_NULL_HANDLE),
       m_surface(VK_NULL_HANDLE),
       m_swapchain(VK_NULL_HANDLE),
       m_renderPass(VK_NULL_HANDLE)
@@ -141,6 +145,19 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
 
 GHOST_ContextVK::~GHOST_ContextVK()
 {
+  if (m_device) {
+    vkDeviceWaitIdle(m_device);
+  }
+
+  for (auto semaphore : m_imageAvailableSemaphores) {
+    vkDestroySemaphore(m_device, semaphore, NULL);
+  }
+  for (auto semaphore : m_renderFinishedSemaphores) {
+    vkDestroySemaphore(m_device, semaphore, NULL);
+  }
+  for (auto fence : m_inFlightFences) {
+    vkDestroyFence(m_device, fence, NULL);
+  }
   for (auto framebuffer : m_swapChainFramebuffers) {
     vkDestroyFramebuffer(m_device, framebuffer, NULL);
   }
@@ -152,6 +169,9 @@ GHOST_ContextVK::~GHOST_ContextVK()
   }
   if (m_swapchain != VK_NULL_HANDLE) {
     vkDestroySwapchainKHR(m_device, m_swapchain, NULL);
+  }
+  if (m_commandPool != VK_NULL_HANDLE) {
+    vkDestroyCommandPool(m_device, m_commandPool, NULL);
   }
   if (m_device != VK_NULL_HANDLE) {
     vkDestroyDevice(m_device, NULL);
@@ -166,6 +186,57 @@ GHOST_ContextVK::~GHOST_ContextVK()
 
 GHOST_TSuccess GHOST_ContextVK::swapBuffers()
 {
+  if (m_swapchain == VK_NULL_HANDLE) {
+    return GHOST_kFailure;
+  }
+
+  vkWaitForFences(m_device, 1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
+
+  uint32_t image_id;
+  VK_CHECK(vkAcquireNextImageKHR(m_device,
+                                 m_swapchain,
+                                 UINT64_MAX,
+                                 m_imageAvailableSemaphores[m_currentFrame],
+                                 VK_NULL_HANDLE,
+                                 &image_id));
+
+  // Check if a previous frame is using this image (i.e. there is its fence to wait on)
+  if (m_imagesInFlight[image_id] != VK_NULL_HANDLE) {
+    vkWaitForFences(m_device, 1, &m_imagesInFlight[image_id], VK_TRUE, UINT64_MAX);
+  }
+  m_imagesInFlight[image_id] = m_inFlightFences[m_currentFrame];
+
+  VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
+
+  VkSubmitInfo submit_info{
+      .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+      .waitSemaphoreCount = 1,
+      .pWaitSemaphores = &m_imageAvailableSemaphores[m_currentFrame],
+      .pWaitDstStageMask = wait_stages,
+      .commandBufferCount = 1,
+      .pCommandBuffers = &m_commandBuffers[image_id],
+      .signalSemaphoreCount = 1,
+      .pSignalSemaphores = &m_renderFinishedSemaphores[m_currentFrame],
+  };
+
+  vkResetFences(m_device, 1, &m_inFlightFences[m_currentFrame]);
+
+  VK_CHECK(vkQueueSubmit(m_graphic_queue, 1, &submit_info, m_inFlightFences[m_currentFrame]));
+
+  VkPresentInfoKHR present_info{
+      .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+      .waitSemaphoreCount = 1,
+      .pWaitSemaphores = &m_renderFinishedSemaphores[m_currentFrame],
+      .swapchainCount = 1,
+      .pSwapchains = &m_swapchain,
+      .pImageIndices = &image_id,
+      .pResults = NULL,
+  };
+
+  VK_CHECK(vkQueuePresentKHR(m_present_queue, &present_info));
+
+  m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+
   return GHOST_kSuccess;
 }
 
@@ -444,6 +515,34 @@ static GHOST_TSuccess create_render_pass(VkDevice device,
   return GHOST_kSuccess;
 }
 
+static GHOST_TSuccess selectPresentMode(VkPhysicalDevice device,
+                                        VkSurfaceKHR surface,
+                                        VkPresentModeKHR *r_presentMode)
+{
+  uint32_t present_count;
+  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_count, NULL);
+  vector<VkPresentModeKHR> presents(present_count);
+  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_count, presents.data());
+  /* MAILBOX is the lowest latency V-Sync enabled mode so use it if available */
+  for (auto present_mode : presents) {
+    if (present_mode == VK_PRESENT_MODE_FIFO_KHR) {
+      *r_presentMode = present_mode;
+      return GHOST_kSuccess;
+    }
+  }
+  /* FIFO present mode is always available. */
+  for (auto present_mode : presents) {
+    if (present_mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+      *r_presentMode = present_mode;
+      return GHOST_kSuccess;
+    }
+  }
+
+  cout << "Error: FIFO present mode is not supported by the swap chain!\n";
+
+  return GHOST_kFailure;
+}
+
 GHOST_TSuccess GHOST_ContextVK::createSwapChain(void)
 {
   VkPhysicalDevice device = m_physical_device;
@@ -456,13 +555,10 @@ GHOST_TSuccess GHOST_ContextVK::createSwapChain(void)
   /* TODO choose appropriate format. */
   VkSurfaceFormatKHR format = formats[0];
 
-  uint32_t present_count;
-  vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_surface, &present_count, NULL);
-  vector<VkPresentModeKHR> presents(present_count);
-  vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_surface, &present_count, presents.data());
-
-  /* TODO choose appropriate present mode . */
-  VkPresentModeKHR present_mode = presents[0];
+  VkPresentModeKHR present_mode;
+  if (!selectPresentMode(device, m_surface, &present_mode)) {
+    return GHOST_kFailure;
+  }
 
   VkSurfaceCapabilitiesKHR capabilities;
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, m_surface, &capabilities);
@@ -524,6 +620,7 @@ GHOST_TSuccess GHOST_ContextVK::createSwapChain(void)
   m_swapChainImages.resize(image_count);
   vkGetSwapchainImagesKHR(m_device, m_swapchain, &image_count, m_swapChainImages.data());
 
+  m_imagesInFlight.resize(image_count, VK_NULL_HANDLE);
   m_swapChainImageViews.resize(image_count);
   m_swapChainFramebuffers.resize(image_count);
   for (int i = 0; i < image_count; i++) {
@@ -564,6 +661,26 @@ GHOST_TSuccess GHOST_ContextVK::createSwapChain(void)
     };
 
     VK_CHECK(vkCreateFramebuffer(m_device, &fb_create_info, NULL, &m_swapChainFramebuffers[i]));
+  }
+
+  m_imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+  m_renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+  m_inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+  for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+
+    VkSemaphoreCreateInfo semaphore_info = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+    };
+
+    VK_CHECK(vkCreateSemaphore(m_device, &semaphore_info, NULL, &m_imageAvailableSemaphores[i]));
+    VK_CHECK(vkCreateSemaphore(m_device, &semaphore_info, NULL, &m_renderFinishedSemaphores[i]));
+
+    VkFenceCreateInfo fence_info = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+    };
+
+    VK_CHECK(vkCreateFence(m_device, &fence_info, NULL, &m_inFlightFences[i]));
   }
 
   return GHOST_kSuccess;
@@ -707,8 +824,64 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
     vkGetDeviceQueue(m_device, m_queue_family_present, 0, &m_present_queue);
 
     createSwapChain();
-  }
 
+    {
+      /* This is only a test. */
+      m_commandBuffers.resize(m_swapChainImageViews.size());
+
+      VkCommandPoolCreateInfo poolInfo = {
+          .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+          .flags = 0,  // Optional
+          .queueFamilyIndex = m_queue_family_graphic,
+      };
+
+      VK_CHECK(vkCreateCommandPool(m_device, &poolInfo, NULL, &m_commandPool));
+
+      VkCommandBufferAllocateInfo alloc_info = {
+          .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+          .commandPool = m_commandPool,
+          .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+          .commandBufferCount = static_cast<uint32_t>(m_commandBuffers.size()),
+      };
+
+      VK_CHECK(vkAllocateCommandBuffers(m_device, &alloc_info, m_commandBuffers.data()));
+
+      for (int i = 0; i < m_commandBuffers.size(); i++) {
+        VkCommandBufferBeginInfo begin_info = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = 0,
+            .pInheritanceInfo = NULL,  // Optional
+        };
+
+        VK_CHECK(vkBeginCommandBuffer(m_commandBuffers[i], &begin_info));
+
+        {
+          VkRect2D area = {
+              .offset = {0, 0},
+              .extent = m_swapChainExtent,
+          };
+
+          VkClearValue clearColor = {0.0f, 0.5f, 0.3f, 1.0f};
+          VkRenderPassBeginInfo render_pass_info = {
+              .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+              .renderPass = m_renderPass,
+              .framebuffer = m_swapChainFramebuffers[i],
+              .renderArea = area,
+              .clearValueCount = 1,
+              .pClearValues = &clearColor,
+          };
+
+          vkCmdBeginRenderPass(m_commandBuffers[i], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+          /* TODO draw something. */
+
+          vkCmdEndRenderPass(m_commandBuffers[i]);
+        }
+
+        VK_CHECK(vkEndCommandBuffer(m_commandBuffers[i]));
+      }
+    }
+  }
   return GHOST_kFailure;
 }
 
