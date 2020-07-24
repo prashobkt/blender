@@ -127,14 +127,14 @@ class GHOST_ContextVK : public GHOST_Context {
   Window m_window;
 #endif
 
-  const int m_contextMajorVersion;
-  const int m_contextMinorVersion;
+  const int m_context_major_version;
+  const int m_context_minor_version;
   const int m_debug;
 
   VkInstance m_instance;
   VkPhysicalDevice m_physical_device;
   VkDevice m_device;
-  VkCommandPool m_commandPool;
+  VkCommandPool m_command_pool;
 
   uint32_t m_queue_family_graphic;
   uint32_t m_queue_family_present;
@@ -145,17 +145,16 @@ class GHOST_ContextVK : public GHOST_Context {
   /* For display only. */
   VkSurfaceKHR m_surface;
   VkSwapchainKHR m_swapchain;
-  std::vector<VkImage> m_swapChainImages;
-  std::vector<VkImageView> m_swapChainImageViews;
-  std::vector<VkFramebuffer> m_swapChainFramebuffers;
-  std::vector<VkCommandBuffer> m_commandBuffers;
-  VkRenderPass m_renderPass;
-  VkFormat m_swapChainImageFormat;
-  VkExtent2D m_swapChainExtent;
-  std::vector<VkSemaphore> m_imageAvailableSemaphores;
-  std::vector<VkSemaphore> m_renderFinishedSemaphores;
-  std::vector<VkFence> m_inFlightFences;
-  std::vector<VkFence> m_imagesInFlight;
+  std::vector<VkImage> m_swapchain_images;
+  std::vector<VkImageView> m_swapchain_image_views;
+  std::vector<VkFramebuffer> m_swapchain_framebuffers;
+  std::vector<VkCommandBuffer> m_command_buffers;
+  VkRenderPass m_render_pass;
+  VkExtent2D m_render_extent;
+  std::vector<VkSemaphore> m_image_available_semaphores;
+  std::vector<VkSemaphore> m_render_finished_semaphores;
+  std::vector<VkFence> m_in_flight_fences;
+  std::vector<VkFence> m_in_flight_images;
   int m_currentFrame = 0;
 
   GHOST_TSuccess pickPhysicalDevice(std::vector<const char *> required_exts);

@@ -135,16 +135,16 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
       m_display(display),
       m_window(window),
 #endif
-      m_contextMajorVersion(contextMajorVersion),
-      m_contextMinorVersion(contextMinorVersion),
+      m_context_major_version(contextMajorVersion),
+      m_context_minor_version(contextMinorVersion),
       m_debug(debug),
       m_instance(VK_NULL_HANDLE),
       m_physical_device(VK_NULL_HANDLE),
       m_device(VK_NULL_HANDLE),
-      m_commandPool(VK_NULL_HANDLE),
+      m_command_pool(VK_NULL_HANDLE),
       m_surface(VK_NULL_HANDLE),
       m_swapchain(VK_NULL_HANDLE),
-      m_renderPass(VK_NULL_HANDLE)
+      m_render_pass(VK_NULL_HANDLE)
 {
 }
 
@@ -154,29 +154,29 @@ GHOST_ContextVK::~GHOST_ContextVK()
     vkDeviceWaitIdle(m_device);
   }
 
-  for (auto semaphore : m_imageAvailableSemaphores) {
+  for (auto semaphore : m_image_available_semaphores) {
     vkDestroySemaphore(m_device, semaphore, NULL);
   }
-  for (auto semaphore : m_renderFinishedSemaphores) {
+  for (auto semaphore : m_render_finished_semaphores) {
     vkDestroySemaphore(m_device, semaphore, NULL);
   }
-  for (auto fence : m_inFlightFences) {
+  for (auto fence : m_in_flight_fences) {
     vkDestroyFence(m_device, fence, NULL);
   }
-  for (auto framebuffer : m_swapChainFramebuffers) {
+  for (auto framebuffer : m_swapchain_framebuffers) {
     vkDestroyFramebuffer(m_device, framebuffer, NULL);
   }
-  if (m_renderPass != VK_NULL_HANDLE) {
-    vkDestroyRenderPass(m_device, m_renderPass, NULL);
+  if (m_render_pass != VK_NULL_HANDLE) {
+    vkDestroyRenderPass(m_device, m_render_pass, NULL);
   }
-  for (auto imageView : m_swapChainImageViews) {
+  for (auto imageView : m_swapchain_image_views) {
     vkDestroyImageView(m_device, imageView, NULL);
   }
   if (m_swapchain != VK_NULL_HANDLE) {
     vkDestroySwapchainKHR(m_device, m_swapchain, NULL);
   }
-  if (m_commandPool != VK_NULL_HANDLE) {
-    vkDestroyCommandPool(m_device, m_commandPool, NULL);
+  if (m_command_pool != VK_NULL_HANDLE) {
+    vkDestroyCommandPool(m_device, m_command_pool, NULL);
   }
   if (m_device != VK_NULL_HANDLE) {
     vkDestroyDevice(m_device, NULL);
@@ -195,43 +195,43 @@ GHOST_TSuccess GHOST_ContextVK::swapBuffers()
     return GHOST_kFailure;
   }
 
-  vkWaitForFences(m_device, 1, &m_inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
+  vkWaitForFences(m_device, 1, &m_in_flight_fences[m_currentFrame], VK_TRUE, UINT64_MAX);
 
   uint32_t image_id;
   VK_CHECK(vkAcquireNextImageKHR(m_device,
                                  m_swapchain,
                                  UINT64_MAX,
-                                 m_imageAvailableSemaphores[m_currentFrame],
+                                 m_image_available_semaphores[m_currentFrame],
                                  VK_NULL_HANDLE,
                                  &image_id));
 
-  // Check if a previous frame is using this image (i.e. there is its fence to wait on)
-  if (m_imagesInFlight[image_id] != VK_NULL_HANDLE) {
-    vkWaitForFences(m_device, 1, &m_imagesInFlight[image_id], VK_TRUE, UINT64_MAX);
+  /* Check if a previous frame is using this image (i.e. there is its fence to wait on) */
+  if (m_in_flight_images[image_id] != VK_NULL_HANDLE) {
+    vkWaitForFences(m_device, 1, &m_in_flight_images[image_id], VK_TRUE, UINT64_MAX);
   }
-  m_imagesInFlight[image_id] = m_inFlightFences[m_currentFrame];
+  m_in_flight_images[image_id] = m_in_flight_fences[m_currentFrame];
 
   VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
 
   VkSubmitInfo submit_info{
       .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
       .waitSemaphoreCount = 1,
-      .pWaitSemaphores = &m_imageAvailableSemaphores[m_currentFrame],
+      .pWaitSemaphores = &m_image_available_semaphores[m_currentFrame],
       .pWaitDstStageMask = wait_stages,
       .commandBufferCount = 1,
-      .pCommandBuffers = &m_commandBuffers[image_id],
+      .pCommandBuffers = &m_command_buffers[image_id],
       .signalSemaphoreCount = 1,
-      .pSignalSemaphores = &m_renderFinishedSemaphores[m_currentFrame],
+      .pSignalSemaphores = &m_render_finished_semaphores[m_currentFrame],
   };
 
-  vkResetFences(m_device, 1, &m_inFlightFences[m_currentFrame]);
+  vkResetFences(m_device, 1, &m_in_flight_fences[m_currentFrame]);
 
-  VK_CHECK(vkQueueSubmit(m_graphic_queue, 1, &submit_info, m_inFlightFences[m_currentFrame]));
+  VK_CHECK(vkQueueSubmit(m_graphic_queue, 1, &submit_info, m_in_flight_fences[m_currentFrame]));
 
   VkPresentInfoKHR present_info{
       .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
       .waitSemaphoreCount = 1,
-      .pWaitSemaphores = &m_renderFinishedSemaphores[m_currentFrame],
+      .pWaitSemaphores = &m_render_finished_semaphores[m_currentFrame],
       .swapchainCount = 1,
       .pSwapchains = &m_swapchain,
       .pImageIndices = &image_id,
@@ -387,14 +387,14 @@ GHOST_TSuccess GHOST_ContextVK::pickPhysicalDevice(vector<const char *> required
     }
 
     if (!features.geometryShader) {
-      // Needed for wide lines emulation and barycentric coords and a few others.
+      /* Needed for wide lines emulation and barycentric coords and a few others. */
       DEBUG_PRINTF("  - Device does not support geometryShader.\n");
     }
     if (!features.dualSrcBlend) {
       DEBUG_PRINTF("  - Device does not support dualSrcBlend.\n");
     }
     if (!features.logicOp) {
-      // Needed by UI.
+      /* Needed by UI. */
       DEBUG_PRINTF("  - Device does not support logicOp.\n");
     }
 
@@ -568,12 +568,18 @@ GHOST_TSuccess GHOST_ContextVK::createSwapChain(void)
   VkSurfaceCapabilitiesKHR capabilities;
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, m_surface, &capabilities);
 
-  VkExtent2D extent = capabilities.currentExtent;
-  if (extent.width == UINT32_MAX) {
+  m_render_extent = capabilities.currentExtent;
+  if (m_render_extent.width == UINT32_MAX) {
     /* Window Manager is going to set the surface size based on the given size.
      * Choose something between minImageExtent and maxImageExtent. */
-    /* TODO(fclem) choose more wisely. */
-    extent = capabilities.minImageExtent;
+    m_render_extent.width = 1280;
+    m_render_extent.height = 720;
+    if (capabilities.minImageExtent.width > m_render_extent.width) {
+      m_render_extent.width = capabilities.minImageExtent.width;
+    }
+    if (capabilities.minImageExtent.height > m_render_extent.height) {
+      m_render_extent.height = capabilities.minImageExtent.height;
+    }
   }
 
   /* Driver can stall if only using minimal image count. */
@@ -589,14 +595,14 @@ GHOST_TSuccess GHOST_ContextVK::createSwapChain(void)
       .minImageCount = image_count,
       .imageFormat = format.format,
       .imageColorSpace = format.colorSpace,
-      .imageExtent = extent,
+      .imageExtent = m_render_extent,
       .imageArrayLayers = 1,
       .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-      .preTransform = capabilities.currentTransform,  // No transform
+      .preTransform = capabilities.currentTransform,
       .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
       .presentMode = present_mode,
       .clipped = VK_TRUE,
-      .oldSwapchain = VK_NULL_HANDLE,  // TODO Window resize
+      .oldSwapchain = VK_NULL_HANDLE, /* TODO Window resize */
   };
 
   uint32_t queueFamilyIndices[] = {m_queue_family_graphic, m_queue_family_present};
@@ -608,30 +614,26 @@ GHOST_TSuccess GHOST_ContextVK::createSwapChain(void)
   }
   else {
     create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    create_info.queueFamilyIndexCount = 0;   // Optional
-    create_info.pQueueFamilyIndices = NULL;  // Optional
+    create_info.queueFamilyIndexCount = 0;
+    create_info.pQueueFamilyIndices = NULL;
   }
 
   VK_CHECK(vkCreateSwapchainKHR(m_device, &create_info, NULL, &m_swapchain));
 
-  /* Save infos for rendering. */
-  m_swapChainImageFormat = format.format;
-  m_swapChainExtent = extent;
-
-  create_render_pass(m_device, format.format, &m_renderPass);
+  create_render_pass(m_device, format.format, &m_render_pass);
 
   /* image_count may not be what we requested! Getter for final value. */
   vkGetSwapchainImagesKHR(m_device, m_swapchain, &image_count, NULL);
-  m_swapChainImages.resize(image_count);
-  vkGetSwapchainImagesKHR(m_device, m_swapchain, &image_count, m_swapChainImages.data());
+  m_swapchain_images.resize(image_count);
+  vkGetSwapchainImagesKHR(m_device, m_swapchain, &image_count, m_swapchain_images.data());
 
-  m_imagesInFlight.resize(image_count, VK_NULL_HANDLE);
-  m_swapChainImageViews.resize(image_count);
-  m_swapChainFramebuffers.resize(image_count);
+  m_in_flight_images.resize(image_count, VK_NULL_HANDLE);
+  m_swapchain_image_views.resize(image_count);
+  m_swapchain_framebuffers.resize(image_count);
   for (int i = 0; i < image_count; i++) {
     VkImageViewCreateInfo view_create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = m_swapChainImages[i],
+        .image = m_swapchain_images[i],
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = format.format,
         .components =
@@ -651,41 +653,41 @@ GHOST_TSuccess GHOST_ContextVK::createSwapChain(void)
             },
     };
 
-    VK_CHECK(vkCreateImageView(m_device, &view_create_info, NULL, &m_swapChainImageViews[i]));
+    VK_CHECK(vkCreateImageView(m_device, &view_create_info, NULL, &m_swapchain_image_views[i]));
 
-    VkImageView attachments[] = {m_swapChainImageViews[i]};
+    VkImageView attachments[] = {m_swapchain_image_views[i]};
 
     VkFramebufferCreateInfo fb_create_info = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass = m_renderPass,
+        .renderPass = m_render_pass,
         .attachmentCount = 1,
         .pAttachments = attachments,
-        .width = m_swapChainExtent.width,
-        .height = m_swapChainExtent.height,
+        .width = m_render_extent.width,
+        .height = m_render_extent.height,
         .layers = 1,
     };
 
-    VK_CHECK(vkCreateFramebuffer(m_device, &fb_create_info, NULL, &m_swapChainFramebuffers[i]));
+    VK_CHECK(vkCreateFramebuffer(m_device, &fb_create_info, NULL, &m_swapchain_framebuffers[i]));
   }
 
-  m_imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-  m_renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-  m_inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+  m_image_available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
+  m_render_finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
+  m_in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 
     VkSemaphoreCreateInfo semaphore_info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
     };
 
-    VK_CHECK(vkCreateSemaphore(m_device, &semaphore_info, NULL, &m_imageAvailableSemaphores[i]));
-    VK_CHECK(vkCreateSemaphore(m_device, &semaphore_info, NULL, &m_renderFinishedSemaphores[i]));
+    VK_CHECK(vkCreateSemaphore(m_device, &semaphore_info, NULL, &m_image_available_semaphores[i]));
+    VK_CHECK(vkCreateSemaphore(m_device, &semaphore_info, NULL, &m_render_finished_semaphores[i]));
 
     VkFenceCreateInfo fence_info = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         .flags = VK_FENCE_CREATE_SIGNALED_BIT,
     };
 
-    VK_CHECK(vkCreateFence(m_device, &fence_info, NULL, &m_inFlightFences[i]));
+    VK_CHECK(vkCreateFence(m_device, &fence_info, NULL, &m_in_flight_fences[i]));
   }
 
   return GHOST_kSuccess;
@@ -728,7 +730,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
       .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
       .pEngineName = "Blender",
       .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-      .apiVersion = VK_MAKE_VERSION(m_contextMajorVersion, m_contextMinorVersion, 0),
+      .apiVersion = VK_MAKE_VERSION(m_context_major_version, m_context_minor_version, 0),
   };
 
   VkInstanceCreateInfo create_info = {
@@ -802,16 +804,17 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   }
 
   VkPhysicalDeviceFeatures device_features = {
-      .geometryShader = VK_TRUE,  // Needed for wide lines & EEVEE barycentric support
-      .dualSrcBlend = VK_TRUE,    // Needed by EEVEE
-      .logicOp = VK_TRUE,         // Needed by UI
+      .geometryShader = VK_TRUE,
+      .dualSrcBlend = VK_TRUE,
+      .logicOp = VK_TRUE,
   };
 
   VkDeviceCreateInfo device_create_info = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
       .queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size()),
       .pQueueCreateInfos = queue_create_infos.data(),
-      // Same as instance extensions. Only needed for 1.0 implementations.
+      /* layers_enabled are the same as instance extensions.
+       * This is only needed for 1.0 implementations. */
       .enabledLayerCount = static_cast<uint32_t>(layers_enabled.size()),
       .ppEnabledLayerNames = layers_enabled.data(),
       .enabledExtensionCount = static_cast<uint32_t>(extensions_device.size()),
@@ -830,58 +833,59 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 
     {
       /* This is only a test. */
-      m_commandBuffers.resize(m_swapChainImageViews.size());
+      m_command_buffers.resize(m_swapchain_image_views.size());
 
       VkCommandPoolCreateInfo poolInfo = {
           .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-          .flags = 0,  // Optional
+          .flags = 0,
           .queueFamilyIndex = m_queue_family_graphic,
       };
 
-      VK_CHECK(vkCreateCommandPool(m_device, &poolInfo, NULL, &m_commandPool));
+      VK_CHECK(vkCreateCommandPool(m_device, &poolInfo, NULL, &m_command_pool));
 
       VkCommandBufferAllocateInfo alloc_info = {
           .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-          .commandPool = m_commandPool,
+          .commandPool = m_command_pool,
           .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-          .commandBufferCount = static_cast<uint32_t>(m_commandBuffers.size()),
+          .commandBufferCount = static_cast<uint32_t>(m_command_buffers.size()),
       };
 
-      VK_CHECK(vkAllocateCommandBuffers(m_device, &alloc_info, m_commandBuffers.data()));
+      VK_CHECK(vkAllocateCommandBuffers(m_device, &alloc_info, m_command_buffers.data()));
 
-      for (int i = 0; i < m_commandBuffers.size(); i++) {
+      for (int i = 0; i < m_command_buffers.size(); i++) {
         VkCommandBufferBeginInfo begin_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = 0,
-            .pInheritanceInfo = NULL,  // Optional
+            .pInheritanceInfo = NULL,
         };
 
-        VK_CHECK(vkBeginCommandBuffer(m_commandBuffers[i], &begin_info));
+        VK_CHECK(vkBeginCommandBuffer(m_command_buffers[i], &begin_info));
 
         {
           VkRect2D area = {
               .offset = {0, 0},
-              .extent = m_swapChainExtent,
+              .extent = m_render_extent,
           };
 
           VkClearValue clearColor = {0.0f, 0.5f, 0.3f, 1.0f};
           VkRenderPassBeginInfo render_pass_info = {
               .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-              .renderPass = m_renderPass,
-              .framebuffer = m_swapChainFramebuffers[i],
+              .renderPass = m_render_pass,
+              .framebuffer = m_swapchain_framebuffers[i],
               .renderArea = area,
               .clearValueCount = 1,
               .pClearValues = &clearColor,
           };
 
-          vkCmdBeginRenderPass(m_commandBuffers[i], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+          vkCmdBeginRenderPass(
+              m_command_buffers[i], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
           /* TODO draw something. */
 
-          vkCmdEndRenderPass(m_commandBuffers[i]);
+          vkCmdEndRenderPass(m_command_buffers[i]);
         }
 
-        VK_CHECK(vkEndCommandBuffer(m_commandBuffers[i]));
+        VK_CHECK(vkEndCommandBuffer(m_command_buffers[i]));
       }
     }
   }
