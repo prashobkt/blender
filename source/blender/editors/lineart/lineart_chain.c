@@ -655,6 +655,60 @@ static void lineart_chain_connect(LineartRenderBuffer *UNUSED(rb),
   }
 }
 
+LineartChainRegisterEntry *lineart_chain_get_closest_cre(LineartRenderBuffer *rb,
+                                                         LineartBoundingArea *ba,
+                                                         LineartRenderLineChain *rlc,
+                                                         LineartRenderLineChainItem *rlci,
+                                                         int occlusion,
+                                                         float dist,
+                                                         int do_geometry_space)
+{
+
+  LineartChainRegisterEntry *cre, *next_cre, *closest_cre = NULL;
+  for (cre = ba->linked_chains.first; cre; cre = next_cre) {
+    next_cre = cre->next;
+    if (cre->rlc->object_ref != rlc->object_ref) {
+      if (rb->fuzzy_everything || rb->fuzzy_intersections) {
+        /* if both have object_ref, then none is intersection line. */
+        if (cre->rlc->object_ref && rlc->object_ref) {
+          continue; /* We don't want to chain along different objects at the moment. */
+        }
+      }
+      else {
+        continue;
+      }
+    }
+    if (cre->rlc->picked) {
+      BLI_remlink(&ba->linked_chains, cre);
+      continue;
+    }
+    if (cre->rlc == rlc || (!cre->rlc->chain.first) || (cre->rlc->level != occlusion)) {
+      continue;
+    }
+    if (!rb->fuzzy_everything) {
+      if (cre->rlc->type != rlc->type) {
+        if (rb->fuzzy_intersections) {
+          if (!(cre->rlc->type == LRT_EDGE_FLAG_INTERSECTION ||
+                rlc->type == LRT_EDGE_FLAG_INTERSECTION)) {
+            continue; /* fuzzy intersetions but no intersection line found. */
+          }
+        }
+        else { /* line type different but no fuzzy */
+          continue;
+        }
+      }
+    }
+
+    float new_len = do_geometry_space ? len_v3v3(cre->rlci->gpos, rlci->gpos) :
+                                        len_v2v2(cre->rlci->pos, rlci->pos);
+    if (new_len < dist) {
+      closest_cre = cre;
+      dist = new_len;
+    }
+  }
+  return closest_cre;
+}
+
 /*  this only does head-tail connection. */
 /*  overlapping / tiny isolated segment / loop reduction not implemented here yet. */
 void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_space)
@@ -662,8 +716,8 @@ void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_spa
   LineartRenderLineChain *rlc;
   LineartRenderLineChainItem *rlci;
   LineartBoundingArea *ba;
-  LineartChainRegisterEntry *cre, *next_cre, *closest_cre;
-  float dist;
+  LineartChainRegisterEntry *closest_cre_l, *closest_cre_r;
+  float dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
   int occlusion;
   ListBase swap = {0};
 
@@ -690,63 +744,22 @@ void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_spa
 
     rlci = rlc->chain.last;
     while (rlci && ((ba = lineart_bounding_area_get_end_point(rb, rlci)) != NULL)) {
-      closest_cre = NULL;
       if (ba->linked_chains.first == NULL) {
         break;
       }
-      for (cre = ba->linked_chains.first; cre; cre = next_cre) {
-        dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
-        next_cre = cre->next;
-        if (cre->rlc->object_ref != rlc->object_ref) {
-          if (rb->fuzzy_everything || rb->fuzzy_intersections) {
-            /* if both have object_ref, then none is intersection line. */
-            if (cre->rlc->object_ref && rlc->object_ref) {
-              continue; /* We don't want to chain along different objects at the moment. */
-            }
-          }
-          else {
-            continue;
-          }
-        }
-        if (cre->rlc->picked) {
-          BLI_remlink(&ba->linked_chains, cre);
-          continue;
-        }
-        if (cre->rlc == rlc || (!cre->rlc->chain.first) || (cre->rlc->level != occlusion)) {
-          continue;
-        }
-        if (!rb->fuzzy_everything) {
-          if (cre->rlc->type != rlc->type) {
-            if (rb->fuzzy_intersections) {
-              if (!(cre->rlc->type == LRT_EDGE_FLAG_INTERSECTION ||
-                    rlc->type == LRT_EDGE_FLAG_INTERSECTION)) {
-                continue; /* fuzzy intersetions but no intersection line found. */
-              }
-            }
-            else { /* line type different but no fuzzy */
-              continue;
-            }
-          }
-        }
-
-        float new_len = do_geometry_space ? len_v3v3(cre->rlci->gpos, rlci->gpos) :
-                                            len_v2v2(cre->rlci->pos, rlci->pos);
-        if (new_len < dist) {
-          closest_cre = cre;
-          dist = new_len;
-        }
-      }
-      if (closest_cre) {
-        closest_cre->picked = 1;
-        closest_cre->rlc->picked = 1;
-        BLI_remlink(&ba->linked_chains, cre);
-        if (closest_cre->is_left) {
-          lineart_chain_connect(rb, rlc, closest_cre->rlc, 0, 0);
+      closest_cre_l = lineart_chain_get_closest_cre(
+          rb, ba, rlc, rlci, occlusion, dist, do_geometry_space);
+      if (closest_cre_l) {
+        closest_cre_l->picked = 1;
+        closest_cre_l->rlc->picked = 1;
+        BLI_remlink(&ba->linked_chains, closest_cre_l);
+        if (closest_cre_l->is_left) {
+          lineart_chain_connect(rb, rlc, closest_cre_l->rlc, 0, 0);
         }
         else {
-          lineart_chain_connect(rb, rlc, closest_cre->rlc, 0, 1);
+          lineart_chain_connect(rb, rlc, closest_cre_l->rlc, 0, 1);
         }
-        BLI_remlink(&swap, closest_cre->rlc);
+        BLI_remlink(&swap, closest_cre_l->rlc);
       }
       else {
         break;
@@ -756,62 +769,23 @@ void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_spa
 
     rlci = rlc->chain.first;
     while (rlci && ((ba = lineart_bounding_area_get_end_point(rb, rlci)) != NULL)) {
-      closest_cre = NULL;
+      closest_cre_r = NULL;
       if (ba->linked_chains.first == NULL) {
         break;
       }
-      for (cre = ba->linked_chains.first; cre; cre = next_cre) {
-        dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
-        next_cre = cre->next;
-        if (cre->rlc->object_ref != rlc->object_ref) {
-          if (rb->fuzzy_everything || rb->fuzzy_intersections) {
-            /* if both have object_ref, then none is intersection line. */
-            if (cre->rlc->object_ref && rlc->object_ref) {
-              continue; /* We don't want to chain along different objects at the moment. */
-            }
-          }
-          else {
-            continue;
-          }
-        }
-        if (cre->rlc->picked) {
-          BLI_remlink(&ba->linked_chains, cre);
-          continue;
-        }
-        if (cre->rlc == rlc || (!cre->rlc->chain.first) || (cre->rlc->level != occlusion)) {
-          continue;
-        }
-        if (!rb->fuzzy_everything) {
-          if (cre->rlc->type != rlc->type) {
-            if (rb->fuzzy_intersections) {
-              if (!(cre->rlc->type == LRT_EDGE_FLAG_INTERSECTION ||
-                    rlc->type == LRT_EDGE_FLAG_INTERSECTION)) {
-                continue; /* fuzzy intersetions but no intersection line found. */
-              }
-            }
-            else { /* line type different but no fuzzy */
-              continue;
-            }
-          }
-        }
-        float new_len = do_geometry_space ? len_v3v3(cre->rlci->gpos, rlci->gpos) :
-                                            len_v2v2(cre->rlci->pos, rlci->pos);
-        if (new_len < dist) {
-          closest_cre = cre;
-          dist = new_len;
-        }
-      }
-      if (closest_cre) {
-        closest_cre->picked = 1;
-        closest_cre->rlc->picked = 1;
-        BLI_remlink(&ba->linked_chains, cre);
-        if (closest_cre->is_left) {
-          lineart_chain_connect(rb, rlc, closest_cre->rlc, 1, 0);
+      closest_cre_r = lineart_chain_get_closest_cre(
+          rb, ba, rlc, rlci, occlusion, dist, do_geometry_space);
+      if (closest_cre_r) {
+        closest_cre_r->picked = 1;
+        closest_cre_r->rlc->picked = 1;
+        BLI_remlink(&ba->linked_chains, closest_cre_r);
+        if (closest_cre_r->is_left) {
+          lineart_chain_connect(rb, rlc, closest_cre_r->rlc, 1, 0);
         }
         else {
-          lineart_chain_connect(rb, rlc, closest_cre->rlc, 1, 1);
+          lineart_chain_connect(rb, rlc, closest_cre_r->rlc, 1, 1);
         }
-        BLI_remlink(&swap, closest_cre->rlc);
+        BLI_remlink(&swap, closest_cre_r->rlc);
       }
       else {
         break;
