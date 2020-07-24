@@ -28,8 +28,11 @@ extern "C" {
 #endif
 
 struct bContext;
+struct SpaceProperties;
 
 void ED_buttons_set_context(const struct bContext *C, PointerRNA *ptr, const short context);
+
+int ED_buttons_tabs_list(struct SpaceProperties *sbuts, int *context_tabs_array);
 
 #ifdef __cplusplus
 }
