@@ -3704,6 +3704,9 @@ void ED_lineart_gpencil_generate_from_chain(Depsgraph *depsgraph,
 
     BKE_gpencil_stroke_add_points(gps, stroke_data, count, mat);
     gps->mat_nr = material_nr;
+    if (G.debug_value == 4000) {
+      BKE_gpencil_stroke_set_random_color(gps);
+    }
     BKE_gpencil_stroke_geometry_update(gps);
     MEM_freeN(stroke_data);
   }
