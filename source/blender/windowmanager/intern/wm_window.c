@@ -572,6 +572,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
 {
   GHOST_WindowHandle ghostwin;
   GHOST_GLSettings glSettings = {0};
+  GHOST_TDrawingContextType contextType = GHOST_kDrawingContextTypeOpenGL;
   int scr_w, scr_h, posy;
 
   /* a new window is created when pageflip mode is required for a window */
@@ -582,6 +583,12 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
   if (G.debug & G_DEBUG_GPU) {
     glSettings.flags |= GHOST_glDebugContext;
   }
+
+#ifdef WITH_VULKAN
+  if (G.debug & G_DEBUG_VK_CONTEXT) {
+    contextType = GHOST_kDrawingContextTypeVulkan;
+  }
+#endif
 
   wm_get_screensize(&scr_w, &scr_h);
   posy = (scr_h - win->posy - win->sizey);
@@ -599,7 +606,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
                                         win->sizex,
                                         win->sizey,
                                         (GHOST_TWindowState)win->windowstate,
-                                        GHOST_kDrawingContextTypeOpenGL,
+                                        contextType,
                                         glSettings);
   }
   else {
@@ -610,7 +617,7 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
                                   win->sizex,
                                   win->sizey,
                                   (GHOST_TWindowState)win->windowstate,
-                                  GHOST_kDrawingContextTypeOpenGL,
+                                  contextType,
                                   glSettings);
   }
 
@@ -2503,7 +2510,10 @@ void *WM_opengl_context_create(void)
    */
   BLI_assert(BLI_thread_is_main());
   BLI_assert(GPU_framebuffer_active_get() == NULL);
-  return GHOST_CreateOpenGLContext(g_system);
+  GHOST_TDrawingContextType type = (G.debug & G_DEBUG_VK_CONTEXT) ?
+                                       GHOST_kDrawingContextTypeVulkan :
+                                       GHOST_kDrawingContextTypeOpenGL;
+  return GHOST_CreateOpenGLContext(g_system, type);
 }
 
 void WM_opengl_context_dispose(void *context)

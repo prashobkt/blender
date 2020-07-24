@@ -398,68 +398,100 @@ GHOST_IWindow *GHOST_SystemX11::createWindow(const char *title,
  * Never explicitly delete the context, use disposeContext() instead.
  * \return  The new context (or 0 if creation failed).
  */
-GHOST_IContext *GHOST_SystemX11::createOffscreenContext()
+GHOST_IContext *GHOST_SystemX11::createOffscreenContext(GHOST_TDrawingContextType type)
 {
-  // During development:
-  //   try 4.x compatibility profile
-  //   try 3.3 compatibility profile
-  //   fall back to 3.0 if needed
-  //
-  // Final Blender 2.8:
-  //   try 4.x core profile
-  //   try 3.3 core profile
-  //   no fallbacks
+#if defined(WITH_VULKAN)
+  if (type == GHOST_kDrawingContextTypeVulkan) {
+    /* Vulkan port
+     *   try vulkan
+     *   fallback to OGL */
+    /* TODO debug context. */
+    GHOST_Context *context = new GHOST_ContextVK(false, (Window)NULL, m_display, 1, 0, false);
 
-#if defined(WITH_GL_PROFILE_CORE)
-  {
-    const char *version_major = (char *)glewGetString(GLEW_VERSION_MAJOR);
-    if (version_major != NULL && version_major[0] == '1') {
-      fprintf(stderr, "Error: GLEW version 2.0 and above is required.\n");
-      abort();
+    if (context->initializeDrawingContext()) {
+      return context;
+    }
+    else {
+      delete context;
     }
   }
 #endif
 
-  const int profile_mask =
+  if (type == GHOST_kDrawingContextTypeOpenGL) {
+    // Final Blender 2.8:
+    //   try 4.x core profile
+    //   try 3.3 core profile
+    //   no fallbacks
+
+#if defined(WITH_GL_PROFILE_CORE)
+    {
+      const char *version_major = (char *)glewGetString(GLEW_VERSION_MAJOR);
+      if (version_major != NULL && version_major[0] == '1') {
+        fprintf(stderr, "Error: GLEW version 2.0 and above is required.\n");
+        abort();
+      }
+    }
+#endif
+
+    const int profile_mask =
 #ifdef WITH_GL_EGL
 #  if defined(WITH_GL_PROFILE_CORE)
-      EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT;
+        EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT;
 #  elif defined(WITH_GL_PROFILE_COMPAT)
-      EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT;
+        EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT;
 #  else
 #    error  // must specify either core or compat at build time
 #  endif
 #else
 #  if defined(WITH_GL_PROFILE_CORE)
-      GLX_CONTEXT_CORE_PROFILE_BIT_ARB;
+        GLX_CONTEXT_CORE_PROFILE_BIT_ARB;
 #  elif defined(WITH_GL_PROFILE_COMPAT)
-      GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+        GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
 #  else
 #    error  // must specify either core or compat at build time
 #  endif
 #endif
 
-  GHOST_Context *context;
+    GHOST_Context *context;
 
-#if defined(WITH_VULKAN)
-  {
-    context = new GHOST_ContextVK(false, (Window)NULL, NULL, 1, 0, 0);
-
-    if (context->initializeDrawingContext())
-      return context;
-    else
-      delete context;
-  }
+    for (int minor = 5; minor >= 0; --minor) {
+#if defined(WITH_GL_EGL)
+      context = new GHOST_ContextEGL(false,
+                                     EGLNativeWindowType(nullptr),
+                                     EGLNativeDisplayType(m_display),
+                                     profile_mask,
+                                     4,
+                                     minor,
+                                     GHOST_OPENGL_EGL_CONTEXT_FLAGS |
+                                         (false ? EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR : 0),
+                                     GHOST_OPENGL_EGL_RESET_NOTIFICATION_STRATEGY,
+                                     EGL_OPENGL_API);
+#else
+      context = new GHOST_ContextGLX(false,
+                                     (Window)NULL,
+                                     m_display,
+                                     (GLXFBConfig)NULL,
+                                     profile_mask,
+                                     4,
+                                     minor,
+                                     GHOST_OPENGL_GLX_CONTEXT_FLAGS |
+                                         (false ? GLX_CONTEXT_DEBUG_BIT_ARB : 0),
+                                     GHOST_OPENGL_GLX_RESET_NOTIFICATION_STRATEGY);
 #endif
 
-  for (int minor = 5; minor >= 0; --minor) {
+      if (context->initializeDrawingContext())
+        return context;
+      else
+        delete context;
+    }
+
 #if defined(WITH_GL_EGL)
     context = new GHOST_ContextEGL(false,
                                    EGLNativeWindowType(nullptr),
                                    EGLNativeDisplayType(m_display),
                                    profile_mask,
-                                   4,
-                                   minor,
+                                   3,
+                                   3,
                                    GHOST_OPENGL_EGL_CONTEXT_FLAGS |
                                        (false ? EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR : 0),
                                    GHOST_OPENGL_EGL_RESET_NOTIFICATION_STRATEGY,
@@ -470,47 +502,20 @@ GHOST_IContext *GHOST_SystemX11::createOffscreenContext()
                                    m_display,
                                    (GLXFBConfig)NULL,
                                    profile_mask,
-                                   4,
-                                   minor,
+                                   3,
+                                   3,
                                    GHOST_OPENGL_GLX_CONTEXT_FLAGS |
                                        (false ? GLX_CONTEXT_DEBUG_BIT_ARB : 0),
                                    GHOST_OPENGL_GLX_RESET_NOTIFICATION_STRATEGY);
 #endif
 
-    if (context->initializeDrawingContext())
+    if (context->initializeDrawingContext()) {
       return context;
-    else
+    }
+    else {
       delete context;
+    }
   }
-
-#if defined(WITH_GL_EGL)
-  context = new GHOST_ContextEGL(false,
-                                 EGLNativeWindowType(nullptr),
-                                 EGLNativeDisplayType(m_display),
-                                 profile_mask,
-                                 3,
-                                 3,
-                                 GHOST_OPENGL_EGL_CONTEXT_FLAGS |
-                                     (false ? EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR : 0),
-                                 GHOST_OPENGL_EGL_RESET_NOTIFICATION_STRATEGY,
-                                 EGL_OPENGL_API);
-#else
-  context = new GHOST_ContextGLX(false,
-                                 (Window)NULL,
-                                 m_display,
-                                 (GLXFBConfig)NULL,
-                                 profile_mask,
-                                 3,
-                                 3,
-                                 GHOST_OPENGL_GLX_CONTEXT_FLAGS |
-                                     (false ? GLX_CONTEXT_DEBUG_BIT_ARB : 0),
-                                 GHOST_OPENGL_GLX_RESET_NOTIFICATION_STRATEGY);
-#endif
-
-  if (context->initializeDrawingContext())
-    return context;
-  else
-    delete context;
 
   return NULL;
 }

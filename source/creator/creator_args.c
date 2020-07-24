@@ -571,6 +571,10 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
   BLI_argsPrintArgDoc(ba, "--log-file");
 
   printf("\n");
+  printf("Graphic Backend Options:\n");
+  BLI_argsPrintArgDoc(ba, "--gpu-backend");
+
+  printf("\n");
   printf("Debug Options:\n");
   BLI_argsPrintArgDoc(ba, "--debug");
   BLI_argsPrintArgDoc(ba, "--debug-value");
@@ -1128,6 +1132,38 @@ static int arg_handle_enable_event_simulate(int UNUSED(argc),
 {
   G.f |= G_FLAG_EVENT_SIMULATE;
   return 0;
+}
+
+static const char arg_gpu_backend_set_doc[] =
+    "<backend>\n"
+    "\tSet the active graphic <backend> for user interface and viewport.\n"
+    "\tValid options are:\n\t"
+#  ifdef WITH_VULKAN
+    "'vulkan' "
+#  endif
+    "'default' \n";
+static int arg_gpu_backend_set(int argc, const char **argv, void *UNUSED(data))
+{
+  if (argc > 1) {
+#  ifdef WITH_VULKAN
+    if (STREQ(argv[1], "vulkan")) {
+      /* TODO needs to be moved to somewher else. This is not a debug flag. */
+      G.debug |= G_DEBUG_VK_CONTEXT;
+      return 1;
+    }
+#  endif
+    if (STREQ(argv[1], "default")) {
+      /* Do nothing */
+      return 1;
+    }
+
+    printf("\nError: Invalid option.\n");
+    return 0;
+  }
+  else {
+    printf("\nError: you must specify a backend after '--gpu-backend'.\n");
+    return 0;
+  }
 }
 
 static const char arg_handle_env_system_set_doc_datafiles[] =
@@ -2213,6 +2249,8 @@ void main_args_setup(bContext *C, bArgs *ba)
   BLI_argsAdd(ba, 1, NULL, "--app-template", CB(arg_handle_app_template), NULL);
   BLI_argsAdd(ba, 1, NULL, "--factory-startup", CB(arg_handle_factory_startup_set), NULL);
   BLI_argsAdd(ba, 1, NULL, "--enable-event-simulate", CB(arg_handle_enable_event_simulate), NULL);
+
+  BLI_argsAdd(ba, 1, NULL, "--gpu-backend", CB(arg_gpu_backend_set), NULL);
 
   /* TODO, add user env vars? */
   BLI_argsAdd(

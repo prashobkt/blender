@@ -328,7 +328,7 @@ GHOST_IWindow *GHOST_SystemWin32::createWindow(const char *title,
  * Never explicitly delete the window, use #disposeContext() instead.
  * \return The new context (or 0 if creation failed).
  */
-GHOST_IContext *GHOST_SystemWin32::createOffscreenContext()
+GHOST_IContext *GHOST_SystemWin32::createOffscreenContext(GHOST_TDrawingContextType /* type */)
 {
   bool debug_context = false; /* TODO: inform as a parameter */
 

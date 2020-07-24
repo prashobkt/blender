@@ -146,6 +146,7 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
       m_swapchain(VK_NULL_HANDLE),
       m_render_pass(VK_NULL_HANDLE)
 {
+  printf("WARNING: Vulkan support is experimental.\n");
 }
 
 GHOST_ContextVK::~GHOST_ContextVK()
@@ -938,7 +939,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 
     createSwapchain();
   }
-  return GHOST_kFailure;
+  return GHOST_kSuccess;
 }
 
 GHOST_TSuccess GHOST_ContextVK::releaseNativeHandles()

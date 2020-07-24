@@ -155,6 +155,7 @@ enum {
   G_DEBUG_GPU_FORCE_WORKAROUNDS = (1 << 19), /* force gpu workarounds bypassing detections. */
   G_DEBUG_XR = (1 << 20),                    /* XR/OpenXR messages */
   G_DEBUG_XR_TIME = (1 << 21),               /* XR/OpenXR timing messages */
+  G_DEBUG_VK_CONTEXT = (1 << 22),            /* not a debug flag, TODO move it. */
 
   G_DEBUG_GHOST = (1 << 20), /* Debug GHOST module. */
 };

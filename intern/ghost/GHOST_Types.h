@@ -157,6 +157,9 @@ typedef enum { GHOST_kWindowOrderTop = 0, GHOST_kWindowOrderBottom } GHOST_TWind
 typedef enum {
   GHOST_kDrawingContextTypeNone = 0,
   GHOST_kDrawingContextTypeOpenGL,
+#ifdef WITH_VULKAN
+  GHOST_kDrawingContextTypeVulkan,
+#endif
 #ifdef WIN32
   GHOST_kDrawingContextTypeD3D,
 #endif

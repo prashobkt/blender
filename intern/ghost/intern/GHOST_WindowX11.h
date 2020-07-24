@@ -273,6 +273,8 @@ class GHOST_WindowX11 : public GHOST_Window {
   XIC m_xic;
 #endif
 
+  GHOST_TDrawingContextType m_context_type;
+
   bool m_valid_setup;
   bool m_is_debug_context;
 

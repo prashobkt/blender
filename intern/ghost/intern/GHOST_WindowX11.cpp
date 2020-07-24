@@ -1320,6 +1320,30 @@ GHOST_WindowX11::~GHOST_WindowX11()
 
 GHOST_Context *GHOST_WindowX11::newDrawingContext(GHOST_TDrawingContextType type)
 {
+#if defined(WITH_VULKAN)
+  if (type == GHOST_kDrawingContextTypeVulkan) {
+    /* Vulkan port
+     *   try vulkan
+     *   fallback to OGL */
+    GHOST_Context *context = new GHOST_ContextVK(
+        m_wantStereoVisual, m_window, m_display, 1, 0, m_is_debug_context);
+
+    if (context->initializeDrawingContext()) {
+      return context;
+    }
+    else {
+      delete context;
+    }
+
+    fprintf(stderr, "Error! Unsupported graphics card or driver.\n");
+    fprintf(stderr, "A graphics card and driver with support for Vulkan 1.0.\n");
+    fprintf(stderr, "You can try the `--debug-gpu' option to have more information.\n");
+    fprintf(stderr, "The program will now close.\n");
+    fflush(stderr);
+    exit(1);
+  }
+#endif
+
   if (type == GHOST_kDrawingContextTypeOpenGL) {
 
     // Blender 2.8:
@@ -1357,19 +1381,6 @@ GHOST_Context *GHOST_WindowX11::newDrawingContext(GHOST_TDrawingContextType type
 #endif
 
     GHOST_Context *context;
-
-    // Vulkan port
-    //   try vulkan
-    //   fallback to OGL
-#if defined(WITH_VULKAN)
-    context = new GHOST_ContextVK(
-        m_wantStereoVisual, m_window, m_display, 1, 0, m_is_debug_context);
-
-    if (context->initializeDrawingContext())
-      return context;
-    else
-      delete context;
-#endif
 
     for (int minor = 5; minor >= 0; --minor) {
 #ifdef WITH_GL_EGL
