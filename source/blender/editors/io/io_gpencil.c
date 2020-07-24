@@ -33,19 +33,15 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_mesh_types.h"
-#include "DNA_modifier_types.h"
-#include "DNA_object_types.h"
-#include "DNA_scene_types.h"
+#include "DNA_gpencil_types.h"
 #include "DNA_space_types.h"
 
 #include "BKE_context.h"
-#include "BKE_global.h"
+#include "BKE_gpencil.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math_vector.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -54,9 +50,6 @@
 
 #include "RNA_access.h"
 #include "RNA_define.h"
-#include "RNA_enum_types.h"
-
-#include "ED_object.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -188,7 +181,17 @@ static bool wm_gpencil_export_check(bContext *UNUSED(C), wmOperator *op)
 bool wm_gpencil_export_poll(bContext *C)
 {
   if (CTX_wm_window(C) == NULL) {
-    // TODO: Add GPencil check/layer, etc.
+    return false;
+  }
+  Object *ob = CTX_data_active_object(C);
+  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+    return false;
+  }
+
+  bGPdata *gpd = (bGPdata *)ob->data;
+  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
+
+  if (gpl == NULL) {
     return false;
   }
 

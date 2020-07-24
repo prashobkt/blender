@@ -22,9 +22,11 @@
 #include "BKE_context.h"
 #include "BKE_main.h"
 
+#include "BLI_blenlib.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
+#include "DNA_gpencil_types.h"
 #include "DNA_object_types.h"
 
 #ifdef WIN32
@@ -42,77 +44,105 @@ namespace blender {
 namespace io {
 namespace gpencil {
 
-/* Constructor. */
-Gpencilwriter::Gpencilwriter(const struct GpencilExportParams *params)
+void GpencilExporter::set_out_filename(struct bContext *C, char *filename)
 {
-  this->params = GpencilExportParams();
+  Main *bmain = CTX_data_main(C);
+  BLI_strncpy(out_filename, filename, FILE_MAX);
+  BLI_path_abs(out_filename, BKE_main_blendfile_path(bmain));
+
+  //#ifdef WIN32
+  //  UTF16_ENCODE(svg_filename);
+  //#endif
+}
+
+/* Constructor. */
+GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *params)
+{
   this->params.frame_start = params->frame_start;
   this->params.frame_end = params->frame_end;
   this->params.ob = params->ob;
   this->params.C = params->C;
   this->params.filename = params->filename;
   this->params.mode = params->mode;
-}
 
-/**
- * Select type of export
- * @return
- */
-bool Gpencilwriter::export_object(void)
-{
-  switch (this->params.mode) {
-    case GP_EXPORT_TO_SVG: {
-      GpencilwriterSVG writter = GpencilwriterSVG(&params);
-      writter.write();
-      break;
-    }
-    default:
-      break;
-  }
-
-  return true;
-}
-
-/* Constructor. */
-GpencilwriterSVG::GpencilwriterSVG(struct GpencilExportParams *params)
-{
-  this->params = params;
+  /* Prepare output filename with full path. */
+  set_out_filename(params->C, params->filename);
 }
 
 /* Main write method for SVG format. */
-bool GpencilwriterSVG::write(void)
+bool GpencilExporterSVG::write(void)
 {
-  Main *bmain = CTX_data_main(this->params->C);
-  char svg_filename[FILE_MAX];
-  BLI_strncpy(svg_filename, this->params->filename, FILE_MAX);
-  BLI_path_abs(svg_filename, BKE_main_blendfile_path(bmain));
+  create_document_header();
+  layers_loop();
 
-  Object *ob = this->params->ob;
+  //// add description node with text child
+  // pugi::xml_node descr = main_node.append_child("object");
+  // descr.append_child(pugi::node_pcdata).set_value(ob->id.name + 2);
 
-  //#ifdef WIN32
-  //  UTF16_ENCODE(svg_filename);
-  //#endif
+  //// add param node before the description
+  // pugi::xml_node param = main_node.insert_child_before("param", descr);
 
-  /* Create simple XML. */
-  // tag::code[]
-  // add node with some name
-  pugi::xml_node node = this->doc.append_child("node");
+  //// add attributes to param node
+  // param.append_attribute("name") = "version";
+  // param.append_attribute("value") = 1.1;
+  // param.insert_attribute_after("type", param.attribute("name")) = "float";
 
-  // add description node with text child
-  pugi::xml_node descr = node.append_child("object");
-  descr.append_child(pugi::node_pcdata).set_value(ob->id.name + 2);
-
-  // add param node before the description
-  pugi::xml_node param = node.insert_child_before("param", descr);
-
-  // add attributes to param node
-  param.append_attribute("name") = "version";
-  param.append_attribute("value") = 1.1;
-  param.insert_attribute_after("type", param.attribute("name")) = "float";
   // end::code[]
-  doc.save_file(svg_filename);
+  doc.save_file(out_filename);
 
   return true;
+}
+
+/* Create document header and main svg node. */
+void GpencilExporterSVG::create_document_header(void)
+{
+  /* Add a custom document declaration node */
+  pugi::xml_node decl = doc.prepend_child(pugi::node_declaration);
+  decl.append_attribute("version") = "1.0";
+  decl.append_attribute("encoding") = "UTF-8";
+
+  pugi::xml_node comment = doc.append_child(pugi::node_comment);
+  comment.set_value(" Generator: Blender, SVG Export for Grease Pencil ");
+
+  pugi::xml_node doctype = doc.append_child(pugi::node_doctype);
+  doctype.set_value(
+      "svg PUBLIC \"-//W3C//DTD SVG 1.0//EN\" "
+      "\"http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd\"");
+
+  main_node = doc.append_child("svg");
+  main_node.append_attribute("version").set_value("1.0");
+  main_node.append_attribute("x").set_value("0px");
+  main_node.append_attribute("y").set_value("0px");
+  main_node.append_attribute("width").set_value("841px");
+  main_node.append_attribute("height").set_value("600px");
+  main_node.append_attribute("viewBox").set_value("0 0 841 600");
+}
+
+/* Main layer loop. */
+void GpencilExporterSVG::layers_loop(void)
+{
+  Object *ob = params.ob;
+  bGPdata *gpd = (bGPdata *)ob->data;
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    /* Layer node. */
+    std::string txt = "Layer: ";
+    txt.append(gpl->info);
+    main_node.append_child(pugi::node_comment).set_value(txt.c_str());
+    pugi::xml_node gpl_node = main_node.append_child("g");
+    gpl_node.append_attribute("id").set_value(gpl->info);
+
+    bGPDframe *gpf = gpl->actframe;
+    if (gpf == NULL) {
+      continue;
+    }
+
+    LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+      pugi::xml_node gps_node = gpl_node.append_child("path");
+      gps_node.append_attribute("fill").set_value("#000000");
+      gps_node.append_attribute("stroke").set_value("#000000");
+      gps_node.append_attribute("stroke-width").set_value("0.5");
+    }
+  }
 }
 
 }  // namespace gpencil

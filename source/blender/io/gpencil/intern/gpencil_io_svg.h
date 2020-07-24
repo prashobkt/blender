@@ -18,6 +18,8 @@
 /** \file
  * \ingroup bgpencil
  */
+#include "BLI_path_util.h"
+
 #include "pugixml.hpp"
 
 struct Main;
@@ -27,25 +29,31 @@ namespace blender {
 namespace io {
 namespace gpencil {
 
-class Gpencilwriter {
+class GpencilExporter {
 
  public:
-  Gpencilwriter(const struct GpencilExportParams *params);
-  bool export_object(void);
+  virtual bool write(void) = 0;
+  void set_out_filename(struct bContext *C, char *filename);
 
- private:
+ protected:
   GpencilExportParams params;
+  char out_filename[FILE_MAX];
 };
 
-class GpencilwriterSVG {
+class GpencilExporterSVG : public GpencilExporter {
 
  public:
-  GpencilwriterSVG(struct GpencilExportParams *params);
+  GpencilExporterSVG(const struct GpencilExportParams *params);
   bool write(void);
 
  private:
-  GpencilExportParams *params;
+  /* XML doc. */
   pugi::xml_document doc;
+  /* Main document node. */
+  pugi::xml_node main_node;
+
+  void create_document_header(void);
+  void layers_loop(void);
 };
 
 }  // namespace gpencil

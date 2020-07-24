@@ -23,10 +23,19 @@
 
 #include "gpencil_io_svg.h"
 
+using blender::io::gpencil::GpencilExporterSVG;
+
 bool gpencil_io_export(const GpencilExportParams *params)
 {
-  blender::io::gpencil::Gpencilwriter mywriter(params);
-  mywriter.export_object();
+  switch (params->mode) {
+    case GP_EXPORT_TO_SVG: {
+      GpencilExporterSVG writter = GpencilExporterSVG(params);
+      writter.write();
+      break;
+    }
+    default:
+      break;
+  }
 
   return true;
 }
