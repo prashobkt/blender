@@ -673,14 +673,6 @@ void WM_exit_ex(bContext *C, const bool do_python)
 
   BKE_blender_atexit();
 
-  if (MEM_get_memory_blocks_in_use() != 0) {
-    size_t mem_in_use = MEM_get_memory_in_use() + MEM_get_memory_in_use();
-    CLOG_WARN(WM_LOG_SESSION,
-              "Error: Not freed memory blocks: %u, total unfreed memory %f MB\n",
-              MEM_get_memory_blocks_in_use(),
-              (double)mem_in_use / 1024 / 1024);
-    MEM_printmemlist();
-  }
   wm_autosave_delete();
 
   BKE_tempdir_session_purge();
