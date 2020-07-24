@@ -211,6 +211,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
     else {
       int orig = face.orig;
       BMFace *orig_face;
+      /* There should always be an orig face, but just being extra careful here. */
       if (orig != NO_INDEX) {
         orig_face = old_bmfs[orig];
       }
@@ -234,6 +235,15 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
       BMFace *bmf = BM_face_create(
           bm, face_bmverts.data(), face_bmedges.data(), flen, orig_face, BM_CREATE_NOP);
       BM_elem_flag_enable(bmf, KEEP_FLAG);
+      /* Now do interpolation of loop data (e.g., UVs) using the example face. */
+      if (orig_face != NULL) {
+        BMIter liter;
+        BMLoop *l = static_cast<BMLoop *>(BM_iter_new(&liter, bm, BM_LOOPS_OF_FACE, bmf));
+        while (l != NULL) {
+          BM_loop_interp_from_face(bm, l, orig_face, true, true);
+          l = static_cast<BMLoop *>(BM_iter_step(&liter));
+        }
+      }
       any_change = true;
     }
   }
