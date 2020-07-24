@@ -193,7 +193,7 @@ static void report_textview_end(TextViewContext *UNUSED(tvc))
   /* pass */
 }
 
-static int report_textview_step(TextViewContext *tvc, ListBase *UNUSED(text_lines))
+static int report_textview_step(TextViewContext *tvc)
 {
   /* simple case, but no newline support */
   const Report *report = tvc->iter;

@@ -485,7 +485,7 @@ int textview_draw(TextViewContext *tvc,
       iter_index++;
 
       textview_clear_text_lines(&text_lines);
-    } while (tvc->step(tvc, &text_lines));
+    } while (tvc->step(tvc));
   }
 
   tvc->end(tvc);

@@ -53,7 +53,7 @@ typedef struct TextViewContext {
   const void *arg2;
 
   /* iterator */
-  int (*step)(struct TextViewContext *tvcl, struct ListBase *text_line);
+  int (*step)(struct TextViewContext *tvcl);
 
   void (*lines_get)(struct TextViewContext *tvc, struct ListBase *text_lines);
   enum eTextViewContext_LineFlag (*line_draw_data)(struct TextViewContext *tvc,

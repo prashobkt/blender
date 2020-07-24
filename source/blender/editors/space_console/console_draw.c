@@ -122,7 +122,7 @@ static void console_textview_end(TextViewContext *tvc)
 }
 
 /** one step for console is printing one "chunk" at a time. Chunk is line with the same type */
-static int console_textview_step(TextViewContext *tvc, ListBase *text_lines)
+static int console_textview_step(TextViewContext *tvc)
 {
   const ConsoleLine *cl_current = tvc->iter;
   const ConsoleLine *cl_iter = tvc->iter;
