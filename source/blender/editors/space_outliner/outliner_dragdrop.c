@@ -186,7 +186,8 @@ static TreeElement *outliner_drop_insert_find(bContext *C,
     const float margin = UI_UNIT_Y * (1.0f / 4);
 
     if (view_mval[1] < (te_hovered->ys + margin)) {
-      if (TSELEM_OPEN(TREESTORE(te_hovered), soops)) {
+      if (TSELEM_OPEN(TREESTORE(te_hovered), soops) &&
+          !BLI_listbase_is_empty(&te_hovered->subtree)) {
         /* inserting after a open item means we insert into it, but as first child */
         if (BLI_listbase_is_empty(&te_hovered->subtree)) {
           *r_insert_type = TE_INSERT_INTO;
