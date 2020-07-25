@@ -88,7 +88,6 @@ set(SRC
   intern/MOD_simulation.cc
   intern/MOD_skin.c
   intern/MOD_smooth.c
-  intern/MOD_smooth_contour.c
   intern/MOD_softbody.c
   intern/MOD_solidify.c
   intern/MOD_solidify_extrude.c

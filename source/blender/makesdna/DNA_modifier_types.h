@@ -95,7 +95,6 @@ typedef enum ModifierType {
   eModifierType_Weld = 55,
   eModifierType_Fluid = 56,
   eModifierType_Simulation = 57,
-  eModifierType_SmoothContour = 58,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2161,27 +2160,6 @@ typedef struct SimulationModifierData {
   struct Simulation *simulation;
   char *data_path;
 } SimulationModifierData;
-
-typedef struct SmoothContourModifierData {
-  ModifierData modifier;
-
-  struct Object *camera_ob;
-  void *osd_eval;
-  int flag;
-  short _pad[2];
-} SmoothContourModifierData;
-
-enum {
-  MOD_SMOOTHCONTOUR_TRIANG = (1 << 0),
-  MOD_SMOOTHCONTOUR_FF_SPLIT = (1 << 1),
-  MOD_SMOOTHCONTOUR_CUSP_D = (1 << 2),
-  MOD_SMOOTHCONTOUR_CUSP_I = (1 << 3),
-  MOD_SMOOTHCONTOUR_FB_SPLIT = (1 << 4),
-  MOD_SMOOTHCONTOUR_RAD_I = (1 << 5),
-  MOD_SMOOTHCONTOUR_RAD_FLIP = (1 << 6),
-  MOD_SMOOTHCONTOUR_OPTI = (1 << 7),
-  MOD_SMOOTHCONTOUR_SEL = (1 << 8),
-};
 
 #ifdef __cplusplus
 }

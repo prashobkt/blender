@@ -453,71 +453,18 @@ class VolatileEvalOutput {
     RawDataWrapperBuffer<float> dPdu_data(dPdu), dPdv_data(dPdv);
     // TODO(sergey): Support interleaved vertex-varying data.
     BufferDescriptor P_desc(0, 3, 3);
-    BufferDescriptor dPdu_desc(0, 3, 3), dPdv_desc(0, 3, 3);
+    BufferDescriptor dpDu_desc(0, 3, 3), pPdv_desc(0, 3, 3);
     ConstPatchCoordWrapperBuffer patch_coord_buffer(patch_coord, num_patch_coords);
     const EVALUATOR *eval_instance = OpenSubdiv::Osd::GetEvaluator<EVALUATOR>(
-        evaluator_cache_, src_desc_, P_desc, dPdu_desc, dPdv_desc, device_context_);
+        evaluator_cache_, src_desc_, P_desc, dpDu_desc, pPdv_desc, device_context_);
     EVALUATOR::EvalPatches(src_data_,
                            src_desc_,
                            &P_data,
                            P_desc,
                            &dPdu_data,
-                           dPdu_desc,
+                           dpDu_desc,
                            &dPdv_data,
-                           dPdv_desc,
-                           patch_coord_buffer.GetNumVertices(),
-                           &patch_coord_buffer,
-                           patch_table_,
-                           eval_instance,
-                           device_context_);
-  }
-
-  // NOTE: P, dPdu, dPdv, etc must point to a memory of at least float[3]*num_patch_coords.
-  void evalPatchesWithDerivatives2(const PatchCoord *patch_coord,
-                                   const int num_patch_coords,
-                                   float *P,
-                                   float *dPdu,
-                                   float *dPdv,
-                                   float *dPduu,
-                                   float *dPduv,
-                                   float *dPdvv)
-  {
-    assert(dPdu);
-    assert(dPdv);
-    assert(dPduu);
-    assert(dPduv);
-    assert(dPdvv);
-    RawDataWrapperBuffer<float> P_data(P);
-    RawDataWrapperBuffer<float> dPdu_data(dPdu), dPdv_data(dPdv), dPduu_data(dPduu),
-        dPduv_data(dPduv), dPdvv_data(dPdvv);
-    // TODO(sergey): Support interleaved vertex-varying data.
-    BufferDescriptor P_desc(0, 3, 3);
-    BufferDescriptor dPdu_desc(0, 3, 3), dPdv_desc(0, 3, 3), dPduu_desc(0, 3, 3),
-        dPduv_desc(0, 3, 3), dPdvv_desc(0, 3, 3);
-    ConstPatchCoordWrapperBuffer patch_coord_buffer(patch_coord, num_patch_coords);
-    const EVALUATOR *eval_instance = OpenSubdiv::Osd::GetEvaluator<EVALUATOR>(evaluator_cache_,
-                                                                              src_desc_,
-                                                                              P_desc,
-                                                                              dPdu_desc,
-                                                                              dPdv_desc,
-                                                                              dPduu_desc,
-                                                                              dPduv_desc,
-                                                                              dPdvv_desc,
-                                                                              device_context_);
-    EVALUATOR::EvalPatches(src_data_,
-                           src_desc_,
-                           &P_data,
-                           P_desc,
-                           &dPdu_data,
-                           dPdu_desc,
-                           &dPdv_data,
-                           dPdv_desc,
-                           &dPduu_data,
-                           dPduu_desc,
-                           &dPduv_data,
-                           dPduv_desc,
-                           &dPdvv_data,
-                           dPdvv_desc,
+                           pPdv_desc,
                            patch_coord_buffer.GetNumVertices(),
                            &patch_coord_buffer,
                            patch_table_,
@@ -733,31 +680,6 @@ void CpuEvalOutputAPI::evaluateLimit(const int ptex_face_index,
   PatchCoord patch_coord(*handle, face_u, face_v);
   if (dPdu != NULL || dPdv != NULL) {
     implementation_->evalPatchesWithDerivatives(&patch_coord, 1, P, dPdu, dPdv);
-  }
-  else {
-    implementation_->evalPatches(&patch_coord, 1, P);
-  }
-}
-
-void CpuEvalOutputAPI::evaluateLimit2(const int ptex_face_index,
-                                      float face_u,
-                                      float face_v,
-                                      float P[3],
-                                      float dPdu[3],
-                                      float dPdv[3],
-                                      float dPduu[3],
-                                      float dPduv[3],
-                                      float dPdvv[3])
-{
-  assert(face_u >= 0.0f);
-  assert(face_u <= 1.0f);
-  assert(face_v >= 0.0f);
-  assert(face_v <= 1.0f);
-  const PatchTable::PatchHandle *handle = patch_map_->FindPatch(ptex_face_index, face_u, face_v);
-  PatchCoord patch_coord(*handle, face_u, face_v);
-  if (dPdu != NULL || dPdv != NULL || dPduu != NULL || dPduv != NULL || dPdvv != NULL) {
-    implementation_->evalPatchesWithDerivatives2(
-        &patch_coord, 1, P, dPdu, dPdv, dPduu, dPduv, dPdvv);
   }
   else {
     implementation_->evalPatches(&patch_coord, 1, P);
