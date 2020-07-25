@@ -128,6 +128,10 @@ void GpencilExporterSVG::export_layers(void)
 
   bGPdata *gpd = (bGPdata *)ob->data;
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    if (gpl->flag & GP_LAYER_HIDE) {
+      continue;
+    }
+
     /* Layer node. */
     std::string txt = "Layer: ";
     txt.append(gpl->info);
@@ -145,17 +149,24 @@ void GpencilExporterSVG::export_layers(void)
 
     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
       Material *ma = BKE_object_material_get(ob, gps->mat_nr + 1);
+      MaterialGPencilStyle *gp_style = ma->gp_style;
+      /* Fill. */
+      if (gp_style->flag & GP_MATERIAL_FILL_SHOW) {
+        export_stroke(gpl_node, gps, ma, diff_mat);
+      }
+      /* Stroke. */
+      if (gp_style->flag & GP_MATERIAL_STROKE_SHOW) {
+        bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
+            rv3d, gpd, gpl, gps, 3, diff_mat);
 
-      bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
-          rv3d, gpd, gpl, gps, 3, diff_mat);
+        /* Reproject and sample stroke. */
+        // ED_gpencil_project_stroke_to_view(params.C, gpl, gps_perimeter);
+        BKE_gpencil_stroke_sample(gps_perimeter, 0.03f, false);
 
-      /* Reproject and sample stroke. */
-      // ED_gpencil_project_stroke_to_view(params.C, gpl, gps_perimeter);
-      BKE_gpencil_stroke_sample(gps_perimeter, 0.03f, false);
+        export_stroke(gpl_node, gps_perimeter, ma, diff_mat);
 
-      export_stroke(gpl_node, gps_perimeter, ma, diff_mat);
-
-      BKE_gpencil_free_stroke(gps_perimeter);
+        BKE_gpencil_free_stroke(gps_perimeter);
+      }
     }
   }
 }
@@ -221,12 +232,17 @@ void GpencilExporterSVG::export_style_list(void)
 
     txt.append("{");
     if (gp_style->flag & GP_MATERIAL_FILL_SHOW) {
-      copy_v3_v3(col, gp_style->fill_rgba);
+      linearrgb_to_srgb_v3_v3(col, gp_style->fill_rgba);
+
       txt.append("fill:" + rgb_to_hex(col) + ";");
+      if ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) == 0) {
+        txt.append("stroke:" + rgb_to_hex(col) + ";");
+      }
     }
 
     if (gp_style->flag & GP_MATERIAL_STROKE_SHOW) {
-      copy_v3_v3(col, gp_style->stroke_rgba);
+      linearrgb_to_srgb_v3_v3(col, gp_style->stroke_rgba);
+
       txt.append("stroke:" + rgb_to_hex(col) + ";");
       if ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0) {
         txt.append("fill:" + rgb_to_hex(col) + ";");
