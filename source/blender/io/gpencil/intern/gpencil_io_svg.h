@@ -32,6 +32,8 @@ struct ARegion;
 
 struct bGPDstroke;
 
+#define GP_EXP_SVG_STYLE_PREFIX "m_"
+
 namespace blender {
 namespace io {
 namespace gpencil {

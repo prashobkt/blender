@@ -196,7 +196,8 @@ void GpencilExporterSVG::export_stroke(pugi::xml_node gpl_node,
   // gps_node.append_attribute("fill").set_value("#000000");
   // gps_node.append_attribute("stroke").set_value("#000000");
 
-  gps_node.append_attribute("class").set_value(to_lower_string(ma->id.name + 2).c_str());
+  gps_node.append_attribute("class").set_value(
+      (GP_EXP_SVG_STYLE_PREFIX + to_lower_string(ma->id.name + 2)).c_str());
 
   gps_node.append_attribute("stroke-width").set_value("1.0");
 
@@ -243,7 +244,7 @@ void GpencilExporterSVG::export_style_list(void)
                     (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
 
     txt.append("\n\t.");
-    txt.append(to_lower_string(ma->id.name + 2).c_str());
+    txt.append((GP_EXP_SVG_STYLE_PREFIX + to_lower_string(ma->id.name + 2)).c_str());
 
     txt.append("{");
     if (is_fill) {
