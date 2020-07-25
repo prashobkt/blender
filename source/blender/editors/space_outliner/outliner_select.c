@@ -155,6 +155,7 @@ static void do_outliner_item_editmode_toggle(
     }
     if (ok) {
       ED_object_base_select(base, (ob->mode & OB_MODE_EDIT) ? BA_SELECT : BA_DESELECT);
+      ED_outliner_select_sync_from_object_tag(C);
       DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
       WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
     }
