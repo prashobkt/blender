@@ -47,6 +47,7 @@
 #include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
+#include "BKE_shader_fx.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -942,6 +943,13 @@ static void uistack_drop_link(bContext *C, OutlinerDropData *drop_data)
     WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT | NA_ADDED, NULL);
   }
   else if (drop_data->drag_tselem->type == TSE_EFFECT_BASE) {
+    if (ob_dst->type != OB_GPENCIL) {
+      return;
+    }
+    BKE_shaderfx_copy(&ob_dst->shader_fx, &drop_data->ob_parent->shader_fx);
+
+    DEG_id_tag_update(&ob_dst->id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_OBJECT | ND_SHADERFX, ob_dst);
   }
 }
 
@@ -976,6 +984,17 @@ static void uistack_drop_copy(bContext *C, OutlinerDropData *drop_data)
     WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT | NA_ADDED, ob_dst);
   }
   else if (drop_data->drag_tselem->type == TSE_EFFECT) {
+    if (ob_dst->type != OB_GPENCIL) {
+      return;
+    }
+    ShaderFxData *fx = drop_data->drag_directdata;
+    ShaderFxData *nfx = BKE_shaderfx_new(fx->type);
+    BLI_strncpy(nfx->name, fx->name, sizeof(nfx->name));
+    BKE_shaderfx_copydata(fx, nfx);
+    BLI_addtail(&ob_dst->shader_fx, nfx);
+
+    DEG_id_tag_update(&ob_dst->id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_OBJECT | ND_SHADERFX, ob_dst);
   }
 }
 
