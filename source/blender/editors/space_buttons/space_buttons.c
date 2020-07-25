@@ -168,6 +168,10 @@ int ED_buttons_tabs_list(SpaceProperties *sbuts, int *context_tabs_array)
     context_tabs_array[length] = BCONTEXT_VIEW_LAYER;
     length++;
   }
+  if (sbuts->pathflag & (1 << BCONTEXT_VIEW_LAYER)) {
+    context_tabs_array[length] = BCONTEXT_COLLECTION;
+    length++;
+  }
   if (sbuts->pathflag & (1 << BCONTEXT_SCENE)) {
     context_tabs_array[length] = BCONTEXT_SCENE;
     length++;
@@ -260,13 +264,6 @@ static void buttons_main_region_layout_properties(const bContext *C,
     case BCONTEXT_COLLECTION:
 #ifdef WITH_LINEART
       contexts[0] = "collection";
-#else
-      BLI_assert(!"'WITH_LINEART' disabled - should not possible to access 'BCONTEXT_COLLECTION'");
-#endif
-      break;
-    case BCONTEXT_LRT:
-#ifdef WITH_LINEART
-      contexts[0] = "lineart";
 #else
       BLI_assert(!"'WITH_LINEART' disabled - should not possible to access 'BCONTEXT_COLLECTION'");
 #endif

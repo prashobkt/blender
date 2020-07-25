@@ -621,18 +621,6 @@ static int buttons_context_path(const bContext *C, ButsContextPath *path, int ma
       BLI_assert(!"'WITH_LINEART' disabled - should not possible to access 'BCONTEXT_COLLECTION'");
 #endif
       break;
-    case BCONTEXT_LRT: /* This is for Line Art object flags */
-#ifdef WITH_LINEART
-      if (scene && (scene->lineart.flags & LRT_AUTO_UPDATE)) {
-        found = buttons_context_path_object(path);
-      }
-      else {
-        found = 0;
-      }
-#else
-      BLI_assert(!"'WITH_LINEART' disabled - should not possible to access 'BCONTEXT_LRT'");
-#endif
-      break;
     case BCONTEXT_TOOL:
       found = true;
       break;
@@ -872,6 +860,10 @@ int buttons_context(const bContext *C, const char *member, bContextDataResult *r
   }
   if (CTX_data_equals(member, "world")) {
     set_pointer_type(path, result, &RNA_World);
+    return 1;
+  }
+  if (CTX_data_equals(member, "collection")) {
+    set_pointer_type(path, result, &RNA_Collection);
     return 1;
   }
   if (CTX_data_equals(member, "object")) {
