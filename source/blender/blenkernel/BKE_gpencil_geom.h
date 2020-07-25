@@ -28,10 +28,12 @@
 extern "C" {
 #endif
 
+struct bContext;
 struct BoundBox;
 struct Depsgraph;
 struct Main;
 struct Object;
+struct RegionView3D;
 struct Scene;
 struct bGPDframe;
 struct bGPDlayer;
@@ -128,6 +130,18 @@ void BKE_gpencil_convert_mesh(struct Main *bmain,
                               const bool use_faces,
                               const bool simple_material);
 
+void BKE_gpencil_stroke_to_view_space(struct RegionView3D *rv3d,
+                                      struct bGPDstroke *gps,
+                                      float diff_mat[4][4]);
+void BKE_gpencil_stroke_from_view_space(struct RegionView3D *rv3d,
+                                        struct bGPDstroke *gps,
+                                        float diff_mat[4][4]);
+struct bGPDstroke *BKE_gpencil_stroke_perimeter_from_view(struct RegionView3D *rv3d,
+                                                          const struct bGPdata *gpd,
+                                                          const struct bGPDlayer *gpl,
+                                                          struct bGPDstroke *gps,
+                                                          int subdivisions,
+                                                          float diff_mat[4][4]);
 #ifdef __cplusplus
 }
 #endif

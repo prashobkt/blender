@@ -45,7 +45,7 @@ class GpencilExporter {
   bool gpencil_3d_point_to_screen_space(struct ARegion *region,
                                         const float diff_mat[4][4],
                                         const float co[3],
-                                        int r_co[2]);
+                                        float r_co[2]);
 
   std::string rgb_to_hex(float color[3]);
   std::string to_lower_string(char *input_text);

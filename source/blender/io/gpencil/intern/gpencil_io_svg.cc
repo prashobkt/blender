@@ -22,6 +22,7 @@
 
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
+#include "BKE_gpencil_geom.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 
@@ -34,6 +35,8 @@
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
+
+#include "ED_gpencil.h"
 
 #ifdef WIN32
 #  include "utfconv.h"
@@ -115,6 +118,8 @@ void GpencilExporterSVG::create_document_header(void)
 /* Main layer loop. */
 void GpencilExporterSVG::export_layers(void)
 {
+  RegionView3D *rv3d = (RegionView3D *)params.region->regiondata;
+
   float color[3] = {1.0f, 0.5f, 0.01f};
   std::string hex = rgb_to_hex(color);
 
@@ -141,7 +146,16 @@ void GpencilExporterSVG::export_layers(void)
     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
       Material *ma = BKE_object_material_get(ob, gps->mat_nr + 1);
 
-      export_stroke(gpl_node, gps, ma, diff_mat);
+      bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
+          rv3d, gpd, gpl, gps, 3, diff_mat);
+
+      /* Reproject and sample stroke. */
+      // ED_gpencil_project_stroke_to_view(params.C, gpl, gps_perimeter);
+      BKE_gpencil_stroke_sample(gps_perimeter, 0.03f, false);
+
+      export_stroke(gpl_node, gps_perimeter, ma, diff_mat);
+
+      BKE_gpencil_free_stroke(gps_perimeter);
     }
   }
 }
@@ -158,7 +172,6 @@ void GpencilExporterSVG::export_stroke(pugi::xml_node gpl_node,
                                        struct Material *ma,
                                        float diff_mat[4][4])
 {
-
   pugi::xml_node gps_node = gpl_node.append_child("path");
   // gps_node.append_attribute("fill").set_value("#000000");
   // gps_node.append_attribute("stroke").set_value("#000000");
@@ -173,7 +186,7 @@ void GpencilExporterSVG::export_stroke(pugi::xml_node gpl_node,
       txt.append("L");
     }
     bGPDspoint *pt = &gps->points[i];
-    int screen_co[2];
+    float screen_co[2];
     gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
     /* Invert Y axis. */
     int y = params.region->winy - screen_co[1];
@@ -215,6 +228,9 @@ void GpencilExporterSVG::export_style_list(void)
     if (gp_style->flag & GP_MATERIAL_STROKE_SHOW) {
       copy_v3_v3(col, gp_style->stroke_rgba);
       txt.append("stroke:" + rgb_to_hex(col) + ";");
+      if ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0) {
+        txt.append("fill:" + rgb_to_hex(col) + ";");
+      }
     }
     txt.append("}");
   }
