@@ -833,20 +833,19 @@ static bool uistack_drop_poll(bContext *C,
     ob = NULL;
   }
 
-  /* Drag a base. */
+  /* Drag a base for linking. */
   if (ELEM(
           drop_data->drag_tselem->type, TSE_MODIFIER_BASE, TSE_CONSTRAINT_BASE, TSE_EFFECT_BASE)) {
+    drop_data->insert_type = TE_INSERT_INTO;
+    drop_data->drop_action = UI_STACK_DROP_LINK;
+
     if (pchan && pchan != drop_data->bone_parent) {
       *r_tooltip = TIP_("Link all to bone");
-      drop_data->insert_type = TE_INSERT_INTO;
-      drop_data->drop_action = UI_STACK_DROP_LINK;
       drop_data->drop_te = bone_te;
       tselem_target = TREESTORE(bone_te);
     }
     else if (ob && ob != drop_data->ob_parent) {
       *r_tooltip = TIP_("Link all to object");
-      drop_data->insert_type = TE_INSERT_INTO;
-      drop_data->drop_action = UI_STACK_DROP_LINK;
       drop_data->drop_te = object_te;
       tselem_target = TREESTORE(object_te);
     }
