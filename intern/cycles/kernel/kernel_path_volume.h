@@ -149,6 +149,7 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
 {
 #    ifdef __EMISSION__
   BsdfEval L_light ccl_optional_struct_init;
+
   bool use_light_tree = kernel_data.integrator.use_light_tree;
   int num_lights = 1;
   if (sample_all_lights && !use_light_tree) {
@@ -213,8 +214,8 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
                      light_u,
                      light_v,
                      sd->time,
-                     ray->P + ray->D * ray->t,
-                     -ray->D,
+                     sd->P_pick,
+                     sd->N_pick,
                      ray->t,
                      state->bounce,
                      &ls);

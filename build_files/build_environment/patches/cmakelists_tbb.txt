@@ -148,7 +148,7 @@ if (TBB_BUILD_SHARED)
     set_property(TARGET tbb APPEND PROPERTY LINK_FLAGS "-Wl,-version-script,${CMAKE_CURRENT_BINARY_DIR}/tbb.def")
   elseif(WIN32)
     set_property(TARGET tbb APPEND PROPERTY LINK_FLAGS "/DEF:${CMAKE_CURRENT_BINARY_DIR}/tbb.def")
-    
+
   endif()
   install(TARGETS tbb DESTINATION lib)
   if(WIN32)
