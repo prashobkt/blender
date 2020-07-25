@@ -23,6 +23,7 @@
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
 #include "BKE_main.h"
+#include "BKE_material.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
@@ -30,6 +31,7 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_gpencil_types.h"
+#include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
@@ -69,7 +71,9 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *params)
 bool GpencilExporterSVG::write(void)
 {
   create_document_header();
-  layers_loop();
+
+  export_style_list();
+  export_layers();
 
   doc.save_file(out_filename);
 
@@ -82,7 +86,7 @@ void GpencilExporterSVG::create_document_header(void)
   int x = params.region->winx;
   int y = params.region->winy;
 
-  /* Add a custom document declaration node */
+  /* Add a custom document declaration node. */
   pugi::xml_node decl = doc.prepend_child(pugi::node_declaration);
   decl.append_attribute("version") = "1.0";
   decl.append_attribute("encoding") = "UTF-8";
@@ -109,7 +113,7 @@ void GpencilExporterSVG::create_document_header(void)
 }
 
 /* Main layer loop. */
-void GpencilExporterSVG::layers_loop(void)
+void GpencilExporterSVG::export_layers(void)
 {
   float color[3] = {1.0f, 0.5f, 0.01f};
   std::string hex = rgb_to_hex(color);
@@ -131,34 +135,91 @@ void GpencilExporterSVG::layers_loop(void)
       continue;
     }
 
+    float diff_mat[4][4];
+    BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat);
+
     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-      float diff_mat[4][4];
-      BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat);
+      Material *ma = BKE_object_material_get(ob, gps->mat_nr + 1);
 
-      pugi::xml_node gps_node = gpl_node.append_child("path");
-      // gps_node.append_attribute("fill").set_value("#000000");
-      gps_node.append_attribute("stroke").set_value("#000000");
-      gps_node.append_attribute("stroke-width").set_value("1.0");
-      std::string txt = "M";
-      for (int i = 0; i < gps->totpoints; i++) {
-        if (i > 0) {
-          txt.append("L");
-        }
-        bGPDspoint *pt = &gps->points[i];
-        int screen_co[2];
-        gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
-        /* Invert Y axis. */
-        int y = params.region->winy - screen_co[1];
-        txt.append(std::to_string(screen_co[0]) + "," + std::to_string(y));
-      }
-      /* Close patch (cyclic)*/
-      if (gps->flag & GP_STROKE_CYCLIC) {
-        txt.append("z");
-      }
-
-      gps_node.append_attribute("d").set_value(txt.c_str());
+      export_stroke(gpl_node, gps, ma, diff_mat);
     }
   }
+}
+
+/**
+ * Export a stroke
+ * \param gpl_node: Node of the layer.
+ * \param gps: Stroke to export.
+ * \param ma: Material of the stroke.
+ * \param diff_mat: Transformation matrix.
+ */
+void GpencilExporterSVG::export_stroke(pugi::xml_node gpl_node,
+                                       struct bGPDstroke *gps,
+                                       struct Material *ma,
+                                       float diff_mat[4][4])
+{
+
+  pugi::xml_node gps_node = gpl_node.append_child("path");
+  // gps_node.append_attribute("fill").set_value("#000000");
+  // gps_node.append_attribute("stroke").set_value("#000000");
+
+  gps_node.append_attribute("class").set_value(to_lower_string(ma->id.name + 2).c_str());
+
+  gps_node.append_attribute("stroke-width").set_value("1.0");
+
+  std::string txt = "M";
+  for (int i = 0; i < gps->totpoints; i++) {
+    if (i > 0) {
+      txt.append("L");
+    }
+    bGPDspoint *pt = &gps->points[i];
+    int screen_co[2];
+    gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
+    /* Invert Y axis. */
+    int y = params.region->winy - screen_co[1];
+    txt.append(std::to_string(screen_co[0]) + "," + std::to_string(y));
+  }
+  /* Close patch (cyclic)*/
+  if (gps->flag & GP_STROKE_CYCLIC) {
+    txt.append("z");
+  }
+
+  gps_node.append_attribute("d").set_value(txt.c_str());
+}
+
+/**
+ * Create Style (materials) list.
+ */
+void GpencilExporterSVG::export_style_list(void)
+{
+  Object *ob = this->params.ob;
+  int mat_len = max_ii(1, ob->totcol);
+  pugi::xml_node style_node = main_node.append_child("style");
+  style_node.append_attribute("type").set_value("text/css");
+
+  std::string txt;
+  float col[3];
+
+  for (int i = 0; i < mat_len; i++) {
+    Material *ma = BKE_object_material_get(ob, i + 1);
+    MaterialGPencilStyle *gp_style = ma->gp_style;
+    txt.append("\n\t.");
+    txt.append(to_lower_string(ma->id.name + 2).c_str());
+
+    txt.append("{");
+    if (gp_style->flag & GP_MATERIAL_FILL_SHOW) {
+      copy_v3_v3(col, gp_style->fill_rgba);
+      txt.append("fill:" + rgb_to_hex(col) + ";");
+    }
+
+    if (gp_style->flag & GP_MATERIAL_STROKE_SHOW) {
+      copy_v3_v3(col, gp_style->stroke_rgba);
+      txt.append("stroke:" + rgb_to_hex(col) + ";");
+    }
+    txt.append("}");
+  }
+  txt.append("\n\t");
+  style_node.text().set(txt.c_str());
 }
 
 }  // namespace gpencil

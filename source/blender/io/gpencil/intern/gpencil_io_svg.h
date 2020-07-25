@@ -20,34 +20,21 @@
  */
 #include "BLI_path_util.h"
 
+#include "DNA_material_types.h"
+
+#include "gpencil_io_base.h"
 #include "pugixml.hpp"
 
 struct Main;
+struct Material;
 struct GpencilExportParams;
 struct ARegion;
+
+struct bGPDstroke;
 
 namespace blender {
 namespace io {
 namespace gpencil {
-
-class GpencilExporter {
-
- public:
-  virtual bool write(void) = 0;
-  void set_out_filename(struct bContext *C, char *filename);
-
-  /* Geometry functions. */
-  bool gpencil_3d_point_to_screen_space(struct ARegion *region,
-                                        const float diff_mat[4][4],
-                                        const float co[3],
-                                        int r_co[2]);
-
-  std::string rgb_to_hex(float color[3]);
-
- protected:
-  GpencilExportParams params;
-  char out_filename[FILE_MAX];
-};
 
 class GpencilExporterSVG : public GpencilExporter {
 
@@ -62,7 +49,12 @@ class GpencilExporterSVG : public GpencilExporter {
   pugi::xml_node main_node;
 
   void create_document_header(void);
-  void layers_loop(void);
+  void export_layers(void);
+  void export_style_list(void);
+  void export_stroke(pugi::xml_node gpl_node,
+                     struct bGPDstroke *gps,
+                     struct Material *ma,
+                     float diff_mat[4][4]);
 };
 
 }  // namespace gpencil

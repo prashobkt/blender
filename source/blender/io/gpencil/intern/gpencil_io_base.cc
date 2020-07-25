@@ -17,6 +17,9 @@
 /** \file
  * \ingroup bgpencil
  */
+#include <algorithm>
+#include <cctype>
+
 #include <iostream>
 #include <string>
 
@@ -30,6 +33,8 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
+#include "DNA_object_types.h"
+
 #ifdef WIN32
 #  include "utfconv.h"
 #endif
@@ -38,8 +43,8 @@
 
 #include "ED_view3d.h"
 
+#include "gpencil_io_base.h"
 #include "gpencil_io_exporter.h"
-#include "gpencil_io_svg.h"
 
 #include "pugixml.hpp"
 
@@ -47,6 +52,11 @@ namespace blender {
 namespace io {
 namespace gpencil {
 
+/**
+ * Set output file input_text full path.
+ * \param C: Context.
+ * \param filename: Path of the file provided by save dialog.
+ */
 void GpencilExporter::set_out_filename(struct bContext *C, char *filename)
 {
   Main *bmain = CTX_data_main(C);
@@ -80,6 +90,11 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(struct ARegion *region,
   return false;
 }
 
+/**
+ * Convert a color to Hex value (#FFFFFF)
+ * \param color: Original RGB color
+ * \return String with the conversion
+ */
 std::string GpencilExporter::rgb_to_hex(float color[3])
 {
   int r = color[0] * 255.0f;
@@ -91,6 +106,19 @@ std::string GpencilExporter::rgb_to_hex(float color[3])
   std::string hexstr = hex_string;
 
   return hexstr;
+}
+
+/**
+ * Convert a full string to lowercase
+ * \param input_text: Input input_text
+ * \return Lower case string
+ */
+std::string GpencilExporter::to_lower_string(char *input_text)
+{
+  ::std::string text = input_text;
+  std::transform(
+      text.begin(), text.end(), text.begin(), [](unsigned char c) { return std::tolower(c); });
+  return text;
 }
 
 }  // namespace gpencil

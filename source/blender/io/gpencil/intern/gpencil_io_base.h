@@ -18,12 +18,17 @@
 /** \file
  * \ingroup bgpencil
  */
+#include <map>
+#include <string>
+#include <vector>
+
 #include "BLI_path_util.h"
 
-#include "pugixml.hpp"
+#include "DNA_defs.h"
+
+#include "gpencil_io_exporter.h"
 
 struct Main;
-struct GpencilExportParams;
 struct ARegion;
 
 namespace blender {
@@ -43,6 +48,7 @@ class GpencilExporter {
                                         int r_co[2]);
 
   std::string rgb_to_hex(float color[3]);
+  std::string to_lower_string(char *input_text);
 
  protected:
   GpencilExportParams params;
