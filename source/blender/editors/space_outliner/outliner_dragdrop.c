@@ -79,7 +79,6 @@ typedef struct OutlinerDropData {
   TreeStoreElem *drag_tselem;
   void *drag_directdata;
   int drag_index;
-  TreeElement *drag_te;
 
   int drop_action;
   TreeElement *drop_te;
@@ -101,7 +100,6 @@ static void outliner_drop_data_init(wmDrag *drag,
   drop_data->drag_tselem = tselem;
   drop_data->drag_directdata = directdata;
   drop_data->drag_index = te->index;
-  drop_data->drag_te = te;
 
   drag->poin = drop_data;
   drag->flags |= WM_DRAG_FREE_DATA;
@@ -1000,7 +998,13 @@ static void uistack_drop_copy(bContext *C, OutlinerDropData *drop_data)
 
 static void uistack_drop_reorder(bContext *C, ReportList *reports, OutlinerDropData *drop_data)
 {
-  TreeElement *drag_te = drop_data->drag_te;
+  SpaceOutliner *soops = CTX_wm_space_outliner(C);
+
+  TreeElement *drag_te = outliner_find_tree_element(&soops->tree, drop_data->drag_tselem);
+  if (!drag_te) {
+    return;
+  }
+
   TreeElement *drop_te = drop_data->drop_te;
   TreeStoreElem *tselem = TREESTORE(drop_data->drop_te);
   TreeElementInsertType insert_type = drop_data->insert_type;
@@ -1472,7 +1476,7 @@ static int outliner_item_drag_drop_invoke(bContext *C,
     WM_drag_add_ID(drag, data.drag_id, data.drag_parent);
   }
 
-  ED_outliner_select_sync_from_all_tag(C);
+  ED_outliner_select_sync_from_outliner(C, soops);
 
   return (OPERATOR_FINISHED | OPERATOR_PASS_THROUGH);
 }
