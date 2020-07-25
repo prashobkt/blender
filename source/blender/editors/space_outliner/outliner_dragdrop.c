@@ -299,20 +299,28 @@ static bPoseChannel *outliner_bone_from_tree_element_and_parents(TreeElement *te
   return NULL;
 }
 
-static int outliner_get_insert_index(TreeElement *te,
+static int outliner_get_insert_index(TreeElement *drag_te,
+                                     TreeElement *drop_te,
                                      TreeElementInsertType insert_type,
                                      ListBase *listbase)
 {
   /* Find the element to insert after. NULL is the start of the list. */
-  if (insert_type == TE_INSERT_BEFORE) {
-    te = te->prev;
+  if (drag_te->index < drop_te->index) {
+    if (insert_type == TE_INSERT_BEFORE) {
+      drop_te = drop_te->prev;
+    }
+  }
+  else {
+    if (insert_type == TE_INSERT_AFTER) {
+      drop_te = drop_te->next;
+    }
   }
 
-  if (te == NULL) {
+  if (drop_te == NULL) {
     return 0;
   }
 
-  return BLI_findindex(listbase, te->directdata);
+  return BLI_findindex(listbase, drop_te->directdata);
 }
 
 /* ******************** Parent Drop Operator *********************** */
@@ -949,6 +957,7 @@ static void uistack_drop_copy(bContext *C, OutlinerDropData *drop_data)
 
 static void uistack_drop_reorder(bContext *C, ReportList *reports, OutlinerDropData *drop_data)
 {
+  TreeElement *drag_te = drop_data->drag_te;
   TreeElement *drop_te = drop_data->drop_te;
   TreeStoreElem *tselem = TREESTORE(drop_data->drop_te);
   TreeElementInsertType insert_type = drop_data->insert_type;
@@ -959,11 +968,12 @@ static void uistack_drop_reorder(bContext *C, ReportList *reports, OutlinerDropD
   int index = 0;
   if (drop_data->drag_tselem->type == TSE_MODIFIER) {
     if (ob->type == OB_GPENCIL && ob_dst->type == OB_GPENCIL) {
-      index = outliner_get_insert_index(drop_te, insert_type, &ob->greasepencil_modifiers);
+      index = outliner_get_insert_index(
+          drag_te, drop_te, insert_type, &ob->greasepencil_modifiers);
       ED_object_gpencil_modifier_move_to_index(reports, ob, drop_data->drag_directdata, index);
     }
     else if (ob->type != OB_GPENCIL && ob_dst->type != OB_GPENCIL) {
-      index = outliner_get_insert_index(drop_te, insert_type, &ob->modifiers);
+      index = outliner_get_insert_index(drag_te, drop_te, insert_type, &ob->modifiers);
       ED_object_modifier_move_to_index(reports, ob, drop_data->drag_directdata, index);
     }
 
@@ -973,16 +983,16 @@ static void uistack_drop_reorder(bContext *C, ReportList *reports, OutlinerDropD
   else if (drop_data->drag_tselem->type == TSE_CONSTRAINT) {
     if (drop_data->bone_parent) {
       index = outliner_get_insert_index(
-          drop_te, insert_type, &drop_data->bone_parent->constraints);
+          drag_te, drop_te, insert_type, &drop_data->bone_parent->constraints);
     }
     else {
-      index = outliner_get_insert_index(drop_te, insert_type, &ob->constraints);
+      index = outliner_get_insert_index(drag_te, drop_te, insert_type, &ob->constraints);
     }
     ED_object_constraint_move_to_index(reports, ob, drop_data->drag_directdata, index);
     WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT, ob);
   }
   else if (drop_data->drag_tselem->type == TSE_EFFECT) {
-    index = outliner_get_insert_index(drop_te, insert_type, &ob->shader_fx);
+    index = outliner_get_insert_index(drag_te, drop_te, insert_type, &ob->shader_fx);
     ED_object_shaderfx_move_to_index(reports, ob, drop_data->drag_directdata, index);
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_OBJECT | ND_SHADERFX, ob);
