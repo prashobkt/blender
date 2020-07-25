@@ -49,22 +49,6 @@ class GpencilExporter {
   char out_filename[FILE_MAX];
 };
 
-class GpencilExporterSVG : public GpencilExporter {
-
- public:
-  GpencilExporterSVG(const struct GpencilExportParams *params);
-  bool write(void);
-
- private:
-  /* XML doc. */
-  pugi::xml_document doc;
-  /* Main document node. */
-  pugi::xml_node main_node;
-
-  void create_document_header(void);
-  void layers_loop(void);
-};
-
 }  // namespace gpencil
 }  // namespace io
 }  // namespace blender

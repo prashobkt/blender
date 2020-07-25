@@ -142,6 +142,8 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 
   gpencil_io_export(&params);
 
+  BKE_report(op->reports, RPT_INFO, "SVG export file created");
+
   return OPERATOR_FINISHED;
 }
 

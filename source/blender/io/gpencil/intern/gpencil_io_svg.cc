@@ -26,14 +26,12 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
-#include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_gpencil_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
-#include "DNA_space_types.h"
 
 #ifdef WIN32
 #  include "utfconv.h"
@@ -52,24 +50,13 @@ namespace blender {
 namespace io {
 namespace gpencil {
 
-void GpencilExporter::set_out_filename(struct bContext *C, char *filename)
-{
-  Main *bmain = CTX_data_main(C);
-  BLI_strncpy(out_filename, filename, FILE_MAX);
-  BLI_path_abs(out_filename, BKE_main_blendfile_path(bmain));
-
-  //#ifdef WIN32
-  //  UTF16_ENCODE(svg_filename);
-  //#endif
-}
-
 /* Constructor. */
 GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *params)
 {
   this->params.frame_start = params->frame_start;
   this->params.frame_end = params->frame_end;
   this->params.ob = params->ob;
-  this->region = params->region;
+  this->params.region = params->region;
   this->params.C = params->C;
   this->params.filename = params->filename;
   this->params.mode = params->mode;
@@ -78,47 +65,12 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *params)
   set_out_filename(params->C, params->filename);
 }
 
-/* Convert to screen space.
- * TODO: Cleanup using a more generic BKE function. */
-static bool gpencil_3d_point_to_screen_space(ARegion *region,
-                                             const float diff_mat[4][4],
-                                             const float co[3],
-                                             int r_co[2])
-{
-  float parent_co[3];
-  mul_v3_m4v3(parent_co, diff_mat, co);
-  int screen_co[2];
-  eV3DProjTest test = (eV3DProjTest)(V3D_PROJ_RET_CLIP_BB | V3D_PROJ_RET_CLIP_WIN);
-  if (ED_view3d_project_int_global(region, parent_co, screen_co, test) == V3D_PROJ_RET_OK) {
-    if (!ELEM(V2D_IS_CLIPPED, screen_co[0], screen_co[1])) {
-      copy_v2_v2_int(r_co, screen_co);
-      return true;
-    }
-  }
-  r_co[0] = V2D_IS_CLIPPED;
-  r_co[1] = V2D_IS_CLIPPED;
-  return false;
-}
-
 /* Main write method for SVG format. */
 bool GpencilExporterSVG::write(void)
 {
   create_document_header();
   layers_loop();
 
-  //// add description node with text child
-  // pugi::xml_node descr = main_node.append_child("object");
-  // descr.append_child(pugi::node_pcdata).set_value(ob->id.name + 2);
-
-  //// add param node before the description
-  // pugi::xml_node param = main_node.insert_child_before("param", descr);
-
-  //// add attributes to param node
-  // param.append_attribute("name") = "version";
-  // param.append_attribute("value") = 1.1;
-  // param.insert_attribute_after("type", param.attribute("name")) = "float";
-
-  // end::code[]
   doc.save_file(out_filename);
 
   return true;
@@ -127,7 +79,8 @@ bool GpencilExporterSVG::write(void)
 /* Create document header and main svg node. */
 void GpencilExporterSVG::create_document_header(void)
 {
-  Scene *scene = CTX_data_scene(params.C);
+  int x = params.region->winx;
+  int y = params.region->winy;
 
   /* Add a custom document declaration node */
   pugi::xml_node decl = doc.prepend_child(pugi::node_declaration);
@@ -146,18 +99,22 @@ void GpencilExporterSVG::create_document_header(void)
   main_node.append_attribute("version").set_value("1.0");
   main_node.append_attribute("x").set_value("0px");
   main_node.append_attribute("y").set_value("0px");
-  main_node.append_attribute("width").set_value(std::to_string(scene->r.xsch).c_str());
-  main_node.append_attribute("height").set_value(std::to_string(scene->r.ysch).c_str());
-  std::string viewbox = "0 0 " + std::to_string(scene->r.xsch) + " " +
-                        std::to_string(scene->r.ysch);
+
+  std::string width = std::to_string(x) + "px";
+  std::string height = std::to_string(y) + "px";
+  main_node.append_attribute("width").set_value(width.c_str());
+  main_node.append_attribute("height").set_value(height.c_str());
+  std::string viewbox = "0 0 " + std::to_string(x) + " " + std::to_string(y);
   main_node.append_attribute("viewBox").set_value(viewbox.c_str());
 }
 
 /* Main layer loop. */
 void GpencilExporterSVG::layers_loop(void)
 {
+  float color[3] = {1.0f, 0.5f, 0.01f};
+  std::string hex = rgb_to_hex(color);
+
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(params.C);
-  Scene *scene = CTX_data_scene(params.C);
   Object *ob = params.ob;
 
   bGPdata *gpd = (bGPdata *)ob->data;
@@ -189,13 +146,16 @@ void GpencilExporterSVG::layers_loop(void)
         }
         bGPDspoint *pt = &gps->points[i];
         int screen_co[2];
-        gpencil_3d_point_to_screen_space(region, diff_mat, &pt->x, screen_co);
+        gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
         /* Invert Y axis. */
-        int y = scene->r.ysch - screen_co[1];
+        int y = params.region->winy - screen_co[1];
         txt.append(std::to_string(screen_co[0]) + "," + std::to_string(y));
       }
       /* Close patch (cyclic)*/
-      // txt.append("z");
+      if (gps->flag & GP_STROKE_CYCLIC) {
+        txt.append("z");
+      }
+
       gps_node.append_attribute("d").set_value(txt.c_str());
     }
   }

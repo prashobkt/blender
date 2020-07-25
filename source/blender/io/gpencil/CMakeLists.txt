@@ -40,11 +40,13 @@ set(INC_SYS
 )
 
 set(SRC
+ intern/gpencil_io_base.cc
  intern/gpencil_io_capi.cc
  intern/gpencil_io_svg.cc
 
  gpencil_io_exporter.h
  intern/gpencil_io_svg.h
+intern/gpencil_io_base.h
 )
 
 set(LIB
