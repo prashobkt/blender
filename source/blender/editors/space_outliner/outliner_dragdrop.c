@@ -26,6 +26,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_collection_types.h"
+#include "DNA_constraint_types.h"
 #include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
@@ -906,6 +907,7 @@ static bool uistack_drop_poll(bContext *C,
 
 static void uistack_drop_link(bContext *C, OutlinerDropData *drop_data)
 {
+  Main *bmain = CTX_data_main(C);
   TreeStoreElem *tselem = TREESTORE(drop_data->drop_te);
   Object *ob_dst = (Object *)tselem->id;
 
@@ -915,6 +917,29 @@ static void uistack_drop_link(bContext *C, OutlinerDropData *drop_data)
     DEG_id_tag_update(&ob_dst->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
   }
   else if (drop_data->drag_tselem->type == TSE_CONSTRAINT_BASE) {
+    ListBase *src;
+
+    if (drop_data->bone_parent) {
+      src = &drop_data->bone_parent->constraints;
+    }
+    else {
+      src = &drop_data->ob_parent->constraints;
+    }
+
+    ListBase *dst;
+    if (tselem->type == TSE_POSE_CHANNEL) {
+      bPoseChannel *pchan = (bPoseChannel *)drop_data->drop_te->directdata;
+      dst = &pchan->constraints;
+    }
+    else {
+      dst = &ob_dst->constraints;
+    }
+
+    BKE_constraints_copy(dst, src, true);
+    LISTBASE_FOREACH (bConstraint *, con, dst) {
+      ED_object_constraint_dependency_tag_update(bmain, ob_dst, con);
+    }
+    WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT | NA_ADDED, NULL);
   }
   else if (drop_data->drag_tselem->type == TSE_EFFECT_BASE) {
   }
