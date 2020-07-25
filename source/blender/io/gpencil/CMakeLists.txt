@@ -13,75 +13,52 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# The Original Code is Copyright (C) 2006, Blender Foundation
+# All rights reserved.
 # ***** END GPL LICENSE BLOCK *****
 
 set(INC
-  ../include
+  .
+  ../common
   ../../blenkernel
   ../../blenlib
-  ../../blentranslation
+  ../../blenloader
   ../../bmesh
   ../../depsgraph
-  ../../io/alembic
-  ../../io/collada
-  ../../io/gpencil
-  ../../io/usd
+  ../../editors/include
   ../../makesdna
   ../../makesrna
   ../../windowmanager
+  ../../../../intern/clog
   ../../../../intern/guardedalloc
+  ../../../../intern/utfconv
 )
 
 set(INC_SYS
-
+  ${PUGIXML_INCLUDE_DIRS}
 )
 
 set(SRC
-  io_alembic.c
-  io_cache.c
-  io_collada.c
-  io_gpencil.c
-  io_ops.c
-  io_usd.c
+ intern/gpencil_io_base.cc
+ intern/gpencil_io_capi.cc
+ intern/gpencil_io_svg.cc
 
-  io_alembic.h
-  io_cache.h
-  io_collada.h
-  io_gpencil.h
-  io_ops.h
-  io_usd.h
+ gpencil_io_exporter.h
+ intern/gpencil_io_svg.h
+intern/gpencil_io_base.h
 )
 
 set(LIB
   bf_blenkernel
   bf_blenlib
+  bf_io_common
+
+  #${PUGIXML_LIBRARIES}
 )
 
-if(WITH_OPENCOLLADA)
-  list(APPEND LIB
-    bf_collada
-  )
-  add_definitions(-DWITH_COLLADA)
-endif()
+list(APPEND LIB
+  ${BOOST_LIBRARIES}
+)
 
-if(WITH_ALEMBIC)
-  list(APPEND LIB
-    bf_alembic
-  )
-  add_definitions(-DWITH_ALEMBIC)
-endif()
-
-if(WITH_USD)
-  list(APPEND LIB
-    bf_usd
-  )
-  add_definitions(-DWITH_USD)
-endif()
-
-if(WITH_INTERNATIONAL)
-  add_definitions(-DWITH_INTERNATIONAL)
-endif()
-
-list(APPEND LIB bf_gpencil)
-
-blender_add_lib(bf_editor_io "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+blender_add_lib(bf_gpencil "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

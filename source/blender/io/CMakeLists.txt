@@ -35,3 +35,6 @@ endif()
 if(WITH_USD)
   add_subdirectory(usd)
 endif()
+
+add_subdirectory(gpencil)
+
