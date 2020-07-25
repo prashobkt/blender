@@ -3494,6 +3494,7 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
     }
 
     ED_lineart_chain_connect(rb, 1);
+    ED_lineart_chain_clear_picked_flag(rb);
     ED_lineart_chain_connect(rb, 0);
 
     /* This configuration ensures there won't be accidental lost of short segments */

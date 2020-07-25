@@ -661,7 +661,8 @@ LineartChainRegisterEntry *lineart_chain_get_closest_cre(LineartRenderBuffer *rb
                                                          LineartRenderLineChainItem *rlci,
                                                          int occlusion,
                                                          float dist,
-                                                         int do_geometry_space)
+                                                         int do_geometry_space,
+                                                         float *result_new_len)
 {
 
   LineartChainRegisterEntry *cre, *next_cre, *closest_cre = NULL;
@@ -704,6 +705,9 @@ LineartChainRegisterEntry *lineart_chain_get_closest_cre(LineartRenderBuffer *rb
     if (new_len < dist) {
       closest_cre = cre;
       dist = new_len;
+      if (result_new_len) {
+        (*result_new_len) = new_len;
+      }
     }
   }
   return closest_cre;
@@ -714,10 +718,11 @@ LineartChainRegisterEntry *lineart_chain_get_closest_cre(LineartRenderBuffer *rb
 void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_space)
 {
   LineartRenderLineChain *rlc;
-  LineartRenderLineChainItem *rlci;
-  LineartBoundingArea *ba;
+  LineartRenderLineChainItem *rlci, *rlci_guard;
+  LineartBoundingArea *ba, *ba_guard;
   LineartChainRegisterEntry *closest_cre_l, *closest_cre_r;
   float dist = do_geometry_space ? rb->chaining_geometry_threshold : rb->chaining_image_threshold;
+  float new_len;
   int occlusion;
   ListBase swap = {0};
 
@@ -743,13 +748,32 @@ void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_spa
     occlusion = ((LineartRenderLineChainItem *)rlc->chain.first)->occlusion;
 
     rlci = rlc->chain.last;
+    rlci_guard = rlc->chain.first;
+    if (rlci_guard) {
+      ba_guard = lineart_bounding_area_get_end_point(rb, rlci_guard);
+    }
     while (rlci && ((ba = lineart_bounding_area_get_end_point(rb, rlci)) != NULL)) {
+      closest_cre_l = NULL;
       if (ba->linked_chains.first == NULL) {
         break;
       }
       closest_cre_l = lineart_chain_get_closest_cre(
-          rb, ba, rlc, rlci, occlusion, dist, do_geometry_space);
+          rb, ba, rlc, rlci, occlusion, dist, do_geometry_space, &new_len);
       if (closest_cre_l) {
+        if (ba_guard == ba) {
+          /* Technically shouldn't do bounding areas here, but the looping bug can only possibly
+           * occur when ba_guard==ba*/
+          /* Todo in the future: robust chaining with near-bounding area implementation would get
+           * rid of this hack */
+          float guard_len = do_geometry_space ?
+                                len_v3v3(rlci_guard->gpos, closest_cre_l->rlci->gpos) :
+                                len_v2v2(rlci_guard->pos, closest_cre_l->rlci->pos);
+          if (guard_len < new_len) {
+            /* The point is actually closet to the other end of this line, thus do not chain right
+             * now. */
+            break;
+          }
+        }
         closest_cre_l->picked = 1;
         closest_cre_l->rlc->picked = 1;
         BLI_remlink(&ba->linked_chains, closest_cre_l);
@@ -774,7 +798,7 @@ void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_spa
         break;
       }
       closest_cre_r = lineart_chain_get_closest_cre(
-          rb, ba, rlc, rlci, occlusion, dist, do_geometry_space);
+          rb, ba, rlc, rlci, occlusion, dist, do_geometry_space, NULL);
       if (closest_cre_r) {
         closest_cre_r->picked = 1;
         closest_cre_r->rlc->picked = 1;
