@@ -150,14 +150,22 @@ void GpencilExporterSVG::export_layers(void)
     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
       Material *ma = BKE_object_material_get(ob, gps->mat_nr + 1);
       MaterialGPencilStyle *gp_style = ma->gp_style;
+      bool is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
+                        (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
+      bool is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
+                      (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
+
       /* Fill. */
-      if (gp_style->flag & GP_MATERIAL_FILL_SHOW) {
+      if (is_fill) {
         export_stroke(gpl_node, gps, ma, diff_mat);
       }
+
       /* Stroke. */
-      if (gp_style->flag & GP_MATERIAL_STROKE_SHOW) {
+      if (is_stroke) {
+        /* Create a duplicate to avoid any transformation. */
+        bGPDstroke *gps_tmp = BKE_gpencil_stroke_duplicate(gps, true);
         bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
-            rv3d, gpd, gpl, gps, 3, diff_mat);
+            rv3d, gpd, gpl, gps_tmp, 3, diff_mat);
 
         /* Reproject and sample stroke. */
         // ED_gpencil_project_stroke_to_view(params.C, gpl, gps_perimeter);
@@ -166,6 +174,7 @@ void GpencilExporterSVG::export_layers(void)
         export_stroke(gpl_node, gps_perimeter, ma, diff_mat);
 
         BKE_gpencil_free_stroke(gps_perimeter);
+        BKE_gpencil_free_stroke(gps_tmp);
       }
     }
   }
@@ -227,24 +236,30 @@ void GpencilExporterSVG::export_style_list(void)
   for (int i = 0; i < mat_len; i++) {
     Material *ma = BKE_object_material_get(ob, i + 1);
     MaterialGPencilStyle *gp_style = ma->gp_style;
+
+    bool is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
+                      (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
+    bool is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
+                    (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
+
     txt.append("\n\t.");
     txt.append(to_lower_string(ma->id.name + 2).c_str());
 
     txt.append("{");
-    if (gp_style->flag & GP_MATERIAL_FILL_SHOW) {
+    if (is_fill) {
       linearrgb_to_srgb_v3_v3(col, gp_style->fill_rgba);
 
       txt.append("fill:" + rgb_to_hex(col) + ";");
-      if ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) == 0) {
+      if (!is_stroke) {
         txt.append("stroke:" + rgb_to_hex(col) + ";");
       }
     }
 
-    if (gp_style->flag & GP_MATERIAL_STROKE_SHOW) {
+    if (is_stroke) {
       linearrgb_to_srgb_v3_v3(col, gp_style->stroke_rgba);
 
       txt.append("stroke:" + rgb_to_hex(col) + ";");
-      if ((gp_style->flag & GP_MATERIAL_FILL_SHOW) == 0) {
+      if (!is_fill) {
         txt.append("fill:" + rgb_to_hex(col) + ";");
       }
     }

@@ -116,8 +116,15 @@ std::string GpencilExporter::rgb_to_hex(float color[3])
 std::string GpencilExporter::to_lower_string(char *input_text)
 {
   ::std::string text = input_text;
+  size_t found = text.find_first_of(".");
+  while (found != std::string::npos) {
+    text[found] = '_';
+    found = text.find_first_of(".", found + 1);
+  }
+
   std::transform(
       text.begin(), text.end(), text.begin(), [](unsigned char c) { return std::tolower(c); });
+
   return text;
 }
 
