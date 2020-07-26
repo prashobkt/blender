@@ -325,6 +325,8 @@ std::ostream &operator<<(std::ostream &os, Facep f)
  * ensure that only one instance of a Vert with a given co_exact will
  * exist. I.e., it dedups the vertices.
  */
+
+// #define USE_SPINLOCK
 class MArena::MArenaImpl {
 
   /* Don't use Vert itself as key since resizing may move
@@ -361,13 +363,21 @@ class MArena::MArenaImpl {
   int next_face_id_ = 0;
 
   /* Need a lock when multithreading to protect allocation of new elements. */
+#ifdef USE_SPINLOCK
   SpinLock lock_;
+#else
+  ThreadMutex *mutex_;
+#endif
 
  public:
   MArenaImpl()
   {
     if (intersect_use_threading) {
+#ifdef USE_SPINLOCK
       BLI_spin_init(&lock_);
+#else
+      mutex_ = BLI_mutex_alloc();
+#endif
     }
   }
   MArenaImpl(const MArenaImpl &) = delete;
@@ -375,7 +385,11 @@ class MArena::MArenaImpl {
   ~MArenaImpl()
   {
     if (intersect_use_threading) {
+#ifdef USE_SPINLOCK
       BLI_spin_end(&lock_);
+#else
+      BLI_mutex_free(mutex_);
+#endif
     }
   }
 
@@ -412,11 +426,19 @@ class MArena::MArenaImpl {
   {
     Face *f = new Face(verts, next_face_id_++, orig, edge_origs, is_intersect);
     if (intersect_use_threading) {
+#ifdef USE_SPINLOCK
       BLI_spin_lock(&lock_);
+#else
+      BLI_mutex_lock(mutex_);
+#endif
     }
     allocated_faces_.append(std::unique_ptr<Face>(f));
     if (intersect_use_threading) {
+#ifdef USE_SPINLOCK
       BLI_spin_unlock(&lock_);
+#else
+      BLI_mutex_unlock(mutex_);
+#endif
     }
     return f;
   }
@@ -440,7 +462,11 @@ class MArena::MArenaImpl {
     Vert vtry(co, double3(), NO_INDEX, NO_INDEX);
     VSetKey vskey(&vtry);
     if (intersect_use_threading) {
+#ifdef USE_SPINLOCK
       BLI_spin_lock(&lock_);
+#else
+      BLI_mutex_lock(mutex_);
+#endif
     }
     int i = vset_.index_of_try(vskey);
     if (i == -1) {
@@ -450,7 +476,11 @@ class MArena::MArenaImpl {
       ans = vset_[i].vert;
     }
     if (intersect_use_threading) {
+#ifdef USE_SPINLOCK
       BLI_spin_unlock(&lock_);
+#else
+      BLI_mutex_unlock(mutex_);
+#endif
     }
     return ans;
   }
@@ -480,7 +510,11 @@ class MArena::MArenaImpl {
     Vertp ans;
     VSetKey vskey(&vtry);
     if (intersect_use_threading) {
+#ifdef USE_SPINLOCK
       BLI_spin_lock(&lock_);
+#else
+      BLI_mutex_lock(mutex_);
+#endif
     }
     int i = vset_.index_of_try(vskey);
     if (i == -1) {
@@ -500,7 +534,11 @@ class MArena::MArenaImpl {
       ans = vset_[i].vert;
     }
     if (intersect_use_threading) {
+#ifdef USE_SPINLOCK
       BLI_spin_unlock(&lock_);
+#else
+      BLI_mutex_unlock(mutex_);
+#endif
     }
     return ans;
   };
