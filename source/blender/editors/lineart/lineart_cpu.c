@@ -3626,7 +3626,8 @@ void ED_lineart_gpencil_generate_from_chain(Depsgraph *depsgraph,
                                             Collection *col,
                                             int types,
                                             short thickness,
-                                            float opacity)
+                                            float opacity,
+                                            float pre_sample_length)
 {
   LineartRenderBuffer *rb = lineart_share.render_buffer_shared;
 
@@ -3710,6 +3711,9 @@ void ED_lineart_gpencil_generate_from_chain(Depsgraph *depsgraph,
 
     BKE_gpencil_stroke_add_points(gps, stroke_data, count, mat);
     gps->mat_nr = material_nr;
+    if (pre_sample_length > 0.0001) {
+      BKE_gpencil_stroke_sample(gps, pre_sample_length, false);
+    }
     if (G.debug_value == 4000) {
       BKE_gpencil_stroke_set_random_color(gps);
     }
@@ -3752,7 +3756,8 @@ void ED_lineart_gpencil_generate_strokes_direct(Depsgraph *depsgraph,
                                                 int mat_nr,
                                                 short line_types,
                                                 short thickness,
-                                                float opacity)
+                                                float opacity,
+                                                float pre_sample_length)
 {
 
   if (!gpl || !gpf || !source_reference || !ob) {
@@ -3781,7 +3786,8 @@ void ED_lineart_gpencil_generate_strokes_direct(Depsgraph *depsgraph,
                                          source_collection,
                                          use_types,
                                          thickness,
-                                         opacity);
+                                         opacity,
+                                         pre_sample_length);
 }
 
 static int lineart_gpencil_update_strokes_exec(bContext *C, wmOperator *UNUSED(op))
@@ -3878,7 +3884,8 @@ static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op)
                     0,
                 lmd->line_types,
                 lmd->thickness,
-                lmd->opacity);
+                lmd->opacity,
+                lmd->pre_sample_length);
           }
         }
       }

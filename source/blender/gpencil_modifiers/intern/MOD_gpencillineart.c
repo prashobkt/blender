@@ -102,7 +102,8 @@ static void generate_strokes_actual(
       lmd->target_material ? BKE_gpencil_object_material_index_get(ob, lmd->target_material) : 0,
       lmd->line_types,
       lmd->thickness,
-      lmd->opacity);
+      lmd->opacity,
+      lmd->pre_sample_length);
 }
 
 static bool isModifierDisabled(GpencilModifierData *md)
@@ -354,6 +355,8 @@ static void occlusion_panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &ptr, "thickness", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "opacity", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
+
+  uiItemR(layout, &ptr, "pre_sample_length", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 
   bool use_multiple_levels = RNA_boolean_get(&ptr, "use_multiple_levels");
 

@@ -828,6 +828,9 @@ typedef struct LineartGpencilModifierData {
   short thickness;
   short _pad;
 
+  float pre_sample_length;
+  int _pad2;
+
 } LineartGpencilModifierData;
 
 #endif /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */

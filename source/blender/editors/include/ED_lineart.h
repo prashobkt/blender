@@ -525,7 +525,8 @@ void ED_lineart_gpencil_generate_from_chain(struct Depsgraph *depsgraph,
                                             struct Collection *col,
                                             int types,
                                             short thickness,
-                                            float opacity);
+                                            float opacity,
+                                            float pre_sample_length);
 void ED_lineart_gpencil_generate_strokes_direct(struct Depsgraph *depsgraph,
                                                 struct Object *ob,
                                                 struct bGPDlayer *gpl,
@@ -537,7 +538,8 @@ void ED_lineart_gpencil_generate_strokes_direct(struct Depsgraph *depsgraph,
                                                 int mat_nr,
                                                 short line_types,
                                                 short thickness,
-                                                float opacity);
+                                                float opacity,
+                                                float pre_sample_length);
 
 struct bContext;
 

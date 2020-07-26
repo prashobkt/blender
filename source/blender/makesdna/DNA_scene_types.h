@@ -1717,15 +1717,22 @@ typedef enum eLineartMainFlags {
 typedef struct SceneLineart {
   int flags;
 
-  /* line_types is used to select line types in global scope, especially when Fuzzy chaining is
+  /** line_types is used to select line types in global scope, especially when Fuzzy chaining is
    * enabled. See DNA_lineart_types.h for edge flags.
    */
   int line_types;
 
-  /* shared */
+  /* Shared */
+  /** Reserved for suggestive contour */
+  float contour_fade;
 
-  float contour_fade;     /* for dpix contour fading,reserved for future usage */
-  float crease_threshold; /* 0-1 range for cosine angle */
+  /** 0-1 range for cosine angle */
+  float crease_threshold;
+
+  int _pad;
+
+  /** cosine angle, for splitting strokes at sharp points */
+  float separation_angle;
 
   /* CPU mode */
   float chaining_geometry_threshold;
