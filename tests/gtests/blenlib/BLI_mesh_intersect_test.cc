@@ -12,14 +12,15 @@
 #include "BLI_math_mpq.hh"
 #include "BLI_mesh_intersect.hh"
 #include "BLI_mpq3.hh"
+#include "BLI_task.h"
 #include "BLI_vector.hh"
 
 #define DO_REGULAR_TESTS 1
-#define DO_PERF_TESTS 1
+#define DO_PERF_TESTS 0
 
 namespace blender::meshintersect {
 
-constexpr bool DO_OBJ = false;
+constexpr bool DO_OBJ = true;
 
 /* Build and hold a Mesh from a string spec. Also hold and own resources used by Mesh. */
 class MeshBuilder {
@@ -651,6 +652,7 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
   if (nrings < 2) {
     return;
   }
+  BLI_task_scheduler_init(); /* Without this, no parallelism. */
   double time_start = PIL_check_seconds_timer();
   MArena arena;
   bool triangulate = true;
@@ -816,11 +818,12 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
   std::cout << "Intersect time: " << time_intersect - time_create << "\n";
   std::cout << "Total time: " << time_intersect - time_start << "\n";
   // write_obj_mesh(out, "spheresphere");
+  BLI_task_scheduler_exit();
 }
 
 TEST(mesh_intersect_perf, SphereSphere)
 {
-  spheresphere_test(64, 0.5, false);
+  spheresphere_test(256, 0.5, false);
 }
 
 #endif

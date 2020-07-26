@@ -30,6 +30,8 @@
 #include "BLI_mpq2.hh"
 #include "BLI_mpq3.hh"
 #include "BLI_span.hh"
+#include "BLI_task.h"
+#include "BLI_threads.h"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
@@ -42,9 +44,13 @@ namespace blender::meshintersect {
 #ifdef PERFDEBUG
 static void perfdata_init(void);
 static void incperfcount(int countnum);
+static void bumpperfcount(int countnum, int amt);
 static void doperfmax(int maxnum, int val);
 static void dump_perfdata(void);
 #endif
+
+/* For debugging, can disable threading in intersect code with this static constant. */
+static constexpr bool intersect_use_threading = true;
 
 Vert::Vert(const mpq3 &mco, const double3 &dco, int id, int orig)
     : co_exact(mco), co(dco), id(id), orig(orig)
@@ -354,11 +360,24 @@ class MArena::MArenaImpl {
   int next_vert_id_ = 0;
   int next_face_id_ = 0;
 
+  /* Need a lock when multithreading to protect allocation of new elements. */
+  SpinLock lock_;
+
  public:
-  MArenaImpl() = default;
+  MArenaImpl()
+  {
+    if (intersect_use_threading) {
+      BLI_spin_init(&lock_);
+    }
+  }
   MArenaImpl(const MArenaImpl &) = delete;
   MArenaImpl(MArenaImpl &&) = delete;
-  ~MArenaImpl() = default;
+  ~MArenaImpl()
+  {
+    if (intersect_use_threading) {
+      BLI_spin_end(&lock_);
+    }
+  }
 
   void reserve(int vert_num_hint, int face_num_hint)
   {
@@ -392,42 +411,55 @@ class MArena::MArenaImpl {
   Facep add_face(Span<Vertp> verts, int orig, Span<int> edge_origs, Span<bool> is_intersect)
   {
     Face *f = new Face(verts, next_face_id_++, orig, edge_origs, is_intersect);
+    if (intersect_use_threading) {
+      BLI_spin_lock(&lock_);
+    }
     allocated_faces_.append(std::unique_ptr<Face>(f));
+    if (intersect_use_threading) {
+      BLI_spin_unlock(&lock_);
+    }
     return f;
   }
 
   Facep add_face(Span<Vertp> verts, int orig, Span<int> edge_origs)
   {
     Array<bool> is_intersect(verts.size(), false);
-    Face *f = new Face(verts, next_face_id_++, orig, edge_origs, is_intersect);
-    allocated_faces_.append(std::unique_ptr<Face>(f));
-    return f;
+    return add_face(verts, orig, edge_origs, is_intersect);
   }
 
   Facep add_face(Span<Vertp> verts, int orig)
   {
     Array<int> edge_origs(verts.size(), NO_INDEX);
     Array<bool> is_intersect(verts.size(), false);
-    Face *f = new Face(verts, next_face_id_++, orig, edge_origs, is_intersect);
-    allocated_faces_.append(std::unique_ptr<Face>(f));
-    return f;
+    return add_face(verts, orig, edge_origs, is_intersect);
   }
 
-  Vertp find_vert(const mpq3 &co) const
+  Vertp find_vert(const mpq3 &co)
   {
+    Vertp ans;
     Vert vtry(co, double3(), NO_INDEX, NO_INDEX);
     VSetKey vskey(&vtry);
+    if (intersect_use_threading) {
+      BLI_spin_lock(&lock_);
+    }
     int i = vset_.index_of_try(vskey);
     if (i == -1) {
-      return nullptr;
+      ans = nullptr;
     }
-    return vset_[i].vert;
+    else {
+      ans = vset_[i].vert;
+    }
+    if (intersect_use_threading) {
+      BLI_spin_unlock(&lock_);
+    }
+    return ans;
   }
 
   /* This is slow. Only used for unit tests right now.
+   * Since it is only used for that purpose, access is not lock-protected.
    * The argument vs can be a cyclic shift of the actual stored Face.
    */
-  Facep find_face(Span<Vertp> vs) const
+  Facep find_face(Span<Vertp> vs)
   {
     Array<int> eorig(vs.size(), NO_INDEX);
     Array<bool> is_intersect(vs.size(), false);
@@ -445,21 +477,32 @@ class MArena::MArenaImpl {
   {
     /* Don't allocate Vert yet, in case it is already there. */
     Vert vtry(mco, dco, NO_INDEX, NO_INDEX);
+    Vertp ans;
     VSetKey vskey(&vtry);
+    if (intersect_use_threading) {
+      BLI_spin_lock(&lock_);
+    }
     int i = vset_.index_of_try(vskey);
     if (i == -1) {
       vskey.vert = new Vert(mco, dco, next_vert_id_++, orig);
       vset_.add_new(vskey);
       allocated_verts_.append(std::unique_ptr<Vert>(vskey.vert));
-      return vskey.vert;
+      ans = vskey.vert;
     }
-    /* It was a dup, so return the existing one.
-     * Note that the returned Vert may have a different orig.
-     * This is the intended semantics: if the Vert already
-     * exists then we are merging verts and using the first-seen
-     * one as the canonical one.
-     */
-    return vset_[i].vert;
+    else {
+      /* It was a dup, so return the existing one.
+       * Note that the returned Vert may have a different orig.
+       * This is the intended semantics: if the Vert already
+       * exists then we are merging verts and using the first-seen
+       * one as the canonical one.
+       */
+
+      ans = vset_[i].vert;
+    }
+    if (intersect_use_threading) {
+      BLI_spin_unlock(&lock_);
+    }
+    return ans;
   };
 };
 
@@ -2352,6 +2395,58 @@ class TriOverlaps {
   }
 };
 
+/* Data needed for parallelization of calc_subdivided_tris. */
+
+struct OverlapTriRange {
+  int tri_index;
+  int overlap_start;
+  int len;
+};
+struct SubdivideTrisData {
+  Array<Mesh> &r_tri_subdivided;
+  const Mesh &tm;
+  Span<BVHTreeOverlap> overlap;
+  MArena *arena;
+
+  /* This vector gives, for each tri in tm that has an intersection
+   * we want to calculate: what the index of that tri in tm is,
+   * where it starts in the ov structure as indexA, and how many
+   * overlap pairs have that same indexA (they will be continguous).
+   */
+  Vector<OverlapTriRange> overlap_tri_range;
+};
+
+static void calc_subdivided_tri_range_func(void *__restrict userdata,
+                                           const int iter,
+                                           const TaskParallelTLS *__restrict UNUSED(tls))
+{
+  int dbg_level = 0;
+  SubdivideTrisData *data = static_cast<SubdivideTrisData *>(userdata);
+  OverlapTriRange &otr = data->overlap_tri_range[iter];
+  int t = otr.tri_index;
+  if (dbg_level > 0) {
+    std::cout << "calc_subdivided_tri_range_func\nt=" << t << " start=" << otr.overlap_start
+              << " len=" << otr.len << "\n";
+  }
+  constexpr int inline_capacity = 100;
+  Vector<ITT_value, inline_capacity> itts(otr.len);
+  for (int j = otr.overlap_start; j < otr.overlap_start + otr.len; ++j) {
+    int t_other = data->overlap[j].indexB;
+    ITT_value itt = intersect_tri_tri(data->tm, t, t_other);
+    if (itt.kind != INONE) {
+      itts.append(itt);
+    }
+    if (dbg_level > 0) {
+      std::cout << "  tri t" << t_other << "; result = " << itt << "\n";
+    }
+  }
+  if (itts.size() > 0) {
+    CDT_data cd_data = prepare_cdt_input(data->tm, t, itts);
+    do_cdt(cd_data);
+    data->r_tri_subdivided[t] = extract_subdivided_tri(cd_data, data->tm, t, data->arena);
+  }
+}
+
 /* For each triangle in tm, fill in the corresponding slot in
  * r_tri_subdivided with the result of intersecting it with
  * all the other triangles in the mesh, if it intersects any others.
@@ -2369,49 +2464,41 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
   if (dbg_level > 0) {
     std::cout << "\nCALC_SUBDIVIDED_TRIS\n\n";
   }
-  int overlap_index = 0;
   Span<BVHTreeOverlap> overlap = ov.overlap();
+  SubdivideTrisData data = SubdivideTrisData{
+      .r_tri_subdivided = r_tri_subdivided, .tm = tm, .overlap = overlap, .arena = arena};
   int overlap_tot = overlap.size();
+  data.overlap_tri_range = Vector<OverlapTriRange>();
+  data.overlap_tri_range.reserve(overlap_tot);
+  int overlap_index = 0;
   while (overlap_index < overlap_tot) {
     int t = overlap[overlap_index].indexA;
     int i = overlap_index;
     while (i + 1 < overlap_tot && overlap[i + 1].indexA == t) {
       ++i;
     }
-    /* Now overlap[overlap_index] to overlap[i] have indexA == t. */
-    if (clinfo.tri_cluster(t) != NO_INDEX) {
-      /* Triangles in clusters are handled separately. */
-      overlap_index = i + 1;
-      continue;
-    }
-    if (dbg_level > 0) {
-      std::cout << "tri t" << t << " maybe intersects with:\n";
-    }
-    constexpr int inline_capacity = 100;
-    Vector<ITT_value, inline_capacity> itts;
-    for (int j = overlap_index; j <= i; ++j) {
-      int t_other = overlap[j].indexB;
-      if (t_other == t) {
-        continue;
-      }
+    /* Now overlap[overlap_index] to overlap[i] have indexA == t.
+     * We only record ranges for triangles that are not in clusters,
+     * because the ones in clusters are handled separately.
+     */
+    if (clinfo.tri_cluster(t) == NO_INDEX) {
+      int len = i - overlap_index + 1;
+      if (!(len == 1 && overlap[overlap_index].indexB == t)) {
+        OverlapTriRange range = {t, overlap_index, len};
+        data.overlap_tri_range.append(range);
 #ifdef PERFDEBUG
-      incperfcount(0); /* Overlaps. */
+        bumpperfcount(0, len); /* Overlaps. */
 #endif
-      ITT_value itt = intersect_tri_tri(tm, t, t_other);
-      if (itt.kind != INONE) {
-        itts.append(itt);
       }
-      if (dbg_level > 0) {
-        std::cout << "  tri t" << t_other << "; result = " << itt << "\n";
-      }
-    }
-    if (itts.size() > 0) {
-      CDT_data cd_data = prepare_cdt_input(tm, t, itts);
-      do_cdt(cd_data);
-      r_tri_subdivided[t] = extract_subdivided_tri(cd_data, tm, t, arena);
     }
     overlap_index = i + 1;
   }
+  int overlap_tri_range_tot = data.overlap_tri_range.size();
+  TaskParallelSettings settings;
+  BLI_parallel_range_settings_defaults(&settings);
+  settings.use_threading = (intersect_use_threading && overlap_tri_range_tot > 1000);
+  BLI_task_parallel_range(
+      0, overlap_tri_range_tot, &data, calc_subdivided_tri_range_func, &settings);
 }
 
 static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
@@ -2785,6 +2872,11 @@ static void perfdata_init(void)
 static void incperfcount(int countnum)
 {
   perfdata.count[countnum]++;
+}
+
+static void bumpperfcount(int countnum, int amt)
+{
+  perfdata.count[countnum] += amt;
 }
 
 static void doperfmax(int maxnum, int val)
