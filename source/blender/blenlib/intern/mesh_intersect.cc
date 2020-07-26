@@ -2695,7 +2695,7 @@ void write_obj_mesh(Mesh &m, const std::string &objname)
   /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
    * This is just for developer debugging anyway, and should never be called in production Blender.
    */
-#if WIN_32
+#ifdef _WIN_32
   const char *objdir = BLI_getenv("HOME");
 #else
   const char *objdir = "/tmp/";

@@ -387,7 +387,7 @@ template<typename T> void cdt_draw(const std::string &label, const CDTArrangemen
 /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
  * This is just for developer debugging anyway, and should never be called in production Blender.
  */
-#  if WIN32
+#  ifdef _WIN32
   const char *drawfile = "./debug_draw.html";
 #  else
   const char *drawfile = "/tmp/debug_draw.html";
