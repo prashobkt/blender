@@ -146,6 +146,8 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   char filename[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filename);
 
+  const bool only_active_frame = RNA_boolean_get(op->ptr, "only_active_frame");
+
   struct GpencilExportParams params = {
       .C = C,
       .region = region,
@@ -165,22 +167,37 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   }
 
   int oldframe = (int)DEG_get_ctime(depsgraph);
+  bool done = false;
   for (int i = params.frame_start; i < params.frame_end + 1; i++) {
     if (is_keyframe_empty(gpd_eval, i)) {
+      if (only_active_frame) {
+        break;
+      }
       continue;
     }
 
-    CFRA = i;
-    BKE_scene_graph_update_for_newframe(depsgraph, bmain);
-    sprintf(params.frame, "%04d", i);
+    if (!only_active_frame) {
+      CFRA = i;
+      BKE_scene_graph_update_for_newframe(depsgraph, bmain);
+      sprintf(params.frame, "%04d", i);
+    }
 
     gpencil_io_export(&params);
-  }
-  /* return frame state and DB to original state */
-  CFRA = oldframe;
-  BKE_scene_graph_update_for_newframe(depsgraph, bmain);
+    done |= true;
 
-  BKE_report(op->reports, RPT_INFO, "SVG export file created");
+    if (only_active_frame) {
+      break;
+    }
+  }
+
+  /* Return frame state and DB to original state */
+  if (!only_active_frame) {
+    CFRA = oldframe;
+    BKE_scene_graph_update_for_newframe(depsgraph, bmain);
+  }
+  if (done) {
+    BKE_report(op->reports, RPT_INFO, "SVG export file created");
+  }
 
   return OPERATOR_FINISHED;
 }
@@ -197,9 +214,13 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
   row = uiLayoutRow(box, false);
   uiItemL(row, IFACE_("Scene Options"), ICON_SCENE_DATA);
 
+  row = uiLayoutRow(box, false);
+  uiItemR(row, imfptr, "only_active_frame", 0, NULL, ICON_NONE);
+
   col = uiLayoutColumn(box, false);
 
   sub = uiLayoutColumn(col, true);
+  uiLayoutSetActive(sub, !RNA_boolean_get(imfptr, "only_active_frame"));
   uiItemR(sub, imfptr, "start", 0, IFACE_("Frame Start"), ICON_NONE);
   uiItemR(sub, imfptr, "end", 0, IFACE_("End"), ICON_NONE);
 }
@@ -300,6 +321,8 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
               "take the end frame of the current scene",
               INT_MIN,
               INT_MAX);
+
+  RNA_def_boolean(ot->srna, "only_active_frame", true, "Active Frame", "Export only active frame");
 
   /* This dummy prop is used to check whether we need to init the start and
    * end frame values to that of the scene's, otherwise they are reset at
