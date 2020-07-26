@@ -78,7 +78,8 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(struct ARegion *region,
   float parent_co[3];
   mul_v3_m4v3(parent_co, diff_mat, co);
   float screen_co[2];
-  eV3DProjTest test = (eV3DProjTest)(V3D_PROJ_RET_CLIP_BB | V3D_PROJ_RET_CLIP_WIN);
+  //  eV3DProjTest test = (eV3DProjTest)(V3D_PROJ_RET_CLIP_BB | V3D_PROJ_RET_CLIP_WIN);
+  eV3DProjTest test = (eV3DProjTest)(V3D_PROJ_RET_OK);
   if (ED_view3d_project_float_global(region, parent_co, screen_co, test) == V3D_PROJ_RET_OK) {
     if (!ELEM(V2D_IS_CLIPPED, screen_co[0], screen_co[1])) {
       copy_v2_v2(r_co, screen_co);

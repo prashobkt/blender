@@ -115,6 +115,52 @@ void GpencilExporterSVG::create_document_header(void)
   main_node.append_attribute("viewBox").set_value(viewbox.c_str());
 }
 
+/**
+ * Create Styles (materials) list.
+ */
+void GpencilExporterSVG::export_style_list(void)
+{
+  Object *ob = this->params.ob;
+  int mat_len = max_ii(1, ob->totcol);
+  main_node.append_child(pugi::node_comment).set_value("List of materials");
+  pugi::xml_node style_node = main_node.append_child("style");
+  style_node.append_attribute("type").set_value("text/css");
+
+  std::string txt;
+  float col[3];
+
+  for (int i = 0; i < mat_len; i++) {
+    MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, i + 1);
+
+    bool is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
+                      (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
+    bool is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
+                    (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
+
+    if (is_stroke) {
+      txt.append("\n\t.style_stroke_");
+      txt.append(std::to_string(i + 1).c_str());
+      linearrgb_to_srgb_v3_v3(col, gp_style->stroke_rgba);
+      txt.append("{");
+      txt.append("stroke:" + rgb_to_hex(col) + ";");
+      txt.append("fill:" + rgb_to_hex(col) + ";");
+      txt.append("}");
+    }
+
+    if (is_fill) {
+      txt.append("\n\t.style_fill_");
+      txt.append(std::to_string(i + 1).c_str());
+      linearrgb_to_srgb_v3_v3(col, gp_style->fill_rgba);
+      txt.append("{");
+      txt.append("stroke:" + rgb_to_hex(col) + ";");
+      txt.append("fill:" + rgb_to_hex(col) + ";");
+      txt.append("}");
+    }
+  }
+  txt.append("\n\t");
+  style_node.text().set(txt.c_str());
+}
+
 /* Main layer loop. */
 void GpencilExporterSVG::export_layers(void)
 {
@@ -156,7 +202,7 @@ void GpencilExporterSVG::export_layers(void)
 
       /* Fill. */
       if (is_fill) {
-        export_stroke(gpl_node, gps, diff_mat);
+        export_stroke(gpl_node, gps, diff_mat, true);
       }
 
       /* Stroke. */
@@ -170,7 +216,7 @@ void GpencilExporterSVG::export_layers(void)
         // ED_gpencil_project_stroke_to_view(params.C, gpl, gps_perimeter);
         BKE_gpencil_stroke_sample(gps_perimeter, 0.03f, false);
 
-        export_stroke(gpl_node, gps_perimeter, diff_mat);
+        export_stroke(gpl_node, gps_perimeter, diff_mat, false);
 
         BKE_gpencil_free_stroke(gps_perimeter);
         BKE_gpencil_free_stroke(gps_tmp);
@@ -188,14 +234,16 @@ void GpencilExporterSVG::export_layers(void)
  */
 void GpencilExporterSVG::export_stroke(pugi::xml_node gpl_node,
                                        struct bGPDstroke *gps,
-                                       float diff_mat[4][4])
+                                       float diff_mat[4][4],
+                                       const bool is_fill)
 {
   pugi::xml_node gps_node = gpl_node.append_child("path");
   // gps_node.append_attribute("fill").set_value("#000000");
   // gps_node.append_attribute("stroke").set_value("#000000");
 
+  std::string style_type = (is_fill) ? "_fill_" : "_stroke_";
   gps_node.append_attribute("class").set_value(
-      ("style" + std::to_string(gps->mat_nr + 1)).c_str());
+      ("style" + style_type + std::to_string(gps->mat_nr + 1)).c_str());
 
   gps_node.append_attribute("stroke-width").set_value("1.0");
 
@@ -217,55 +265,6 @@ void GpencilExporterSVG::export_stroke(pugi::xml_node gpl_node,
   }
 
   gps_node.append_attribute("d").set_value(txt.c_str());
-}
-
-/**
- * Create Style (materials) list.
- */
-void GpencilExporterSVG::export_style_list(void)
-{
-  Object *ob = this->params.ob;
-  int mat_len = max_ii(1, ob->totcol);
-  main_node.append_child(pugi::node_comment).set_value("List of materials");
-  pugi::xml_node style_node = main_node.append_child("style");
-  style_node.append_attribute("type").set_value("text/css");
-
-  std::string txt;
-  float col[3];
-
-  for (int i = 0; i < mat_len; i++) {
-    MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, i + 1);
-
-    bool is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
-                      (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
-    bool is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
-                    (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
-
-    txt.append("\n\t.style");
-    txt.append(std::to_string(i + 1).c_str());
-
-    txt.append("{");
-    if (is_fill) {
-      linearrgb_to_srgb_v3_v3(col, gp_style->fill_rgba);
-
-      txt.append("fill:" + rgb_to_hex(col) + ";");
-      if (!is_stroke) {
-        txt.append("stroke:" + rgb_to_hex(col) + ";");
-      }
-    }
-
-    if (is_stroke) {
-      linearrgb_to_srgb_v3_v3(col, gp_style->stroke_rgba);
-
-      txt.append("stroke:" + rgb_to_hex(col) + ";");
-      if (!is_fill) {
-        txt.append("fill:" + rgb_to_hex(col) + ";");
-      }
-    }
-    txt.append("}");
-  }
-  txt.append("\n\t");
-  style_node.text().set(txt.c_str());
 }
 
 }  // namespace gpencil
