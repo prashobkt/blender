@@ -33,6 +33,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
+#include "BLI_hash.h"
 #include "BLI_math_vector.h"
 #include "BLI_polyfill_2d.h"
 
@@ -2585,6 +2586,25 @@ void BKE_gpencil_point_coords_apply_with_mat4(bGPdata *gpd,
         BKE_gpencil_stroke_geometry_update(gps);
       }
     }
+  }
+}
+
+/**
+ * Set a random color to stroke using vertex color.
+ * \param gps: Stroke
+ */
+void BKE_gpencil_stroke_set_random_color(bGPDstroke *gps)
+{
+  BLI_assert(gps->totpoints > 0);
+
+  float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  bGPDspoint *pt = &gps->points[0];
+  color[0] *= BLI_hash_int_01(BLI_hash_int_2d(gps->totpoints / 5, pt->x + pt->z));
+  color[1] *= BLI_hash_int_01(BLI_hash_int_2d(gps->totpoints + pt->x, pt->y * pt->z + pt->x));
+  color[2] *= BLI_hash_int_01(BLI_hash_int_2d(gps->totpoints - pt->x, pt->z * pt->x + pt->y));
+  for (int i = 0; i < gps->totpoints; i++) {
+    pt = &gps->points[i];
+    copy_v4_v4(pt->vert_color, color);
   }
 }
 /** \} */
