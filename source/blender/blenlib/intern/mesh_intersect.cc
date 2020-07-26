@@ -160,8 +160,27 @@ std::ostream &operator<<(std::ostream &os, const Plane &plane)
   return os;
 }
 
-Face::Face(Span<Vertp> verts, int id, int orig, Span<int> edge_origs)
-    : vert(verts), edge_orig(edge_origs), id(id), orig(orig)
+Face::Face(Span<Vertp> verts, int id, int orig, Span<int> edge_origs, Span<bool> is_intersect)
+    : vert(verts), edge_orig(edge_origs), is_intersect(is_intersect), id(id), orig(orig)
+{
+  mpq3 normal;
+  if (vert.size() > 3) {
+    Array<mpq3> co(vert.size());
+    for (int i : index_range()) {
+      co[i] = vert[i]->co_exact;
+    }
+    normal = mpq3::cross_poly(co);
+  }
+  else {
+    mpq3 tr02 = vert[0]->co_exact - vert[2]->co_exact;
+    mpq3 tr12 = vert[1]->co_exact - vert[2]->co_exact;
+    normal = mpq3::cross(tr02, tr12);
+  }
+  mpq_class d = -mpq3::dot(normal, vert[0]->co_exact);
+  plane = Plane(normal, d);
+}
+
+Face::Face(Span<Vertp> verts, int id, int orig) : vert(verts), id(id), orig(orig)
 {
   mpq3 normal;
   if (vert.size() > 3) {
@@ -183,6 +202,7 @@ Face::Face(Span<Vertp> verts, int id, int orig, Span<int> edge_origs)
 Face::Face(const Face &other)
     : vert(other.vert),
       edge_orig(other.edge_orig),
+      is_intersect(other.is_intersect),
       plane(other.plane),
       id(other.id),
       orig(other.orig)
@@ -192,6 +212,7 @@ Face::Face(const Face &other)
 Face::Face(Face &&other) noexcept
     : vert(std::move(other.vert)),
       edge_orig(std::move(other.edge_orig)),
+      is_intersect(std::move(other.is_intersect)),
       plane(std::move(other.plane)),
       id(other.id),
       orig(other.orig)
@@ -203,6 +224,7 @@ Face &Face::operator=(const Face &other)
   if (this != &other) {
     this->vert = other.vert;
     this->edge_orig = other.edge_orig;
+    this->is_intersect = other.is_intersect;
     this->plane = other.plane;
     this->id = other.id;
     this->orig = other.orig;
@@ -214,6 +236,7 @@ Face &Face::operator=(Face &&other) noexcept
 {
   this->vert = std::move(other.vert);
   this->edge_orig = std::move(other.edge_orig);
+  this->is_intersect = std::move(other.is_intersect);
   this->plane = std::move(other.plane);
   this->id = other.id;
   this->orig = other.orig;
@@ -276,6 +299,17 @@ std::ostream &operator<<(std::ostream &os, Facep f)
   if (f->orig != NO_INDEX) {
     os << "o" << f->orig;
   }
+  os << " e_orig[";
+  for (int i : f->index_range()) {
+    os << f->edge_orig[i];
+    if (f->is_intersect[i]) {
+      os << "#";
+    }
+    if (i != f->size() - 1) {
+      os << " ";
+    }
+  }
+  os << "]";
   return os;
 }
 
@@ -355,9 +389,26 @@ class MArena::MArenaImpl {
     return add_or_find_vert(mco, co, orig);
   }
 
+  Facep add_face(Span<Vertp> verts, int orig, Span<int> edge_origs, Span<bool> is_intersect)
+  {
+    Face *f = new Face(verts, next_face_id_++, orig, edge_origs, is_intersect);
+    allocated_faces_.append(std::unique_ptr<Face>(f));
+    return f;
+  }
+
   Facep add_face(Span<Vertp> verts, int orig, Span<int> edge_origs)
   {
-    Face *f = new Face(verts, next_face_id_++, orig, edge_origs);
+    Array<bool> is_intersect(verts.size(), false);
+    Face *f = new Face(verts, next_face_id_++, orig, edge_origs, is_intersect);
+    allocated_faces_.append(std::unique_ptr<Face>(f));
+    return f;
+  }
+
+  Facep add_face(Span<Vertp> verts, int orig)
+  {
+    Array<int> edge_origs(verts.size(), NO_INDEX);
+    Array<bool> is_intersect(verts.size(), false);
+    Face *f = new Face(verts, next_face_id_++, orig, edge_origs, is_intersect);
     allocated_faces_.append(std::unique_ptr<Face>(f));
     return f;
   }
@@ -379,7 +430,8 @@ class MArena::MArenaImpl {
   Facep find_face(Span<Vertp> vs) const
   {
     Array<int> eorig(vs.size(), NO_INDEX);
-    Face ftry(vs, NO_INDEX, NO_INDEX, eorig);
+    Array<bool> is_intersect(vs.size(), false);
+    Face ftry(vs, NO_INDEX, NO_INDEX, eorig, is_intersect);
     for (const int i : allocated_faces_.index_range()) {
       if (ftry.cyclic_equal(*allocated_faces_[i])) {
         return allocated_faces_[i].get();
@@ -440,9 +492,19 @@ Vertp MArena::add_or_find_vert(const mpq3 &co, int orig)
   return pimpl_->add_or_find_vert(co, orig);
 }
 
+Facep MArena::add_face(Span<Vertp> verts, int orig, Span<int> edge_origs, Span<bool> is_intersect)
+{
+  return pimpl_->add_face(verts, orig, edge_origs, is_intersect);
+}
+
 Facep MArena::add_face(Span<Vertp> verts, int orig, Span<int> edge_origs)
 {
   return pimpl_->add_face(verts, orig, edge_origs);
+}
+
+Facep MArena::add_face(Span<Vertp> verts, int orig)
+{
+  return pimpl_->add_face(verts, orig);
 }
 
 Vertp MArena::add_or_find_vert(const double3 &co, int orig)
@@ -550,16 +612,18 @@ void Mesh::erase_face_positions(int f_index, Span<bool> face_pos_erase, MArena *
   }
   Array<Vertp> new_vert(new_len);
   Array<int> new_edge_orig(new_len);
+  Array<bool> new_is_intersect(new_len);
   int new_index = 0;
   for (int i : cur_f->index_range()) {
     if (!face_pos_erase[i]) {
       new_vert[new_index] = (*cur_f)[i];
       new_edge_orig[new_index] = cur_f->edge_orig[i];
+      new_is_intersect[new_index] = cur_f->is_intersect[i];
       ++new_index;
     }
   }
   BLI_assert(new_index == new_len);
-  this->face_[f_index] = arena->add_face(new_vert, cur_f->orig, new_edge_orig);
+  this->face_[f_index] = arena->add_face(new_vert, cur_f->orig, new_edge_orig, new_is_intersect);
 }
 
 std::ostream &operator<<(std::ostream &os, const Mesh &mesh)
@@ -2032,13 +2096,18 @@ static void do_cdt(CDT_data &cd)
   }
 }
 
-static int get_cdt_edge_orig(int i0, int i1, const CDT_data &cd, const Mesh &in_tm)
+static int get_cdt_edge_orig(
+    int i0, int i1, const CDT_data &cd, const Mesh &in_tm, bool *r_is_intersect)
 {
   int foff = cd.cdt_out.face_edge_offset;
+  *r_is_intersect = false;
   for (int e : cd.cdt_out.edge.index_range()) {
     std::pair<int, int> edge = cd.cdt_out.edge[e];
     if ((edge.first == i0 && edge.second == i1) || (edge.first == i1 && edge.second == i0)) {
       /* Pick an arbitrary orig, but not one equal to NO_INDEX, if we can help it. */
+      /* TODO: if edge has origs from more than on part of the nary input,
+       * then want to set *r_is_intersect to true.
+       */
       for (int orig_index : cd.cdt_out.edge_orig[e]) {
         /* orig_index encodes the triangle and pos within the triangle of the input edge. */
         if (orig_index >= foff) {
@@ -2058,8 +2127,12 @@ static int get_cdt_edge_orig(int i0, int i1, const CDT_data &cd, const Mesh &in_
           }
         }
         else {
-          /* TODO: figure out how to track orig_index from an edge input to cdt. */
-          /* This only matters if an input edge was formed by an input face having
+          /* This edge came from an edge input to the CDT problem,
+           * so it is an intersect edge.
+           */
+          *r_is_intersect = true;
+          /* TODO: maybe there is an orig index:
+           * This happens if an input edge was formed by an input face having
            * an edge that is coplanar with the cluster, while the face as a whole is not.
            */
           return NO_INDEX;
@@ -2108,17 +2181,22 @@ static Mesh extract_subdivided_tri(const CDT_data &cd, const Mesh &in_tm, int t,
       Vertp v1 = arena->add_or_find_vert(v1co, NO_INDEX);
       Vertp v2 = arena->add_or_find_vert(v2co, NO_INDEX);
       Facep facep;
+      bool is_isect0;
+      bool is_isect1;
+      bool is_isect2;
       if (cd.is_reversed[t_in_cdt]) {
-        int oe0 = get_cdt_edge_orig(i0, i2, cd, in_tm);
-        int oe1 = get_cdt_edge_orig(i2, i1, cd, in_tm);
-        int oe2 = get_cdt_edge_orig(i1, i0, cd, in_tm);
-        facep = arena->add_face({v0, v2, v1}, t_orig, {oe0, oe1, oe2});
+        int oe0 = get_cdt_edge_orig(i0, i2, cd, in_tm, &is_isect0);
+        int oe1 = get_cdt_edge_orig(i2, i1, cd, in_tm, &is_isect1);
+        int oe2 = get_cdt_edge_orig(i1, i0, cd, in_tm, &is_isect2);
+        facep = arena->add_face(
+            {v0, v2, v1}, t_orig, {oe0, oe1, oe2}, {is_isect0, is_isect1, is_isect2});
       }
       else {
-        int oe0 = get_cdt_edge_orig(i0, i1, cd, in_tm);
-        int oe1 = get_cdt_edge_orig(i1, i2, cd, in_tm);
-        int oe2 = get_cdt_edge_orig(i2, i0, cd, in_tm);
-        facep = arena->add_face({v0, v1, v2}, t_orig, {oe0, oe1, oe2});
+        int oe0 = get_cdt_edge_orig(i0, i1, cd, in_tm, &is_isect0);
+        int oe1 = get_cdt_edge_orig(i1, i2, cd, in_tm, &is_isect1);
+        int oe2 = get_cdt_edge_orig(i2, i0, cd, in_tm, &is_isect2);
+        facep = arena->add_face(
+            {v0, v1, v2}, t_orig, {oe0, oe1, oe2}, {is_isect0, is_isect1, is_isect2});
       }
       faces.append(facep);
     }

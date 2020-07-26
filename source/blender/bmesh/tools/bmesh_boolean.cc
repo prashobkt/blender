@@ -28,10 +28,19 @@
 
 #include "bmesh.h"
 #include "bmesh_boolean.h"
+#include "bmesh_edgesplit.h"
 
 namespace blender {
 namespace meshintersect {
 
+/* Make a blender::meshintersect::Mesh from BMesh bm.
+ * We are given a triangulation of it from the caller via looptris,
+ * which are looptris_tot triples of loops that together tessellate
+ * the faces of bm.
+ * Return a second Mesh in *r_triangulated that has the triangulated
+ * mesh, with face "orig" fields that connect the triangles back to
+ * the faces in the returned (polygonal) mesh.
+ */
 static Mesh mesh_from_bm(BMesh *bm,
                          struct BMLoop *(*looptris)[3],
                          const int looptris_tot,
@@ -111,10 +120,14 @@ static bool bmvert_attached_to_wire(const BMVert *bmv)
 /* Use the unused _BM_ELEM_TAG_ALT bmflag to mark geometry we will keep. */
 constexpr uint KEEP_FLAG = (1 << 6);
 
+/* Change BMesh bm to have the mesh match m_out. Return true if there were any changes at all.
+ * Vertices, faces, and edges in the current bm that are not used in the output are killed,
+ * except we don't kill wire edges and we don't kill hidden geometry.
+ * Also, the BM_ELEM_TAG header flag is set for those BMEdges that come from intersections
+ * resulting from the intersection needed by the Boolean operation.
+ */
 static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
 {
-  /* Change BMesh bm to have the mesh match m_out. Return true if there were any changes at all.
-   */
   bool any_change = false;
 
   m_out.populate_vert();
@@ -229,11 +242,23 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
             orig_edge = old_edges[face.edge_orig[i]];
           }
           bme = BM_edge_create(bm, bmv1, bmv2, orig_edge, BM_CREATE_NOP);
+          if (orig_edge != NULL) {
+            BM_elem_select_copy(bm, bme, orig_edge);
+          }
         }
         face_bmedges[i] = bme;
+        if (face.is_intersect[i]) {
+          BM_elem_flag_enable(bme, BM_ELEM_TAG);
+        }
+        else {
+          BM_elem_flag_disable(bme, BM_ELEM_TAG);
+        }
       }
       BMFace *bmf = BM_face_create(
           bm, face_bmverts.data(), face_bmedges.data(), flen, orig_face, BM_CREATE_NOP);
+      if (orig_face != NULL) {
+        BM_elem_select_copy(bm, bmf, orig_face);
+      }
       BM_elem_flag_enable(bmf, KEEP_FLAG);
       /* Now do interpolation of loop data (e.g., UVs) using the example face. */
       if (orig_face != NULL) {
@@ -263,7 +288,8 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
       BM_elem_flag_disable(bmf, KEEP_FLAG);
     }
     else {
-      BM_face_kill(bm, bmf);
+      BM_face_kill_loose(bm, bmf);
+      // BM_face_kill(bm, bmf);
       any_change = true;
     }
     bmf = bmf_next;
@@ -293,7 +319,7 @@ static bool bmesh_boolean(BMesh *bm,
                           int (*test_fn)(BMFace *f, void *user_data),
                           void *user_data,
                           const bool use_self,
-                          const bool UNUSED(use_separate_all),
+                          const bool use_separate_all,
                           const int boolean_mode)
 {
   MArena arena;
@@ -329,6 +355,10 @@ static bool bmesh_boolean(BMesh *bm,
   bool_optype op = static_cast<bool_optype>(boolean_mode);
   Mesh m_out = boolean_mesh(m_in, op, nshapes, shape_fn, use_self, &m_triangulated, &arena);
   bool any_change = apply_mesh_output_to_bmesh(bm, m_out);
+  if (use_separate_all) {
+    /* We are supposed to separate all faces that are incident on intersection edges. */
+    BM_mesh_edgesplit(bm, false, true, false);
+  }
   return any_change;
 }
 

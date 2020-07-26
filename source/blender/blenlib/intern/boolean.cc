@@ -1083,8 +1083,10 @@ static int find_ambient_cell(const Mesh &tm,
   p_in_ambient.x += 1;
   const Vector<int> *ehull_edge_tris = tmtopo.edge_tris(ehull);
   Vertp dummy_vert = arena->add_or_find_vert(p_in_ambient, NO_INDEX);
-  Facep dummy_tri = arena->add_face(
-      {ehull.v0(), ehull.v1(), dummy_vert}, NO_INDEX, {NO_INDEX, NO_INDEX, NO_INDEX});
+  Facep dummy_tri = arena->add_face({ehull.v0(), ehull.v1(), dummy_vert},
+                                    NO_INDEX,
+                                    {NO_INDEX, NO_INDEX, NO_INDEX},
+                                    {false, false, false});
   Array<int> edge_tris(ehull_edge_tris->size() + 1);
   std::copy(ehull_edge_tris->begin(), ehull_edge_tris->end(), edge_tris.begin());
   edge_tris[edge_tris.size() - 1] = EXTRA_TRI_INDEX;
@@ -1277,7 +1279,10 @@ static Mesh extract_from_flag_diffs(const Mesh &tm_subdivided,
         const Face &tri = *f;
         Array<Vertp> flipped_vs = {tri[0], tri[2], tri[1]};
         Array<int> flipped_e_origs = {tri.edge_orig[2], tri.edge_orig[1], tri.edge_orig[0]};
-        Facep flipped_f = arena->add_face(flipped_vs, f->orig, flipped_e_origs);
+        Array<bool> flipped_is_intersect = {
+            tri.is_intersect[2], tri.is_intersect[1], tri.is_intersect[0]};
+        Facep flipped_f = arena->add_face(
+            flipped_vs, f->orig, flipped_e_origs, flipped_is_intersect);
         out_tris.append(flipped_f);
       }
       else {
@@ -1378,7 +1383,8 @@ static Array<Facep> triangulate_poly(Facep f, MArena *arena)
         }
       }
     }
-    ans[t] = arena->add_face({v[0], v[1], v[2]}, f->orig, {eo[0], eo[1], eo[2]});
+    ans[t] = arena->add_face(
+        {v[0], v[1], v[2]}, f->orig, {eo[0], eo[1], eo[2]}, {false, false, false});
   }
   return ans;
 }
@@ -1408,8 +1414,8 @@ static Mesh triangulate_polymesh(Mesh &pm, MArena *arena)
       int eo_12 = f->edge_orig[1];
       int eo_23 = f->edge_orig[2];
       int eo_30 = f->edge_orig[3];
-      Facep f0 = arena->add_face({v0, v1, v2}, f->orig, {eo_01, eo_12, -1});
-      Facep f1 = arena->add_face({v0, v2, v3}, f->orig, {-1, eo_23, eo_30});
+      Facep f0 = arena->add_face({v0, v1, v2}, f->orig, {eo_01, eo_12, -1}, {false, false, false});
+      Facep f1 = arena->add_face({v0, v2, v3}, f->orig, {-1, eo_23, eo_30}, {false, false, false});
       face_tris.append(f0);
       face_tris.append(f1);
     }
@@ -1450,6 +1456,7 @@ struct MergeEdge {
   int orig = -1; /* An edge orig index that can be used for this edge. */
   /* Is it allowed to dissolve this edge? */
   bool dissolvable = false;
+  bool is_intersect = false; /* Is this an intersect edge? */
 
   MergeEdge() = default;
 
@@ -1507,7 +1514,7 @@ static std::ostream &operator<<(std::ostream &os, const FaceMergeState &fms)
     const MergeEdge &me = fms.edge[e];
     std::cout << e << ": (" << me.v1 << "," << me.v2 << ") left=" << me.left_face
               << " right=" << me.right_face << " dis=" << me.dissolvable << " orig=" << me.orig
-              << "\n";
+              << " is_int=" << me.is_intersect << "\n";
   }
   return os;
 }
@@ -1525,6 +1532,9 @@ static void init_face_merge_state(FaceMergeState *fms, const Vector<int> &tris, 
   for (int t : tris.index_range()) {
     MergeFace mf;
     const Face &tri = *tm.face(tris[t]);
+    if (dbg_level > 0) {
+      std::cout << "process tri = " << &tri << "\n";
+    }
     mf.vert.append(tri[0]);
     mf.vert.append(tri[1]);
     mf.vert.append(tri[2]);
@@ -1539,7 +1549,8 @@ static void init_face_merge_state(FaceMergeState *fms, const Vector<int> &tris, 
         double3 vec = new_me.v2->co - new_me.v1->co;
         new_me.len_squared = vec.length_squared();
         new_me.orig = tri.edge_orig[i];
-        new_me.dissolvable = (new_me.orig == NO_INDEX);
+        new_me.is_intersect = tri.is_intersect[i];
+        new_me.dissolvable = (new_me.orig == NO_INDEX && !new_me.is_intersect);
         fms->edge.append(new_me);
         me_index = static_cast<int>(fms->edge.size()) - 1;
         fms->edge_map.add_new(canon_vs, me_index);
@@ -1548,6 +1559,10 @@ static void init_face_merge_state(FaceMergeState *fms, const Vector<int> &tris, 
       if (me.dissolvable && tri.edge_orig[i] != NO_INDEX) {
         me.dissolvable = false;
         me.orig = tri.edge_orig[i];
+      }
+      if (me.dissolvable && tri.is_intersect[i]) {
+        me.dissolvable = false;
+        me.is_intersect = true;
       }
       /* This face is left or right depending on orientation of edge. */
       if (me.v1 == mf.vert[i]) {
@@ -1726,6 +1741,11 @@ static Vector<Facep> merge_tris_for_face(Vector<int> tris,
                                          const Mesh &pm_in,
                                          MArena *arena)
 {
+  constexpr int dbg_level = 0;
+  if (dbg_level > 0) {
+    std::cout << "merge_tris_for_face\n";
+    std::cout << "tris: " << tris << "\n";
+  }
   Vector<Facep> ans;
   bool done = false;
   if (tris.size() == 1) {
@@ -1742,12 +1762,20 @@ static Vector<Facep> merge_tris_for_face(Vector<int> tris,
     if (in_face->size() == 4) {
       std::pair<int, int> estarts = find_tris_common_edge(tri1, tri2);
       if (estarts.first != -1 && tri1.edge_orig[estarts.first] == NO_INDEX) {
+        if (dbg_level > 0) {
+          std::cout << "try recovering orig quad case\n";
+          std::cout << "tri1 = " << &tri1 << "\n";
+          std::cout << "tri1 = " << &tri2 << "\n";
+        }
         int i0 = estarts.first;
         int i1 = (i0 + 1) % 3;
         int i2 = (i0 + 2) % 3;
         int j2 = (estarts.second + 2) % 3;
-        Face tryface({tri1[i1], tri1[i2], tri1[i0], tri2[j2]}, -1, -1, {});
+        Face tryface({tri1[i1], tri1[i2], tri1[i0], tri2[j2]}, -1, -1, {}, {});
         if (tryface.cyclic_equal(*in_face)) {
+          if (dbg_level > 0) {
+            std::cout << "quad recovery worked\n";
+          }
           ans.append(in_face);
           done = true;
         }
@@ -1761,14 +1789,22 @@ static Vector<Facep> merge_tris_for_face(Vector<int> tris,
   FaceMergeState fms;
   init_face_merge_state(&fms, tris, tm);
   do_dissolve(&fms);
+  if (dbg_level > 0) {
+    std::cout << "faces in merged result:\n";
+  }
   for (const MergeFace &mf : fms.face) {
     if (mf.merge_to == -1) {
       Array<int> e_orig(mf.edge.size());
+      Array<bool> is_intersect(mf.edge.size());
       for (int i : mf.edge.index_range()) {
         e_orig[i] = fms.edge[mf.edge[i]].orig;
+        is_intersect[i] = fms.edge[mf.edge[i]].is_intersect;
       }
-      Facep facep = arena->add_face(mf.vert, mf.orig, e_orig);
+      Facep facep = arena->add_face(mf.vert, mf.orig, e_orig, is_intersect);
       ans.append(facep);
+      if (dbg_level > 0) {
+        std::cout << "  " << facep << "\n";
+      }
     }
   }
   return ans;
@@ -2050,6 +2086,10 @@ Mesh boolean_mesh(Mesh &pm,
     tm_in = &our_triangulation;
   }
   Mesh tm_out = boolean_trimesh(*tm_in, op, nshapes, shape_fn, use_self, arena);
+  if (dbg_level > 1) {
+    std::cout << "bool_trimesh_output:\n" << tm_out;
+    write_obj_mesh(tm_out, "bool_trimesh_output");
+  }
   Mesh ans = polymesh_from_trimesh_with_dissolve(tm_out, pm, arena);
   if (dbg_level > 0) {
     std::cout << "boolean_mesh output:\n" << ans;

@@ -117,7 +117,7 @@ class MeshBuilder {
  */
 static Facep find_tri_with_verts(const Mesh &mesh, Vertp v0, Vertp v1, Vertp v2)
 {
-  Face f_arg({v0, v1, v2}, 0, NO_INDEX, {-1, -1, -1});
+  Face f_arg({v0, v1, v2}, 0, NO_INDEX);
   for (Facep f : mesh.faces()) {
     if (f->cyclic_equal(f_arg)) {
       return f;
@@ -129,7 +129,7 @@ static Facep find_tri_with_verts(const Mesh &mesh, Vertp v0, Vertp v1, Vertp v2)
 /* How many instances of a triangle with v0, v1, v2 are in the mesh? */
 static int count_tris_with_verts(const Mesh &mesh, Vertp v0, Vertp v1, Vertp v2)
 {
-  Face f_arg({v0, v1, v2}, 0, NO_INDEX, {-1, -1, -1});
+  Face f_arg({v0, v1, v2}, 0, NO_INDEX);
   int ans = 0;
   for (Facep f : mesh.faces()) {
     if (f->cyclic_equal(f_arg)) {
@@ -624,12 +624,19 @@ TEST(mesh_intersect, TetTet)
   /* Expect there to be a triangle with these three verts, oriented this way, with original face 1.
    */
   Vertp v1 = mb.arena.find_vert(mpq3(2, 0, 0));
-  Vertp v4 = mb.arena.find_vert(mpq3(0.5, 0.5, 1));
-  Vertp v5 = mb.arena.find_vert(mpq3(1.5, 0.5, 1));
-  EXPECT_TRUE(v1 != nullptr && v4 != nullptr && v5 != nullptr);
-  Facep f = mb.arena.find_face({v1, v4, v5});
+  Vertp v8 = mb.arena.find_vert(mpq3(0.5, 0.5, 1));
+  Vertp v9 = mb.arena.find_vert(mpq3(1.5, 0.5, 1));
+  EXPECT_TRUE(v1 != nullptr && v8 != nullptr && v9 != nullptr);
+  Facep f = mb.arena.find_face({v1, v8, v9});
   EXPECT_NE(f, nullptr);
   EXPECT_EQ(f->orig, 1);
+  int v1pos = f->vert[0] == v1 ? 0 : (f->vert[1] == v1 ? 1 : 2);
+  EXPECT_EQ(f->edge_orig[v1pos], NO_INDEX);
+  EXPECT_EQ(f->edge_orig[(v1pos + 1) % 3], NO_INDEX);
+  EXPECT_EQ(f->edge_orig[(v1pos + 2) % 3], 1001);
+  EXPECT_EQ(f->is_intersect[v1pos], false);
+  EXPECT_EQ(f->is_intersect[(v1pos + 1) % 3], true);
+  EXPECT_EQ(f->is_intersect[(v1pos + 2) % 3], false);
   if (DO_OBJ) {
     write_obj_mesh(out, "test_tc_3");
   }

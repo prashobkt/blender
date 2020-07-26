@@ -114,7 +114,7 @@ TEST(boolean_trimesh, Empty)
   EXPECT_EQ(out.face_size(), 0);
 }
 
-TEST(boolean_trimesh, TetTet)
+TEST(boolean_trimesh, TetTetTrimesh)
 {
   const char *spec = R"(8 8
   0 0 0
@@ -142,7 +142,7 @@ TEST(boolean_trimesh, TetTet)
   EXPECT_EQ(out.vert_size(), 11);
   EXPECT_EQ(out.face_size(), 20);
   if (DO_OBJ) {
-    write_obj_mesh(out, "tettet");
+    write_obj_mesh(out, "tettet_tm");
   }
 
   MeshBuilder mb2(spec);
@@ -152,11 +152,11 @@ TEST(boolean_trimesh, TetTet)
   EXPECT_EQ(out2.vert_size(), 10);
   EXPECT_EQ(out2.face_size(), 16);
   if (DO_OBJ) {
-    write_obj_mesh(out2, "tettet_union");
+    write_obj_mesh(out2, "tettet_union_tm");
   }
 }
 
-TEST(boolean_trimesh, TetTet2)
+TEST(boolean_trimesh, TetTet2Trimesh)
 {
   const char *spec = R"(8 8
   0 1 -1
@@ -184,11 +184,11 @@ TEST(boolean_trimesh, TetTet2)
   EXPECT_EQ(out.vert_size(), 10);
   EXPECT_EQ(out.face_size(), 16);
   if (DO_OBJ) {
-    write_obj_mesh(out, "tettet2_union");
+    write_obj_mesh(out, "tettet2_union_tm");
   }
 }
 
-TEST(boolean_trimesh, CubeTet)
+TEST(boolean_trimesh, CubeTetTrimesh)
 {
   const char *spec = R"(12 16
   -1 -1 -1
@@ -228,11 +228,11 @@ TEST(boolean_trimesh, CubeTet)
   EXPECT_EQ(out.vert_size(), 14);
   EXPECT_EQ(out.face_size(), 24);
   if (DO_OBJ) {
-    write_obj_mesh(out, "cubetet_union");
+    write_obj_mesh(out, "cubetet_union_tm");
   }
 }
 
-TEST(boolean_trimesh, BinaryTetTet)
+TEST(boolean_trimesh, BinaryTetTetTrimesh)
 {
   const char *spec = R"(8 8
   0 0 0
@@ -260,11 +260,11 @@ TEST(boolean_trimesh, BinaryTetTet)
   EXPECT_EQ(out.vert_size(), 4);
   EXPECT_EQ(out.face_size(), 4);
   if (DO_OBJ) {
-    write_obj_mesh(out, "binary_tettet_isect");
+    write_obj_mesh(out, "binary_tettet_isect_tm");
   }
 }
 
-TEST(boolean_trimesh, TetTetCoplanar)
+TEST(boolean_trimesh, TetTetCoplanarTrimesh)
 {
   const char *spec = R"(8 8
   0 1 0
@@ -292,7 +292,49 @@ TEST(boolean_trimesh, TetTetCoplanar)
   EXPECT_EQ(out.vert_size(), 5);
   EXPECT_EQ(out.face_size(), 6);
   if (DO_OBJ) {
-    write_obj_mesh(out, "tettet_coplanar");
+    write_obj_mesh(out, "tettet_coplanar_tm");
+  }
+}
+
+TEST(boolean_polymesh, TetTet)
+{
+  const char *spec = R"(8 8
+  0 0 0
+  2 0 0
+  1 2 0
+  1 1 2
+  0 0 1
+  2 0 1
+  1 2 1
+  1 1 3
+  0 2 1
+  0 1 3
+  1 2 3
+  2 0 3
+  4 6 5
+  4 5 7
+  5 6 7
+  6 4 7
+  )";
+
+  MeshBuilder mb(spec);
+  Mesh out = boolean_mesh(
+      mb.mesh, BOOLEAN_NONE, 1, [](int) { return 0; }, true, nullptr, &mb.arena);
+  out.populate_vert();
+  EXPECT_EQ(out.vert_size(), 11);
+  EXPECT_EQ(out.face_size(), 13);
+  if (DO_OBJ) {
+    write_obj_mesh(out, "tettet");
+  }
+
+  MeshBuilder mb2(spec);
+  Mesh out2 = boolean_mesh(
+      mb2.mesh, BOOLEAN_NONE, 2, [](int t) { return t < 4 ? 0 : 1; }, false, nullptr, &mb2.arena);
+  out2.populate_vert();
+  EXPECT_EQ(out2.vert_size(), 11);
+  EXPECT_EQ(out2.face_size(), 13);
+  if (DO_OBJ) {
+    write_obj_mesh(out, "tettet2");
   }
 }
 
@@ -330,14 +372,26 @@ TEST(boolean_polymesh, CubeCube)
   )";
 
   MeshBuilder mb(spec);
-  write_obj_mesh(mb.mesh, "cube_cube_in");
+  if (DO_OBJ) {
+    write_obj_mesh(mb.mesh, "cube_cube_in");
+  }
   Mesh out = boolean_mesh(
       mb.mesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; }, true, nullptr, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 20);
   EXPECT_EQ(out.face_size(), 12);
   if (DO_OBJ) {
-    write_obj_mesh(out, "cubecube");
+    write_obj_mesh(out, "cubecube_union");
+  }
+
+  MeshBuilder mb2(spec);
+  Mesh out2 = boolean_mesh(
+      mb2.mesh, BOOLEAN_NONE, 2, [](int t) { return t < 6 ? 0 : 1; }, false, nullptr, &mb2.arena);
+  out2.populate_vert();
+  EXPECT_EQ(out2.vert_size(), 22);
+  EXPECT_EQ(out2.face_size(), 18);
+  if (DO_OBJ) {
+    write_obj_mesh(out2, "cubecube_none");
   }
 }
 

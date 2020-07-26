@@ -112,12 +112,16 @@ std::ostream &operator<<(std::ostream &os, const Plane &plane);
  * to the caller for the edge starting from the corresponding face position.
  * A "face position" is the index of a vertex around a face.
  * Faces don't own the memory pointed at by the vert array.
+ * Also indexed by face position, the is_intersect array says
+ * for each edge whether or not it is the result of intersecting
+ * with another face in the intersect algorithm.
  * Since the intersect algorithm needs the plane for each face,
  * a Face also stores the Plane of the face.
  */
 struct Face {
   Array<Vertp> vert;
   Array<int> edge_orig;
+  Array<bool> is_intersect;
   Plane plane;
   int id = NO_INDEX;
   int orig = NO_INDEX;
@@ -125,7 +129,8 @@ struct Face {
   using FacePos = int;
 
   Face() = default;
-  Face(Span<Vertp> verts, int id, int orig, Span<int> edge_origs);
+  Face(Span<Vertp> verts, int id, int orig, Span<int> edge_origs, Span<bool> is_intersect);
+  Face(Span<Vertp> verts, int id, int orig);
   Face(const Face &other);
   Face(Face &&other) noexcept;
 
@@ -221,7 +226,9 @@ class MArena {
   Vertp add_or_find_vert(const mpq3 &co, int orig);
   Vertp add_or_find_vert(const double3 &co, int orig);
 
+  Facep add_face(Span<Vertp> verts, int orig, Span<int> edge_origs, Span<bool> is_intersect);
   Facep add_face(Span<Vertp> verts, int orig, Span<int> edge_origs);
+  Facep add_face(Span<Vertp> verts, int orig);
 
   /* The following return nullptr if not found. */
   Vertp find_vert(const mpq3 &co) const;
