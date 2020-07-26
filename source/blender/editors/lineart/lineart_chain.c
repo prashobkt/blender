@@ -626,6 +626,11 @@ static void lineart_chain_connect(LineartRenderBuffer *UNUSED(rb),
       onto->type = LRT_EDGE_FLAG_CONTOUR;
     }
   }
+  else if (sub->type == LRT_EDGE_FLAG_INTERSECTION) {
+    if (onto->type != LRT_EDGE_FLAG_INTERSECTION) {
+      onto->type = LRT_EDGE_FLAG_CONTOUR;
+    }
+  }
   if (!reverse_1) {  /*  L--R L-R */
     if (reverse_2) { /*  L--R R-L */
       BLI_listbase_reverse(&sub->chain);
