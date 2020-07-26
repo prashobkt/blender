@@ -3802,6 +3802,8 @@ static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op)
   int frame_total = frame_end - frame_begin;
   int frame_orig = scene->r.cfra;
   LineartGpencilModifierData *lmd;
+  LineartRenderBuffer *rb = lineart_share.render_buffer_shared;
+  int use_types;
 
   /* Needed for progress report. */
   lineart_share.wm = CTX_wm_manager(C);
@@ -3847,6 +3849,13 @@ static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op)
               BKE_gpencil_layer_frame_delete(gpl, gpf);
               gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_NEW);
               cleared = 1;
+            }
+
+            if (rb->fuzzy_everything) {
+              use_types = LRT_EDGE_FLAG_CONTOUR;
+            }
+            else if (rb->fuzzy_intersections) {
+              use_types = lmd->line_types | LRT_EDGE_FLAG_INTERSECTION;
             }
 
             ED_lineart_gpencil_generate_strokes_direct(

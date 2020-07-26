@@ -210,7 +210,6 @@ void ED_lineart_chain_feature_lines(LineartRenderBuffer *rb)
     rlc = lineart_chain_create(rb);
 
     rlc->object_ref = rl->object_ref; /*  can only be the same object in a chain. */
-    rlc->type = (rl->flags & LRT_EDGE_FLAG_ALL_TYPE);
 
     LineartRenderLine *new_rl = rl;
     LineartRenderVert *new_rv;
@@ -444,6 +443,12 @@ void ED_lineart_chain_feature_lines(LineartRenderBuffer *rb)
       }
       ba = ED_lineart_get_point_bounding_area_deep(rb, new_rv->fbcoord[0], new_rv->fbcoord[1]);
     }
+    if (rb->fuzzy_everything) {
+      rlc->type = LRT_EDGE_FLAG_CONTOUR;
+    }
+    else {
+      rlc->type = (rl->flags & LRT_EDGE_FLAG_ALL_TYPE);
+    }
   }
 }
 
@@ -615,13 +620,11 @@ static void lineart_chain_connect(LineartRenderBuffer *UNUSED(rb),
                                   int reverse_2)
 {
   LineartRenderLineChainItem *rlci;
-  if (onto->object_ref && !sub->object_ref) {
-    sub->object_ref = onto->object_ref;
-    sub->type = onto->type;
-  }
-  else if (sub->object_ref && !onto->object_ref) {
-    onto->object_ref = sub->object_ref;
-    onto->type = sub->type;
+  if (onto->type == LRT_EDGE_FLAG_INTERSECTION) {
+    if (sub->object_ref) {
+      onto->object_ref = sub->object_ref;
+      onto->type = LRT_EDGE_FLAG_CONTOUR;
+    }
   }
   if (!reverse_1) {  /*  L--R L-R */
     if (reverse_2) { /*  L--R R-L */
