@@ -107,10 +107,28 @@ static ARegion *get_invoke_region(bContext *C)
   return region;
 }
 
+static bool is_keyframe_empty(bGPdata *gpd, int framenum)
+{
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    if (gpl->flag & GP_LAYER_HIDE) {
+      continue;
+    }
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+      if (gpf->framenum == framenum) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  Object *ob = CTX_data_active_object(C);
+  Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
+  bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
 
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
     BKE_report(op->reports, RPT_ERROR, "No filename given");
@@ -127,7 +145,6 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 
   char filename[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filename);
-  Object *ob = CTX_data_active_object(C);
 
   struct GpencilExportParams params = {
       .C = C,
@@ -149,6 +166,10 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 
   int oldframe = (int)DEG_get_ctime(depsgraph);
   for (int i = params.frame_start; i < params.frame_end + 1; i++) {
+    if (is_keyframe_empty(gpd_eval, i)) {
+      continue;
+    }
+
     CFRA = i;
     BKE_scene_graph_update_for_newframe(depsgraph, bmain);
     sprintf(params.frame, "%04d", i);
