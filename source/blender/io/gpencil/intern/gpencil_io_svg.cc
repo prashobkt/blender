@@ -36,6 +36,9 @@
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
+#include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
+
 #include "ED_gpencil.h"
 
 #ifdef WIN32
@@ -173,7 +176,12 @@ void GpencilExporterSVG::export_layers(void)
   Object *ob = params.ob;
 
   bGPdata *gpd = (bGPdata *)ob->data;
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+
+  /* Use evaluated version to get strokes with modifiers. */
+  Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
+  bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
+
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_eval->layers) {
     if (gpl->flag & GP_LAYER_HIDE) {
       continue;
     }
