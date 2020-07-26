@@ -2248,15 +2248,16 @@ static void lineart_compute_scene_contours(LineartRenderBuffer *rb, const float 
       if ((result = dot_1 * dot_2) <= 0 && (dot_1 + dot_2)) {
         add = 1;
       }
-      else if (dot_v3v3_db(rl->tl->gn, rl->tr->gn) < threshold) {
+      else if (rb->use_crease && (dot_v3v3_db(rl->tl->gn, rl->tr->gn) < threshold)) {
         add = 2;
       }
-      else if (rl->tl && rl->tr && rl->tl->material_id != rl->tr->material_id) {
+      else if (rb->use_material &&
+               (rl->tl && rl->tr && rl->tl->material_id != rl->tr->material_id)) {
         add = 3;
       }
     }
 
-    if (add == 1) {
+    if (rb->use_contour && (add == 1)) {
       rl->flags |= LRT_EDGE_FLAG_CONTOUR;
       list_append_pointer_static(&rb->contours, &rb->render_data_pool, rl);
       contour_count++;
@@ -2266,12 +2267,12 @@ static void lineart_compute_scene_contours(LineartRenderBuffer *rb, const float 
       list_append_pointer_static(&rb->crease_lines, &rb->render_data_pool, rl);
       crease_count++;
     }
-    else if (add == 3) {
+    else if (rb->use_material && (add == 3)) {
       rl->flags |= LRT_EDGE_FLAG_MATERIAL;
       list_append_pointer_static(&rb->material_lines, &rb->render_data_pool, rl);
       material_count++;
     }
-    else if (rl->flags & LRT_EDGE_FLAG_EDGE_MARK) {
+    else if (rb->use_edge_marks && (rl->flags & LRT_EDGE_FLAG_EDGE_MARK)) {
       /*  no need to mark again */
       add = 4;
       list_append_pointer_static(&rb->edge_marks, &rb->render_data_pool, rl);
@@ -2397,7 +2398,11 @@ LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *scene)
   rb->fuzzy_intersections = (scene->lineart.flags & LRT_INTERSECTION_AS_CONTOUR) != 0;
   rb->fuzzy_everything = (scene->lineart.flags & LRT_EVERYTHING_AS_CONTOUR) != 0;
 
-  rb->use_intersections = (scene->lineart.flags & LRT_USE_INTERSECTIONS) != 0;
+  rb->use_contour = (scene->lineart.line_types & LRT_EDGE_FLAG_CONTOUR) != 0;
+  rb->use_crease = (scene->lineart.line_types & LRT_EDGE_FLAG_CREASE) != 0;
+  rb->use_material = (scene->lineart.line_types & LRT_EDGE_FLAG_MATERIAL) != 0;
+  rb->use_edge_marks = (scene->lineart.line_types & LRT_EDGE_FLAG_EDGE_MARK) != 0;
+  rb->use_intersections = (scene->lineart.line_types & LRT_EDGE_FLAG_INTERSECTION) != 0;
 
   BLI_spin_init(&rb->lock_task);
   BLI_spin_init(&rb->render_data_pool.lock_mem);

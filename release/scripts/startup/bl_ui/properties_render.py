@@ -728,9 +728,10 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
             layout.prop(lineart, "chaining_geometry_threshold")
 
 
-class RENDER_PT_lineart(RenderButtonsPanel, Panel):
+class RENDER_PT_lineart_line_types(RenderButtonsPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
     bl_label = "Line Types"
+    bl_parent_id = "RENDER_PT_lineart"
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
@@ -808,6 +809,7 @@ classes = (
     RENDER_PT_simplify_render,
     RENDER_PT_simplify_greasepencil,
     RENDER_PT_lineart,
+    RENDER_PT_lineart_line_types,
     RENDER_PT_lineart_baking,
 )
 

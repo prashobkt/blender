@@ -5114,7 +5114,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       if (!DNA_struct_find(fd->filesdna, "SceneLineart")) {
         for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
           scene->lineart.crease_threshold = 0.7f;
-          scene->lineart.flags |= (LRT_USE_INTERSECTIONS);
+          scene->lineart.line_types |= LRT_EDGE_FLAG_ALL_TYPE;
         }
       }
     }

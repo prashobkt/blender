@@ -314,15 +314,25 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemL(layout, "Line types are fuzzy", ICON_NONE);
   }
   else {
-    uiItemR(layout, &ptr, "use_contour", 0, NULL, ICON_NONE);
-    uiItemR(layout, &ptr, "use_crease", 0, "Crease", ICON_NONE);
-    uiItemR(layout, &ptr, "use_material", 0, "Material", ICON_NONE);
-    uiItemR(layout, &ptr, "use_edge_mark", 0, "Edge Marks", ICON_NONE);
+    if (scene->lineart.line_types & LRT_EDGE_FLAG_CONTOUR) {
+      uiItemR(layout, &ptr, "use_contour", 0, NULL, ICON_NONE);
+    }
+    if (scene->lineart.line_types & LRT_EDGE_FLAG_CREASE) {
+      uiItemR(layout, &ptr, "use_crease", 0, "Crease", ICON_NONE);
+    }
+    if (scene->lineart.line_types & LRT_EDGE_FLAG_MATERIAL) {
+      uiItemR(layout, &ptr, "use_material", 0, "Material", ICON_NONE);
+    }
+    if (scene->lineart.line_types & LRT_EDGE_FLAG_EDGE_MARK) {
+      uiItemR(layout, &ptr, "use_edge_mark", 0, "Edge Marks", ICON_NONE);
+    }
     if (scene->lineart.flags & LRT_INTERSECTION_AS_CONTOUR) {
       uiItemL(layout, "Intersection is fuzzy", ICON_NONE);
     }
     else {
-      uiItemR(layout, &ptr, "use_intersection", 0, "Intersection", ICON_NONE);
+      if (scene->lineart.line_types & LRT_EDGE_FLAG_INTERSECTION) {
+        uiItemR(layout, &ptr, "use_intersection", 0, "Intersection", ICON_NONE);
+      }
     }
   }
 

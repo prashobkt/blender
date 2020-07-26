@@ -232,6 +232,10 @@ typedef struct LineartRenderBuffer {
   int draw_material_preview;
   double material_transparency;
 
+  char use_contour;
+  char use_crease;
+  char use_material;
+  char use_edge_marks;
   char use_intersections;
   char fuzzy_intersections;
   char fuzzy_everything;

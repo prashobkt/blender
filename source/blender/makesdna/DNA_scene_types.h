@@ -1706,8 +1706,8 @@ typedef enum eLineartMainFlags {
   LRT_SAME_TAPER = (1 << 2),
   /* Edge split modifier will cause problems in Line Art. */
   LRT_DISABLE_EDGE_SPLITS = (1 << 3),
-  LRT_USE_CHAINING = (1 << 4), /* Deprecated */
-  LRT_USE_INTERSECTIONS = (1 << 5),
+  LRT_USE_CHAINING = (1 << 4),      /* Deprecated */
+  LRT_USE_INTERSECTIONS = (1 << 5), /* Deprecated, use flags in line_types */
   /* Overwrite existing strokes in this frame. */
   LRT_GPENCIL_OVERWRITE = (1 << 6),
   LRT_INTERSECTION_AS_CONTOUR = (1 << 7),
