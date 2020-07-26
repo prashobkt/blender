@@ -2695,6 +2695,16 @@ static bool has_degenerate_tris(const Mesh &tm)
     if (v0 == v1 || v0 == v2 || v1 == v2) {
       return true;
     }
+    double3 da = v2->co - v0->co;
+    double3 db = v2->co - v1->co;
+    double3 dab = double3::cross_high_precision(da, db);
+    if (dab.x == 0 && dab.y == 0 && dab.z == 0) {
+      return true;
+    }
+    double err_bound = supremum_cross(da, db) * index_cross * DBL_EPSILON;
+    if (fabs(dab.x) > err_bound && fabs(dab.y) > err_bound && fabs(dab.z) > err_bound) {
+      return false;
+    }
     mpq3 a = v2->co_exact - v0->co_exact;
     mpq3 b = v2->co_exact - v1->co_exact;
     mpq3 ab = mpq3::cross(a, b);
