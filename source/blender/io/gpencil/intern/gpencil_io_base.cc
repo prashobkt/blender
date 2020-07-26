@@ -127,7 +127,6 @@ std::string GpencilExporter::to_lower_string(char *input_text)
 
   return text;
 }
-
 }  // namespace gpencil
 }  // namespace io
 }  // namespace blender

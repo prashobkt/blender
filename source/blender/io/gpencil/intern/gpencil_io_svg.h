@@ -32,8 +32,6 @@ struct ARegion;
 
 struct bGPDstroke;
 
-#define GP_EXP_SVG_STYLE_PREFIX "m_"
-
 namespace blender {
 namespace io {
 namespace gpencil {
@@ -53,10 +51,7 @@ class GpencilExporterSVG : public GpencilExporter {
   void create_document_header(void);
   void export_layers(void);
   void export_style_list(void);
-  void export_stroke(pugi::xml_node gpl_node,
-                     struct bGPDstroke *gps,
-                     struct Material *ma,
-                     float diff_mat[4][4]);
+  void export_stroke(pugi::xml_node gpl_node, struct bGPDstroke *gps, float diff_mat[4][4]);
 };
 
 }  // namespace gpencil

@@ -148,8 +148,7 @@ void GpencilExporterSVG::export_layers(void)
     BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat);
 
     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-      Material *ma = BKE_object_material_get(ob, gps->mat_nr + 1);
-      MaterialGPencilStyle *gp_style = ma->gp_style;
+      MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
       bool is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
                         (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
       bool is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
@@ -157,7 +156,7 @@ void GpencilExporterSVG::export_layers(void)
 
       /* Fill. */
       if (is_fill) {
-        export_stroke(gpl_node, gps, ma, diff_mat);
+        export_stroke(gpl_node, gps, diff_mat);
       }
 
       /* Stroke. */
@@ -171,7 +170,7 @@ void GpencilExporterSVG::export_layers(void)
         // ED_gpencil_project_stroke_to_view(params.C, gpl, gps_perimeter);
         BKE_gpencil_stroke_sample(gps_perimeter, 0.03f, false);
 
-        export_stroke(gpl_node, gps_perimeter, ma, diff_mat);
+        export_stroke(gpl_node, gps_perimeter, diff_mat);
 
         BKE_gpencil_free_stroke(gps_perimeter);
         BKE_gpencil_free_stroke(gps_tmp);
@@ -189,7 +188,6 @@ void GpencilExporterSVG::export_layers(void)
  */
 void GpencilExporterSVG::export_stroke(pugi::xml_node gpl_node,
                                        struct bGPDstroke *gps,
-                                       struct Material *ma,
                                        float diff_mat[4][4])
 {
   pugi::xml_node gps_node = gpl_node.append_child("path");
@@ -197,7 +195,7 @@ void GpencilExporterSVG::export_stroke(pugi::xml_node gpl_node,
   // gps_node.append_attribute("stroke").set_value("#000000");
 
   gps_node.append_attribute("class").set_value(
-      (GP_EXP_SVG_STYLE_PREFIX + to_lower_string(ma->id.name + 2)).c_str());
+      ("style" + std::to_string(gps->mat_nr + 1)).c_str());
 
   gps_node.append_attribute("stroke-width").set_value("1.0");
 
@@ -228,6 +226,7 @@ void GpencilExporterSVG::export_style_list(void)
 {
   Object *ob = this->params.ob;
   int mat_len = max_ii(1, ob->totcol);
+  main_node.append_child(pugi::node_comment).set_value("List of materials");
   pugi::xml_node style_node = main_node.append_child("style");
   style_node.append_attribute("type").set_value("text/css");
 
@@ -235,16 +234,15 @@ void GpencilExporterSVG::export_style_list(void)
   float col[3];
 
   for (int i = 0; i < mat_len; i++) {
-    Material *ma = BKE_object_material_get(ob, i + 1);
-    MaterialGPencilStyle *gp_style = ma->gp_style;
+    MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, i + 1);
 
     bool is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
                       (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
     bool is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
                     (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
 
-    txt.append("\n\t.");
-    txt.append((GP_EXP_SVG_STYLE_PREFIX + to_lower_string(ma->id.name + 2)).c_str());
+    txt.append("\n\t.style");
+    txt.append(std::to_string(i + 1).c_str());
 
     txt.append("{");
     if (is_fill) {
