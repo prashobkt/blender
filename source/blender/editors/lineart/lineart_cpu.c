@@ -2140,7 +2140,7 @@ static void lineart_triangle_intersections_in_bounding_area(LineartRenderBuffer 
   LineartRenderTriangle *testing_triangle;
   LinkData *lip, *next_lip;
 
-  double *FBC0 = rt->v[0]->fbcoord, *FBC1 = rt->v[1]->fbcoord, *FBC2 = rt->v[2]->fbcoord;
+  double *G0 = rt->v[0]->gloc, *G1 = rt->v[1]->gloc, *G2 = rt->v[2]->gloc;
 
   if (ba->child) {
     lineart_triangle_intersections_in_bounding_area(rb, rt, &ba->child[0]);
@@ -2160,15 +2160,15 @@ static void lineart_triangle_intersections_in_bounding_area(LineartRenderBuffer 
     }
 
     testing_triangle->testing = rt;
-    double *RFBC0 = testing_triangle->v[0]->fbcoord, *RFBC1 = testing_triangle->v[1]->fbcoord,
-           *RFBC2 = testing_triangle->v[2]->fbcoord;
+    double *RG0 = testing_triangle->v[0]->gloc, *RG1 = testing_triangle->v[1]->gloc,
+           *RG2 = testing_triangle->v[2]->gloc;
 
-    if ((MIN3(FBC0[2], FBC1[2], FBC2[2]) > MAX3(RFBC0[2], RFBC1[2], RFBC2[2])) ||
-        (MAX3(FBC0[2], FBC1[2], FBC2[2]) < MIN3(RFBC0[2], RFBC1[2], RFBC2[2])) ||
-        (MIN3(FBC0[0], FBC1[0], FBC2[0]) > MAX3(RFBC0[0], RFBC1[0], RFBC2[0])) ||
-        (MAX3(FBC0[0], FBC1[0], FBC2[0]) < MIN3(RFBC0[0], RFBC1[0], RFBC2[0])) ||
-        (MIN3(FBC0[1], FBC1[1], FBC2[1]) > MAX3(RFBC0[1], RFBC1[1], RFBC2[1])) ||
-        (MAX3(FBC0[1], FBC1[1], FBC2[1]) < MIN3(RFBC0[1], RFBC1[1], RFBC2[1]))) {
+    if ((MIN3(G0[2], G1[2], G2[2]) > MAX3(RG0[2], RG1[2], RG2[2])) ||
+        (MAX3(G0[2], G1[2], G2[2]) < MIN3(RG0[2], RG1[2], RG2[2])) ||
+        (MIN3(G0[0], G1[0], G2[0]) > MAX3(RG0[0], RG1[0], RG2[0])) ||
+        (MAX3(G0[0], G1[0], G2[0]) < MIN3(RG0[0], RG1[0], RG2[0])) ||
+        (MIN3(G0[1], G1[1], G2[1]) > MAX3(RG0[1], RG1[1], RG2[1])) ||
+        (MAX3(G0[1], G1[1], G2[1]) < MIN3(RG0[1], RG1[1], RG2[1]))) {
       continue;
     }
 

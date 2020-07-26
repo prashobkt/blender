@@ -331,7 +331,7 @@ typedef enum eLineartCullState {
 /** Controls how many lines a worker thread is processing at one request.
  * There's no significant performance impact on choosing different values.
  * Don't make it too small so that the worker thread won't request too many times. */
-#define LRT_THREAD_LINE_COUNT 10000
+#define LRT_THREAD_LINE_COUNT 1000
 
 typedef struct LineartRenderTaskInfo {
   int thread_id;
