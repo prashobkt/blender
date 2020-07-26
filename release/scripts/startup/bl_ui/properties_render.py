@@ -715,7 +715,6 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
         layout = self.layout
         layout.active = lineart.auto_update
         layout.use_property_split = True
-        layout.use_property_decorate = False  # No animation.
 
         if not scene.camera:
             col.label(text="No active camera.")
@@ -728,13 +727,35 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
             layout.prop(lineart, "chaining_image_threshold")
             layout.prop(lineart, "chaining_geometry_threshold")
 
-            if lineart.use_intersections:
-                row = layout.row(align=False)
-                row.active = not lineart.fuzzy_everything
-                row.prop(lineart, "fuzzy_intersections")
 
+class RENDER_PT_lineart(RenderButtonsPanel, Panel):
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    bl_label = "Line Types"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        scene = context.scene
+        lineart = scene.lineart
+
+        layout = self.layout
+        layout.active = lineart.auto_update
+        layout.use_property_split = True
+
+        layout.prop(lineart, "use_contour", text='Contour')
+        layout.prop(lineart, "use_crease", text='Crease')
+        layout.prop(lineart, "use_material", text='Material Separation')
+        layout.prop(lineart, "use_edge_mark", text='Edge Marks')
+        layout.prop(lineart, "use_intersections", text='Intersections')
+
+        layout.label(text="Fuzzy chaining:")
+
+        if lineart.use_intersections:
             row = layout.row(align=False)
-            row.prop(lineart, "fuzzy_everything")
+            row.active = not lineart.fuzzy_everything
+            row.prop(lineart, "fuzzy_intersections")
+
+        row = layout.row(align=False)
+        row.prop(lineart, "fuzzy_everything")
 
 
 class RENDER_PT_lineart_baking(RenderButtonsPanel, Panel):

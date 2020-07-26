@@ -38,6 +38,7 @@ extern "C" {
 #include "DNA_customdata_types.h" /* Scene's runtime cddata masks. */
 #include "DNA_freestyle_types.h"
 #include "DNA_layer_types.h"
+#include "DNA_lineart_types.h"
 #include "DNA_listBase.h"
 #include "DNA_material_types.h"
 #include "DNA_userdef_types.h"
@@ -1714,9 +1715,12 @@ typedef enum eLineartMainFlags {
 } eLineartMainFlags;
 
 typedef struct SceneLineart {
-
   int flags;
-  int _pad;
+
+  /* line_types is used to select line types in global scope, especially when Fuzzy chaining is
+   * enabled. See DNA_lineart_types.h for edge flags.
+   */
+  int line_types;
 
   /* shared */
 

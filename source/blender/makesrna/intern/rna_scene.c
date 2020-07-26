@@ -7321,8 +7321,30 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
+  /* types */
+  prop = RNA_def_property(srna, "use_contour", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "line_types", LRT_EDGE_FLAG_CONTOUR);
+  RNA_def_property_ui_text(prop, "Use Contour", "Include contour lines in the result");
+  RNA_def_property_update(prop, 0, "rna_lineart_update");
+
+  prop = RNA_def_property(srna, "use_crease", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "line_types", LRT_EDGE_FLAG_CREASE);
+  RNA_def_property_ui_text(prop, "Use Crease", "Include crease lines in the result");
+  RNA_def_property_update(prop, 0, "rna_lineart_update");
+
+  prop = RNA_def_property(srna, "use_material", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "line_types", LRT_EDGE_FLAG_MATERIAL);
+  RNA_def_property_ui_text(
+      prop, "Use Material", "Include material separation lines in the result");
+  RNA_def_property_update(prop, 0, "rna_lineart_update");
+
+  prop = RNA_def_property(srna, "use_edge_mark", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "line_types", LRT_EDGE_FLAG_EDGE_MARK);
+  RNA_def_property_ui_text(prop, "Use Edge Mark", "Include freestyle edge marks in the result");
+  RNA_def_property_update(prop, 0, "rna_lineart_update");
+
   prop = RNA_def_property(srna, "use_intersections", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_USE_INTERSECTIONS);
+  RNA_def_property_boolean_sdna(prop, NULL, "line_types", LRT_USE_INTERSECTIONS);
   RNA_def_property_boolean_default(prop, 1);
   RNA_def_property_ui_text(prop, "Calculate Intersections", "Calculate Intersections or not");
   RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
