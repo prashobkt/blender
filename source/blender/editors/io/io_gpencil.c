@@ -40,6 +40,7 @@
 #include "BKE_gpencil.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
+#include "BKE_scene.h"
 #include "BKE_screen.h"
 
 #include "BLI_listbase.h"
@@ -57,6 +58,9 @@
 
 #include "WM_api.h"
 #include "WM_types.h"
+
+#include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 
 #include "io_gpencil.h"
 
@@ -105,6 +109,9 @@ static ARegion *get_invoke_region(bContext *C)
 
 static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 {
+  Main *bmain = CTX_data_main(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
     BKE_report(op->reports, RPT_ERROR, "No filename given");
     return OPERATOR_CANCELLED;
@@ -140,7 +147,17 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
     params.frame_end = EFRA;
   }
 
-  gpencil_io_export(&params);
+  int oldframe = (int)DEG_get_ctime(depsgraph);
+  for (int i = params.frame_start; i < params.frame_end + 1; i++) {
+    CFRA = i;
+    BKE_scene_graph_update_for_newframe(depsgraph, bmain);
+    sprintf(params.frame, "%04d", i);
+
+    gpencil_io_export(&params);
+  }
+  /* return frame state and DB to original state */
+  CFRA = oldframe;
+  BKE_scene_graph_update_for_newframe(depsgraph, bmain);
 
   BKE_report(op->reports, RPT_INFO, "SVG export file created");
 

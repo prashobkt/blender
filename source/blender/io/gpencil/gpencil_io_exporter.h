@@ -44,6 +44,8 @@ struct GpencilExportParams {
   double frame_start;
   /** End frame.  */
   double frame_end;
+  /** Frame subfix. */
+  char frame[5];
 };
 
 bool gpencil_io_export(const struct GpencilExportParams *params);

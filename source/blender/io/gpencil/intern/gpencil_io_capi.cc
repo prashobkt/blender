@@ -18,9 +18,9 @@
  * \ingroup bgpencil
  */
 
-#include "../gpencil_io_exporter.h"
 #include <stdio.h>
 
+#include "../gpencil_io_exporter.h"
 #include "gpencil_io_svg.h"
 
 using blender::io::gpencil::GpencilExporterSVG;
@@ -30,7 +30,7 @@ bool gpencil_io_export(const GpencilExportParams *params)
   switch (params->mode) {
     case GP_EXPORT_TO_SVG: {
       GpencilExporterSVG writter = GpencilExporterSVG(params);
-      writter.write();
+      writter.write(std::string(params->frame));
       break;
     }
     default:

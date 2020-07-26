@@ -74,14 +74,21 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *params)
 }
 
 /* Main write method for SVG format. */
-bool GpencilExporterSVG::write(void)
+bool GpencilExporterSVG::write(std::string actual_frame)
 {
   create_document_header();
 
   export_style_list();
   export_layers();
 
-  doc.save_file(out_filename);
+  /* Add frame to filename. */
+  std::string frame_file = out_filename;
+  size_t found = frame_file.find_first_of(".", 0);
+  if (found != std::string::npos) {
+    frame_file.replace(found, 8, actual_frame + ".svg");
+  }
+
+  doc.save_file(frame_file.c_str());
 
   return true;
 }

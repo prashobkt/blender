@@ -38,7 +38,7 @@ namespace gpencil {
 class GpencilExporter {
 
  public:
-  virtual bool write(void) = 0;
+  virtual bool write(std::string actual_frame) = 0;
   void set_out_filename(struct bContext *C, char *filename);
 
   /* Geometry functions. */
