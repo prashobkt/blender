@@ -720,8 +720,6 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
             col.label(text="No active camera.")
 
         else:
-            layout.prop(lineart, "use_intersections")
-
             layout.prop(lineart, "crease_threshold", slider=True)
 
             layout.prop(lineart, "chaining_image_threshold")
