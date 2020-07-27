@@ -281,16 +281,14 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node,
                                       float diff_mat[4][4])
 {
   BLI_assert(gps->totpoints == 1);
-  RegionView3D *rv3d = (RegionView3D *)params.region->regiondata;
-  bGPDspoint *pt = NULL;
-  float v1[2], screen_co[2], screen_ex[2];
+  float screen_co[2];
 
   pugi::xml_node gps_node = gpl_node.append_child("circle");
 
   gps_node.append_attribute("class").set_value(
       ("stylestroke" + std::to_string(gps->mat_nr + 1)).c_str());
 
-  pt = &gps->points[0];
+  bGPDspoint *pt = &gps->points[0];
   gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
   /* Invert Y axis. */
   screen_co[1] = params.region->winy - screen_co[1];
@@ -299,18 +297,7 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node,
   gps_node.append_attribute("cy").set_value(screen_co[1]);
 
   /* Radius. */
-  bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
-      rv3d, gpd, gpl, gps, 3, diff_mat);
-
-  pt = &gps_perimeter->points[0];
-  gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_ex);
-  /* Invert Y axis. */
-  screen_ex[1] = params.region->winy - screen_ex[1];
-
-  sub_v2_v2v2(v1, screen_co, screen_ex);
-  float radius = len_v2(v1);
-  BKE_gpencil_free_stroke(gps_perimeter);
-
+  float radius = stroke_point_radius_get(gpl, gps, diff_mat);
   gps_node.append_attribute("r").set_value(radius);
 }
 
