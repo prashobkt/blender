@@ -3584,8 +3584,13 @@ static void draw_line_highlight(int x, int y, int maxx, int maxy, const float co
 {
   const float pad = U.pixelsize;
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  UI_draw_roundbox_aa(
-      true, (float)x + pad, (float)y + pad, (float)maxx - pad, (float)maxy - pad, 5.0f, color);
+  UI_draw_roundbox_aa(true,
+                      (float)x + pad,
+                      (float)y + pad,
+                      (float)maxx - (pad * 2), /* Extra offset needed on right. */
+                      (float)maxy - pad,
+                      5.0f,
+                      color);
 }
 
 static void outliner_draw_highlights_recursive(const ARegion *region,
