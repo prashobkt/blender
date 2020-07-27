@@ -149,24 +149,30 @@ void GpencilExporterSVG::export_style_list(void)
     bool is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
                     (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
 
+    int id = i + 1;
+
     if (is_stroke) {
-      txt.append("\n\t.style_stroke_");
-      txt.append(std::to_string(i + 1).c_str());
+      char out[128];
       linearrgb_to_srgb_v3_v3(col, gp_style->stroke_rgba);
-      txt.append("{");
-      txt.append("stroke:" + rgb_to_hex(col) + ";");
-      txt.append("fill:" + rgb_to_hex(col) + ";");
-      txt.append("}");
+      std::string stroke_hex = rgb_to_hex(col);
+      sprintf(out,
+              "\n\t.style_stroke_%d{stroke: %s; fill: %s;}",
+              id,
+              stroke_hex.c_str(),
+              stroke_hex.c_str());
+      txt.append(out);
     }
 
     if (is_fill) {
-      txt.append("\n\t.style_fill_");
-      txt.append(std::to_string(i + 1).c_str());
+      char out[128];
       linearrgb_to_srgb_v3_v3(col, gp_style->fill_rgba);
-      txt.append("{");
-      txt.append("stroke:" + rgb_to_hex(col) + ";");
-      txt.append("fill:" + rgb_to_hex(col) + ";");
-      txt.append("}");
+      std::string stroke_hex = rgb_to_hex(col);
+      sprintf(out,
+              "\n\t.style_fill_%d{stroke: %s; fill: %s;}",
+              id,
+              stroke_hex.c_str(),
+              stroke_hex.c_str());
+      txt.append(out);
     }
   }
   txt.append("\n\t");
