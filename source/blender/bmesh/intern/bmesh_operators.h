@@ -109,9 +109,16 @@ enum {
   BEVEL_AMT_WIDTH,
   BEVEL_AMT_DEPTH,
   BEVEL_AMT_PERCENT,
+  BEVEL_AMT_ABSOLUTE,
 };
 
-/* Bevel face_strength_mode values: should match face_str mode enum in DNA_modifer_types.h */
+/* Bevel profile type */
+enum {
+  BEVEL_PROFILE_SUPERELLIPSE,
+  BEVEL_PROFILE_CUSTOM,
+};
+
+/* Bevel face_strength_mode values: should match face_str mode enum in DNA_modifier_types.h */
 enum {
   BEVEL_FACE_STRENGTH_NONE,
   BEVEL_FACE_STRENGTH_NEW,
@@ -130,6 +137,12 @@ enum {
 enum {
   BEVEL_VMESH_ADJ,
   BEVEL_VMESH_CUTOFF,
+};
+
+/* Bevel affect option. */
+enum {
+  BEVEL_AFFECT_VERTICES = 0,
+  BEVEL_AFFECT_EDGES = 1,
 };
 
 /* Normal Face Strength values */

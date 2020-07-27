@@ -1016,10 +1016,15 @@ def _wm_doc_get_id(doc_id, do_url=True, url_prefix=""):
             else:
                 rna = "bpy.ops.%s.%s" % (class_name, class_prop)
         else:
-            # an RNA setting, common case
-            rna_class = getattr(bpy.types, class_name)
+            # An RNA setting, common case.
 
-            # detect if this is a inherited member and use that name instead
+            # Check the built-in RNA types.
+            rna_class = getattr(bpy.types, class_name, None)
+            if rna_class is None:
+                # Check class for dynamically registered types.
+                rna_class = bpy.types.PropertyGroup.bl_rna_get_subclass_py(class_name)
+
+            # Detect if this is a inherited member and use that name instead.
             rna_parent = rna_class.bl_rna
             rna_prop = rna_parent.properties.get(class_prop)
             if rna_prop:
@@ -1106,8 +1111,8 @@ class WM_OT_doc_view(Operator):
 
     doc_id: doc_id
     if bpy.app.version_cycle in {"release", "rc", "beta"}:
-        _prefix = ("https://docs.blender.org/api/%d.%d%s" %
-                   (bpy.app.version[0], bpy.app.version[1], bpy.app.version_char))
+        _prefix = ("https://docs.blender.org/api/%d.%d" %
+                   (bpy.app.version[0], bpy.app.version[1]))
     else:
         _prefix = ("https://docs.blender.org/api/master")
 
@@ -1445,6 +1450,10 @@ class WM_OT_properties_edit(Operator):
         )
 
         layout = self.layout
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
         layout.prop(self, "property")
         layout.prop(self, "value")
 
@@ -1452,22 +1461,21 @@ class WM_OT_properties_edit(Operator):
         proptype, is_array = rna_idprop_value_item_type(value)
 
         row = layout.row()
-        row.enabled = proptype in {int, float}
+        row.enabled = proptype in {int, float, str}
         row.prop(self, "default")
 
-        row = layout.row(align=True)
-        row.prop(self, "min")
-        row.prop(self, "max")
+        col = layout.column(align=True)
+        col.prop(self, "min")
+        col.prop(self, "max")
 
-        row = layout.row()
-        row.prop(self, "use_soft_limits")
-        if bpy.app.use_override_library:
-            row.prop(self, "is_overridable_library")
+        col = layout.column()
+        col.prop(self, "is_overridable_library")
+        col.prop(self, "use_soft_limits")
 
-        row = layout.row(align=True)
-        row.enabled = self.use_soft_limits
-        row.prop(self, "soft_min", text="Soft Min")
-        row.prop(self, "soft_max", text="Soft Max")
+        col = layout.column(align=True)
+        col.enabled = self.use_soft_limits
+        col.prop(self, "soft_min", text="Soft Min")
+        col.prop(self, "soft_max", text="Max")
         layout.prop(self, "description")
 
         if is_array and proptype == float:
@@ -1692,7 +1700,7 @@ class WM_OT_tool_set_by_id(Operator):
                 tool_settings.workspace_tool_type = 'FALLBACK'
             return {'FINISHED'}
         else:
-            self.report({'WARNING'}, f"Tool {self.name!r:s} not found for space {space_type!r:s}.")
+            self.report({'WARNING'}, "Tool %r not found for space %r." % (self.name, space_type))
             return {'CANCELLED'}
 
 
@@ -2211,8 +2219,8 @@ class WM_OT_batch_rename(Operator):
             elif ty == 'STRIP':
                 chars = action.strip_chars
                 chars_strip = (
-                    "{:s}{:s}{:s}"
-                ).format(
+                    "%s%s%s"
+                ) % (
                     string.punctuation if 'PUNCT' in chars else "",
                     string.digits if 'DIGIT' in chars else "",
                     " " if 'SPACE' in chars else "",
@@ -2277,7 +2285,7 @@ class WM_OT_batch_rename(Operator):
         split.prop(self, "data_type", text="")
 
         split = layout.split(factor=0.5)
-        split.label(text="Rename {:d} {:s}:".format(len(self._data[0]), self._data[2]))
+        split.label(text="Rename %d %s:" % (len(self._data[0]), self._data[2]))
         split.row().prop(self, "data_source", expand=True)
 
         for action in self.actions:
@@ -2392,7 +2400,7 @@ class WM_OT_batch_rename(Operator):
                 change_len += 1
             total_len += 1
 
-        self.report({'INFO'}, "Renamed {:d} of {:d} {:s}".format(change_len, total_len, descr))
+        self.report({'INFO'}, "Renamed %d of %d %s" % (change_len, total_len, descr))
 
         return {'FINISHED'}
 

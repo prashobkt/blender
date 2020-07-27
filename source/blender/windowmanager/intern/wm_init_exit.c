@@ -187,7 +187,7 @@ void WM_init_opengl(Main *bmain)
   GPU_init();
   GPU_set_mipmap(bmain, true);
   GPU_set_linear_mipmap(true);
-  GPU_set_anisotropic(bmain, U.anisotropic_filter);
+  GPU_set_anisotropic(U.anisotropic_filter);
 
   GPU_pass_cache_init();
 
@@ -351,7 +351,7 @@ void WM_init(bContext *C, int argc, const char **argv)
   BKE_material_copybuf_clear();
   ED_render_clear_mtex_copybuf();
 
-  // glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+  // GPU_blend_set_func(GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 
   wm_history_file_read();
 
@@ -494,13 +494,15 @@ void WM_exit_ex(bContext *C, const bool do_python)
         Main *bmain = CTX_data_main(C);
         char filename[FILE_MAX];
         bool has_edited;
-        int fileflags = G.fileflags & ~(G_FILE_COMPRESS | G_FILE_HISTORY);
+        const int fileflags = G.fileflags & ~G_FILE_COMPRESS;
 
         BLI_join_dirfile(filename, sizeof(filename), BKE_tempdir_base(), BLENDER_QUIT_FILE);
 
         has_edited = ED_editors_flush_edits(bmain);
 
-        if ((has_edited && BLO_write_file(bmain, filename, fileflags, NULL, NULL)) ||
+        if ((has_edited &&
+             BLO_write_file(
+                 bmain, filename, fileflags, &(const struct BlendFileWriteParams){0}, NULL)) ||
             (undo_memfile && BLO_memfile_write_file(undo_memfile, filename))) {
           printf("Saved session recovery to '%s'\n", filename);
         }
@@ -576,7 +578,7 @@ void WM_exit_ex(bContext *C, const bool do_python)
   BKE_subdiv_exit();
 
   if (opengl_is_init) {
-    GPU_free_unused_buffers(G_MAIN);
+    GPU_free_unused_buffers();
   }
 
   BKE_blender_free(); /* blender.c, does entire library and spacetypes */
@@ -654,13 +656,6 @@ void WM_exit_ex(bContext *C, const bool do_python)
 
   BKE_blender_atexit();
 
-  if (MEM_get_memory_blocks_in_use() != 0) {
-    size_t mem_in_use = MEM_get_memory_in_use() + MEM_get_memory_in_use();
-    printf("Error: Not freed memory blocks: %u, total unfreed memory %f MB\n",
-           MEM_get_memory_blocks_in_use(),
-           (double)mem_in_use / 1024 / 1024);
-    MEM_printmemlist();
-  }
   wm_autosave_delete();
 
   BKE_tempdir_session_purge();

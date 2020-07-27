@@ -190,6 +190,10 @@ float dist_squared_to_projected_aabb_simple(const float projmat[4][4],
                                             const float bbmin[3],
                                             const float bbmax[3]);
 
+float closest_to_ray_v3(float r_close[3],
+                        const float p[3],
+                        const float ray_orig[3],
+                        const float ray_dir[3]);
 float closest_to_line_v2(float r_close[2], const float p[2], const float l1[2], const float l2[2]);
 double closest_to_line_v2_db(double r_close[2],
                              const double p[2],
@@ -450,11 +454,11 @@ bool isect_ray_seg_v2(const float ray_origin[2],
                       float *r_lambda,
                       float *r_u);
 
-bool isect_ray_seg_v3(const float ray_origin[3],
-                      const float ray_direction[3],
-                      const float v0[3],
-                      const float v1[3],
-                      float *r_lambda);
+bool isect_ray_line_v3(const float ray_origin[3],
+                       const float ray_direction[3],
+                       const float v0[3],
+                       const float v1[3],
+                       float *r_lambda);
 
 /* point in polygon */
 bool isect_point_poly_v2(const float pt[2],
@@ -667,6 +671,13 @@ void projmat_dimensions(const float projmat[4][4],
                         float *r_top,
                         float *r_near,
                         float *r_far);
+void projmat_dimensions_db(const float projmat[4][4],
+                           double *r_left,
+                           double *r_right,
+                           double *r_bottom,
+                           double *r_top,
+                           double *r_near,
+                           double *r_far);
 
 void projmat_from_subregion(const float projmat[4][4],
                             const int win_size[2],

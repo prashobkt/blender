@@ -354,6 +354,42 @@ function(blender_add_lib
   set_property(GLOBAL APPEND PROPERTY BLENDER_LINK_LIBS ${name})
 endfunction()
 
+# blender_add_test_lib() is used to define a test library. It is intended to be
+# called in tandem with blender_add_lib(). The test library will be linked into
+# the bf_gtest_runner_test executable (see tests/gtests/CMakeLists.txt).
+function(blender_add_test_lib
+  name
+  sources
+  includes
+  includes_sys
+  library_deps
+  )
+
+  add_cc_flags_custom_test(${name} PARENT_SCOPE)
+
+  # Otherwise external projects will produce warnings that we cannot fix.
+  remove_strict_flags()
+
+  # This duplicates logic that's also in GTestTesting.cmake, macro BLENDER_SRC_GTEST_EX.
+  # TODO(Sybren): deduplicate after the general approach in D7649 has been approved.
+  LIST(APPEND includes
+    ${CMAKE_SOURCE_DIR}/tests/gtests
+  )
+  LIST(APPEND includes_sys
+    ${GLOG_INCLUDE_DIRS}
+    ${GFLAGS_INCLUDE_DIRS}
+    ${CMAKE_SOURCE_DIR}/extern/gtest/include
+    ${CMAKE_SOURCE_DIR}/extern/gmock/include
+  )
+  add_definitions(-DBLENDER_GFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
+  add_definitions(${GFLAGS_DEFINES})
+  add_definitions(${GLOG_DEFINES})
+
+  blender_add_lib__impl(${name} "${sources}" "${includes}" "${includes_sys}" "${library_deps}")
+
+  set_property(GLOBAL APPEND PROPERTY BLENDER_TEST_LIBS ${name})
+endfunction()
+
 # Ninja only: assign 'heavy pool' to some targets that are especially RAM-consuming to build.
 function(setup_heavy_lib_pool)
   if(WITH_NINJA_POOL_JOBS AND NINJA_MAX_NUM_PARALLEL_COMPILE_HEAVY_JOBS)
@@ -437,7 +473,6 @@ function(SETUP_LIBDIRS)
 
     if(WITH_ALEMBIC)
       link_directories(${ALEMBIC_LIBPATH})
-      link_directories(${HDF5_LIBPATH})
     endif()
 
     if(WITH_GHOST_WAYLAND)
@@ -756,8 +791,7 @@ function(get_blender_version)
   # - BLENDER_VERSION (major.minor)
   # - BLENDER_VERSION_MAJOR
   # - BLENDER_VERSION_MINOR
-  # - BLENDER_SUBVERSION (used for internal versioning mainly)
-  # - BLENDER_VERSION_CHAR (a, b, c, ...or empty string)
+  # - BLENDER_VERSION_PATCH
   # - BLENDER_VERSION_CYCLE (alpha, beta, rc, release)
 
   # So cmake depends on BKE_blender.h, beware of inf-loops!
@@ -767,25 +801,15 @@ function(get_blender_version)
   file(STRINGS ${CMAKE_SOURCE_DIR}/source/blender/blenkernel/BKE_blender_version.h _contents REGEX "^#define[ \t]+BLENDER_.*$")
 
   string(REGEX REPLACE ".*#define[ \t]+BLENDER_VERSION[ \t]+([0-9]+).*" "\\1" _out_version "${_contents}")
-  string(REGEX REPLACE ".*#define[ \t]+BLENDER_SUBVERSION[ \t]+([0-9]+).*" "\\1" _out_subversion "${_contents}")
-  string(REGEX REPLACE ".*#define[ \t]+BLENDER_VERSION_CHAR[ \t]+([a-z]+).*" "\\1" _out_version_char "${_contents}")
+  string(REGEX REPLACE ".*#define[ \t]+BLENDER_VERSION_PATCH[ \t]+([0-9]+).*" "\\1" _out_version_patch "${_contents}")
   string(REGEX REPLACE ".*#define[ \t]+BLENDER_VERSION_CYCLE[ \t]+([a-z]+).*" "\\1" _out_version_cycle "${_contents}")
 
   if(NOT ${_out_version} MATCHES "[0-9]+")
     message(FATAL_ERROR "Version parsing failed for BLENDER_VERSION")
   endif()
 
-  if(NOT ${_out_subversion} MATCHES "[0-9]+")
-    message(FATAL_ERROR "Version parsing failed for BLENDER_SUBVERSION")
-  endif()
-
-  # clumsy regex, only single char are ok but it could be unset
-
-  string(LENGTH "${_out_version_char}" _out_version_char_len)
-  if(NOT _out_version_char_len EQUAL 1)
-    set(_out_version_char "")
-  elseif(NOT ${_out_version_char} MATCHES "[a-z]+")
-    message(FATAL_ERROR "Version parsing failed for BLENDER_VERSION_CHAR")
+  if(NOT ${_out_version_patch} MATCHES "[0-9]+")
+    message(FATAL_ERROR "Version parsing failed for BLENDER_VERSION_PATCH")
   endif()
 
   if(NOT ${_out_version_cycle} MATCHES "[a-z]+")
@@ -795,23 +819,11 @@ function(get_blender_version)
   math(EXPR _out_version_major "${_out_version} / 100")
   math(EXPR _out_version_minor "${_out_version} % 100")
 
-  # for packaging, alpha to numbers
-  string(COMPARE EQUAL "${_out_version_char}" "" _out_version_char_empty)
-  if(${_out_version_char_empty})
-    set(_out_version_char_index "0")
-  else()
-    set(_char_ls a b c d e f g h i j k l m n o p q r s t u v w x y z)
-    list(FIND _char_ls ${_out_version_char} _out_version_char_index)
-    math(EXPR _out_version_char_index "${_out_version_char_index} + 1")
-  endif()
-
   # output vars
   set(BLENDER_VERSION "${_out_version_major}.${_out_version_minor}" PARENT_SCOPE)
   set(BLENDER_VERSION_MAJOR "${_out_version_major}" PARENT_SCOPE)
   set(BLENDER_VERSION_MINOR "${_out_version_minor}" PARENT_SCOPE)
-  set(BLENDER_SUBVERSION "${_out_subversion}" PARENT_SCOPE)
-  set(BLENDER_VERSION_CHAR "${_out_version_char}" PARENT_SCOPE)
-  set(BLENDER_VERSION_CHAR_INDEX "${_out_version_char_index}" PARENT_SCOPE)
+  set(BLENDER_VERSION_PATCH "${_out_version_patch}" PARENT_SCOPE)
   set(BLENDER_VERSION_CYCLE "${_out_version_cycle}" PARENT_SCOPE)
 
 endfunction()

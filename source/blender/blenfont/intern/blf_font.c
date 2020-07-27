@@ -194,6 +194,8 @@ static GPUTexture *blf_batch_cache_texture_load(void)
     int offset_x = bitmap_len_landed % tex_width;
     int offset_y = bitmap_len_landed / tex_width;
 
+    GPU_texture_bind(gc->texture, 0);
+
     /* TODO(germano): Update more than one row in a single call. */
     while (remain) {
       int remain_row = tex_width - offset_x;
@@ -290,7 +292,6 @@ void blf_font_size(FontBLF *font, unsigned int size, unsigned int dpi)
 
   gc = blf_glyph_cache_find(font, size, dpi);
   if (gc) {
-    font->glyph_cache = gc;
     /* Optimization: do not call FT_Set_Char_Size if size did not change. */
     if (font->size == size && font->dpi == dpi) {
       blf_glyph_cache_release(font);
@@ -298,7 +299,7 @@ void blf_font_size(FontBLF *font, unsigned int size, unsigned int dpi)
     }
   }
 
-  err = FT_Set_Char_Size(font->face, 0, (FT_F26Dot6)(size * 64), dpi, dpi);
+  err = FT_Set_Char_Size(font->face, 0, ((FT_F26Dot6)(size)) * 64, dpi, dpi);
   if (err) {
     /* FIXME: here we can go through the fixed size and choice a close one */
     printf("The current font don't support the size, %u and dpi, %u\n", size, dpi);
@@ -311,13 +312,7 @@ void blf_font_size(FontBLF *font, unsigned int size, unsigned int dpi)
   font->dpi = dpi;
 
   if (!gc) {
-    gc = blf_glyph_cache_new(font);
-    if (gc) {
-      font->glyph_cache = gc;
-    }
-    else {
-      font->glyph_cache = NULL;
-    }
+    blf_glyph_cache_new(font);
   }
   blf_glyph_cache_release(font);
 }
@@ -1309,7 +1304,6 @@ void blf_font_free(FontBLF *font)
   BLI_spin_lock(&blf_glyph_cache_mutex);
   GlyphCacheBLF *gc;
 
-  font->glyph_cache = NULL;
   while ((gc = BLI_pophead(&font->cache))) {
     blf_glyph_cache_free(gc);
   }
@@ -1356,7 +1350,6 @@ static void blf_font_fill(FontBLF *font)
   font->size = 0;
   BLI_listbase_clear(&font->cache);
   BLI_listbase_clear(&font->kerning_caches);
-  font->glyph_cache = NULL;
   font->kerning_cache = NULL;
 #if BLF_BLUR_ENABLE
   font->blur = 0;

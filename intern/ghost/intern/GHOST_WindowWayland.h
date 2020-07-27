@@ -42,6 +42,7 @@ class GHOST_WindowWayland : public GHOST_Window {
                       GHOST_TWindowState state,
                       const GHOST_IWindow *parentWindow,
                       GHOST_TDrawingContextType type,
+                      const bool is_dialog,
                       const bool stereoVisual,
                       const bool exclusive);
 
@@ -105,6 +106,12 @@ class GHOST_WindowWayland : public GHOST_Window {
   GHOST_TSuccess beginFullScreen() const override;
 
   GHOST_TSuccess endFullScreen() const override;
+
+  bool isDialog() const override;
+
+#ifdef GHOST_OPENGL_ALPHA
+  void setOpaque() const;
+#endif
 
  private:
   GHOST_SystemWayland *m_system;

@@ -28,6 +28,7 @@
 #include "BLI_threads.h"
 #include "BLT_translation.h"
 
+#include "BKE_anim_data.h"
 #include "BKE_collection.h"
 #include "BKE_icons.h"
 #include "BKE_idprop.h"
@@ -53,7 +54,9 @@
 
 #include "MEM_guardedalloc.h"
 
-/******************************** Prototypes ********************************/
+/* -------------------------------------------------------------------- */
+/** \name Prototypes
+ * \{ */
 
 static bool collection_child_add(Collection *parent,
                                  Collection *collection,
@@ -72,7 +75,11 @@ static CollectionParent *collection_find_parent(Collection *child, Collection *c
 
 static bool collection_find_child_recursive(Collection *parent, Collection *collection);
 
-/****************************** Collection Datablock ************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Collection Data-Block
+ * \{ */
 
 /**
  * Only copy internal data of Collection ID from source
@@ -168,7 +175,11 @@ IDTypeInfo IDType_ID_GR = {
     .foreach_id = collection_foreach_id,
 };
 
-/***************************** Add Collection *******************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Add Collection
+ * \{ */
 
 /* Add new collection, without view layer syncing. */
 static Collection *collection_add(Main *bmain,
@@ -210,7 +221,67 @@ Collection *BKE_collection_add(Main *bmain, Collection *collection_parent, const
   return collection;
 }
 
-/*********************** Free and Delete Collection ****************************/
+/**
+ * Add \a collection_dst to all scene collections that reference object \a ob_src is in.
+ * Used to replace an instance object with a collection (library override operator).
+ *
+ * Logic is very similar to #BKE_collection_object_add_from().
+ */
+void BKE_collection_add_from_object(Main *bmain,
+                                    Scene *scene,
+                                    const Object *ob_src,
+                                    Collection *collection_dst)
+{
+  bool is_instantiated = false;
+
+  FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
+    if (!ID_IS_LINKED(collection) && BKE_collection_has_object(collection, ob_src)) {
+      collection_child_add(collection, collection_dst, 0, true);
+      is_instantiated = true;
+    }
+  }
+  FOREACH_SCENE_COLLECTION_END;
+
+  if (!is_instantiated) {
+    collection_child_add(scene->master_collection, collection_dst, 0, true);
+  }
+
+  BKE_main_collection_sync(bmain);
+}
+
+/**
+ * Add \a collection_dst to all scene collections that reference collection \a collection_src is
+ * in.
+ *
+ * Logic is very similar to #BKE_collection_object_add_from().
+ */
+void BKE_collection_add_from_collection(Main *bmain,
+                                        Scene *scene,
+                                        Collection *collection_src,
+                                        Collection *collection_dst)
+{
+  bool is_instantiated = false;
+
+  FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
+    if (!ID_IS_LINKED(collection) && BKE_collection_has_collection(collection, collection_src)) {
+      collection_child_add(collection, collection_dst, 0, true);
+      is_instantiated = true;
+    }
+  }
+  FOREACH_SCENE_COLLECTION_END;
+
+  if (!is_instantiated) {
+    collection_child_add(scene->master_collection, collection_dst, 0, true);
+  }
+
+  BKE_main_collection_sync(bmain);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Free and Delete Collection
+ * \{ */
 
 /** Free (or release) any data used by this collection (does not free the collection itself). */
 void BKE_collection_free(Collection *collection)
@@ -275,27 +346,39 @@ bool BKE_collection_delete(Main *bmain, Collection *collection, bool hierarchy)
   return true;
 }
 
-/***************************** Collection Copy *******************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Collection Copy
+ * \{ */
+
 static Collection *collection_duplicate_recursive(Main *bmain,
                                                   Collection *parent,
                                                   Collection *collection_old,
-                                                  const bool do_hierarchy,
-                                                  const bool do_objects,
-                                                  const bool do_obdata)
+                                                  const eDupli_ID_Flags duplicate_flags,
+                                                  const eLibIDDuplicateFlags duplicate_options)
 {
   Collection *collection_new;
   bool do_full_process = false;
-  const int object_dupflag = (do_obdata) ? U.dupflag : 0;
+  const bool is_collection_master = (collection_old->flag & COLLECTION_IS_MASTER) != 0;
 
-  if (!do_hierarchy || collection_old->id.newid == NULL) {
-    BKE_id_copy(bmain, &collection_old->id, (ID **)&collection_new);
+  const bool do_objects = (duplicate_flags & USER_DUP_OBJECT) != 0;
 
-    /* Copying add one user by default, need to get rid of that one. */
-    id_us_min(&collection_new->id);
+  if (is_collection_master) {
+    /* We never duplicate master collections here, but we can still deep-copy their objects and
+     * collections. */
+    BLI_assert(parent == NULL);
+    collection_new = collection_old;
+    do_full_process = true;
+  }
+  else if (collection_old->id.newid == NULL) {
+    collection_new = (Collection *)BKE_id_copy_for_duplicate(
+        bmain, (ID *)collection_old, duplicate_flags);
 
-    if (do_hierarchy) {
-      ID_NEW_SET(collection_old, collection_new);
+    if (collection_new == collection_old) {
+      return collection_new;
     }
+
     do_full_process = true;
   }
   else {
@@ -320,7 +403,7 @@ static Collection *collection_duplicate_recursive(Main *bmain,
   /* If we are not doing any kind of deep-copy, we can return immediately.
    * False do_full_process means collection_old had already been duplicated,
    * no need to redo some deep-copy on it. */
-  if (!do_hierarchy || !do_full_process) {
+  if (!do_full_process) {
     return collection_new;
   }
 
@@ -332,8 +415,12 @@ static Collection *collection_duplicate_recursive(Main *bmain,
       Object *ob_new = (Object *)ob_old->id.newid;
 
       if (ob_new == NULL) {
-        ob_new = BKE_object_duplicate(bmain, ob_old, object_dupflag);
-        ID_NEW_SET(ob_old, ob_new);
+        ob_new = BKE_object_duplicate(
+            bmain, ob_old, duplicate_flags, duplicate_options | LIB_ID_DUPLICATE_IS_SUBPROCESS);
+      }
+
+      if (ob_new == ob_old) {
+        continue;
       }
 
       collection_object_add(bmain, collection_new, ob_new, 0, true);
@@ -343,80 +430,82 @@ static Collection *collection_duplicate_recursive(Main *bmain,
 
   /* We can loop on collection_old's children,
    * that list is currently identical the collection_new' children, and won't be changed here. */
-  LISTBASE_FOREACH (CollectionChild *, child, &collection_old->children) {
+  LISTBASE_FOREACH_MUTABLE (CollectionChild *, child, &collection_old->children) {
     Collection *child_collection_old = child->collection;
 
-    collection_duplicate_recursive(
-        bmain, collection_new, child_collection_old, do_hierarchy, do_objects, do_obdata);
-    collection_child_remove(collection_new, child_collection_old);
+    Collection *child_collection_new = collection_duplicate_recursive(
+        bmain, collection_new, child_collection_old, duplicate_flags, duplicate_options);
+    if (child_collection_new != child_collection_old) {
+      collection_child_remove(collection_new, child_collection_old);
+    }
   }
 
   return collection_new;
 }
 
 /**
- * Makes a standard (aka shallow) ID copy of a Collection.
+ * Make a deep copy (aka duplicate) of the given collection and all of its children, recursively.
  *
- * Add a new collection in the same level as the old one, link any nested collections
- * and finally link the objects to the new collection (as opposed to copying them).
- */
-Collection *BKE_collection_copy(Main *bmain, Collection *parent, Collection *collection)
-{
-  return BKE_collection_duplicate(bmain, parent, collection, false, false, false);
-}
-
-/**
- * Make either a shallow copy, or deeper duplicate of given collection.
- *
- * If \a do_hierarchy and \a do_deep_copy are false, this is a regular (shallow) ID copy.
- *
- * \warning If any 'deep copy' behavior is enabled,
- * this functions will clear all \a bmain id.idnew pointers.
- *
- * \param do_hierarchy: If true, it will recursively make shallow copies of children collections.
- * \param do_objects: If true, it will also make duplicates of objects.
- * This one does nothing if \a do_hierarchy is not set.
- * \param do_obdata: If true, it will also make deep duplicates of objects,
- * using behavior defined in user settings (#U.dupflag).
- * This one does nothing if \a do_hierarchy and \a do_objects are not set.
+ * \warning This functions will clear all \a bmain #ID.idnew pointers, unless \a
+ * #LIB_ID_DUPLICATE_IS_SUBPROCESS duplicate option is passed on, in which case caller is
+ * responsible to reconstruct collection dependencies information's
+ * (i.e. call #BKE_main_collection_sync).
  */
 Collection *BKE_collection_duplicate(Main *bmain,
                                      Collection *parent,
                                      Collection *collection,
-                                     const bool do_hierarchy,
-                                     const bool do_objects,
-                                     const bool do_obdata)
+                                     eDupli_ID_Flags duplicate_flags,
+                                     eLibIDDuplicateFlags duplicate_options)
 {
-  /* It's not allowed to copy the master collection. */
-  BLI_assert((collection->id.flag & LIB_EMBEDDED_DATA) == 0);
-  BLI_assert((collection->flag & COLLECTION_IS_MASTER) == 0);
-  if (collection->flag & COLLECTION_IS_MASTER) {
-    return NULL;
-  }
+  const bool is_subprocess = (duplicate_options & LIB_ID_DUPLICATE_IS_SUBPROCESS) != 0;
 
-  if (do_hierarchy) {
+  if (!is_subprocess) {
     BKE_main_id_tag_all(bmain, LIB_TAG_NEW, false);
     BKE_main_id_clear_newpoins(bmain);
+    /* In case root duplicated ID is linked, assume we want to get a local copy of it and duplicate
+     * all expected linked data. */
+    if (ID_IS_LINKED(collection)) {
+      duplicate_flags |= USER_DUP_LINKED_ID;
+    }
   }
 
   Collection *collection_new = collection_duplicate_recursive(
-      bmain, parent, collection, do_hierarchy, do_objects, do_obdata);
+      bmain, parent, collection, duplicate_flags, duplicate_options);
 
-  /* This code will follows into all ID links using an ID tagged with LIB_TAG_NEW.*/
-  BKE_libblock_relink_to_newid(&collection_new->id);
+  if (!is_subprocess) {
+    /* `collection_duplicate_recursive` will also tag our 'root' collection, which is not required
+     * unless its duplication is a sub-process of another one. */
+    collection_new->id.tag &= ~LIB_TAG_NEW;
 
-  if (do_hierarchy) {
+    /* This code will follow into all ID links using an ID tagged with LIB_TAG_NEW.*/
+    BKE_libblock_relink_to_newid(&collection_new->id);
+
+#ifndef NDEBUG
+    /* Call to `BKE_libblock_relink_to_newid` above is supposed to have cleared all those flags. */
+    ID *id_iter;
+    FOREACH_MAIN_ID_BEGIN (bmain, id_iter) {
+      if (id_iter->tag & LIB_TAG_NEW) {
+        BLI_assert((id_iter->tag & LIB_TAG_NEW) == 0);
+      }
+    }
+    FOREACH_MAIN_ID_END;
+#endif
+
     /* Cleanup. */
     BKE_main_id_tag_all(bmain, LIB_TAG_NEW, false);
     BKE_main_id_clear_newpoins(bmain);
-  }
 
-  BKE_main_collection_sync(bmain);
+    BKE_main_collection_sync(bmain);
+  }
 
   return collection_new;
 }
 
-/********************************* Naming *******************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Collection Naming
+ * \{ */
 
 /**
  * The automatic/fallback name of a new collection.
@@ -456,7 +545,11 @@ const char *BKE_collection_ui_name_get(struct Collection *collection)
   }
 }
 
-/* **************** Object List Cache *******************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Object List Cache
+ * \{ */
 
 static void collection_object_cache_fill(ListBase *lb, Collection *collection, int parent_restrict)
 {
@@ -529,7 +622,11 @@ Base *BKE_collection_or_layer_objects(const ViewLayer *view_layer, Collection *c
   }
 }
 
-/*********************** Scene Master Collection ***************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Scene Master Collection
+ * \{ */
 
 Collection *BKE_collection_master_add()
 {
@@ -554,7 +651,11 @@ Scene *BKE_collection_master_scene_search(const Main *bmain, const Collection *m
   return NULL;
 }
 
-/*********************** Cyclic Checks ************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Cyclic Checks
+ * \{ */
 
 static bool collection_object_cyclic_check_internal(Object *object, Collection *collection)
 {
@@ -594,7 +695,11 @@ bool BKE_collection_object_cyclic_check(Main *bmain, Object *object, Collection 
   return collection_object_cyclic_check_internal(object, collection);
 }
 
-/******************* Collection Object Membership *******************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Collection Object Membership
+ * \{ */
 
 bool BKE_collection_has_object(Collection *collection, const Object *ob)
 {
@@ -655,7 +760,11 @@ bool BKE_collection_is_empty(Collection *collection)
          BLI_listbase_is_empty(&collection->children);
 }
 
-/********************** Collection Objects *********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Collection Objects
+ * \{ */
 
 static void collection_tag_update_parent_recursive(Main *bmain,
                                                    Collection *collection,
@@ -674,6 +783,31 @@ static void collection_tag_update_parent_recursive(Main *bmain,
     }
     collection_tag_update_parent_recursive(bmain, collection_parent->collection, flag);
   }
+}
+
+static Collection *collection_parent_editable_find_recursive(Collection *collection)
+{
+  if (!ID_IS_LINKED(collection) && !ID_IS_OVERRIDE_LIBRARY(collection)) {
+    return collection;
+  }
+
+  if (collection->flag & COLLECTION_IS_MASTER) {
+    return NULL;
+  }
+
+  LISTBASE_FOREACH (CollectionParent *, collection_parent, &collection->parents) {
+    if (!ID_IS_LINKED(collection_parent->collection) &&
+        !ID_IS_OVERRIDE_LIBRARY(collection_parent->collection)) {
+      return collection_parent->collection;
+    }
+    Collection *editable_collection = collection_parent_editable_find_recursive(
+        collection_parent->collection);
+    if (editable_collection != NULL) {
+      return editable_collection;
+    }
+  }
+
+  return NULL;
 }
 
 static bool collection_object_add(
@@ -746,6 +880,15 @@ bool BKE_collection_object_add(Main *bmain, Collection *collection, Object *ob)
     return false;
   }
 
+  collection = collection_parent_editable_find_recursive(collection);
+
+  /* Only case where this pointer can be NULL is when scene itself is linked, this case should
+   * never be reached. */
+  BLI_assert(collection != NULL);
+  if (collection == NULL) {
+    return false;
+  }
+
   if (!collection_object_add(bmain, collection, ob, 0, true)) {
     return false;
   }
@@ -758,15 +901,18 @@ bool BKE_collection_object_add(Main *bmain, Collection *collection, Object *ob)
 }
 
 /**
- * Add object to all scene collections that reference object is in
- * (used to copy objects).
+ * Add \a ob_dst to all scene collections that reference object \a ob_src is in.
+ * Used for copying objects.
+ *
+ * Logic is very similar to #BKE_collection_add_from_object()
  */
 void BKE_collection_object_add_from(Main *bmain, Scene *scene, Object *ob_src, Object *ob_dst)
 {
   bool is_instantiated = false;
 
   FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
-    if (!ID_IS_LINKED(collection) && BKE_collection_has_object(collection, ob_src)) {
+    if (!ID_IS_LINKED(collection) && !ID_IS_OVERRIDE_LIBRARY(collection) &&
+        BKE_collection_has_object(collection, ob_src)) {
       collection_object_add(bmain, collection, ob_dst, 0, true);
       is_instantiated = true;
     }
@@ -807,7 +953,7 @@ bool BKE_collection_object_remove(Main *bmain,
 
 /**
  * Remove object from all collections of scene
- * \param scene_collection_skip: Don't remove base from this collection.
+ * \param collection_skip: Don't remove base from this collection.
  */
 static bool scene_collections_object_remove(
     Main *bmain, Scene *scene, Object *ob, const bool free_us, Collection *collection_skip)
@@ -966,7 +1112,11 @@ void BKE_collection_object_move(
   }
 }
 
-/***************** Collection Scene Membership ****************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Collection Scene Membership
+ * \{ */
 
 bool BKE_collection_is_in_scene(Collection *collection)
 {
@@ -991,21 +1141,114 @@ void BKE_collections_after_lib_link(Main *bmain)
   BKE_main_collection_sync(bmain);
 }
 
-/********************** Collection Children *******************/
+/** \} */
 
-bool BKE_collection_find_cycle(Collection *new_ancestor, Collection *collection)
+/* -------------------------------------------------------------------- */
+/** \name Collection Children
+ * \{ */
+
+static bool collection_instance_find_recursive(Collection *collection,
+                                               Collection *instance_collection)
 {
-  if (collection == new_ancestor) {
-    return true;
+  LISTBASE_FOREACH (CollectionObject *, collection_object, &collection->gobject) {
+    if (collection_object->ob != NULL &&
+        /* Object from a given collection should never instantiate that collection either. */
+        ELEM(collection_object->ob->instance_collection, instance_collection, collection)) {
+      return true;
+    }
   }
 
-  LISTBASE_FOREACH (CollectionParent *, parent, &new_ancestor->parents) {
-    if (BKE_collection_find_cycle(parent->collection, collection)) {
+  LISTBASE_FOREACH (CollectionChild *, collection_child, &collection->children) {
+    if (collection_instance_find_recursive(collection_child->collection, instance_collection)) {
       return true;
     }
   }
 
   return false;
+}
+
+/**
+ * Find potential cycles in collections.
+ *
+ * \param new_ancestor the potential new owner of given \a collection, or the collection to check
+ *                     if the later is NULL.
+ * \param collection the collection we want to add to \a new_ancestor, may be NULL if we just want
+ *                   to ensure \a new_ancestor does not already have cycles.
+ * \return true if a cycle is found.
+ */
+bool BKE_collection_cycle_find(Collection *new_ancestor, Collection *collection)
+{
+  if (collection == new_ancestor) {
+    return true;
+  }
+
+  if (collection == NULL) {
+    collection = new_ancestor;
+  }
+
+  LISTBASE_FOREACH (CollectionParent *, parent, &new_ancestor->parents) {
+    if (BKE_collection_cycle_find(parent->collection, collection)) {
+      return true;
+    }
+  }
+
+  /* Find possible objects in collection or its children, that would instantiate the given ancestor
+   * collection (that would also make a fully invalid cycle of dependencies) .*/
+  return collection_instance_find_recursive(collection, new_ancestor);
+}
+
+static bool collection_instance_fix_recursive(Collection *parent_collection,
+                                              Collection *collection)
+{
+  bool cycles_found = false;
+
+  LISTBASE_FOREACH (CollectionObject *, collection_object, &parent_collection->gobject) {
+    if (collection_object->ob != NULL &&
+        collection_object->ob->instance_collection == collection) {
+      id_us_min(&collection->id);
+      collection_object->ob->instance_collection = NULL;
+      cycles_found = true;
+    }
+  }
+
+  LISTBASE_FOREACH (CollectionChild *, collection_child, &parent_collection->children) {
+    if (collection_instance_fix_recursive(collection_child->collection, collection)) {
+      cycles_found = true;
+    }
+  }
+
+  return cycles_found;
+}
+
+static bool collection_cycle_fix_recursive(Main *bmain,
+                                           Collection *parent_collection,
+                                           Collection *collection)
+{
+  bool cycles_found = false;
+
+  LISTBASE_FOREACH_MUTABLE (CollectionParent *, parent, &parent_collection->parents) {
+    if (BKE_collection_cycle_find(parent->collection, collection)) {
+      BKE_collection_child_remove(bmain, parent->collection, parent_collection);
+      cycles_found = true;
+    }
+    else if (collection_cycle_fix_recursive(bmain, parent->collection, collection)) {
+      cycles_found = true;
+    }
+  }
+
+  return cycles_found;
+}
+
+/**
+ * Find and fix potential cycles in collections.
+ *
+ * \param collection the collection to check for existing cycles.
+ * \return true if cycles are found and fixed.
+ */
+bool BKE_collection_cycles_fix(Main *bmain, Collection *collection)
+{
+  return collection_cycle_fix_recursive(bmain, collection, collection) ||
+         collection_instance_fix_recursive(collection, collection);
 }
 
 static CollectionChild *collection_find_child(Collection *parent, Collection *collection)
@@ -1047,7 +1290,7 @@ static bool collection_child_add(Collection *parent,
   if (child) {
     return false;
   }
-  if (BKE_collection_find_cycle(parent, collection)) {
+  if (BKE_collection_cycle_find(parent, collection)) {
     return false;
   }
 
@@ -1125,7 +1368,7 @@ void BKE_collection_parent_relations_rebuild(Collection *collection)
        child = child_next) {
     child_next = child->next;
 
-    if (child->collection == NULL || BKE_collection_find_cycle(collection, child->collection)) {
+    if (child->collection == NULL || BKE_collection_cycle_find(collection, child->collection)) {
       BLI_freelinkN(&collection->children, child);
     }
     else {
@@ -1162,7 +1405,11 @@ void BKE_main_collections_parent_relations_rebuild(Main *bmain)
   /* Scene's master collections will be 'root' parent of most of our collections, so start with
    * them. */
   for (Scene *scene = bmain->scenes.first; scene != NULL; scene = scene->id.next) {
-    collection_parents_rebuild_recursive(scene->master_collection);
+    /* This function can be called from readfile.c, when this pointer is not guaranteed to be NULL.
+     */
+    if (scene->master_collection != NULL) {
+      collection_parents_rebuild_recursive(scene->master_collection);
+    }
   }
 
   /* We may have parent chains outside of scene's master_collection context? At least, readfile's
@@ -1178,7 +1425,11 @@ void BKE_main_collections_parent_relations_rebuild(Main *bmain)
   }
 }
 
-/********************** Collection index *********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Collection Index
+ * \{ */
 
 static Collection *collection_from_index_recursive(Collection *collection,
                                                    const int index,
@@ -1264,7 +1515,11 @@ bool BKE_collection_objects_select(ViewLayer *view_layer, Collection *collection
   }
 }
 
-/***************** Collection move (outliner drag & drop) *********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Collection move (outliner drag & drop)
+ * \{ */
 
 bool BKE_collection_move(Main *bmain,
                          Collection *to_parent,
@@ -1276,7 +1531,7 @@ bool BKE_collection_move(Main *bmain,
   if (collection->flag & COLLECTION_IS_MASTER) {
     return false;
   }
-  if (BKE_collection_find_cycle(to_parent, collection)) {
+  if (BKE_collection_cycle_find(to_parent, collection)) {
     return false;
   }
 
@@ -1357,7 +1612,11 @@ bool BKE_collection_move(Main *bmain,
   return true;
 }
 
-/**************************** Iterators ******************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Iterators
+ * \{ */
 
 /* scene collection iteractor */
 
@@ -1543,3 +1802,5 @@ void BKE_scene_objects_iterator_end(BLI_Iterator *iter)
     MEM_freeN(data);
   }
 }
+
+/** \} */

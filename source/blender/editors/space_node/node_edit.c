@@ -238,7 +238,12 @@ static void compo_progressjob(void *cjv, float progress)
 }
 
 /* only this runs inside thread */
-static void compo_startjob(void *cjv, short *stop, short *do_update, float *progress)
+static void compo_startjob(void *cjv,
+                           /* Cannot be const, this function implements wm_jobs_start_callback.
+                            * NOLINTNEXTLINE: readability-non-const-parameter. */
+                           short *stop,
+                           short *do_update,
+                           float *progress)
 {
   CompoJob *cj = cjv;
   bNodeTree *ntree = cj->localtree;
@@ -1428,11 +1433,15 @@ int node_render_changed_exec(bContext *C, wmOperator *UNUSED(op))
   Scene *sce = CTX_data_scene(C);
   bNode *node;
 
+  /* This is actually a test whether scene is used by the compositor or not.
+   * All the nodes are using same render result, so there is no need to do
+   * anything smart about check how exactly scene is used. */
   for (node = sce->nodetree->nodes.first; node; node = node->next) {
-    if (node->id == (ID *)sce && node->need_exec) {
+    if (node->id == (ID *)sce) {
       break;
     }
   }
+
   if (node) {
     ViewLayer *view_layer = BLI_findlink(&sce->view_layers, node->custom1);
 
@@ -1688,6 +1697,8 @@ static int node_mute_exec(bContext *C, wmOperator *UNUSED(op))
     }
   }
 
+  do_tag_update |= ED_node_is_simulation(snode);
+
   snode_notify(C, snode);
   if (do_tag_update) {
     snode_dag_update(C, snode);
@@ -1729,6 +1740,8 @@ static int node_delete_exec(bContext *C, wmOperator *UNUSED(op))
       nodeRemoveNode(bmain, snode->edittree, node, true);
     }
   }
+
+  do_tag_update |= ED_node_is_simulation(snode);
 
   ntreeUpdateTree(CTX_data_main(C), snode->edittree);
 

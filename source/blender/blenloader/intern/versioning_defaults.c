@@ -315,7 +315,7 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   copy_v2_fl2(scene->safe_areas.title, 0.1f, 0.05f);
   copy_v2_fl2(scene->safe_areas.action, 0.035f, 0.035f);
 
-  /* Change default cubemap quality. */
+  /* Change default cube-map quality. */
   scene->eevee.gi_filter_quality = 3.0f;
 
   /* Enable Soft Shadows by default. */
@@ -465,6 +465,9 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     /* Reset all grease pencil brushes. */
     Scene *scene = bmain->scenes.first;
     BKE_brush_gpencil_paint_presets(bmain, scene->toolsettings, true);
+    BKE_brush_gpencil_sculpt_presets(bmain, scene->toolsettings, true);
+    BKE_brush_gpencil_vertex_presets(bmain, scene->toolsettings, true);
+    BKE_brush_gpencil_weight_presets(bmain, scene->toolsettings, true);
 
     /* Ensure new Paint modes. */
     BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_VERTEX_GPENCIL);
@@ -677,6 +680,22 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       brush = BKE_brush_add(bmain, brush_name, OB_MODE_SCULPT);
       id_us_min(&brush->id);
       brush->sculpt_tool = SCULPT_TOOL_SLIDE_RELAX;
+    }
+
+    brush_name = "Paint";
+    brush = BLI_findstring(&bmain->brushes, brush_name, offsetof(ID, name) + 2);
+    if (!brush) {
+      brush = BKE_brush_add(bmain, brush_name, OB_MODE_SCULPT);
+      id_us_min(&brush->id);
+      brush->sculpt_tool = SCULPT_TOOL_PAINT;
+    }
+
+    brush_name = "Smear";
+    brush = BLI_findstring(&bmain->brushes, brush_name, offsetof(ID, name) + 2);
+    if (!brush) {
+      brush = BKE_brush_add(bmain, brush_name, OB_MODE_SCULPT);
+      id_us_min(&brush->id);
+      brush->sculpt_tool = SCULPT_TOOL_SMEAR;
     }
 
     brush_name = "Simplify";

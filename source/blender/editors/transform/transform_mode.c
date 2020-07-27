@@ -39,17 +39,33 @@
 
 #include "RNA_access.h"
 
-#include "ED_screen.h"
-
 #include "UI_interface.h"
 
 #include "BLT_translation.h"
 
 #include "transform.h"
+#include "transform_convert.h"
 #include "transform_snap.h"
 
 /* Own include. */
 #include "transform_mode.h"
+
+int transform_mode_really_used(bContext *C, int mode)
+{
+  if (mode == TFM_BONESIZE) {
+    Object *ob = CTX_data_active_object(C);
+    BLI_assert(ob);
+    if (ob->type != OB_ARMATURE) {
+      return TFM_RESIZE;
+    }
+    bArmature *arm = ob->data;
+    if (arm->drawtype == ARM_ENVELOPE) {
+      return TFM_BONE_ENVELOPE_DIST;
+    }
+  }
+
+  return mode;
+}
 
 bool transdata_check_local_center(TransInfo *t, short around)
 {
@@ -432,20 +448,19 @@ static void constraintSizeLim(TransInfo *t, TransData *td)
       /* scale val and reset size */
       return;  // TODO: fix this case
     }
-    else {
-      /* Reset val if SINGLESIZE but using a constraint */
-      if (td->flag & TD_SINGLESIZE) {
-        return;
-      }
 
-      /* separate out sign to apply back later */
-      for (i = 0; i < 3; i++) {
-        size_sign[i] = signf(td->ext->size[i]);
-        size_abs[i] = fabsf(td->ext->size[i]);
-      }
-
-      size_to_mat4(cob.matrix, size_abs);
+    /* Reset val if SINGLESIZE but using a constraint */
+    if (td->flag & TD_SINGLESIZE) {
+      return;
     }
+
+    /* separate out sign to apply back later */
+    for (i = 0; i < 3; i++) {
+      size_sign[i] = signf(td->ext->size[i]);
+      size_abs[i] = fabsf(td->ext->size[i]);
+    }
+
+    size_to_mat4(cob.matrix, size_abs);
 
     /* Evaluate valid constraints */
     for (con = td->con; con; con = con->next) {
@@ -492,16 +507,15 @@ static void constraintSizeLim(TransInfo *t, TransData *td)
       /* scale val and reset size */
       return;  // TODO: fix this case
     }
-    else {
-      /* Reset val if SINGLESIZE but using a constraint */
-      if (td->flag & TD_SINGLESIZE) {
-        return;
-      }
 
-      /* extrace scale from matrix and apply back sign */
-      mat4_to_size(td->ext->size, cob.matrix);
-      mul_v3_v3(td->ext->size, size_sign);
+    /* Reset val if SINGLESIZE but using a constraint */
+    if (td->flag & TD_SINGLESIZE) {
+      return;
     }
+
+    /* extrace scale from matrix and apply back sign */
+    mat4_to_size(td->ext->size, cob.matrix);
+    mul_v3_v3(td->ext->size, size_sign);
   }
 }
 
@@ -937,7 +951,7 @@ void ElementResize(TransInfo *t, TransDataContainer *tc, TransData *td, float ma
   if (td->ext && td->ext->size) {
     float fsize[3];
 
-    if ((t->options & CTX_SCULPT) || t->flag & (T_OBJECT | T_TEXTURE | T_POSE)) {
+    if (ELEM(t->data_type, TC_SCULPT, TC_OBJECT, TC_OBJECT_TEXSPACE, TC_POSE)) {
       float obsizemat[3][3];
       /* Reorient the size mat to fit the oriented object. */
       mul_m3_m3m3(obsizemat, tmat, td->axismtx);
@@ -1175,25 +1189,12 @@ void transform_mode_init(TransInfo *t, wmOperator *op, const int mode)
     case TFM_CREASE:
       initCrease(t);
       break;
-    case TFM_BONESIZE: { /* used for both B-Bone width (bonesize) as for deform-dist (envelope) */
-      /* Note: we have to pick one, use the active object. */
-      TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_OK(t);
-      bArmature *arm = tc->poseobj->data;
-      if (arm->drawtype == ARM_ENVELOPE) {
-        initBoneEnvelope(t);
-        t->mode = TFM_BONE_ENVELOPE_DIST;
-      }
-      else {
-        initBoneSize(t);
-      }
+    case TFM_BONESIZE:
+      initBoneSize(t);
       break;
-    }
     case TFM_BONE_ENVELOPE:
-      initBoneEnvelope(t);
-      break;
     case TFM_BONE_ENVELOPE_DIST:
       initBoneEnvelope(t);
-      t->mode = TFM_BONE_ENVELOPE_DIST;
       break;
     case TFM_EDGE_SLIDE:
     case TFM_VERT_SLIDE: {
@@ -1266,6 +1267,12 @@ void transform_mode_init(TransInfo *t, wmOperator *op, const int mode)
     case TFM_GPENCIL_OPACITY:
       initGPOpacity(t);
       break;
+  }
+
+  if (t->data_type == TC_MESH_VERTS) {
+    /* Init Custom Data correction.
+     * Ideally this should be called when creating the TransData. */
+    trans_mesh_customdata_correction_init(t);
   }
 
   /* TODO(germano): Some of these operations change the `t->mode`.

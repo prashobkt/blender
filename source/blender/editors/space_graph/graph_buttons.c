@@ -1284,7 +1284,7 @@ static void graph_panel_drivers_popover(const bContext *C, Panel *panel)
     FCurve *fcu;
     bool driven, special;
 
-    fcu = rna_get_fcurve_context_ui(
+    fcu = BKE_fcurve_find_by_rna_context_ui(
         (bContext *)C, &ptr, prop, index, NULL, NULL, &driven, &special);
 
     /* Hack: Force all buttons in this panel to be able to know the driver button
@@ -1420,7 +1420,7 @@ void graph_buttons_register(ARegionType *art)
   pt->poll = graph_panel_drivers_poll;
   BLI_addtail(&art->paneltypes, pt);
 
-  pt = MEM_callocN(sizeof(PanelType), "spacetype graph panel drivers pover");
+  pt = MEM_callocN(sizeof(PanelType), "spacetype graph panel drivers popover");
   strcpy(pt->idname, "GRAPH_PT_drivers_popover");
   strcpy(pt->label, N_("Add/Edit Driver"));
   strcpy(pt->category, "Drivers");

@@ -451,6 +451,8 @@ static int edbm_delete_exec(bContext *C, wmOperator *op)
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
     const int type = RNA_enum_get(op->ptr, "type");
 
+    BM_custom_loop_normals_to_vector_layer(em->bm);
+
     switch (type) {
       case MESH_DELETE_VERT: /* Erase Vertices */
         if (!(em->bm->totvertsel &&
@@ -494,6 +496,8 @@ static int edbm_delete_exec(bContext *C, wmOperator *op)
     changed_multi = true;
 
     EDBM_flag_disable_all(em, BM_ELEM_SELECT);
+
+    BM_custom_loop_normals_from_vector_layer(em->bm, false);
 
     EDBM_update_generic(obedit->data, true, true);
 
@@ -1216,6 +1220,8 @@ static bool edbm_connect_vert_pair(BMEditMesh *em, struct Mesh *me, wmOperator *
     }
   }
   if (checks_succeded) {
+    BM_custom_loop_normals_to_vector_layer(bm);
+
     BMO_op_exec(bm, &bmop);
     len = BMO_slot_get(bmop.slots_out, "edges.out")->len;
 
@@ -1231,6 +1237,8 @@ static bool edbm_connect_vert_pair(BMEditMesh *em, struct Mesh *me, wmOperator *
     else {
       /* so newly created edges get the selection state from the vertex */
       EDBM_selectmode_flush(em);
+
+      BM_custom_loop_normals_from_vector_layer(bm, false);
 
       EDBM_update_generic(me, true, true);
     }
@@ -1524,8 +1532,13 @@ static int edbm_vert_connect_path_exec(bContext *C, wmOperator *op)
       }
     }
 
+    BM_custom_loop_normals_to_vector_layer(bm);
+
     if (bm_vert_connect_select_history(bm)) {
       EDBM_selectmode_flush(em);
+
+      BM_custom_loop_normals_from_vector_layer(bm, false);
+
       EDBM_update_generic(obedit->data, true, true);
     }
     else {
@@ -1544,7 +1557,7 @@ static int edbm_vert_connect_path_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "Invalid selection order");
     return OPERATOR_CANCELLED;
   }
-  else if (failed_connect_len == objects_len) {
+  if (failed_connect_len == objects_len) {
     BKE_report(op->reports, RPT_ERROR, "Could not connect vertices");
     return OPERATOR_CANCELLED;
   }
@@ -2673,7 +2686,7 @@ static int edbm_do_smooth_laplacian_vertex_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_WARNING, "No selected vertex");
     return OPERATOR_CANCELLED;
   }
-  else if (tot_invalid == objects_len) {
+  if (tot_invalid == objects_len) {
     BKE_report(op->reports, RPT_WARNING, "Selected faces must be triangles or quads");
     return OPERATOR_CANCELLED;
   }
@@ -3183,6 +3196,8 @@ static int edbm_merge_exec(bContext *C, wmOperator *op)
       continue;
     }
 
+    BM_custom_loop_normals_to_vector_layer(em->bm);
+
     bool ok = false;
     switch (type) {
       case MESH_MERGE_CENTER:
@@ -3208,6 +3223,8 @@ static int edbm_merge_exec(bContext *C, wmOperator *op)
     if (!ok) {
       continue;
     }
+
+    BM_custom_loop_normals_from_vector_layer(em->bm, false);
 
     EDBM_update_generic(obedit->data, true, true);
 
@@ -3353,6 +3370,8 @@ static int edbm_remove_doubles_exec(bContext *C, wmOperator *op)
       htype_select = BM_FACE;
     }
 
+    BM_custom_loop_normals_to_vector_layer(em->bm);
+
     /* store selection as tags */
     BM_mesh_elem_hflag_enable_test(em->bm, htype_select, BM_ELEM_TAG, true, true, BM_ELEM_SELECT);
 
@@ -3379,6 +3398,8 @@ static int edbm_remove_doubles_exec(bContext *C, wmOperator *op)
     /* restore selection from tags */
     BM_mesh_elem_hflag_enable_test(em->bm, htype_select, BM_ELEM_SELECT, true, true, BM_ELEM_TAG);
     EDBM_selectmode_flush(em);
+
+    BM_custom_loop_normals_from_vector_layer(em->bm, true);
 
     if (count) {
       count_multi += count;
@@ -3484,7 +3505,7 @@ static int edbm_shape_propagate_to_all_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "No selected vertex");
     return OPERATOR_CANCELLED;
   }
-  else if (tot_shapekeys == 0) {
+  if (tot_shapekeys == 0) {
     BKE_report(op->reports,
                RPT_ERROR,
                objects_len > 1 ? "Meshes do not have shape keys" :
@@ -3541,7 +3562,7 @@ static int edbm_blend_from_shape_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "Active mesh does not have shape keys");
     return OPERATOR_CANCELLED;
   }
-  else if (shape_ref >= totshape_ref) {
+  if (shape_ref >= totshape_ref) {
     /* This case occurs if operator was used before on object with more keys than current one. */
     shape_ref = 0; /* default to basis */
   }
@@ -3571,10 +3592,8 @@ static int edbm_blend_from_shape_exec(bContext *C, wmOperator *op)
     if (!key) {
       continue;
     }
-    else {
-      kb = BKE_keyblock_find_name(key, kb_ref->name);
-      shape = BLI_findindex(&key->block, kb);
-    }
+    kb = BKE_keyblock_find_name(key, kb_ref->name);
+    shape = BLI_findindex(&key->block, kb);
 
     if (kb) {
       /* Perform blending on selected vertices. */
@@ -3658,7 +3677,10 @@ static void edbm_blend_from_shape_ui(bContext *C, wmOperator *op)
   RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
   RNA_id_pointer_create((ID *)me->key, &ptr_key);
 
-  uiItemPointerR(layout, &ptr, "shape", &ptr_key, "key_blocks", "", ICON_SHAPEKEY_DATA);
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+
+  uiItemPointerR(layout, &ptr, "shape", &ptr_key, "key_blocks", NULL, ICON_SHAPEKEY_DATA);
   uiItemR(layout, &ptr, "blend", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "add", 0, NULL, ICON_NONE);
 }
@@ -3840,7 +3862,7 @@ static float bm_edge_seg_isect(const float sco_a[2],
         return perc;
       }
       /* test e->v2 */
-      else if ((x11 == x22 && y11 == y22) || (x12 == x22 && y12 == y22)) {
+      if ((x11 == x22 && y11 == y22) || (x12 == x22 && y12 == y22)) {
         perc = 0;
         *isected = 2;
         return perc;
@@ -4047,6 +4069,8 @@ static int edbm_knife_cut_exec(bContext *C, wmOperator *op)
   MEM_freeN(screen_vert_coords);
   MEM_freeN(mouse_path);
 
+  BM_custom_loop_normals_to_vector_layer(bm);
+
   BMO_slot_buffer_from_enabled_flag(bm, &bmop, bmop.slots_in, "edges", BM_EDGE, ELE_EDGE_CUT);
 
   if (mode == KNIFE_MIDPOINT) {
@@ -4064,6 +4088,8 @@ static int edbm_knife_cut_exec(bContext *C, wmOperator *op)
   if (!EDBM_op_finish(em, &bmop, op, true)) {
     return OPERATOR_CANCELLED;
   }
+
+  BM_custom_loop_normals_from_vector_layer(bm, false);
 
   EDBM_update_generic(obedit->data, true, true);
 
@@ -4136,7 +4162,7 @@ static Base *mesh_separate_tagged(
   CustomData_bmesh_init_pool(&bm_new->pdata, bm_mesh_allocsize_default.totface, BM_FACE);
 
   /* Take into account user preferences for duplicating actions. */
-  short dupflag = USER_DUP_MESH | (U.dupflag & USER_DUP_ACT);
+  const eDupli_ID_Flags dupflag = USER_DUP_MESH | (U.dupflag & USER_DUP_ACT);
   base_new = ED_object_add_duplicate(bmain, scene, view_layer, base_old, dupflag);
 
   /* normally would call directly after but in this case delay recalc */
@@ -4208,7 +4234,7 @@ static Base *mesh_separate_arrays(Main *bmain,
   CustomData_bmesh_init_pool(&bm_new->pdata, faces_len, BM_FACE);
 
   /* Take into account user preferences for duplicating actions. */
-  short dupflag = USER_DUP_MESH | (U.dupflag & USER_DUP_ACT);
+  const eDupli_ID_Flags dupflag = USER_DUP_MESH | (U.dupflag & USER_DUP_ACT);
   base_new = ED_object_add_duplicate(bmain, scene, view_layer, base_old, dupflag);
 
   /* normally would call directly after but in this case delay recalc */
@@ -5344,6 +5370,8 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
     do_vcols = RNA_boolean_get(op->ptr, "vcols");
     do_materials = RNA_boolean_get(op->ptr, "materials");
 
+    BM_custom_loop_normals_to_vector_layer(em->bm);
+
     if (!EDBM_op_call_and_selectf(
             em,
             op,
@@ -5361,6 +5389,8 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
             do_materials)) {
       continue;
     }
+
+    BM_custom_loop_normals_from_vector_layer(em->bm, false);
 
     EDBM_update_generic(obedit->data, true, true);
   }
@@ -5560,25 +5590,26 @@ static bool edbm_decimate_check(bContext *UNUSED(C), wmOperator *UNUSED(op))
 
 static void edbm_decimate_ui(bContext *UNUSED(C), wmOperator *op)
 {
-  uiLayout *layout = op->layout, *box, *row, *col;
+  uiLayout *layout = op->layout, *row, *col, *sub;
   PointerRNA ptr;
 
   RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
 
+  uiLayoutSetPropSep(layout, true);
+
   uiItemR(layout, &ptr, "ratio", 0, NULL, ICON_NONE);
 
-  box = uiLayoutBox(layout);
-  uiItemR(box, &ptr, "use_vertex_group", 0, NULL, ICON_NONE);
-  col = uiLayoutColumn(box, false);
+  uiItemR(layout, &ptr, "use_vertex_group", 0, NULL, ICON_NONE);
+  col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, RNA_boolean_get(&ptr, "use_vertex_group"));
   uiItemR(col, &ptr, "vertex_group_factor", 0, NULL, ICON_NONE);
   uiItemR(col, &ptr, "invert_vertex_group", 0, NULL, ICON_NONE);
 
-  box = uiLayoutBox(layout);
-  uiItemR(box, &ptr, "use_symmetry", 0, NULL, ICON_NONE);
-  row = uiLayoutRow(box, true);
-  uiLayoutSetActive(row, RNA_boolean_get(&ptr, "use_symmetry"));
-  uiItemR(row, &ptr, "symmetry_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
+  row = uiLayoutRowWithHeading(layout, true, IFACE_("Symmetry"));
+  uiItemR(row, &ptr, "use_symmetry", 0, "", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_symmetry"));
+  uiItemR(sub, &ptr, "symmetry_axis", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 }
 
 void MESH_OT_decimate(wmOperatorType *ot)
@@ -5633,7 +5664,7 @@ static void edbm_dissolve_prop__use_verts(wmOperatorType *ot, bool value, int fl
   PropertyRNA *prop;
 
   prop = RNA_def_boolean(
-      ot->srna, "use_verts", value, "Dissolve Verts", "Dissolve remaining vertices");
+      ot->srna, "use_verts", value, "Dissolve Vertices", "Dissolve remaining vertices");
 
   if (flag) {
     RNA_def_property_flag(prop, flag);
@@ -5674,6 +5705,8 @@ static int edbm_dissolve_verts_exec(bContext *C, wmOperator *op)
       continue;
     }
 
+    BM_custom_loop_normals_to_vector_layer(em->bm);
+
     if (!EDBM_op_callf(em,
                        op,
                        "dissolve_verts verts=%hv use_face_split=%b use_boundary_tear=%b",
@@ -5682,6 +5715,9 @@ static int edbm_dissolve_verts_exec(bContext *C, wmOperator *op)
                        use_boundary_tear)) {
       continue;
     }
+
+    BM_custom_loop_normals_from_vector_layer(em->bm, false);
+
     EDBM_update_generic(obedit->data, true, true);
   }
 
@@ -5693,7 +5729,7 @@ void MESH_OT_dissolve_verts(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Dissolve Vertices";
-  ot->description = "Dissolve verts, merge edges and faces";
+  ot->description = "Dissolve vertices, merge edges and faces";
   ot->idname = "MESH_OT_dissolve_verts";
 
   /* api callbacks */
@@ -5730,6 +5766,8 @@ static int edbm_dissolve_edges_exec(bContext *C, wmOperator *op)
       continue;
     }
 
+    BM_custom_loop_normals_to_vector_layer(em->bm);
+
     if (!EDBM_op_callf(em,
                        op,
                        "dissolve_edges edges=%he use_verts=%b use_face_split=%b",
@@ -5738,6 +5776,8 @@ static int edbm_dissolve_edges_exec(bContext *C, wmOperator *op)
                        use_face_split)) {
       continue;
     }
+
+    BM_custom_loop_normals_from_vector_layer(em->bm, false);
 
     EDBM_update_generic(obedit->data, true, true);
   }
@@ -5786,6 +5826,8 @@ static int edbm_dissolve_faces_exec(bContext *C, wmOperator *op)
       continue;
     }
 
+    BM_custom_loop_normals_to_vector_layer(em->bm);
+
     if (!EDBM_op_call_and_selectf(em,
                                   op,
                                   "region.out",
@@ -5795,6 +5837,8 @@ static int edbm_dissolve_faces_exec(bContext *C, wmOperator *op)
                                   use_verts)) {
       continue;
     }
+
+    BM_custom_loop_normals_from_vector_layer(em->bm, false);
 
     EDBM_update_generic(obedit->data, true, true);
   }
@@ -5843,12 +5887,10 @@ static int edbm_dissolve_mode_exec(bContext *C, wmOperator *op)
   if (em->selectmode & SCE_SELECT_VERTEX) {
     return edbm_dissolve_verts_exec(C, op);
   }
-  else if (em->selectmode & SCE_SELECT_EDGE) {
+  if (em->selectmode & SCE_SELECT_EDGE) {
     return edbm_dissolve_edges_exec(C, op);
   }
-  else {
-    return edbm_dissolve_faces_exec(C, op);
-  }
+  return edbm_dissolve_faces_exec(C, op);
 }
 
 void MESH_OT_dissolve_mode(wmOperatorType *ot)
@@ -5954,7 +5996,7 @@ void MESH_OT_dissolve_limited(wmOperatorType *ot)
   ot->name = "Limited Dissolve";
   ot->idname = "MESH_OT_dissolve_limited";
   ot->description =
-      "Dissolve selected edges and verts, limited by the angle of surrounding geometry";
+      "Dissolve selected edges and vertices, limited by the angle of surrounding geometry";
 
   /* api callbacks */
   ot->exec = edbm_dissolve_limited_exec;
@@ -6772,9 +6814,7 @@ static bool edbm_sort_elements_poll_property(const bContext *UNUSED(C),
     if (action == SRT_RANDOMIZE) {
       return true;
     }
-    else {
-      return false;
-    }
+    return false;
   }
 
   /* Hide seed for reverse and randomize actions! */
@@ -6782,9 +6822,7 @@ static bool edbm_sort_elements_poll_property(const bContext *UNUSED(C),
     if (ELEM(action, SRT_RANDOMIZE, SRT_REVERSE)) {
       return false;
     }
-    else {
-      return true;
-    }
+    return true;
   }
 
   return true;
@@ -7198,8 +7236,11 @@ void MESH_OT_wireframe(wmOperatorType *ot)
   /* use 1 rather then 10 for max else dragging the button moves too far */
   RNA_def_property_ui_range(prop, 0.0, 1.0, 0.01, 4);
   RNA_def_float_distance(ot->srna, "offset", 0.01f, 0.0f, 1e4f, "Offset", "", 0.0f, 10.0f);
-  RNA_def_boolean(
-      ot->srna, "use_crease", false, "Crease", "Crease hub edges for improved subsurf");
+  RNA_def_boolean(ot->srna,
+                  "use_crease",
+                  false,
+                  "Crease",
+                  "Crease hub edges for an improved subdivision surface");
   prop = RNA_def_float(
       ot->srna, "crease_weight", 0.01f, 0.0f, 1e3f, "Crease weight", "", 0.0f, 1.0f);
   RNA_def_property_ui_range(prop, 0.0, 1.0, 0.1, 2);
@@ -7462,10 +7503,8 @@ static int mesh_symmetrize_exec(bContext *C, wmOperator *op)
     if (!EDBM_op_finish(em, &bmop, op, true)) {
       continue;
     }
-    else {
-      EDBM_update_generic(obedit->data, true, true);
-      EDBM_selectmode_flush(em);
-    }
+    EDBM_update_generic(obedit->data, true, true);
+    EDBM_selectmode_flush(em);
   }
   MEM_freeN(objects);
 
@@ -7844,7 +7883,7 @@ void MESH_OT_mark_freestyle_face(wmOperatorType *ot)
 
 /* NOTE: these defines are saved in keymap files, do not change values but just add new ones */
 /* NOTE: We could add more here, like e.g. a switch between local or global coordinates of target,
- *       use numinput to type in explicit vector values... */
+ *       use number-input to type in explicit vector values. */
 enum {
   /* Generic commands. */
   EDBM_CLNOR_MODAL_CANCEL = 1,
@@ -8368,6 +8407,8 @@ static void edbm_point_normals_ui(bContext *C, wmOperator *op)
 
   RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
 
+  uiLayoutSetPropSep(layout, true);
+
   /* Main auto-draw call */
   uiDefAutoButsRNA(layout, &ptr, point_normals_draw_check_prop, NULL, NULL, '\0', false);
 }
@@ -8656,17 +8697,21 @@ enum {
 };
 
 static EnumPropertyItem average_method_items[] = {
-    {EDBM_CLNOR_AVERAGE_LOOP, "CUSTOM_NORMAL", 0, "Custom Normal", "Take Average of vert Normals"},
+    {EDBM_CLNOR_AVERAGE_LOOP,
+     "CUSTOM_NORMAL",
+     0,
+     "Custom Normal",
+     "Take average of vertex normals"},
     {EDBM_CLNOR_AVERAGE_FACE_AREA,
      "FACE_AREA",
      0,
      "Face Area",
-     "Set all vert normals by Face Area"},
+     "Set all vertex normals by face area"},
     {EDBM_CLNOR_AVERAGE_ANGLE,
      "CORNER_ANGLE",
      0,
      "Corner Angle",
-     "Set all vert normals by Corner Angle"},
+     "Set all vertex normals by corner angle"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -8824,7 +8869,7 @@ static bool average_normals_draw_check_prop(PointerRNA *ptr,
   if (STREQ(prop_id, "weight")) {
     return (average_type == EDBM_CLNOR_AVERAGE_LOOP);
   }
-  else if (STREQ(prop_id, "threshold")) {
+  if (STREQ(prop_id, "threshold")) {
     return (average_type == EDBM_CLNOR_AVERAGE_LOOP);
   }
 
@@ -8839,6 +8884,8 @@ static void edbm_average_normals_ui(bContext *C, wmOperator *op)
   PointerRNA ptr;
 
   RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
+
+  uiLayoutSetPropSep(layout, true);
 
   /* Main auto-draw call */
   uiDefAutoButsRNA(layout, &ptr, average_normals_draw_check_prop, NULL, NULL, '\0', false);
@@ -9372,14 +9419,14 @@ static int edbm_mod_weighted_strength_exec(bContext *C, wmOperator *op)
     BM_select_history_clear(bm);
 
     const char *layer_id = MOD_WEIGHTEDNORMALS_FACEWEIGHT_CDLAYER_ID;
-    int cd_prop_int_index = CustomData_get_named_layer_index(&bm->pdata, CD_PROP_INT, layer_id);
+    int cd_prop_int_index = CustomData_get_named_layer_index(&bm->pdata, CD_PROP_INT32, layer_id);
     if (cd_prop_int_index == -1) {
-      BM_data_layer_add_named(bm, &bm->pdata, CD_PROP_INT, layer_id);
-      cd_prop_int_index = CustomData_get_named_layer_index(&bm->pdata, CD_PROP_INT, layer_id);
+      BM_data_layer_add_named(bm, &bm->pdata, CD_PROP_INT32, layer_id);
+      cd_prop_int_index = CustomData_get_named_layer_index(&bm->pdata, CD_PROP_INT32, layer_id);
     }
-    cd_prop_int_index -= CustomData_get_layer_index(&bm->pdata, CD_PROP_INT);
+    cd_prop_int_index -= CustomData_get_layer_index(&bm->pdata, CD_PROP_INT32);
     const int cd_prop_int_offset = CustomData_get_n_offset(
-        &bm->pdata, CD_PROP_INT, cd_prop_int_index);
+        &bm->pdata, CD_PROP_INT32, cd_prop_int_index);
 
     BM_mesh_elem_index_ensure(bm, BM_FACE);
 

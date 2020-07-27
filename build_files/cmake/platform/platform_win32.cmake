@@ -478,7 +478,7 @@ if(WITH_OPENIMAGEIO)
   set(OPENIMAGEIO_DEFINITIONS "-DUSE_TBB=0")
   set(OPENCOLORIO_DEFINITIONS "-DOCIO_STATIC_BUILD")
   set(OPENIMAGEIO_IDIFF "${OPENIMAGEIO}/bin/idiff.exe")
-  add_definitions(-DOIIO_STATIC_BUILD)
+  add_definitions(-DOIIO_STATIC_DEFINE)
   add_definitions(-DOIIO_NO_SSE=1)
 endif()
 
@@ -539,10 +539,10 @@ if(WITH_OPENIMAGEDENOISE)
   set(OPENIMAGEDENOISE_LIBRARIES
     optimized ${OPENIMAGEDENOISE_LIBPATH}/OpenImageDenoise.lib
     optimized ${OPENIMAGEDENOISE_LIBPATH}/common.lib
-    optimized ${OPENIMAGEDENOISE_LIBPATH}/mkldnn.lib
+    optimized ${OPENIMAGEDENOISE_LIBPATH}/dnnl.lib
     debug ${OPENIMAGEDENOISE_LIBPATH}/OpenImageDenoise_d.lib
     debug ${OPENIMAGEDENOISE_LIBPATH}/common_d.lib
-    debug ${OPENIMAGEDENOISE_LIBPATH}/mkldnn_d.lib)
+    debug ${OPENIMAGEDENOISE_LIBPATH}/dnnl_d.lib)
   set(OPENIMAGEDENOISE_DEFINITIONS)
 endif()
 

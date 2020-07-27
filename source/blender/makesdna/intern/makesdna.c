@@ -137,6 +137,7 @@ static const char *includefiles[] = {
     "DNA_pointcloud_types.h",
     "DNA_volume_types.h",
     "DNA_simulation_types.h",
+    "DNA_pointcache_types.h",
 
     /* see comment above before editing! */
 
@@ -216,7 +217,7 @@ void BLI_system_backtrace(FILE *fp)
 /**
  * Ensure type \c str to is in the #types array.
  * \param str: Struct name without any qualifiers.
- * \param len: The struct size in bytes.
+ * \param size: The struct size in bytes.
  * \return Index in the #types array.
  */
 static int add_type(const char *str, int size);
@@ -359,7 +360,7 @@ static int add_type(const char *str, int size)
   }
   else if (strchr(str, '*')) {
     /* note: this is valid C syntax but we can't parse, complain!
-     * 'struct SomeStruct* somevar;' <-- correct but we cant handle right now. */
+     * `struct SomeStruct* some_var;` <-- correct but we cant handle right now. */
     return -1;
   }
 
@@ -1529,12 +1530,21 @@ int main(int argc, char **argv)
 
 #endif /* if 0 */
 
-/* even though DNA supports, 'long' shouldn't be used since it can be either 32 or 64bit,
- * use int or int64_t instead.
+/**
+ * Disable types:
+ *
+ * - 'long': even though DNA supports, 'long' shouldn't be used since it can be either 32 or 64bit,
+ *   use int, int32_t or int64_t instead.
+ * - 'int8_t': as DNA doesn't yet support 'signed char' types,
+ *   all char types are assumed to be unsigned.
+ *   We should be able to support this, it's just not something which has been added yet.
+ *
  * Only valid use would be as a runtime variable if an API expected a long,
- * but so far we dont have this happening. */
+ * but so far we don't have this happening.
+ */
 #ifdef __GNUC__
 #  pragma GCC poison long
+#  pragma GCC poison int8_t
 #endif
 
 #include "DNA_ID.h"
@@ -1584,6 +1594,7 @@ int main(int argc, char **argv)
 #include "DNA_outliner_types.h"
 #include "DNA_packedFile_types.h"
 #include "DNA_particle_types.h"
+#include "DNA_pointcache_types.h"
 #include "DNA_pointcloud_types.h"
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"

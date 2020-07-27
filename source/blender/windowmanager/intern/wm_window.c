@@ -89,6 +89,7 @@
 #include "GPU_init_exit.h"
 #include "GPU_platform.h"
 #include "GPU_state.h"
+#include "GPU_texture.h"
 
 #include "UI_resources.h"
 
@@ -463,6 +464,7 @@ void wm_window_close(bContext *C, wmWindowManager *wm, wmWindow *win)
 
     BLI_assert(BKE_workspace_layout_screen_get(layout) == screen);
     BKE_workspace_layout_remove(bmain, workspace, layout);
+    WM_event_add_notifier(C, NC_SCREEN | ND_LAYOUTDELETE, NULL);
   }
 }
 
@@ -647,10 +649,10 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
     }
 #endif
     /* until screens get drawn, make it nice gray */
-    glClearColor(0.55, 0.55, 0.55, 0.0);
+    GPU_clear_color(0.55, 0.55, 0.55, 1.0f);
     /* Crash on OSS ATI: bugs.launchpad.net/ubuntu/+source/mesa/+bug/656100 */
     if (!GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_UNIX, GPU_DRIVER_OPENSOURCE)) {
-      glClear(GL_COLOR_BUFFER_BIT);
+      GPU_clear(GPU_COLOR_BIT);
     }
 
     /* needed here, because it's used before it reads userdef */
@@ -1984,6 +1986,88 @@ bool wm_window_get_swap_interval(wmWindow *win, int *intervalOut)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Find Window Utility
+ *
+ * \{ */
+static void wm_window_desktop_pos_get(const wmWindow *win,
+                                      const int screen_pos[2],
+                                      int r_desk_pos[2])
+{
+  /* To desktop space. */
+  r_desk_pos[0] = screen_pos[0] + (int)(U.pixelsize * win->posx);
+  r_desk_pos[1] = screen_pos[1] + (int)(U.pixelsize * win->posy);
+}
+
+static void wm_window_screen_pos_get(const wmWindow *win,
+                                     const int desktop_pos[2],
+                                     int r_scr_pos[2])
+{
+  /* To window space. */
+  r_scr_pos[0] = desktop_pos[0] - (int)(U.pixelsize * win->posx);
+  r_scr_pos[1] = desktop_pos[1] - (int)(U.pixelsize * win->posy);
+}
+
+bool WM_window_find_under_cursor(const wmWindowManager *wm,
+                                 const wmWindow *win_ignore,
+                                 const wmWindow *win,
+                                 const int mval[2],
+                                 wmWindow **r_win,
+                                 int r_mval[2])
+{
+  int desk_pos[2];
+  wm_window_desktop_pos_get(win, mval, desk_pos);
+
+  /* TODO: This should follow the order of the activated windows.
+   * The current solution is imperfect but usable in most cases. */
+  LISTBASE_FOREACH (wmWindow *, win_iter, &wm->windows) {
+    if (win_iter == win_ignore) {
+      continue;
+    }
+
+    if (win_iter->windowstate == GHOST_kWindowStateMinimized) {
+      continue;
+    }
+
+    int scr_pos[2];
+    wm_window_screen_pos_get(win_iter, desk_pos, scr_pos);
+
+    if (scr_pos[0] >= 0 && win_iter->posy >= 0 && scr_pos[0] <= WM_window_pixels_x(win_iter) &&
+        scr_pos[1] <= WM_window_pixels_y(win_iter)) {
+
+      *r_win = win_iter;
+      copy_v2_v2_int(r_mval, scr_pos);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+void WM_window_pixel_sample_read(const wmWindowManager *wm,
+                                 const wmWindow *win,
+                                 const int pos[2],
+                                 float r_col[3])
+{
+  bool setup_context = wm->windrawable != win;
+
+  if (setup_context) {
+    GHOST_ActivateWindowDrawingContext(win->ghostwin);
+    GPU_context_active_set(win->gpuctx);
+  }
+
+  GPU_frontbuffer_read_pixels(pos[0], pos[1], 1, 1, 3, GPU_DATA_FLOAT, r_col);
+
+  if (setup_context) {
+    if (wm->windrawable) {
+      GHOST_ActivateWindowDrawingContext(wm->windrawable->ghostwin);
+      GPU_context_active_set(wm->windrawable->gpuctx);
+    }
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Window Screen Shot Utility
  *
  * Include here since it can involve low level buffer switching.
@@ -2004,10 +2088,7 @@ uint *WM_window_pixels_read(wmWindowManager *wm, wmWindow *win, int r_size[2])
   const uint rect_len = r_size[0] * r_size[1];
   uint *rect = MEM_mallocN(sizeof(*rect) * rect_len, __func__);
 
-  glReadBuffer(GL_FRONT);
-  glReadPixels(0, 0, r_size[0], r_size[1], GL_RGBA, GL_UNSIGNED_BYTE, rect);
-  glFinish();
-  glReadBuffer(GL_BACK);
+  GPU_frontbuffer_read_pixels(0, 0, r_size[0], r_size[1], 4, GPU_DATA_UNSIGNED_BYTE, rect);
 
   if (setup_context) {
     if (wm->windrawable) {

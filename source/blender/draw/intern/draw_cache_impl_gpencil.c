@@ -102,6 +102,7 @@ static GpencilBatchCache *gpencil_batch_cache_init(Object *ob, int cfra)
 
   cache->is_dirty = true;
   cache->cache_frame = cfra;
+
   return cache;
 }
 
@@ -149,7 +150,6 @@ void DRW_gpencil_batch_cache_free(bGPdata *gpd)
   gpencil_batch_cache_clear(gpd->runtime.gpencil_cache);
   MEM_SAFE_FREE(gpd->runtime.gpencil_cache);
   gpd->flag |= GP_DATA_CACHE_IS_DIRTY;
-  return;
 }
 
 /** \} */
@@ -348,10 +348,10 @@ static void gpencil_stroke_iter_cb(bGPDlayer *UNUSED(gpl),
   }
 }
 
-static void gp_object_verts_count_cb(bGPDlayer *UNUSED(gpl),
-                                     bGPDframe *UNUSED(gpf),
-                                     bGPDstroke *gps,
-                                     void *thunk)
+static void gpencil_object_verts_count_cb(bGPDlayer *UNUSED(gpl),
+                                          bGPDframe *UNUSED(gpf),
+                                          bGPDstroke *gps,
+                                          void *thunk)
 {
   gpIterData *iter = (gpIterData *)thunk;
 
@@ -385,7 +385,8 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache, int cfr
         .vert_len = 1, /* Start at 1 for the gl_InstanceID trick to work (see vert shader). */
         .tri_len = 0,
     };
-    BKE_gpencil_visible_stroke_iter(ob, NULL, gp_object_verts_count_cb, &iter, do_onion, cfra);
+    BKE_gpencil_visible_stroke_iter(
+        NULL, ob, NULL, gpencil_object_verts_count_cb, &iter, do_onion, cfra);
 
     /* Create VBOs. */
     GPUVertFormat *format = gpencil_stroke_format();
@@ -401,7 +402,7 @@ static void gpencil_batches_ensure(Object *ob, GpencilBatchCache *cache, int cfr
     GPU_indexbuf_init(&iter.ibo, GPU_PRIM_TRIS, iter.tri_len, iter.vert_len);
 
     /* Fill buffers with data. */
-    BKE_gpencil_visible_stroke_iter(ob, NULL, gpencil_stroke_iter_cb, &iter, do_onion, cfra);
+    BKE_gpencil_visible_stroke_iter(NULL, ob, NULL, gpencil_stroke_iter_cb, &iter, do_onion, cfra);
 
     /* Mark last 2 verts as invalid. */
     for (int i = 0; i < 2; i++) {
@@ -439,10 +440,10 @@ GPUBatch *DRW_cache_gpencil_fills_get(Object *ob, int cfra)
   return cache->fill_batch;
 }
 
-static void gp_lines_indices_cb(bGPDlayer *UNUSED(gpl),
-                                bGPDframe *UNUSED(gpf),
-                                bGPDstroke *gps,
-                                void *thunk)
+static void gpencil_lines_indices_cb(bGPDlayer *UNUSED(gpl),
+                                     bGPDframe *UNUSED(gpf),
+                                     bGPDstroke *gps,
+                                     void *thunk)
 {
   gpIterData *iter = (gpIterData *)thunk;
   int pts_len = gps->totpoints + gpencil_stroke_is_cyclic(gps);
@@ -475,7 +476,8 @@ GPUBatch *DRW_cache_gpencil_face_wireframe_get(Object *ob)
 
     /* IMPORTANT: Keep in sync with gpencil_edit_batches_ensure() */
     bool do_onion = true;
-    BKE_gpencil_visible_stroke_iter(ob, NULL, gp_lines_indices_cb, &iter, do_onion, cfra);
+    BKE_gpencil_visible_stroke_iter(
+        NULL, ob, NULL, gpencil_lines_indices_cb, &iter, do_onion, cfra);
 
     GPUIndexBuf *ibo = GPU_indexbuf_build(&iter.ibo);
 
@@ -724,7 +726,8 @@ static void gpencil_edit_batches_ensure(Object *ob, GpencilBatchCache *cache, in
     iter.verts = (gpEditVert *)cache->edit_vbo->data;
 
     /* Fill buffers with data. */
-    BKE_gpencil_visible_stroke_iter(ob, NULL, gpencil_edit_stroke_iter_cb, &iter, do_onion, cfra);
+    BKE_gpencil_visible_stroke_iter(
+        NULL, ob, NULL, gpencil_edit_stroke_iter_cb, &iter, do_onion, cfra);
 
     /* Create the batches */
     cache->edit_points_batch = GPU_batch_create(GPU_PRIM_POINTS, cache->vbo, NULL);

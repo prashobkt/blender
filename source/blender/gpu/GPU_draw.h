@@ -50,7 +50,7 @@ void GPU_paint_set_mipmap(struct Main *bmain, bool mipmap);
 
 /* Anisotropic filtering settings
  * - these will free textures on changes */
-void GPU_set_anisotropic(struct Main *bmain, float value);
+void GPU_set_anisotropic(float value);
 float GPU_get_anisotropic(void);
 
 /* Image updates and free
@@ -58,35 +58,21 @@ float GPU_get_anisotropic(void);
 
 void GPU_paint_update_image(
     struct Image *ima, struct ImageUser *iuser, int x, int y, int w, int h);
-void GPU_create_gl_tex(unsigned int *bind,
-                       unsigned int *rect,
-                       float *frect,
-                       int rectw,
-                       int recth,
-                       int textarget,
-                       bool mipmap,
-                       bool half_float,
-                       bool use_srgb,
-                       struct Image *ima);
-void GPU_create_gl_tex_compressed(unsigned int *bind,
-                                  int textarget,
-                                  struct Image *ima,
-                                  struct ImBuf *ibuf);
-bool GPU_upload_dxt_texture(struct ImBuf *ibuf, bool use_srgb);
+bool GPU_upload_dxt_texture(struct ImBuf *ibuf, bool use_srgb, uint *bindcode);
 void GPU_free_image(struct Image *ima);
 void GPU_free_images(struct Main *bmain);
 void GPU_free_images_anim(struct Main *bmain);
 void GPU_free_images_old(struct Main *bmain);
 
 /* gpu_draw_smoke.c  */
-void GPU_free_smoke(struct FluidModifierData *mmd);
-void GPU_free_smoke_velocity(struct FluidModifierData *mmd);
-void GPU_create_smoke(struct FluidModifierData *mmd, int highres);
-void GPU_create_smoke_coba_field(struct FluidModifierData *mmd);
-void GPU_create_smoke_velocity(struct FluidModifierData *mmd);
+void GPU_free_smoke(struct FluidModifierData *fmd);
+void GPU_free_smoke_velocity(struct FluidModifierData *fmd);
+void GPU_create_smoke(struct FluidModifierData *fmd, int highres);
+void GPU_create_smoke_coba_field(struct FluidModifierData *fmd);
+void GPU_create_smoke_velocity(struct FluidModifierData *fmd);
 
 /* Delayed free of OpenGL buffers by main thread */
-void GPU_free_unused_buffers(struct Main *bmain);
+void GPU_free_unused_buffers(void);
 
 #ifdef __cplusplus
 }

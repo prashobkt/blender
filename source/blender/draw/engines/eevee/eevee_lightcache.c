@@ -53,9 +53,6 @@
 #if defined(IRRADIANCE_SH_L2)
 #  define IRRADIANCE_SAMPLE_SIZE_X 4 /* 3 in reality */
 #  define IRRADIANCE_SAMPLE_SIZE_Y 4 /* 3 in reality */
-#elif defined(IRRADIANCE_CUBEMAP)
-#  define IRRADIANCE_SAMPLE_SIZE_X 8
-#  define IRRADIANCE_SAMPLE_SIZE_Y 8
 #elif defined(IRRADIANCE_HL2)
 #  define IRRADIANCE_SAMPLE_SIZE_X 4 /* 3 in reality */
 #  define IRRADIANCE_SAMPLE_SIZE_Y 2
@@ -113,7 +110,7 @@ typedef struct EEVEE_LightBake {
   float samples_ct, invsamples_ct;
   /** Sampling bias during convolution step. */
   float lod_factor;
-  /** Max cubemap LOD to sample when convolving. */
+  /** Max cube-map LOD to sample when convolving. */
   float lod_max;
   /** Number of probes to render + world probe. */
   int cube_len, grid_len;
@@ -121,7 +118,7 @@ typedef struct EEVEE_LightBake {
   /* Irradiance grid */
   /** Current probe being rendered (UBO data). */
   EEVEE_LightGrid *grid;
-  /** Target cubemap at MIP 0. */
+  /** Target cube-map at MIP 0. */
   int irr_cube_res;
   /** Size of the irradiance texture. */
   int irr_size[3];
@@ -145,7 +142,7 @@ typedef struct EEVEE_LightBake {
   /* Reflection probe */
   /** Current probe being rendered (UBO data). */
   EEVEE_LightProbe *cube;
-  /** Target cubemap at MIP 0. */
+  /** Target cube-map at MIP 0. */
   int ref_cube_res;
   /** Index of the current cube. */
   int cube_offset;
@@ -379,9 +376,7 @@ static bool eevee_lightcache_static_load(LightCache *lcache)
                                                 0,
                                                 false,
                                                 NULL);
-    GPU_texture_bind(lcache->grid_tx.tex, 0);
     GPU_texture_filter_mode(lcache->grid_tx.tex, true);
-    GPU_texture_unbind(lcache->grid_tx.tex);
   }
 
   if (lcache->cube_tx.tex == NULL) {
@@ -406,13 +401,11 @@ static bool eevee_lightcache_static_load(LightCache *lcache)
                                                   NULL);
     }
 
-    GPU_texture_bind(lcache->cube_tx.tex, 0);
-    GPU_texture_mipmap_mode(lcache->cube_tx.tex, true, true);
     for (int mip = 0; mip < lcache->mips_len; mip++) {
       GPU_texture_add_mipmap(
           lcache->cube_tx.tex, GPU_DATA_10_11_11_REV, mip + 1, lcache->cube_mips[mip].data);
     }
-    GPU_texture_unbind(lcache->cube_tx.tex);
+    GPU_texture_mipmap_mode(lcache->cube_tx.tex, true, true);
   }
   return true;
 }
@@ -822,7 +815,7 @@ static void eevee_lightbake_cache_create(EEVEE_Data *vedata, EEVEE_LightBake *lb
   DRW_render_viewport_size_set(viewport_size);
 
   EEVEE_effects_init(sldata, vedata, NULL, true);
-  EEVEE_materials_init(sldata, stl, fbl);
+  EEVEE_materials_init(sldata, vedata, stl, fbl);
   EEVEE_shadows_init(sldata);
   EEVEE_lightprobes_init(sldata, vedata);
 
@@ -853,6 +846,7 @@ static void eevee_lightbake_cache_create(EEVEE_Data *vedata, EEVEE_LightBake *lb
   /* Disable volumetrics when baking. */
   stl->effects->enabled_effects &= ~EFFECT_VOLUMETRIC;
 
+  EEVEE_subsurface_draw_init(sldata, vedata);
   EEVEE_effects_draw_init(sldata, vedata);
   EEVEE_volumes_draw_init(sldata, vedata);
 

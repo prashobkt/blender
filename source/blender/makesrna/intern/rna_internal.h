@@ -23,6 +23,8 @@
 
 #include "BLI_utildefines.h"
 
+#include "BLI_compiler_attrs.h"
+
 #include "rna_internal_types.h"
 
 #include "UI_resources.h"
@@ -118,7 +120,14 @@ typedef struct BlenderDefRNA {
   ListBase structs;
   ListBase allocs;
   struct StructRNA *laststruct;
-  int error, silent, preprocess, verify, animate;
+  bool error;
+  bool silent;
+  bool preprocess;
+  bool verify;
+  bool animate;
+  /** Whether RNA properties defined should be overridable or not by default. */
+  bool make_overridable;
+
   /* Keep last. */
 #ifndef RNA_RUNTIME
   struct {
@@ -471,9 +480,11 @@ extern StructRNA RNA_PropertyGroupItem;
 extern StructRNA RNA_PropertyGroup;
 #endif
 
-struct IDProperty *rna_idproperty_check(struct PropertyRNA **prop, struct PointerRNA *ptr);
+struct IDProperty *rna_idproperty_check(struct PropertyRNA **prop,
+                                        struct PointerRNA *ptr) ATTR_WARN_UNUSED_RESULT;
 struct PropertyRNA *rna_ensure_property_realdata(struct PropertyRNA **prop,
-                                                 struct PointerRNA *ptr);
+                                                 struct PointerRNA *ptr) ATTR_WARN_UNUSED_RESULT;
+struct PropertyRNA *rna_ensure_property(struct PropertyRNA *prop) ATTR_WARN_UNUSED_RESULT;
 
 /* Override default callbacks. */
 /* Default override callbacks for all types. */
@@ -482,15 +493,12 @@ struct PropertyRNA *rna_ensure_property_realdata(struct PropertyRNA **prop,
  *       Not obvious though, those are fairly more complicated than basic SDNA access.
  */
 int rna_property_override_diff_default(struct Main *bmain,
-                                       struct PointerRNA *ptr_a,
-                                       struct PointerRNA *ptr_b,
-                                       struct PropertyRNA *prop_a,
-                                       struct PropertyRNA *prop_b,
-                                       const int len_a,
-                                       const int len_b,
+                                       struct PropertyRNAOrID *prop_a,
+                                       struct PropertyRNAOrID *prop_b,
                                        const int mode,
                                        struct IDOverrideLibrary *override,
                                        const char *rna_path,
+                                       const size_t rna_path_len,
                                        const int flags,
                                        bool *r_override_changed);
 

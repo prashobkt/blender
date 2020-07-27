@@ -46,7 +46,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_modifier_types.h"
-#include "DNA_object_force_types.h"
+#include "DNA_pointcache_types.h"
 #include "DNA_rigidbody_types.h"
 
 #include "DEG_depsgraph_query.h"
@@ -65,6 +65,7 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_TextureList *txl = vedata->txl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
+  const bool is_select = DRW_state_is_select();
 
   DRWState state_blend = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
   DRW_PASS_CREATE(psl->extra_blend_ps, state_blend | pd->clipping_state);
@@ -80,8 +81,8 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
     struct GPUTexture *tex = DRW_state_is_fbo() ? dtxl->depth : txl->dummy_depth_tx;
 
     pd->extra_grid_grp = grp = DRW_shgroup_create(sh, psl->extra_grid_ps);
-    DRW_shgroup_uniform_texture_persistent(grp, "depthBuffer", tex);
-    DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+    DRW_shgroup_uniform_texture(grp, "depthBuffer", tex);
+    DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_uniform_bool_copy(grp, "isTransform", (G.moving & G_TRANSFORM_OBJ) != 0);
   }
 
@@ -108,10 +109,10 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
     /* Sorted by shader to avoid state changes during render. */
     {
       format = formats->instance_extra;
-      sh = OVERLAY_shader_extra();
+      sh = OVERLAY_shader_extra(is_select);
 
       grp = DRW_shgroup_create(sh, extra_ps);
-      DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
 
       grp_sub = DRW_shgroup_create_sub(grp);
       cb->camera_distances = BUF_INSTANCE(grp_sub, format, DRW_cache_camera_distances_get());
@@ -156,7 +157,7 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
     {
       format = formats->instance_extra;
       grp = DRW_shgroup_create(sh, psl->extra_blend_ps); /* NOTE: not the same pass! */
-      DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
 
       grp_sub = DRW_shgroup_create_sub(grp);
       DRW_shgroup_state_enable(grp_sub, DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK);
@@ -173,38 +174,41 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       sh = OVERLAY_shader_extra_groundline();
 
       grp = DRW_shgroup_create(sh, extra_ps);
-      DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
 
       cb->groundline = BUF_INSTANCE(grp, format, DRW_cache_groundline_get());
     }
     {
-      sh = OVERLAY_shader_extra_wire(false);
+      sh = OVERLAY_shader_extra_wire(false, is_select);
 
       grp = DRW_shgroup_create(sh, extra_ps);
-      DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
 
       cb->extra_dashed_lines = BUF_LINE(grp, formats->pos_color);
       cb->extra_lines = BUF_LINE(grp, formats->wire_extra);
     }
     {
-      sh = OVERLAY_shader_extra_wire(true);
+      sh = OVERLAY_shader_extra_wire(true, is_select);
 
       cb->extra_wire = grp = DRW_shgroup_create(sh, extra_ps);
-      DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     }
     {
       sh = OVERLAY_shader_extra_loose_point();
 
       cb->extra_loose_points = grp = DRW_shgroup_create(sh, extra_ps);
-      DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+
+      /* Buffer access for drawing isolated points, matching `extra_lines`. */
+      cb->extra_points = BUF_POINT(grp, formats->point_extra);
     }
     {
       format = formats->pos;
       sh = OVERLAY_shader_extra_point();
 
       grp = DRW_shgroup_create(sh, psl->extra_centers_ps); /* NOTE: not the same pass! */
-      DRW_shgroup_uniform_block_persistent(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
 
       grp_sub = DRW_shgroup_create_sub(grp);
       DRW_shgroup_uniform_vec4_copy(grp_sub, "color", G_draw.block.colorActive);
@@ -229,6 +233,11 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
   }
 }
 
+void OVERLAY_extra_point(OVERLAY_ExtraCallBuffers *cb, const float point[3], const float color[4])
+{
+  DRW_buffer_add_entry(cb->extra_points, point, color);
+}
+
 void OVERLAY_extra_line_dashed(OVERLAY_ExtraCallBuffers *cb,
                                const float start[3],
                                const float end[3],
@@ -249,7 +258,7 @@ void OVERLAY_extra_line(OVERLAY_ExtraCallBuffers *cb,
 
 OVERLAY_ExtraCallBuffers *OVERLAY_extra_call_buffer_get(OVERLAY_Data *vedata, Object *ob)
 {
-  bool do_in_front = (ob->dtx & OB_DRAWXRAY) != 0;
+  bool do_in_front = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   return &pd->extra_call_buffers[do_in_front];
 }
@@ -1275,6 +1284,19 @@ static void OVERLAY_relationship_lines(OVERLAY_ExtraCallBuffers *cb,
     OVERLAY_extra_line_dashed(cb, parent_pos, ob->obmat[3], relation_color);
   }
 
+  /* Drawing the hook lines. */
+  for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
+    if (md->type == eModifierType_Hook) {
+      HookModifierData *hmd = (HookModifierData *)md;
+      float center[3];
+      mul_v3_m4v3(center, ob->obmat, hmd->cent);
+      if (hmd->object) {
+        OVERLAY_extra_line_dashed(cb, hmd->object->obmat[3], center, relation_color);
+      }
+      OVERLAY_extra_point(cb, center, relation_color);
+    }
+  }
+
   if (ob->rigidbody_constraint) {
     Object *rbc_ob1 = ob->rigidbody_constraint->ob1;
     Object *rbc_ob2 = ob->rigidbody_constraint->ob2;
@@ -1317,7 +1339,7 @@ static void OVERLAY_relationship_lines(OVERLAY_ExtraCallBuffers *cb,
       else {
         const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(curcon);
 
-        if ((cti && cti->get_constraint_targets) && (curcon->flag & CONSTRAINT_EXPAND)) {
+        if ((cti && cti->get_constraint_targets) && (curcon->ui_expand_flag && (1 << 0))) {
           ListBase targets = {NULL, NULL};
           bConstraintTarget *ct;
 
@@ -1355,24 +1377,24 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
                                  Object *ob,
                                  ModifierData *md,
                                  Scene *scene,
-                                 float *color)
+                                 const float *color)
 {
-  FluidModifierData *mmd = (FluidModifierData *)md;
-  FluidDomainSettings *mds = mmd->domain;
+  FluidModifierData *fmd = (FluidModifierData *)md;
+  FluidDomainSettings *fds = fmd->domain;
 
   /* Don't show smoke before simulation starts, this could be made an option in the future. */
-  const bool draw_velocity = (mds->draw_velocity && mds->fluid &&
-                              CFRA >= mds->point_cache[0]->startframe);
+  const bool draw_velocity = (fds->draw_velocity && fds->fluid &&
+                              CFRA >= fds->point_cache[0]->startframe);
 
   /* Small cube showing voxel size. */
   {
     float min[3];
-    madd_v3fl_v3fl_v3fl_v3i(min, mds->p0, mds->cell_size, mds->res_min);
+    madd_v3fl_v3fl_v3fl_v3i(min, fds->p0, fds->cell_size, fds->res_min);
     float voxel_cubemat[4][4] = {{0.0f}};
     /* scale small cube to voxel size */
-    voxel_cubemat[0][0] = 1.0f / (float)mds->base_res[0];
-    voxel_cubemat[1][1] = 1.0f / (float)mds->base_res[1];
-    voxel_cubemat[2][2] = 1.0f / (float)mds->base_res[2];
+    voxel_cubemat[0][0] = fds->cell_size[0] / 2.0f;
+    voxel_cubemat[1][1] = fds->cell_size[1] / 2.0f;
+    voxel_cubemat[2][2] = fds->cell_size[2] / 2.0f;
     voxel_cubemat[3][3] = 1.0f;
     /* translate small cube to corner */
     copy_v3_v3(voxel_cubemat[3], min);
@@ -1384,38 +1406,38 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
   }
 
   if (draw_velocity) {
-    const bool use_needle = (mds->vector_draw_type == VECTOR_DRAW_NEEDLE);
+    const bool use_needle = (fds->vector_draw_type == VECTOR_DRAW_NEEDLE);
     int line_count = (use_needle) ? 6 : 1;
     int slice_axis = -1;
-    line_count *= mds->res[0] * mds->res[1] * mds->res[2];
+    line_count *= fds->res[0] * fds->res[1] * fds->res[2];
 
-    if (mds->slice_method == FLUID_DOMAIN_SLICE_AXIS_ALIGNED &&
-        mds->axis_slice_method == AXIS_SLICE_SINGLE) {
+    if (fds->slice_method == FLUID_DOMAIN_SLICE_AXIS_ALIGNED &&
+        fds->axis_slice_method == AXIS_SLICE_SINGLE) {
       float viewinv[4][4];
       DRW_view_viewmat_get(NULL, viewinv, true);
 
-      const int axis = (mds->slice_axis == SLICE_AXIS_AUTO) ? axis_dominant_v3_single(viewinv[2]) :
-                                                              mds->slice_axis - 1;
+      const int axis = (fds->slice_axis == SLICE_AXIS_AUTO) ? axis_dominant_v3_single(viewinv[2]) :
+                                                              fds->slice_axis - 1;
       slice_axis = axis;
-      line_count /= mds->res[axis];
+      line_count /= fds->res[axis];
     }
 
-    GPU_create_smoke_velocity(mmd);
+    GPU_create_smoke_velocity(fmd);
 
     GPUShader *sh = OVERLAY_shader_volume_velocity(use_needle);
     DRWShadingGroup *grp = DRW_shgroup_create(sh, data->psl->extra_ps[0]);
-    DRW_shgroup_uniform_texture(grp, "velocityX", mds->tex_velocity_x);
-    DRW_shgroup_uniform_texture(grp, "velocityY", mds->tex_velocity_y);
-    DRW_shgroup_uniform_texture(grp, "velocityZ", mds->tex_velocity_z);
-    DRW_shgroup_uniform_float_copy(grp, "displaySize", mds->vector_scale);
-    DRW_shgroup_uniform_float_copy(grp, "slicePosition", mds->slice_depth);
-    DRW_shgroup_uniform_vec3_copy(grp, "cellSize", mds->cell_size);
-    DRW_shgroup_uniform_vec3_copy(grp, "domainOriginOffset", mds->p0);
-    DRW_shgroup_uniform_ivec3_copy(grp, "adaptiveCellOffset", mds->res_min);
+    DRW_shgroup_uniform_texture(grp, "velocityX", fds->tex_velocity_x);
+    DRW_shgroup_uniform_texture(grp, "velocityY", fds->tex_velocity_y);
+    DRW_shgroup_uniform_texture(grp, "velocityZ", fds->tex_velocity_z);
+    DRW_shgroup_uniform_float_copy(grp, "displaySize", fds->vector_scale);
+    DRW_shgroup_uniform_float_copy(grp, "slicePosition", fds->slice_depth);
+    DRW_shgroup_uniform_vec3_copy(grp, "cellSize", fds->cell_size);
+    DRW_shgroup_uniform_vec3_copy(grp, "domainOriginOffset", fds->p0);
+    DRW_shgroup_uniform_ivec3_copy(grp, "adaptiveCellOffset", fds->res_min);
     DRW_shgroup_uniform_int_copy(grp, "sliceAxis", slice_axis);
     DRW_shgroup_call_procedural_lines(grp, ob, line_count);
 
-    BLI_addtail(&data->stl->pd->smoke_domains, BLI_genericNodeN(mmd));
+    BLI_addtail(&data->stl->pd->smoke_domains, BLI_genericNodeN(fmd));
   }
 }
 
@@ -1429,8 +1451,8 @@ static void OVERLAY_volume_free_smoke_textures(OVERLAY_Data *data)
    * all viewport in a redraw at least. */
   LinkData *link;
   while ((link = BLI_pophead(&data->stl->pd->smoke_domains))) {
-    FluidModifierData *mmd = (FluidModifierData *)link->data;
-    GPU_free_smoke_velocity(mmd);
+    FluidModifierData *fmd = (FluidModifierData *)link->data;
+    GPU_free_smoke_velocity(fmd);
     MEM_freeN(link);
   }
 }

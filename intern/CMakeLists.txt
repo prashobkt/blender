@@ -30,6 +30,11 @@ add_subdirectory(opensubdiv)
 add_subdirectory(mikktspace)
 add_subdirectory(glew-mx)
 add_subdirectory(eigen)
+add_subdirectory(sky)
+
+
+
+
 add_subdirectory(softbody)
 
 if(WITH_AUDASPACE)

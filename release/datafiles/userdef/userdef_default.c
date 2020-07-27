@@ -31,8 +31,8 @@
 #include "BLO_readfile.h" /* own include */
 
 const UserDef U_default = {
-    .versionfile = BLENDER_VERSION,
-    .subversionfile = BLENDER_SUBVERSION,
+    .versionfile = BLENDER_FILE_VERSION,
+    .subversionfile = BLENDER_FILE_SUBVERSION,
     .flag = (USER_AUTOSAVE | USER_TOOLTIPS | USER_SAVE_PREVIEWS | USER_RELPATHS |
              USER_RELEASECONFIRM | USER_SCRIPT_AUTOEXEC_DISABLE | USER_NONEGFRAMES),
     .dupflag = USER_DUP_MESH | USER_DUP_CURVE | USER_DUP_SURF | USER_DUP_FONT | USER_DUP_MBALL |
@@ -228,6 +228,8 @@ const UserDef U_default = {
     .sequencer_disk_cache_flag = 0,
 
     .collection_instance_empty_size = 1.0f,
+
+    .statusbar_flag = STATUSBAR_SHOW_VERSION,
 
     .runtime =
         {

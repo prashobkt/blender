@@ -86,6 +86,7 @@ set(SRC
   intern/listbase.c
   intern/math_base.c
   intern/math_base_inline.c
+  intern/math_base_safe_inline.c
   intern/math_bits_inline.c
   intern/math_color.c
   intern/math_color_blend_inline.c
@@ -105,7 +106,7 @@ set(SRC
   intern/polyfill_2d.c
   intern/polyfill_2d_beautify.c
   intern/quadric.c
-  intern/rand.c
+  intern/rand.cc
   intern/rct.c
   intern/scanfill.c
   intern/scanfill_utils.c
@@ -124,7 +125,7 @@ set(SRC
   intern/task_pool.cc
   intern/task_range.cc
   intern/task_scheduler.cc
-  intern/threads.c
+  intern/threads.cc
   intern/time.c
   intern/timecode.c
   intern/timeit.cc
@@ -144,7 +145,6 @@ set(SRC
   BLI_args.h
   BLI_array.h
   BLI_array.hh
-  BLI_array_ref.hh
   BLI_array_store.h
   BLI_array_store_utils.h
   BLI_array_utils.h
@@ -164,6 +164,7 @@ set(SRC
   BLI_convexhull_2d.h
   BLI_delaunay_2d.h
   BLI_dial_2d.h
+  BLI_disjoint_set.hh
   BLI_dlrbTree.h
   BLI_dot_export.hh
   BLI_dot_export_attribute_enums.hh
@@ -187,8 +188,10 @@ set(SRC
   BLI_hash_md5.h
   BLI_hash_mm2a.h
   BLI_hash_mm3.h
+  BLI_hash_tables.hh
   BLI_heap.h
   BLI_heap_simple.h
+  BLI_index_mask.hh
   BLI_index_range.hh
   BLI_iterator.h
   BLI_jitter_2d.h
@@ -196,6 +199,7 @@ set(SRC
   BLI_kdtree.h
   BLI_kdtree_impl.h
   BLI_lasso_2d.h
+  BLI_linear_allocator.hh
   BLI_link_utils.h
   BLI_linklist.h
   BLI_linklist_lockfree.h
@@ -203,8 +207,10 @@ set(SRC
   BLI_listbase.h
   BLI_listbase_wrapper.hh
   BLI_map.hh
+  BLI_map_slots.hh
   BLI_math.h
   BLI_math_base.h
+  BLI_math_base_safe.h
   BLI_math_bits.h
   BLI_math_color.h
   BLI_math_color_blend.h
@@ -223,25 +229,27 @@ set(SRC
   BLI_memory_utils.hh
   BLI_mempool.h
   BLI_noise.h
-  BLI_open_addressing.hh
-  BLI_optional.hh
   BLI_path_util.h
   BLI_polyfill_2d.h
   BLI_polyfill_2d_beautify.h
+  BLI_probing_strategies.hh
   BLI_quadric.h
   BLI_rand.h
+  BLI_rand.hh
   BLI_rect.h
+  BLI_resource_collector.hh
   BLI_scanfill.h
   BLI_set.hh
+  BLI_set_slots.hh
   BLI_smallhash.h
   BLI_sort.h
   BLI_sort_utils.h
+  BLI_span.hh
   BLI_stack.h
   BLI_stack.hh
   BLI_strict_flags.h
   BLI_string.h
   BLI_string_cursor_utf8.h
-  BLI_string_map.hh
   BLI_string_ref.hh
   BLI_string_utf8.h
   BLI_string_utils.h
@@ -259,7 +267,9 @@ set(SRC
   BLI_utility_mixins.hh
   BLI_uvproject.h
   BLI_vector.hh
+  BLI_vector_adaptor.hh
   BLI_vector_set.hh
+  BLI_vector_set_slots.hh
   BLI_vfontdata.h
   BLI_voronoi_2d.h
   BLI_voxel.h
@@ -321,6 +331,7 @@ endif()
 # no need to compile object files for inline headers.
 set_source_files_properties(
   intern/math_base_inline.c
+  intern/math_base_safe_inline.c
   intern/math_bits_inline.c
   intern/math_color_blend_inline.c
   intern/math_color_inline.c
@@ -330,3 +341,29 @@ set_source_files_properties(
 )
 
 blender_add_lib(bf_blenlib "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+if(WITH_GTESTS)
+  set(TEST_SRC
+    tests/BLI_array_test.cc
+    tests/BLI_disjoint_set_test.cc
+    tests/BLI_edgehash_test.cc
+    tests/BLI_index_mask_test.cc
+    tests/BLI_index_range_test.cc
+    tests/BLI_linear_allocator_test.cc
+    tests/BLI_map_test.cc
+    tests/BLI_math_base_safe_test.cc
+    tests/BLI_memory_utils_test.cc
+    tests/BLI_multi_value_map_test.cc
+    tests/BLI_set_test.cc
+    tests/BLI_span_test.cc
+    tests/BLI_stack_cxx_test.cc
+    tests/BLI_string_ref_test.cc
+    tests/BLI_vector_set_test.cc
+    tests/BLI_vector_test.cc
+  )
+  set(TEST_LIB
+    bf_blenlib
+  )
+  include(GTestTesting)
+  blender_add_test_lib(bf_bli_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+endif()

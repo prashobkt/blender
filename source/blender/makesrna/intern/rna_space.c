@@ -1776,87 +1776,28 @@ static const EnumPropertyItem *rna_SpaceProperties_context_itemf(bContext *UNUSE
 {
   SpaceProperties *sbuts = (SpaceProperties *)(ptr->data);
   EnumPropertyItem *item = NULL;
-  int totitem = 0;
 
-  if (sbuts->pathflag & (1 << BCONTEXT_TOOL)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_TOOL);
-  }
+  /* We use 32 tabs maximum here so a flag for each can fit into a 32 bit integer flag.
+   * A theoretical maximum would be BCONTEXT_TOT * 2, with every tab displayed and a spacer
+   * in every other item. But this size is currently limited by the size of integer
+   * supported by RNA enums. */
+  int context_tabs_array[32];
+  int totitem = ED_buttons_tabs_list(sbuts, context_tabs_array);
+  BLI_assert(totitem <= ARRAY_SIZE(context_tabs_array));
 
-  if (totitem) {
-    RNA_enum_item_add_separator(&item, &totitem);
-  }
+  int totitem_added = 0;
+  for (int i = 0; i < totitem; i++) {
+    if (context_tabs_array[i] == -1) {
+      RNA_enum_item_add_separator(&item, &totitem_added);
+      continue;
+    }
 
-  if (sbuts->pathflag & (1 << BCONTEXT_RENDER)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_RENDER);
-  }
+    RNA_enum_items_add_value(&item, &totitem_added, buttons_context_items, context_tabs_array[i]);
 
-  if (sbuts->pathflag & (1 << BCONTEXT_OUTPUT)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_OUTPUT);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_VIEW_LAYER)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_VIEW_LAYER);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_SCENE)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_SCENE);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_WORLD)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_WORLD);
-  }
-
-  if (totitem) {
-    RNA_enum_item_add_separator(&item, &totitem);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_OBJECT)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_OBJECT);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_MODIFIER)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_MODIFIER);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_SHADERFX)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_SHADERFX);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_PARTICLE)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_PARTICLE);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_PHYSICS)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_PHYSICS);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_CONSTRAINT)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_CONSTRAINT);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_DATA)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_DATA);
-    (item + totitem - 1)->icon = sbuts->dataicon;
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_BONE)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_BONE);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_BONE_CONSTRAINT)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_BONE_CONSTRAINT);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_MATERIAL)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_MATERIAL);
-  }
-
-  if (totitem) {
-    RNA_enum_item_add_separator(&item, &totitem);
-  }
-
-  if (sbuts->pathflag & (1 << BCONTEXT_TEXTURE)) {
-    RNA_enum_items_add_value(&item, &totitem, buttons_context_items, BCONTEXT_TEXTURE);
+    /* Add the object data icon dynamically for the data tab. */
+    if (context_tabs_array[i] == BCONTEXT_DATA) {
+      (item + totitem_added - 1)->icon = sbuts->dataicon;
+    }
   }
 
   RNA_enum_item_end(&item, &totitem);
@@ -2181,7 +2122,6 @@ static void rna_SpaceNodeEditor_node_tree_update(const bContext *C, PointerRNA *
   ED_node_tree_update(C);
 }
 
-#  ifdef WITH_NEW_SIMULATION_TYPE
 static PointerRNA rna_SpaceNodeEditor_simulation_get(PointerRNA *ptr)
 {
   SpaceNode *snode = (SpaceNode *)ptr->data;
@@ -2213,7 +2153,6 @@ static void rna_SpaceNodeEditor_simulation_set(PointerRNA *ptr,
   }
   snode->id = &sim->id;
 }
-#  endif
 
 static int rna_SpaceNodeEditor_tree_type_get(PointerRNA *ptr)
 {
@@ -4317,12 +4256,10 @@ static void rna_def_space_view3d(BlenderRNA *brna)
         {"Surface", (1 << OB_SURF), {"show_object_viewport_surf", "show_object_select_surf"}},
         {"Meta", (1 << OB_MBALL), {"show_object_viewport_meta", "show_object_select_meta"}},
         {"Font", (1 << OB_FONT), {"show_object_viewport_font", "show_object_select_font"}},
-#  ifdef WITH_NEW_OBJECT_TYPES
         {"Hair", (1 << OB_HAIR), {"show_object_viewport_hair", "show_object_select_hair"}},
         {"Point Cloud",
          (1 << OB_POINTCLOUD),
          {"show_object_viewport_pointcloud", "show_object_select_pointcloud"}},
-#  endif
         {"Volume", (1 << OB_VOLUME), {"show_object_viewport_volume", "show_object_select_volume"}},
         {"Armature",
          (1 << OB_ARMATURE),
@@ -5534,9 +5471,7 @@ static void rna_def_fileselect_idfilter(BlenderRNA *brna)
        "Grease Pencil",
        "Show Grease pencil data-blocks"},
       {FILTER_ID_GR, "filter_group", ICON_GROUP, "Collections", "Show Collection data-blocks"},
-#  ifdef WITH_NEW_OBJECT_TYPES
       {FILTER_ID_HA, "filter_hair", ICON_HAIR_DATA, "Hairs", "Show/hide Hair data-blocks"},
-#  endif
       {FILTER_ID_IM, "filter_image", ICON_IMAGE_DATA, "Images", "Show Image data-blocks"},
       {FILTER_ID_LA, "filter_light", ICON_LIGHT_DATA, "Lights", "Show Light data-blocks"},
       {FILTER_ID_LP,
@@ -5580,21 +5515,17 @@ static void rna_def_fileselect_idfilter(BlenderRNA *brna)
        ICON_CURVE_BEZCURVE,
        "Paint Curves",
        "Show Paint Curve data-blocks"},
-#  ifdef WITH_NEW_OBJECT_TYPES
       {FILTER_ID_PT,
        "filter_pointcloud",
        ICON_POINTCLOUD_DATA,
        "Point Clouds",
        "Show/hide Point Cloud data-blocks"},
-#  endif
       {FILTER_ID_SCE, "filter_scene", ICON_SCENE_DATA, "Scenes", "Show Scene data-blocks"},
-#  ifdef WITH_NEW_SIMULATION_TYPE
       {FILTER_ID_SIM,
        "filter_simulation",
        ICON_PHYSICS,
        "Simulations",
        "Show Simulation data-blocks"}, /* TODO: Use correct icon. */
-#  endif
       {FILTER_ID_SPK, "filter_speaker", ICON_SPEAKER, "Speakers", "Show Speaker data-blocks"},
       {FILTER_ID_SO, "filter_sound", ICON_SOUND, "Sounds", "Show Sound data-blocks"},
       {FILTER_ID_TE, "filter_texture", ICON_TEXTURE_DATA, "Textures", "Show Texture data-blocks"},
@@ -6276,7 +6207,6 @@ static void rna_def_space_node(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "ID From", "Data-block from which the edited data-block is linked");
 
-#  ifdef WITH_NEW_SIMULATION_TYPE
   prop = RNA_def_property(srna, "simulation", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "Simulation");
@@ -6287,7 +6217,6 @@ static void rna_def_space_node(BlenderRNA *brna)
                                  NULL,
                                  NULL);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, NULL);
-#  endif
 
   prop = RNA_def_property(srna, "path", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "treepath", NULL);

@@ -116,7 +116,7 @@ static void action_copy_data(Main *UNUSED(bmain),
 
     /* XXX TODO pass subdata flag?
      * But surprisingly does not seem to be doing any ID refcounting... */
-    fcurve_dst = copy_fcurve(fcurve_src);
+    fcurve_dst = BKE_fcurve_copy(fcurve_src);
 
     BLI_addtail(&action_dst->curves, fcurve_dst);
 
@@ -146,7 +146,7 @@ static void action_free_data(struct ID *id)
   /* No animdata here. */
 
   /* Free F-Curves. */
-  free_fcurves(&action->curves);
+  BKE_fcurves_free(&action->curves);
 
   /* Free groups. */
   BLI_freelistN(&action->groups);
@@ -939,7 +939,7 @@ void BKE_pose_channel_free_ex(bPoseChannel *pchan, bool do_id_user)
   BKE_constraints_free_ex(&pchan->constraints, do_id_user);
 
   if (pchan->prop) {
-    IDP_FreeProperty(pchan->prop);
+    IDP_FreeProperty_ex(pchan->prop, do_id_user);
     pchan->prop = NULL;
   }
 
@@ -1310,7 +1310,7 @@ void calc_action_range(const bAction *act, float *start, float *end, short incl_
          *   single-keyframe curves will increase the overall length by
          *   a phantom frame (T50354)
          */
-        calc_fcurve_range(fcu, &nmin, &nmax, false, false);
+        BKE_fcurve_calc_range(fcu, &nmin, &nmax, false, false);
 
         /* compare to the running tally */
         min = min_ff(min, nmin);
@@ -1512,8 +1512,10 @@ short action_get_item_transforms(bAction *act, Object *ob, bPoseChannel *pchan, 
 
 /* ************** Pose Management Tools ****************** */
 
-/* for do_all_pose_actions, clears the pose. Now also exported for proxy and tools */
-void BKE_pose_rest(bPose *pose)
+/**
+ * Zero the pose transforms for the entire pose or only for selected bones.
+ */
+void BKE_pose_rest(bPose *pose, bool selected_bones_only)
 {
   bPoseChannel *pchan;
 
@@ -1525,6 +1527,9 @@ void BKE_pose_rest(bPose *pose)
   memset(pose->cyclic_offset, 0, sizeof(pose->cyclic_offset));
 
   for (pchan = pose->chanbase.first; pchan; pchan = pchan->next) {
+    if (selected_bones_only && pchan->bone != NULL && (pchan->bone->flag & BONE_SELECTED) == 0) {
+      continue;
+    }
     zero_v3(pchan->loc);
     zero_v3(pchan->eul);
     unit_qt(pchan->quat);
@@ -1612,8 +1617,12 @@ void BKE_pose_tag_recalc(Main *bmain, bPose *pose)
 /* For the calculation of the effects of an Action at the given frame on an object
  * This is currently only used for the Action Constraint
  */
-void what_does_obaction(
-    Object *ob, Object *workob, bPose *pose, bAction *act, char groupname[], float cframe)
+void what_does_obaction(Object *ob,
+                        Object *workob,
+                        bPose *pose,
+                        bAction *act,
+                        char groupname[],
+                        const AnimationEvalContext *anim_eval_context)
 {
   bActionGroup *agrp = BKE_action_group_find_name(act, groupname);
 
@@ -1669,7 +1678,7 @@ void what_does_obaction(
     RNA_id_pointer_create(&workob->id, &id_ptr);
 
     /* execute action for this group only */
-    animsys_evaluate_action_group(&id_ptr, act, agrp, cframe);
+    animsys_evaluate_action_group(&id_ptr, act, agrp, anim_eval_context);
   }
   else {
     AnimData adt = {NULL};
@@ -1680,6 +1689,6 @@ void what_does_obaction(
     adt.action = act;
 
     /* execute effects of Action on to workob (or it's PoseChannels) */
-    BKE_animsys_evaluate_animdata(&workob->id, &adt, cframe, ADT_RECALC_ANIM, false);
+    BKE_animsys_evaluate_animdata(&workob->id, &adt, anim_eval_context, ADT_RECALC_ANIM, false);
   }
 }

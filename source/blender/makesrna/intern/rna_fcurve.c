@@ -579,7 +579,7 @@ static void rna_FCurve_group_set(PointerRNA *ptr,
 /* calculate time extents of F-Curve */
 static void rna_FCurve_range(FCurve *fcu, float range[2])
 {
-  calc_fcurve_range(fcu, range, range + 1, false, false);
+  BKE_fcurve_calc_range(fcu, range, range + 1, false, false);
 }
 
 static bool rna_FCurve_is_empty_get(PointerRNA *ptr)
@@ -687,7 +687,7 @@ static void rna_FModifier_start_frame_set(PointerRNA *ptr, float value)
   }
 }
 
-static void rna_FModifer_end_frame_set(PointerRNA *ptr, float value)
+static void rna_FModifier_end_frame_set(PointerRNA *ptr, float value)
 {
   FModifier *fcm = (FModifier *)ptr->data;
 
@@ -1665,7 +1665,7 @@ static void rna_def_fmodifier(BlenderRNA *brna)
   prop = RNA_def_property(srna, "frame_end", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "efra");
   RNA_def_property_float_funcs(
-      prop, NULL, "rna_FModifer_end_frame_set", "rna_FModifier_end_frame_range");
+      prop, NULL, "rna_FModifier_end_frame_set", "rna_FModifier_end_frame_range");
   RNA_def_property_ui_text(
       prop,
       "End Frame",
