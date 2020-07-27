@@ -99,7 +99,7 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(struct ARegion *region,
  * \param gps: Pointer to stroke
  * \retun value
  */
-float GpencilExporter::stroke_average_pressure(struct bGPDstroke *gps)
+float GpencilExporter::stroke_average_pressure_get(struct bGPDstroke *gps)
 {
   bGPDspoint *pt = NULL;
 
@@ -141,9 +141,9 @@ bool GpencilExporter::is_stroke_thickness_constant(struct bGPDstroke *gps)
   return true;
 }
 
-float GpencilExporter::point_radius(const struct bGPDlayer *gpl,
-                                    struct bGPDstroke *gps,
-                                    float diff_mat[4][4])
+float GpencilExporter::stroke_point_radius_get(const struct bGPDlayer *gpl,
+                                               struct bGPDstroke *gps,
+                                               float diff_mat[4][4])
 {
   RegionView3D *rv3d = (RegionView3D *)params.region->regiondata;
   bGPDspoint *pt = NULL;

@@ -374,7 +374,7 @@ void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node,
   bGPDspoint *pt = &gps->points[0];
   float avg_pressure = pt->pressure;
   if (!is_thickness_const) {
-    avg_pressure = stroke_average_pressure(gps);
+    avg_pressure = stroke_average_pressure_get(gps);
   }
 
   /* Get the thickness in pixels using a simple 1 point stroke. */
@@ -386,7 +386,7 @@ void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node,
   copy_v3_v3(&pt_dst->x, &pt_src->x);
   pt_dst->pressure = avg_pressure;
 
-  float radius = point_radius(gpl, gps_temp, diff_mat);
+  float radius = stroke_point_radius_get(gpl, gps_temp, diff_mat);
 
   BKE_gpencil_free_stroke(gps_temp);
 

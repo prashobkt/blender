@@ -51,8 +51,10 @@ class GpencilExporter {
                                         float r_co[2]);
 
   bool is_stroke_thickness_constant(struct bGPDstroke *gps);
-  float stroke_average_pressure(struct bGPDstroke *gps);
-  float point_radius(const struct bGPDlayer *gpl, struct bGPDstroke *gps, float diff_mat[4][4]);
+  float stroke_average_pressure_get(struct bGPDstroke *gps);
+  float stroke_point_radius_get(const struct bGPDlayer *gpl,
+                                struct bGPDstroke *gps,
+                                float diff_mat[4][4]);
 
   std::string rgb_to_hex(float color[3]);
   std::string to_lower_string(char *input_text);
