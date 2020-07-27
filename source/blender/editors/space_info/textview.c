@@ -449,11 +449,6 @@ int textview_draw(TextViewContext *tvc,
       BLI_assert(!BLI_listbase_is_empty(&text_lines));
 
       if (do_draw) {
-        TextLine *text_line_iter = text_lines.first;
-        while (text_line_iter) {
-          text_line_iter->format = MEM_callocN(text_line_iter->len + 2, __func__);
-          text_line_iter = text_line_iter->next;
-        }
         data_flag = tvc->line_draw_data(tvc, text_lines.first, fg, bg, &icon, icon_fg, icon_bg);
         assert(data_flag & TVC_LINE_FG_SIMPLE || data_flag & TVC_LINE_FG_COMPLEX);
       }
