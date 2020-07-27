@@ -47,6 +47,8 @@ class GpencilExporter {
                                         const float co[3],
                                         float r_co[2]);
 
+  bool is_stroke_thickness_constant(struct bGPDstroke *gps);
+
   std::string rgb_to_hex(float color[3]);
   std::string to_lower_string(char *input_text);
 

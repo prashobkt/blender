@@ -33,6 +33,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
+#include "DNA_gpencil_types.h"
 #include "DNA_object_types.h"
 
 #ifdef WIN32
@@ -89,6 +90,30 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(struct ARegion *region,
   r_co[0] = V2D_IS_CLIPPED;
   r_co[1] = V2D_IS_CLIPPED;
   return false;
+}
+
+/**
+ * Check if the thickness of the stroke is constant
+ * \param gps: Pointer to stroke
+ * \retun true if all points thickness are equal.
+ */
+bool GpencilExporter::is_stroke_thickness_constant(struct bGPDstroke *gps)
+{
+  if (gps->totpoints == 1) {
+    return true;
+  }
+
+  bGPDspoint *pt = &gps->points[0];
+  float prv_pressure = pt->pressure;
+
+  for (int i = 0; i < gps->totpoints; i++) {
+    pt = &gps->points[i];
+    if (pt->pressure != prv_pressure) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
