@@ -147,6 +147,11 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "filepath", filename);
 
   const bool only_active_frame = RNA_boolean_get(op->ptr, "only_active_frame");
+  const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
+
+  /* Set flags. */
+  int flag = 0;
+  SET_FLAG_FROM_TEST(flag, use_fill, GP_EXPORT_FILL);
 
   struct GpencilExportParams params = {
       .C = C,
@@ -156,6 +161,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
       .mode = GP_EXPORT_TO_SVG,
       .frame_start = RNA_int_get(op->ptr, "start"),
       .frame_end = RNA_int_get(op->ptr, "end"),
+      .flag = flag,
   };
   /* Take some defaults from the scene, if not specified explicitly. */
   Scene *scene = CTX_data_scene(C);
@@ -223,6 +229,15 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
   uiLayoutSetActive(sub, !RNA_boolean_get(imfptr, "only_active_frame"));
   uiItemR(sub, imfptr, "start", 0, IFACE_("Frame Start"), ICON_NONE);
   uiItemR(sub, imfptr, "end", 0, IFACE_("End"), ICON_NONE);
+
+  box = uiLayoutBox(layout);
+  row = uiLayoutRow(box, false);
+  uiItemL(row, IFACE_("Export Options"), ICON_SCENE_DATA);
+
+  col = uiLayoutColumn(box, false);
+
+  sub = uiLayoutColumn(col, true);
+  uiItemR(sub, imfptr, "use_fill", 0, NULL, ICON_NONE);
 }
 
 static void wm_gpencil_export_draw(bContext *C, wmOperator *op)
@@ -323,6 +338,7 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
               INT_MAX);
 
   RNA_def_boolean(ot->srna, "only_active_frame", true, "Active Frame", "Export only active frame");
+  RNA_def_boolean(ot->srna, "use_fill", true, "Fill", "Export filled areas");
 
   /* This dummy prop is used to check whether we need to init the start and
    * end frame values to that of the scene's, otherwise they are reset at

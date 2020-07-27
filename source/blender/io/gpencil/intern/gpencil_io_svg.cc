@@ -68,6 +68,7 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *params)
   this->params.C = params->C;
   this->params.filename = params->filename;
   this->params.mode = params->mode;
+  this->params.flag = params->flag;
 
   this->gpd = (bGPdata *)params->ob->data;
 
@@ -232,7 +233,7 @@ void GpencilExporterSVG::export_layers(void)
       }
       else {
         /* Fill. */
-        if (is_fill) {
+        if ((is_fill) && (params.flag & GP_EXPORT_FILL)) {
           export_stroke(gpl_node, gps, diff_mat, true);
         }
 
