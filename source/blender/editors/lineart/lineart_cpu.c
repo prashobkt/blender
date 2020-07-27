@@ -3652,7 +3652,6 @@ void ED_lineart_gpencil_generate_from_chain(Depsgraph *depsgraph,
   static int tempnum = 0;
   tempnum++;
   int color_idx = 0;
-  Scene *scene = DEG_get_evaluated_scene(depsgraph);
 
   Object *orig_ob = NULL;
   if (ob) {
