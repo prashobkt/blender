@@ -358,6 +358,9 @@ float outliner_restrict_columns_width(const SpaceOutliner *soops)
       num_columns = 3;
       break;
     case SO_VIEW_LAYER:
+      if (soops->show_restrict_flags & SO_RESTRICT_ENABLE) {
+        num_columns++;
+      }
       if (soops->show_restrict_flags & SO_RESTRICT_HOLDOUT) {
         num_columns++;
       }
