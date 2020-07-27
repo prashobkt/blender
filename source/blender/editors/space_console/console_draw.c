@@ -138,16 +138,16 @@ static void console_textview_line_get(TextViewContext *tvc, ListBase *text_lines
 {
   const ConsoleLine *cl_current = tvc->iter;
   const ConsoleLine *cl_iter = tvc->iter;
+  BLI_assert(BLI_listbase_is_empty(text_lines));
   do {
     TextLine *text_line = MEM_callocN(sizeof(*text_line), __func__);
     text_line->line = cl_iter->line;
     text_line->len = cl_iter->len;
     BLI_addhead(text_lines, text_line);
+    BLI_assert(cl_iter->line[cl_iter->len] == '\0' &&
+               (cl_iter->len == 0 || cl_iter->line[cl_iter->len - 1] != '\0'));
     cl_iter = cl_iter->prev;
   } while (cl_iter && cl_iter->type == cl_current->type);
-
-  //  BLI_assert(cl_iter->line[cl_iter->len] == '\0' &&
-  //             (cl_iter->len == 0 || cl_iter->line[cl_iter->len - 1] != '\0'));
 }
 
 static void console_cursor_wrap_offset(
