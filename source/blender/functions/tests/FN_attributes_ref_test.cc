@@ -5,7 +5,7 @@
 
 #include "testing/testing.h"
 
-namespace blender::fn {
+namespace blender::fn::tests {
 
 TEST(attributes_info, BuildEmpty)
 {
@@ -68,10 +68,10 @@ TEST(mutable_attributes_ref, ComplexTest)
   MutableAttributesRef attributes{info, buffers, IndexRange(1, 3)};
   EXPECT_EQ(attributes.size(), 3);
   EXPECT_EQ(attributes.info().size(), 4);
-  EXPECT_EQ(attributes.get("Position").buffer(), positions.data() + 1);
-  EXPECT_EQ(attributes.get("ID").buffer(), ids.data() + 1);
-  EXPECT_EQ(attributes.get("Size").buffer(), sizes.data() + 1);
-  EXPECT_EQ(attributes.get("Name").buffer(), names.data() + 1);
+  EXPECT_EQ(attributes.get("Position").data(), positions.data() + 1);
+  EXPECT_EQ(attributes.get("ID").data(), ids.data() + 1);
+  EXPECT_EQ(attributes.get("Size").data(), sizes.data() + 1);
+  EXPECT_EQ(attributes.get("Name").data(), names.data() + 1);
 
   EXPECT_EQ(attributes.get("ID").size(), 3);
   EXPECT_EQ(attributes.get<uint>("ID").size(), 3);
@@ -94,4 +94,4 @@ TEST(mutable_attributes_ref, ComplexTest)
   EXPECT_EQ(ids[2], 100);
 }
 
-}  // namespace blender::fn
+}  // namespace blender::fn::tests

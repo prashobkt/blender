@@ -394,7 +394,8 @@ static bool lib_override_hierarchy_recursive_tag(Main *bmain, ID *id, const uint
 }
 
 /**
- * Tag all IDs in given \a bmain that use (depends on) given \a id_root ID.
+ * Tag all IDs in given \a bmain that are being used by given \a id_root ID or its dependencies,
+ * recursively.
  *
  * This will include all local IDs, and all IDs from the same library as the \a id_root.
  *
@@ -1167,7 +1168,7 @@ void BKE_lib_override_library_main_operations_create(Main *bmain, const bool for
 
 static bool lib_override_library_id_reset_do(Main *bmain, ID *id_root)
 {
-  bool was_property_deleted = false;
+  bool was_op_deleted = false;
 
   LISTBASE_FOREACH_MUTABLE (
       IDOverrideLibraryProperty *, op, &id_root->override_library->properties) {
@@ -1208,18 +1209,18 @@ static bool lib_override_library_id_reset_do(Main *bmain, ID *id_root)
 
     if (do_op_delete) {
       BKE_lib_override_library_property_delete(id_root->override_library, op);
-      was_property_deleted = true;
+      was_op_deleted = true;
     }
   }
 
-  if (was_property_deleted) {
+  if (was_op_deleted) {
     DEG_id_tag_update_ex(bmain, id_root, ID_RECALC_COPY_ON_WRITE);
     IDOverrideLibraryRuntime *override_runtime = override_library_rna_path_runtime_ensure(
         id_root->override_library);
     override_runtime->tag |= IDOVERRIDE_LIBRARY_RUNTIME_TAG_NEEDS_RELOAD;
   }
 
-  return was_property_deleted;
+  return was_op_deleted;
 }
 
 /** Reset all overrides in given \a id_root, while preserving ID relations. */
@@ -1453,6 +1454,12 @@ void BKE_lib_override_library_update(Main *bmain, ID *local)
     /* This is some kind of hard-coded 'always enforced override'... */
     BKE_lib_id_swap(bmain, &local_key->id, &tmp_key->id);
     tmp_key->id.flag |= (local_key->id.flag & LIB_EMBEDDED_DATA_LIB_OVERRIDE);
+    /* The swap of local and tmp_id inverted those pointers, we need to redefine proper
+     * relationships. */
+    *BKE_key_from_id_p(local) = local_key;
+    *BKE_key_from_id_p(tmp_id) = tmp_key;
+    local_key->from = local;
+    tmp_key->from = tmp_id;
   }
 
   /* Again, horribly inn-efficient in our case, we need something off-Main
