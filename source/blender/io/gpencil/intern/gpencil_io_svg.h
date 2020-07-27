@@ -55,10 +55,10 @@ class GpencilExporterSVG : public GpencilExporter {
                     struct bGPDlayer *gpl,
                     struct bGPDstroke *gps,
                     float diff_mat[4][4]);
-  void export_stroke(pugi::xml_node gpl_node,
-                     struct bGPDstroke *gps,
-                     float diff_mat[4][4],
-                     const bool is_fill);
+  void export_stroke_path(pugi::xml_node gpl_node,
+                          struct bGPDstroke *gps,
+                          float diff_mat[4][4],
+                          const bool is_fill);
 };
 
 }  // namespace gpencil

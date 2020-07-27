@@ -234,7 +234,7 @@ void GpencilExporterSVG::export_layers(void)
       else {
         /* Fill. */
         if ((is_fill) && (params.flag & GP_EXPORT_FILL)) {
-          export_stroke(gpl_node, gps, diff_mat, true);
+          export_stroke_path(gpl_node, gps, diff_mat, true);
         }
 
         /* Stroke. */
@@ -246,7 +246,7 @@ void GpencilExporterSVG::export_layers(void)
           // ED_gpencil_project_stroke_to_view(params.C, gpl, gps_perimeter);
           BKE_gpencil_stroke_sample(gps_perimeter, 0.03f, false);
 
-          export_stroke(gpl_node, gps_perimeter, diff_mat, false);
+          export_stroke_path(gpl_node, gps_perimeter, diff_mat, false);
 
           BKE_gpencil_free_stroke(gps_perimeter);
         }
@@ -301,16 +301,16 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node,
 }
 
 /**
- * Export a stroke
+ * Export a stroke using path
  * \param gpl_node: Node of the layer.
  * \param gps: Stroke to export.
  * \param diff_mat: Transformation matrix.
  * \param is_fill: True if the stroke is only fill
  */
-void GpencilExporterSVG::export_stroke(pugi::xml_node gpl_node,
-                                       struct bGPDstroke *gps,
-                                       float diff_mat[4][4],
-                                       const bool is_fill)
+void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node,
+                                            struct bGPDstroke *gps,
+                                            float diff_mat[4][4],
+                                            const bool is_fill)
 {
   pugi::xml_node gps_node = gpl_node.append_child("path");
 
