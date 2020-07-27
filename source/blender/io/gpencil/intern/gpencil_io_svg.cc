@@ -238,10 +238,8 @@ void GpencilExporterSVG::export_layers(void)
 
         /* Stroke. */
         if (is_stroke) {
-          /* Create a duplicate to avoid any transformation. */
-          bGPDstroke *gps_tmp = BKE_gpencil_stroke_duplicate(gps, true);
           bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
-              rv3d, gpd, gpl, gps_tmp, 3, diff_mat);
+              rv3d, gpd, gpl, gps, 3, diff_mat);
 
           /* Reproject and sample stroke. */
           // ED_gpencil_project_stroke_to_view(params.C, gpl, gps_perimeter);
@@ -250,7 +248,6 @@ void GpencilExporterSVG::export_layers(void)
           export_stroke(gpl_node, gps_perimeter, diff_mat, false);
 
           BKE_gpencil_free_stroke(gps_perimeter);
-          BKE_gpencil_free_stroke(gps_tmp);
         }
       }
     }
@@ -271,6 +268,7 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node,
   BLI_assert(gps->totpoints == 1);
   RegionView3D *rv3d = (RegionView3D *)params.region->regiondata;
   bGPDspoint *pt = NULL;
+  float v1[2], screen_co[2], screen_ex[2];
 
   pugi::xml_node gps_node = gpl_node.append_child("circle");
 
@@ -278,7 +276,6 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node,
       ("style_stroke_" + std::to_string(gps->mat_nr + 1)).c_str());
 
   pt = &gps->points[0];
-  float screen_co[2];
   gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
   /* Invert Y axis. */
   screen_co[1] = params.region->winy - screen_co[1];
@@ -287,24 +284,18 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node,
   gps_node.append_attribute("cy").set_value(screen_co[1]);
 
   /* Radius. */
-  bGPDstroke *gps_tmp = BKE_gpencil_stroke_duplicate(gps, true);
   bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
-      rv3d, gpd, gpl, gps_tmp, 3, diff_mat);
+      rv3d, gpd, gpl, gps, 3, diff_mat);
 
   pt = &gps_perimeter->points[0];
-  float screen_ex[2];
   gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_ex);
   /* Invert Y axis. */
   screen_ex[1] = params.region->winy - screen_ex[1];
 
-  float v1[2];
   sub_v2_v2v2(v1, screen_co, screen_ex);
   float radius = len_v2(v1);
   BKE_gpencil_free_stroke(gps_perimeter);
-  BKE_gpencil_free_stroke(gps_tmp);
 
-  // float defaultpixsize = 1000.0f / gpd->pixfactor;
-  // float stroke_radius = ((gps->thickness + gpl->line_change) / defaultpixsize) / 2.0f;
   gps_node.append_attribute("r").set_value(radius);
 }
 
