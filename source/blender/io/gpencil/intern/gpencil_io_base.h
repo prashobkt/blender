@@ -48,6 +48,7 @@ class GpencilExporter {
   bool gpencil_3d_point_to_screen_space(struct ARegion *region,
                                         const float diff_mat[4][4],
                                         const float co[3],
+                                        const bool invert,
                                         float r_co[2]);
 
   bool is_stroke_thickness_constant(struct bGPDstroke *gps);

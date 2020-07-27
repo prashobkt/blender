@@ -76,21 +76,32 @@ void GpencilExporter::set_out_filename(struct bContext *C, char *filename)
 bool GpencilExporter::gpencil_3d_point_to_screen_space(struct ARegion *region,
                                                        const float diff_mat[4][4],
                                                        const float co[3],
+                                                       const bool invert,
                                                        float r_co[2])
 {
   float parent_co[3];
   mul_v3_m4v3(parent_co, diff_mat, co);
   float screen_co[2];
-  //  eV3DProjTest test = (eV3DProjTest)(V3D_PROJ_RET_CLIP_BB | V3D_PROJ_RET_CLIP_WIN);
   eV3DProjTest test = (eV3DProjTest)(V3D_PROJ_RET_OK);
   if (ED_view3d_project_float_global(region, parent_co, screen_co, test) == V3D_PROJ_RET_OK) {
     if (!ELEM(V2D_IS_CLIPPED, screen_co[0], screen_co[1])) {
       copy_v2_v2(r_co, screen_co);
+      /* Invert Y axis. */
+      if (invert) {
+        r_co[1] = params.region->winy - r_co[1];
+      }
+
       return true;
     }
   }
   r_co[0] = V2D_IS_CLIPPED;
   r_co[1] = V2D_IS_CLIPPED;
+
+  /* Invert Y axis. */
+  if (invert) {
+    r_co[1] = params.region->winy - r_co[1];
+  }
+
   return false;
 }
 
@@ -150,18 +161,14 @@ float GpencilExporter::stroke_point_radius_get(const struct bGPDlayer *gpl,
   float v1[2], screen_co[2], screen_ex[2];
 
   pt = &gps->points[0];
-  gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
-  /* Invert Y axis. */
-  screen_co[1] = params.region->winy - screen_co[1];
+  gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, true, screen_co);
 
   /* Radius. */
   bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
       rv3d, gpd, gpl, gps, 3, diff_mat);
 
   pt = &gps_perimeter->points[0];
-  gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_ex);
-  /* Invert Y axis. */
-  screen_ex[1] = params.region->winy - screen_ex[1];
+  gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, true, screen_ex);
 
   sub_v2_v2v2(v1, screen_co, screen_ex);
   float radius = len_v2(v1);

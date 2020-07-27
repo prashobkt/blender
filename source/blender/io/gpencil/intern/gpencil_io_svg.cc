@@ -289,9 +289,7 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node,
       ("stylestroke" + std::to_string(gps->mat_nr + 1)).c_str());
 
   bGPDspoint *pt = &gps->points[0];
-  gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
-  /* Invert Y axis. */
-  screen_co[1] = params.region->winy - screen_co[1];
+  gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, true, screen_co);
 
   gps_node.append_attribute("cx").set_value(screen_co[0]);
   gps_node.append_attribute("cy").set_value(screen_co[1]);
@@ -328,9 +326,7 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node,
     }
     bGPDspoint *pt = &gps->points[i];
     float screen_co[2];
-    gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
-    /* Invert Y axis. */
-    screen_co[1] = params.region->winy - screen_co[1];
+    gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, true, screen_co);
     txt.append(std::to_string(screen_co[0]) + "," + std::to_string(screen_co[1]));
   }
   /* Close patch (cyclic)*/
@@ -403,9 +399,7 @@ void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node,
     }
     bGPDspoint *pt = &gps->points[i];
     float screen_co[2];
-    gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
-    /* Invert Y axis. */
-    screen_co[1] = params.region->winy - screen_co[1];
+    gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, true, screen_co);
     txt.append(std::to_string(screen_co[0]) + "," + std::to_string(screen_co[1]));
   }
 
