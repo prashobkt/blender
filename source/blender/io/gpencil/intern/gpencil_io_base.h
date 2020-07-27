@@ -53,6 +53,8 @@ class GpencilExporter {
  protected:
   GpencilExportParams params;
   char out_filename[FILE_MAX];
+  /* Data for easy access. */
+  struct bGPdata *gpd;
 };
 
 }  // namespace gpencil

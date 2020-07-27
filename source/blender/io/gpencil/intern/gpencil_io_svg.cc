@@ -69,6 +69,8 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *params)
   this->params.filename = params->filename;
   this->params.mode = params->mode;
 
+  this->gpd = (bGPdata *)params->ob->data;
+
   /* Prepare output filename with full path. */
   set_out_filename(params->C, params->filename);
 }
@@ -209,43 +211,86 @@ void GpencilExporterSVG::export_layers(void)
     BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat);
 
     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+      if (gps->totpoints == 0) {
+        continue;
+      }
+
       MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
       bool is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
                         (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
       bool is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
                       (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
 
-      /* Fill. */
-      if (is_fill) {
-        export_stroke(gpl_node, gps, diff_mat, true);
+      if (gps->totpoints == 1) {
+        export_point(gpl_node, gpl, gps, diff_mat);
       }
+      else {
+        /* Fill. */
+        if (is_fill) {
+          export_stroke(gpl_node, gps, diff_mat, true);
+        }
 
-      /* Stroke. */
-      if (is_stroke) {
-        /* Create a duplicate to avoid any transformation. */
-        bGPDstroke *gps_tmp = BKE_gpencil_stroke_duplicate(gps, true);
-        bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
-            rv3d, gpd, gpl, gps_tmp, 3, diff_mat);
+        /* Stroke. */
+        if (is_stroke) {
+          /* Create a duplicate to avoid any transformation. */
+          bGPDstroke *gps_tmp = BKE_gpencil_stroke_duplicate(gps, true);
+          bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
+              rv3d, gpd, gpl, gps_tmp, 3, diff_mat);
 
-        /* Reproject and sample stroke. */
-        // ED_gpencil_project_stroke_to_view(params.C, gpl, gps_perimeter);
-        BKE_gpencil_stroke_sample(gps_perimeter, 0.03f, false);
+          /* Reproject and sample stroke. */
+          // ED_gpencil_project_stroke_to_view(params.C, gpl, gps_perimeter);
+          BKE_gpencil_stroke_sample(gps_perimeter, 0.03f, false);
 
-        export_stroke(gpl_node, gps_perimeter, diff_mat, false);
+          export_stroke(gpl_node, gps_perimeter, diff_mat, false);
 
-        BKE_gpencil_free_stroke(gps_perimeter);
-        BKE_gpencil_free_stroke(gps_tmp);
+          BKE_gpencil_free_stroke(gps_perimeter);
+          BKE_gpencil_free_stroke(gps_tmp);
+        }
       }
     }
   }
 }
 
 /**
+ * Export a point
+ * \param gpl_node: Node of the layer.
+ * \param gps: Stroke to export.
+ * \param diff_mat: Transformation matrix.
+ */
+void GpencilExporterSVG::export_point(pugi::xml_node gpl_node,
+                                      struct bGPDlayer *gpl,
+                                      struct bGPDstroke *gps,
+                                      float diff_mat[4][4])
+{
+  BLI_assert(gps->totpoints == 1);
+
+  pugi::xml_node gps_node = gpl_node.append_child("circle");
+
+  gps_node.append_attribute("class").set_value(
+      ("style_stroke_" + std::to_string(gps->mat_nr + 1)).c_str());
+
+  bGPDspoint *pt = &gps->points[0];
+  float screen_co[2];
+  gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
+  /* Invert Y axis. */
+  screen_co[1] = params.region->winy - screen_co[1];
+
+  gps_node.append_attribute("cx").set_value(screen_co[0]);
+  gps_node.append_attribute("cy").set_value(screen_co[1]);
+
+  /* Radius. */
+  /* TODO: This is wrong. */
+  float defaultpixsize = 1000.0f / gpd->pixfactor;
+  float stroke_radius = ((gps->thickness + gpl->line_change) / defaultpixsize) / 2.0f;
+  gps_node.append_attribute("r").set_value(stroke_radius);
+}
+
+/**
  * Export a stroke
  * \param gpl_node: Node of the layer.
  * \param gps: Stroke to export.
- * \param ma: Material of the stroke.
  * \param diff_mat: Transformation matrix.
+ * \param is_fill: True if the stroke is only fill
  */
 void GpencilExporterSVG::export_stroke(pugi::xml_node gpl_node,
                                        struct bGPDstroke *gps,
@@ -271,8 +316,8 @@ void GpencilExporterSVG::export_stroke(pugi::xml_node gpl_node,
     float screen_co[2];
     gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
     /* Invert Y axis. */
-    int y = params.region->winy - screen_co[1];
-    txt.append(std::to_string(screen_co[0]) + "," + std::to_string(y));
+    screen_co[1] = params.region->winy - screen_co[1];
+    txt.append(std::to_string(screen_co[0]) + "," + std::to_string(screen_co[1]));
   }
   /* Close patch (cyclic)*/
   if (gps->flag & GP_STROKE_CYCLIC) {
