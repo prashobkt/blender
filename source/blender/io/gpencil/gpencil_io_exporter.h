@@ -53,6 +53,8 @@ struct GpencilExportParams {
 typedef enum eGpencilExportParams_Flag {
   /* Export Filled strokes. */
   GP_EXPORT_FILL = (1 << 0),
+  /* Export normalized thickness. */
+  GP_EXPORT_NORM_THICKNESS = (1 << 1),
 } eGpencilExportParams_Flag;
 
 bool gpencil_io_export(const struct GpencilExportParams *params);

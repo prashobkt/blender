@@ -25,6 +25,7 @@
 
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
+#include "BKE_gpencil_geom.h"
 #include "BKE_main.h"
 
 #include "BLI_blenlib.h"
@@ -35,6 +36,7 @@
 
 #include "DNA_gpencil_types.h"
 #include "DNA_object_types.h"
+#include "DNA_screen_types.h"
 
 #ifdef WIN32
 #  include "utfconv.h"
@@ -93,6 +95,29 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(struct ARegion *region,
 }
 
 /**
+ * Get average pressure
+ * \param gps: Pointer to stroke
+ * \retun value
+ */
+float GpencilExporter::stroke_average_pressure(struct bGPDstroke *gps)
+{
+  bGPDspoint *pt = NULL;
+
+  if (gps->totpoints == 1) {
+    pt = &gps->points[0];
+    return pt->pressure;
+  }
+
+  float tot = 0.0f;
+  for (int i = 0; i < gps->totpoints; i++) {
+    pt = &gps->points[i];
+    tot += pt->pressure;
+  }
+
+  return tot / (float)gps->totpoints;
+}
+
+/**
  * Check if the thickness of the stroke is constant
  * \param gps: Pointer to stroke
  * \retun true if all points thickness are equal.
@@ -114,6 +139,35 @@ bool GpencilExporter::is_stroke_thickness_constant(struct bGPDstroke *gps)
   }
 
   return true;
+}
+
+float GpencilExporter::point_radius(const struct bGPDlayer *gpl,
+                                    struct bGPDstroke *gps,
+                                    float diff_mat[4][4])
+{
+  RegionView3D *rv3d = (RegionView3D *)params.region->regiondata;
+  bGPDspoint *pt = NULL;
+  float v1[2], screen_co[2], screen_ex[2];
+
+  pt = &gps->points[0];
+  gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
+  /* Invert Y axis. */
+  screen_co[1] = params.region->winy - screen_co[1];
+
+  /* Radius. */
+  bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
+      rv3d, gpd, gpl, gps, 3, diff_mat);
+
+  pt = &gps_perimeter->points[0];
+  gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_ex);
+  /* Invert Y axis. */
+  screen_ex[1] = params.region->winy - screen_ex[1];
+
+  sub_v2_v2v2(v1, screen_co, screen_ex);
+  float radius = len_v2(v1);
+  BKE_gpencil_free_stroke(gps_perimeter);
+
+  return radius;
 }
 
 /**

@@ -148,10 +148,12 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 
   const bool only_active_frame = RNA_boolean_get(op->ptr, "only_active_frame");
   const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
+  const bool use_norm_thickness = RNA_boolean_get(op->ptr, "use_normalized_thickness");
 
   /* Set flags. */
   int flag = 0;
   SET_FLAG_FROM_TEST(flag, use_fill, GP_EXPORT_FILL);
+  SET_FLAG_FROM_TEST(flag, use_norm_thickness, GP_EXPORT_NORM_THICKNESS);
 
   struct GpencilExportParams params = {
       .C = C,
@@ -238,6 +240,7 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
 
   sub = uiLayoutColumn(col, true);
   uiItemR(sub, imfptr, "use_fill", 0, NULL, ICON_NONE);
+  uiItemR(sub, imfptr, "use_normalized_thickness", 0, NULL, ICON_NONE);
 }
 
 static void wm_gpencil_export_draw(bContext *C, wmOperator *op)
@@ -339,6 +342,11 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna, "only_active_frame", true, "Active Frame", "Export only active frame");
   RNA_def_boolean(ot->srna, "use_fill", true, "Fill", "Export filled areas");
+  RNA_def_boolean(ot->srna,
+                  "use_normalized_thickness",
+                  false,
+                  "Normalize",
+                  "Export strokes with constant thickness along the stroke");
 
   /* This dummy prop is used to check whether we need to init the start and
    * end frame values to that of the scene's, otherwise they are reset at
