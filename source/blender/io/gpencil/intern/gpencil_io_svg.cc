@@ -156,7 +156,7 @@ void GpencilExporterSVG::export_style_list(void)
       linearrgb_to_srgb_v3_v3(col, gp_style->stroke_rgba);
       std::string stroke_hex = rgb_to_hex(col);
       sprintf(out,
-              "\n\t.style_stroke_%d{stroke: %s; fill: %s;}",
+              "\n\t.stylestroke%d{stroke: %s; fill: %s;}",
               id,
               stroke_hex.c_str(),
               stroke_hex.c_str());
@@ -168,7 +168,7 @@ void GpencilExporterSVG::export_style_list(void)
       linearrgb_to_srgb_v3_v3(col, gp_style->fill_rgba);
       std::string stroke_hex = rgb_to_hex(col);
       sprintf(out,
-              "\n\t.style_fill_%d{stroke: %s; fill: %s;}",
+              "\n\t.stylefill%d{stroke: %s; fill: %s;}",
               id,
               stroke_hex.c_str(),
               stroke_hex.c_str());
@@ -273,7 +273,7 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node,
   pugi::xml_node gps_node = gpl_node.append_child("circle");
 
   gps_node.append_attribute("class").set_value(
-      ("style_stroke_" + std::to_string(gps->mat_nr + 1)).c_str());
+      ("stylestroke" + std::to_string(gps->mat_nr + 1)).c_str());
 
   pt = &gps->points[0];
   gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, screen_co);
@@ -313,7 +313,7 @@ void GpencilExporterSVG::export_stroke(pugi::xml_node gpl_node,
 {
   pugi::xml_node gps_node = gpl_node.append_child("path");
 
-  std::string style_type = (is_fill) ? "_fill_" : "_stroke_";
+  std::string style_type = (is_fill) ? "fill" : "stroke";
   gps_node.append_attribute("class").set_value(
       ("style" + style_type + std::to_string(gps->mat_nr + 1)).c_str());
 
