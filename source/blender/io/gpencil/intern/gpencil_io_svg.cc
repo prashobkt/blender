@@ -72,10 +72,11 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *params)
   this->params.mode = params->mode;
   this->params.flag = params->flag;
 
+  /* Easy access data. */
   this->bmain = CTX_data_main(params->C);
   this->depsgraph = CTX_data_depsgraph_pointer(params->C);
+  this->rv3d = (RegionView3D *)params->region->regiondata;
   this->gpd = (bGPdata *)params->ob->data;
-
   this->invert_axis[0] = false;
   this->invert_axis[1] = true;
 
@@ -191,8 +192,6 @@ void GpencilExporterSVG::export_style_list(void)
 /* Main layer loop. */
 void GpencilExporterSVG::export_layers(void)
 {
-  RegionView3D *rv3d = (RegionView3D *)params.region->regiondata;
-
   float color[3] = {1.0f, 0.5f, 0.01f};
   std::string hex = rgb_to_hex(color);
 

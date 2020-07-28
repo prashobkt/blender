@@ -35,6 +35,7 @@
 struct Depsgraph;
 struct Main;
 struct ARegion;
+struct RegionView3D;
 
 struct bGPDlayer;
 struct bGPDframe;
@@ -71,6 +72,7 @@ class GpencilExporter {
   struct Depsgraph *depsgraph;
   struct bGPdata *gpd;
   struct Main *bmain;
+  struct RegionView3D *rv3d;
 
   struct bGPDlayer *gpl_current_get(void)
   {

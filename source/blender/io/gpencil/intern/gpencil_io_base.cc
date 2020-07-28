@@ -159,7 +159,6 @@ bool GpencilExporter::is_stroke_thickness_constant(struct bGPDstroke *gps)
 float GpencilExporter::stroke_point_radius_get(struct bGPDstroke *gps)
 {
   const bGPDlayer *gpl = gpl_current_get();
-  RegionView3D *rv3d = (RegionView3D *)params.region->regiondata;
   bGPDspoint *pt = NULL;
   float v1[2], screen_co[2], screen_ex[2];
 
