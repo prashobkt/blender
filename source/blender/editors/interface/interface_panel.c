@@ -904,6 +904,14 @@ bool UI_panel_is_search_filtered(const Panel *panel)
   return is_search_filtered;
 }
 
+/**
+ * Returns whether a panel is currently active (displayed).
+ */
+bool UI_panel_is_active(const Panel *panel)
+{
+  return panel->runtime_flag & PNL_ACTIVE;
+}
+
 /**************************** drawing *******************************/
 
 /* triangle 'icon' for panel header */

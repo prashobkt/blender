@@ -1691,6 +1691,7 @@ void UI_panel_label_offset(struct uiBlock *block, int *r_x, int *r_y);
 int UI_panel_size_y(const struct Panel *panel);
 bool UI_panel_is_dragging(const struct Panel *panel);
 bool UI_panel_is_search_filtered(const struct Panel *panel);
+bool UI_panel_is_active(const struct Panel *panel);
 
 bool UI_panel_category_is_visible(const struct ARegion *region);
 void UI_panel_category_add(struct ARegion *region, const char *name);

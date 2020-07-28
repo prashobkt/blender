@@ -145,6 +145,7 @@ static void buttons_main_region_init(wmWindowManager *wm, ARegion *region)
  *
  * \return The total number of items in the array returned.
  */
+/* HANS-TODO: Use short for this. */
 int ED_buttons_tabs_list(SpaceProperties *sbuts, int *context_tabs_array)
 {
   int length = 0;
@@ -299,15 +300,26 @@ static void buttons_main_region_layout_properties(const bContext *C,
       C, region, &region->type->paneltypes, contexts, sbuts->mainb, vertical, NULL);
 }
 
-static void property_search_other_tabs(const bContext *C,
-                                       SpaceProperties *sbuts,
-                                       ARegion *main_region)
+static void main_region_layout(const bContext *C, SpaceProperties *sbuts, ARegion *region)
+{
+  if (sbuts->mainb == BCONTEXT_TOOL) {
+    ED_view3d_buttons_region_layout_ex(C, region, "Tool");
+  }
+  else {
+    buttons_main_region_layout_properties(C, sbuts, region);
+  }
+}
+
+static void property_search_all_tabs(const bContext *C,
+                                     SpaceProperties *sbuts,
+                                     ARegion *main_region)
 {
   sbuts->context_search_filter_active = 0;
 
   /* Duplicate space and region so we don't change any data for this space. */
   ScrArea *area_copy = MEM_dupallocN(CTX_wm_area(C));
   ARegion *region_copy = BKE_area_region_copy(CTX_wm_area(C)->type, main_region);
+  BKE_area_region_panels_free(&region_copy->panels);
   bContext *C_copy = CTX_copy(C);
   CTX_wm_area_set(C_copy, area_copy);
   CTX_wm_region_set(C_copy, region_copy);
@@ -324,12 +336,21 @@ static void property_search_other_tabs(const bContext *C,
 
     /* Run the layout with this tab set active. */
     sbuts_copy->mainb = sbuts->mainbo = sbuts_copy->mainbuser = context_tabs_array[i];
-    buttons_main_region_layout_properties(C_copy, sbuts_copy, region_copy);
+
+    /* Run the layout for the actual region if the tab matches to avoid doing it again later on. */
+    const bool use_actual_region = sbuts->mainb == sbuts_copy->mainb;
+    if (use_actual_region) {
+      main_region_layout(C, sbuts, main_region);
+    }
+    else {
+      main_region_layout(C_copy, sbuts_copy, region_copy);
+    }
 
     /* Store whether this tab has any unfiltered panels left. */
     bool has_unfiltered_panel = false;
-    LISTBASE_FOREACH (Panel *, panel, &region_copy->panels) {
-      has_unfiltered_panel |= !UI_panel_is_search_filtered(panel);
+    LISTBASE_FOREACH (
+        Panel *, panel, use_actual_region ? &main_region->panels : &region_copy->panels) {
+      has_unfiltered_panel |= !UI_panel_is_search_filtered(panel) && UI_panel_is_active(panel);
     }
     if (has_unfiltered_panel) {
       sbuts->context_search_filter_active |= (1 << i);
@@ -354,14 +375,10 @@ static void buttons_main_region_layout(const bContext *C, ARegion *region)
   SpaceProperties *sbuts = CTX_wm_space_properties(C);
 
   if (sbuts->search_string != NULL && sbuts->search_string[0] != '\0') {
-    property_search_other_tabs(C, sbuts, region);
-  }
-
-  if (sbuts->mainb == BCONTEXT_TOOL) {
-    ED_view3d_buttons_region_layout_ex(C, region, "Tool");
+    property_search_all_tabs(C, sbuts, region);
   }
   else {
-    buttons_main_region_layout_properties(C, sbuts, region);
+    main_region_layout(C, sbuts, region);
   }
 
   sbuts->mainbo = sbuts->mainb;
