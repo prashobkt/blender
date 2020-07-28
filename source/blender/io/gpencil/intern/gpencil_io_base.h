@@ -28,6 +28,7 @@
 
 #include "gpencil_io_exporter.h"
 
+struct Depsgraph;
 struct Main;
 struct ARegion;
 
@@ -64,6 +65,7 @@ class GpencilExporter {
   GpencilExportParams params;
   char out_filename[FILE_MAX];
   /* Data for easy access. */
+  struct Depsgraph *depsgraph;
   struct bGPdata *gpd;
 };
 

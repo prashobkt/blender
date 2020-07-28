@@ -72,6 +72,7 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *params)
   this->params.mode = params->mode;
   this->params.flag = params->flag;
 
+  this->depsgraph = CTX_data_depsgraph_pointer(params->C);
   this->gpd = (bGPdata *)params->ob->data;
 
   /* Prepare output filename with full path. */
@@ -190,7 +191,6 @@ void GpencilExporterSVG::export_layers(void)
   float color[3] = {1.0f, 0.5f, 0.01f};
   std::string hex = rgb_to_hex(color);
 
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(params.C);
   Object *ob = params.ob;
 
   bGPdata *gpd = (bGPdata *)ob->data;
