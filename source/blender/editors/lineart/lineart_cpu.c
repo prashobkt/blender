@@ -3854,8 +3854,7 @@ static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op)
             bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_NEW);
 
             /* Clear original frame */
-            if ((scene->lineart.flags & LRT_GPENCIL_OVERWRITE) && gpf->strokes.first &&
-                (!cleared)) {
+            if ((scene->lineart.flags & LRT_GPENCIL_OVERWRITE) && (!cleared)) {
               BKE_gpencil_layer_frame_delete(gpl, gpf);
               gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_NEW);
               cleared = 1;
