@@ -21,7 +21,7 @@ enum EnergyTermType {
 };
 
 struct Options {
-    double timestep_s; // TODO: Figure out delta time from blender api
+    double timestep_s;
     int max_admm_iters;
     int max_cg_iters;
     int max_gs_iters;

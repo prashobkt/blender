@@ -32,7 +32,6 @@ COMPAT_OB_TYPES = {'MESH', 'LATTICE', 'CURVE', 'SURFACE', 'FONT'}
 def softbody_panel_enabled(md):
     return (md.point_cache.is_baked is False)
 
-
 class PhysicButtonsPanel:
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -55,6 +54,8 @@ class PHYSICS_PT_softbody(PhysicButtonsPanel, Panel):
         md = context.soft_body
         softbody = md.settings
 
+        layout.prop(softbody, "solver_mode")
+    
         layout.prop(softbody, "collision_collection")
 
 
@@ -75,15 +76,25 @@ class PHYSICS_PT_softbody_object(PhysicButtonsPanel, Panel):
         layout.enabled = softbody_panel_enabled(md)
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
 
-        col = flow.column()
-        col.prop(softbody, "friction")
+        if softbody.solver_mode=='LEGACY':
 
-        col.separator()
+            col = flow.column()
+            col.prop(softbody, "friction")
 
-        col = flow.column()
-        col.prop(softbody, "mass")
+            col.separator()
 
-        col.prop_search(softbody, "vertex_group_mass", ob, "vertex_groups", text="Control Point")
+            col = flow.column()
+            col.prop(softbody, "mass")
+
+            col.prop_search(softbody, "vertex_group_mass", ob, "vertex_groups", text="Control Point")
+
+        elif softbody.solver_mode=='ADMMPD':
+
+            col = flow.column()
+            col.prop(softbody, "admmpd_youngs")
+            col.prop(softbody, "admmpd_poisson")
+            col.prop(softbody, "admmpd_material")
+            col.prop(softbody, "admmpd_density_kgm3")
 
 
 class PHYSICS_PT_softbody_simulation(PhysicButtonsPanel, Panel):
@@ -91,6 +102,12 @@ class PHYSICS_PT_softbody_simulation(PhysicButtonsPanel, Panel):
     bl_parent_id = 'PHYSICS_PT_softbody'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    @classmethod
+    def poll(cls, context):
+        md = context.soft_body
+        softbody = md.settings
+        return (softbody.solver_mode=='LEGACY')
 
     def draw(self, context):
         layout = self.layout
@@ -139,12 +156,21 @@ class PHYSICS_PT_softbody_goal(PhysicButtonsPanel, Panel):
 
         layout.prop_search(softbody, "vertex_group_goal", ob, "vertex_groups", text="Vertex Group")
 
+        if softbody.solver_mode == 'ADMMPD':
+            layout.prop(softbody, "admmpd_goalstiff")
+
 
 class PHYSICS_PT_softbody_goal_strengths(PhysicButtonsPanel, Panel):
     bl_label = "Strengths"
     bl_parent_id = 'PHYSICS_PT_softbody_goal'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    @classmethod
+    def poll(cls, context):
+        md = context.soft_body
+        softbody = md.settings
+        return (softbody.solver_mode=='LEGACY')
 
     def draw(self, context):
         layout = self.layout
@@ -172,6 +198,12 @@ class PHYSICS_PT_softbody_goal_settings(PhysicButtonsPanel, Panel):
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
+    @classmethod
+    def poll(cls, context):
+        md = context.soft_body
+        softbody = md.settings
+        return (softbody.solver_mode=='LEGACY')
+
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
@@ -194,6 +226,12 @@ class PHYSICS_PT_softbody_edge(PhysicButtonsPanel, Panel):
     bl_parent_id = 'PHYSICS_PT_softbody'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    @classmethod
+    def poll(cls, context):
+        md = context.soft_body
+        softbody = md.settings
+        return (softbody.solver_mode=='LEGACY')
 
     def draw_header(self, context):
         softbody = context.soft_body.settings
@@ -282,12 +320,37 @@ class PHYSICS_PT_softbody_edge_stiffness(PhysicButtonsPanel, Panel):
 
         layout.prop(softbody, "shear")
 
+class PHYSICS_PT_softbody_admmpdcollision(PhysicButtonsPanel, Panel):
+    bl_label = "Collision"
+    bl_parent_id = 'PHYSICS_PT_softbody'
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+  
+    @classmethod
+    def poll(cls, context):
+        md = context.soft_body
+        softbody = md.settings
+        return (softbody.solver_mode=='ADMMPD')
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        md = context.soft_body
+        softbody = md.settings
+        layout.prop(softbody, "admmpd_self_collision")
+        layout.prop(softbody, "admmpd_floor_z")
 
 class PHYSICS_PT_softbody_collision(PhysicButtonsPanel, Panel):
     bl_label = "Self Collision"
     bl_parent_id = 'PHYSICS_PT_softbody'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    @classmethod
+    def poll(cls, context):
+        md = context.soft_body
+        softbody = md.settings
+        return (softbody.solver_mode=='LEGACY')
 
     def draw_header(self, context):
         softbody = context.soft_body.settings
@@ -334,20 +397,34 @@ class PHYSICS_PT_softbody_solver(PhysicButtonsPanel, Panel):
         layout.active = softbody_panel_enabled(md)
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
 
-        col = flow.column(align=True)
-        col.prop(softbody, "step_min", text="Step Size Min")
-        col.prop(softbody, "step_max", text="Max")
+        if softbody.solver_mode == 'LEGACY':
 
-        col = flow.column()
-        col.prop(softbody, "use_auto_step", text="Auto-Step")
-        col.prop(softbody, "error_threshold")
+            col = flow.column(align=True)
+            col.prop(softbody, "step_min", text="Step Size Min")
+            col.prop(softbody, "step_max", text="Max")
 
+            col = flow.column()
+            col.prop(softbody, "use_auto_step", text="Auto-Step")
+            col.prop(softbody, "error_threshold")
+
+        elif softbody.solver_mode == 'ADMMPD':
+
+            col = flow.column(align=True)
+            col.prop(softbody, "admmpd_substeps")
+            col.prop(softbody, "admmpd_max_admm_iters")
+            col.prop(softbody, "admmpd_converge_eps")
 
 class PHYSICS_PT_softbody_solver_diagnostics(PhysicButtonsPanel, Panel):
     bl_label = "Diagnostics"
     bl_parent_id = 'PHYSICS_PT_softbody_solver'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    @classmethod
+    def poll(cls, context):
+        md = context.soft_body
+        softbody = md.settings
+        return (softbody.solver_mode=='LEGACY')
 
     def draw(self, context):
         layout = self.layout
@@ -367,6 +444,12 @@ class PHYSICS_PT_softbody_solver_helpers(PhysicButtonsPanel, Panel):
     bl_parent_id = 'PHYSICS_PT_softbody_solver'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    @classmethod
+    def poll(cls, context):
+        md = context.soft_body
+        softbody = md.settings
+        return (softbody.solver_mode=='LEGACY')
 
     def draw(self, context):
         layout = self.layout
@@ -391,6 +474,12 @@ class PHYSICS_PT_softbody_field_weights(PhysicButtonsPanel, Panel):
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
+    @classmethod
+    def poll(cls, context):
+        md = context.soft_body
+        softbody = md.settings
+        return (softbody.solver_mode=='LEGACY')
+
     def draw(self, context):
         md = context.soft_body
         softbody = md.settings
@@ -409,6 +498,7 @@ classes = (
     PHYSICS_PT_softbody_edge,
     PHYSICS_PT_softbody_edge_aerodynamics,
     PHYSICS_PT_softbody_edge_stiffness,
+    PHYSICS_PT_softbody_admmpdcollision,
     PHYSICS_PT_softbody_collision,
     PHYSICS_PT_softbody_solver,
     PHYSICS_PT_softbody_solver_diagnostics,

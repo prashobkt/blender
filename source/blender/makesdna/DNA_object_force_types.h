@@ -212,7 +212,21 @@ typedef struct SoftBody {
   /** Not saved in file. */
   struct BodySpring *bspring;
 
+  /* ADMM-PD settings */
   struct ADMMPDInterfaceData *admmpd;
+  int solver_mode; // 0=legacy, 1=admmpd
+  int admmpd_substeps; // break time step into smaller bits
+  int admmpd_max_admm_iters; // max solver iterations
+  int admmpd_self_collision; // 0 or 1
+  int admmpd_material; // see enum
+  float admmpd_converge_eps; // convergence epsilon
+  float admmpd_youngs; // Youngs mod
+  float admmpd_poisson; // Poisson ratio
+  float admmpd_density_kgm3; // unit-density of object
+  float admmpd_goalstiff; // 0 to 1
+  float admmpd_floor_z; // floor position
+  int admmpd_pad;
+
 
   char _pad;
   char msg_lock;
@@ -409,6 +423,14 @@ typedef struct SoftBody {
 #define SBC_MODE_MIN 2
 #define SBC_MODE_MAX 3
 #define SBC_MODE_AVGMINMAX 4
+
+/* sb->solver_mode */
+#define SOLVER_MODE_ADMMPD 0
+#define SOLVER_MODE_LEGACY 1
+
+/* sb->admmpd_material */
+#define ADMMPD_MATERIAL_ARAP 0 // As rigid as possible
+#define ADMMPD_MATERIAL_NH 1 // NeoHookean
 
 #ifdef __cplusplus
 }
