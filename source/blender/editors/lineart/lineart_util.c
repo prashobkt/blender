@@ -85,9 +85,15 @@ void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip)
   BLI_remlink(h, (void *)lip);
 }
 
-LineartStaticMemPoolNode *mem_new_static_pool(LineartStaticMemPool *smp)
+LineartStaticMemPoolNode *mem_new_static_pool(LineartStaticMemPool *smp, int size)
 {
-  LineartStaticMemPoolNode *smpn = MEM_callocN(LRT_MEMORY_POOL_128MB, "mempool");
+  int set_size = size;
+  if (set_size < LRT_MEMORY_POOL_64MB) {
+    set_size = LRT_MEMORY_POOL_64MB; /* Prevent too many small allocations. */
+  }
+  int total_size = size + sizeof(LineartStaticMemPoolNode);
+  LineartStaticMemPoolNode *smpn = MEM_callocN(total_size, "mempool");
+  smpn->size = total_size;
   smpn->used_byte = sizeof(LineartStaticMemPoolNode);
   BLI_addhead(&smp->pools, smpn);
   return smpn;
@@ -97,8 +103,8 @@ void *mem_static_aquire(LineartStaticMemPool *smp, int size)
   LineartStaticMemPoolNode *smpn = smp->pools.first;
   void *ret;
 
-  if (!smpn || (smpn->used_byte + size) > LRT_MEMORY_POOL_128MB) {
-    smpn = mem_new_static_pool(smp);
+  if (!smpn || (smpn->used_byte + size) > smpn->size) {
+    smpn = mem_new_static_pool(smp, size);
   }
 
   ret = ((unsigned char *)smpn) + smpn->used_byte;
@@ -114,8 +120,8 @@ void *mem_static_aquire_thread(LineartStaticMemPool *smp, int size)
 
   BLI_spin_lock(&smp->lock_mem);
 
-  if (!smpn || (smpn->used_byte + size) > LRT_MEMORY_POOL_128MB) {
-    smpn = mem_new_static_pool(smp);
+  if (!smpn || (smpn->used_byte + size) > smpn->size) {
+    smpn = mem_new_static_pool(smp, size);
   }
 
   ret = ((unsigned char *)smpn) + smpn->used_byte;
@@ -134,8 +140,6 @@ void *mem_static_destroy(LineartStaticMemPool *smp)
   while ((smpn = BLI_pophead(&smp->pools)) != NULL) {
     MEM_freeN(smpn);
   }
-
-  smp->each_size = 0;
 
   return ret;
 }

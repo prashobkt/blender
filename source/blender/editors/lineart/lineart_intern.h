@@ -53,7 +53,7 @@ void *list_append_pointer_static_pool(struct LineartStaticMemPool *mph, ListBase
 void *list_pop_pointer_no_free(ListBase *h);
 void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip);
 
-LineartStaticMemPoolNode *mem_new_static_pool(struct LineartStaticMemPool *smp);
+LineartStaticMemPoolNode *mem_new_static_pool(struct LineartStaticMemPool *smp, int size);
 void *mem_static_aquire(struct LineartStaticMemPool *smp, int size);
 void *mem_static_aquire_thread(struct LineartStaticMemPool *smp, int size);
 void *mem_static_destroy(LineartStaticMemPool *smp);

@@ -41,12 +41,12 @@
 
 typedef struct LineartStaticMemPoolNode {
   Link item;
+  int size;
   int used_byte;
   /* User memory starts here */
 } LineartStaticMemPoolNode;
 
 typedef struct LineartStaticMemPool {
-  int each_size;
   ListBase pools;
   SpinLock lock_mem;
 } LineartStaticMemPool;
@@ -318,9 +318,7 @@ typedef struct LineartSharedResource {
 #define DBL_EDGE_LIM 1e-9
 
 #define LRT_MEMORY_POOL_1MB 1048576
-#define LRT_MEMORY_POOL_128MB 134217728
-#define LRT_MEMORY_POOL_256MB 268435456
-#define LRT_MEMORY_POOL_512MB 536870912
+#define LRT_MEMORY_POOL_64MB 67108864
 
 typedef enum eLineartCullState {
   LRT_CULL_DONT_CARE = 0,
