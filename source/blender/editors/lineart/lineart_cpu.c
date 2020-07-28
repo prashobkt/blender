@@ -3807,7 +3807,7 @@ static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op)
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
   int frame;
-  int frame_begin = scene->r.sfra;
+  int frame_begin = MAX2(scene->r.sfra, 1);
   int frame_end = scene->r.efra;
   int frame_total = frame_end - frame_begin;
   int frame_orig = scene->r.cfra;
