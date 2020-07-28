@@ -307,7 +307,7 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node)
   float radius = stroke_point_radius_get(gps);
   gps_node.append_attribute("r").set_value(radius);
 
-  gps_node.append_attribute("fill-opacity").set_value(gp_style->fill_rgba[3]);
+  gps_node.append_attribute("fill-opacity").set_value(gp_style->stroke_rgba[3]);
 }
 
 /**
