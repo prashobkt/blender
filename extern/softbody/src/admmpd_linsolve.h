@@ -9,35 +9,63 @@
 
 namespace admmpd {
 
-// Preconditioned Conjugate Gradients
-class ConjugateGradients {
+class LinearSolver
+{
 public:
-	void solve(
+	// Called once at simulation initialization
+	virtual void init_solve(
+		const Options *options,
+		SolverData *data) = 0;
+
+	virtual void solve(
 		const Options *options,
 		SolverData *data,
-		Collision *collision);
-
-protected:
-	// Apply preconditioner
-	void solve_Ax_b(
-		SolverData *data,
-		Eigen::VectorXd *x,
-		Eigen::VectorXd *b);
+		Collision *collision) = 0;
 };
 
-// Multi-Colored Gauss-Seidel
-class GaussSeidel {
+// Preconditioned Conjugate Gradients
+class ConjugateGradients : public LinearSolver
+{
 public:
+	void init_solve(
+		const Options *options,
+		SolverData *data);
+
 	void solve(
 		const Options *options,
 		SolverData *data,
 		Collision *collision);
 
 protected:
-	void init_solve(
+	RowSparseMatrix<double> A3_PtP_CtC;
+	RowSparseMatrix<double> CtC;
+	Eigen::VectorXd Ctd; // ck * Ct d
+	Eigen::VectorXd Ptq; // pk * Pt q
+	Eigen::VectorXd b3_Ptq_Ctd; // M xbar + DtW2(z-u) + ck Ct d + pk Pt q
+	Eigen::VectorXd r; // residual
+	Eigen::VectorXd z; // auxilary
+	Eigen::VectorXd p; // direction
+	Eigen::VectorXd Ap; // A3_PtP_CtC * p
+};
+
+#if 0
+// Multi-Colored Gauss-Seidel
+class GaussSeidel : public LinearSolver
+{
+public:
+	void init(
 		const Options *options,
 		SolverData *data,
 		Collision *collision);
+
+	void solve(
+		const Options *options,
+		SolverData *data,
+		Collision *collision);
+
+protected:
+    std::vector<std::vector<int> > A_colors; // colors of (original) A matrix
+    std::vector<std::vector<int> > A3_plus_CtC_colors; // colors of A3+CtC
 
 	void compute_colors(
 		const std::vector<std::set<int> > &vertex_energies_graph,
@@ -48,6 +76,7 @@ protected:
 	void verify_colors(SolverData *data);
 
 };
+#endif
 
 } // namespace admmpd
 

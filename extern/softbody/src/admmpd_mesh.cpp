@@ -12,6 +12,11 @@
 namespace admmpd {
 using namespace Eigen;
 
+static inline void throw_err(const std::string f, const std::string &msg)
+{
+	throw std::runtime_error("Mesh::"+f+": "+msg);
+}
+
 static void gather_octree_tets(
 	Octree<double,3>::Node *node,
 	const MatrixXd *emb_V,
@@ -120,8 +125,8 @@ bool EmbeddedMesh::create(
 		box.extend(emb_V0.row(emb_F(i,0)).transpose());
 		box.extend(emb_V0.row(emb_F(i,1)).transpose());
 		box.extend(emb_V0.row(emb_F(i,2)).transpose());
-		box.extend(box.min()-Vector3d::Ones()*1e-8);
-		box.extend(box.max()+Vector3d::Ones()*1e-8);
+		box.extend(box.min()-Vector3d::Ones()*1e-4);
+		box.extend(box.max()+Vector3d::Ones()*1e-4);
 	}
 
 	Octree<double,3> octree;
@@ -165,34 +170,28 @@ bool EmbeddedMesh::create(
 
 	compute_embedding();
 
-	auto return_error = [](const std::string &msg)
-	{
-		printf("EmbeddedMesh::generate create: %s\n", msg.c_str());
-		return false;
-	};
-
 	// Verify embedding is correct
 	for (int i=0; i<nv; ++i)
 	{
 		if (emb_v_to_tet[i]<0)
-			return return_error("Failed embedding");
+			throw_err("create","Failed embedding");
 		if (std::abs(emb_barys.row(i).sum()-1.0)>1e-6)
 		{
 			std::stringstream ss; ss << emb_barys.row(i);
-			return return_error("Bad embedding barys: "+ss.str());
+			throw_err("create","Bad embedding barys: "+ss.str());
 		}
 	}
 
 	if (!emb_rest_facet_tree.root())
-		return return_error("Failed to create tree");
+		throw_err("create","Failed to create tree");
 	if (lat_V0.rows()==0)
-		return return_error("Failed to create verts");
+		throw_err("create","Failed to create verts");
 	if (lat_T.rows()==0)
-		return return_error("Failed to create tets");
+		throw_err("create","Failed to create tets");
 	if (emb_F.rows()==0)
-		return return_error("Did not set faces");
+		throw_err("create","Did not set faces");
 	if (emb_V0.rows()==0)
-		return return_error("Did not set verts");
+		throw_err("create","Did not set verts");
 
 	return true;
 }
@@ -240,8 +239,7 @@ bool EmbeddedMesh::compute_embedding()
 	int nv = emb_V0.rows();
 	if (nv==0)
 	{
-		printf("**EmbeddedMesh::compute_embedding: No embedded vertices");
-		return false;
+		throw_err("compute_embedding", "No embedded verts");
 	}
 
 	emb_barys.resize(nv,4);
@@ -287,18 +285,15 @@ bool EmbeddedMesh::compute_embedding()
 		RowVector4d b = emb_barys.row(i);
 		if (b.minCoeff() < -eps)
 		{
-			printf("**Lattice::generate Error: negative barycoords\n");
-			return false;
+			throw_err("compute_embedding", "negative barycoords");
 		}
 		if (b.maxCoeff() > 1 + eps)
 		{
-			printf("**Lattice::generate Error: max barycoord > 1\n");
-			return false;
+			throw_err("compute_embedding", "max barycoord > 1");
 		}
 		if (b.sum() > 1 + eps)
 		{
-			printf("**Lattice::generate Error: barycoord sum > 1\n");
-			return false;
+			throw_err("compute_embedding", "barycoord sum > 1");
 		}
 	}
 
@@ -352,7 +347,7 @@ void EmbeddedMesh::compute_masses(
 	{
 		if (m[i] <= 0.0)
 		{
-			printf("**EmbeddedMesh::compute_masses Error: unreferenced vertex\n");
+			throw_err("compute_masses","unref'd vertex");
 			m[i]=1;
 		}
 	}
@@ -475,7 +470,7 @@ void TetMesh::compute_masses(
 		for (int i=0; i<4; ++i)
 		{
 			if (tet[i] < 0 || tet[i] >= nx)
-				throw std::runtime_error("TetMesh::compute_masses Error: Bad vertex index\n");
+				throw_err("compute_masses","Bad vertex index");
 		}
 		RowVector3d tet_v0 = x.row(tet[0]);
 		Matrix3d edges;
@@ -484,7 +479,7 @@ void TetMesh::compute_masses(
 		edges.col(2) = x.row(tet[3]) - tet_v0;
 		double vol = edges.determinant()/6.0;
 		if (vol <= 0)
-			throw std::runtime_error("TetMesh::compute_masses Error: Inverted or flattened tet\n");
+			throw_err("compute_masses","Inverted or flattened tet");
 
 		double tet_mass = density_kgm3 * vol;
 		m[tet[0]] += tet_mass / 4.0;
@@ -498,7 +493,7 @@ void TetMesh::compute_masses(
 	{
 		if (m[i] <= 0.0)
 		{
-			printf("**TetMesh::compute_masses Error: unreferenced vertex\n");
+			throw_err("compute_masses","unref'd vertex");
 			m[i]=1;
 		}
 	}

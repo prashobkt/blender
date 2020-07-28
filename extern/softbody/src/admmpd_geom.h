@@ -5,6 +5,7 @@
 #define ADMMPD_GEOM_H_
 
 #include <Eigen/Geometry>
+#include <Eigen/Sparse>
 #include <vector>
 
 // Common geometry kernels
@@ -83,6 +84,12 @@ static void merge_close_vertices(
 	std::vector<Eigen::Vector3d> &verts,
 	std::vector<Eigen::RowVector4i> &tets,
 	double eps = 1e-12);
+
+// Replicates a matrix along the diagonal
+template<typename T>
+static void make_n3(
+		const Eigen::SparseMatrix<T> &A,
+		Eigen::SparseMatrix<T> &A3);
 
 }; // class geom
 } // namespace admmpd

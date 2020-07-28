@@ -419,6 +419,29 @@ void geom::merge_close_vertices(
 	}
 }
 
+template<typename T>
+void geom::make_n3(
+		const Eigen::SparseMatrix<T> &A,
+		Eigen::SparseMatrix<T> &A3)
+{
+	int na = A.rows();
+	A3.resize(na*3, na*3);
+	A3.reserve(A.nonZeros()*3);
+	int cols = A.rows();
+	for(int c=0; c<cols; ++c)
+	{
+		for(int dim=0; dim<3; ++dim)
+		{
+			int col = c*3+dim;
+			A3.startVec(col);
+			for(typename SparseMatrix<T>::InnerIterator itA(A,c); itA; ++itA)
+				A3.insertBack((itA.row()*3+dim), col) = itA.value();
+		}
+	}
+	A3.finalize();
+	A3.makeCompressed();
+}
+
 //
 // Compile template types
 //
@@ -474,5 +497,11 @@ template bool admmpd::geom::ray_triangle<float>(
 	const Eigen::Vector3f&, const Eigen::Vector3f&,
 	const Eigen::Vector3f&, const Eigen::Vector3f&,
 	const Eigen::Vector3f&, float, float&, Eigen::Vector3f*);
+template void admmpd::geom::make_n3<float>(
+	const Eigen::SparseMatrix<float>&,
+	Eigen::SparseMatrix<float>&);
+template void admmpd::geom::make_n3<double>(
+	const Eigen::SparseMatrix<double>&,
+	Eigen::SparseMatrix<double>&);
 
 } // namespace admmpd

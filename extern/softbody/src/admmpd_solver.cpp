@@ -5,6 +5,7 @@
 #include "admmpd_energy.h"
 #include "admmpd_collision.h"
 #include "admmpd_linsolve.h"
+#include "admmpd_geom.h"
 
 #include <Eigen/Geometry>
 #include <Eigen/Sparse>
@@ -19,6 +20,11 @@
 
 namespace admmpd {
 using namespace Eigen;
+
+static inline void throw_err(const std::string &f, const std::string &m)
+{
+	throw std::runtime_error("Solver::"+f+": "+m);
+}
 
 bool Solver::init(
 	const Mesh *mesh,
@@ -35,8 +41,7 @@ bool Solver::init(
 	data->v.setZero();
 	data->tets = mesh->prims();
 	mesh->compute_masses(data->x, options->density_kgm3, data->m);
-	if (!compute_matrices(options,data))
-		return false;
+	init_matrices(options,data);
 
 	printf("Solver::init:\n\tNum tets: %d\n\tNum verts: %d\n",(int)data->tets.rows(),(int)data->x.rows());
 
@@ -53,34 +58,42 @@ int Solver::solve(
 	BLI_assert(options != NULL);
 	BLI_assert(data->x.cols() == 3);
 	BLI_assert(data->x.rows() > 0);
-	BLI_assert(data->A.nonZeros() > 0);
 	BLI_assert(options->max_admm_iters > 0);
 
-	// Init the solve which computes
-	// quantaties like M_xbar and makes sure
-	// the variables are sized correctly.
-	init_solve(mesh,options,data,collision);
+	update_pin_matrix(mesh,options,data);
+	update_global_matrix(options,data);
+	ConjugateGradients cg;
+	cg.init_solve(options,data);
 
-	// Begin solver loop
 	int iters = 0;
-	for (; iters < options->max_admm_iters; ++iters)
+	int substeps = 1;//std::max(1,options->substeps);
+	for (int i=0; i<substeps; ++i)
 	{
-		// Update ADMM z/u
-		solve_local_step(options,data);
+		// Init the solve which computes
+		// quantaties like M_xbar and makes sure
+		// the variables are sized correctly.
+		init_solve(mesh,options,data,collision);
 
-		// Collision detection and linearization
-		update_collisions(options,data,collision);
+		// Begin solver loop
+		for (; iters < options->max_admm_iters; ++iters)
+		{
+			// Update ADMM z/u
+			solve_local_step(options,data);
 
-		// Solve Ax=b s.t. Cx=d
-		ConjugateGradients().solve(options,data,collision);
-		//GaussSeidel().solve(options,data,collision);
+			// Collision detection and linearization
+			update_collisions(options,data,collision);
 
-	} // end solver iters
+			// Solve Ax=b s.t. Px=q and Cx=d
+			cg.solve(options,data,collision);
 
-	// Update velocity (if not static solve)
-	double dt = options->timestep_s;
-	if (dt > 0.0)
-		data->v.noalias() = (data->x-data->x_start)*(1.0/dt);
+		} // end solver iters
+
+		// Update velocity (if not static solve)
+		double dt = options->timestep_s / double(substeps);
+		if (dt > 0.0)
+			data->v.noalias() = (data->x-data->x_start)*(1.0/dt);
+
+	}
 
 	return iters;
 } // end solve
@@ -91,6 +104,7 @@ void Solver::init_solve(
 	SolverData *data,
 	Collision *collision)
 {
+	(void)(mesh);
 	BLI_assert(data != NULL);
 	BLI_assert(options != NULL);
 	int nx = data->x.rows();
@@ -104,7 +118,8 @@ void Solver::init_solve(
 	// - update velocity with explicit forces
 	// - update pin constraint matrix (goal positions)
 	// - set x init guess
-	double dt = std::max(0.0, options->timestep_s);
+	double dt = std::max(0.0, options->timestep_s) /
+		std::max(1.0, double(options->substeps));
 	data->x_start = data->x;
 	for (int i=0; i<nx; ++i)
 	{
@@ -112,28 +127,6 @@ void Solver::init_solve(
 		RowVector3d xbar_i = data->x.row(i) + dt*data->v.row(i);
 		data->M_xbar.row(i) = data->m[i]*xbar_i / (dt*dt);
 		data->x.row(i) = xbar_i; // initial guess
-	}
-
-	// Create pin constraint matrix
-	std::vector<Triplet<double> > trips;
-	std::vector<double> q_coeffs;
-	mesh->linearize_pins(trips, q_coeffs);
-	if (q_coeffs.size()==0)
-	{ // no springs
-		data->PtP.resize(nx*3,nx*3);
-		data->PtP.setZero();
-		data->Ptq.resize(nx*3);
-		data->Ptq.setZero();
-	}
-	else
-	{ // Scale stiffness by A diagonal max
-		double pin_k_scale = options->mult_pk * data->A_diag_max;
-		int np = q_coeffs.size();
-		RowSparseMatrix<double> P(np, nx*3);
-		P.setFromTriplets(trips.begin(), trips.end());
-		data->PtP = pin_k_scale * P.transpose()*P;
-		VectorXd q = Map<VectorXd>(q_coeffs.data(), q_coeffs.size());
-		data->Ptq = pin_k_scale * P.transpose()*q;
 	}
 
 	if (collision)
@@ -231,7 +224,7 @@ void Solver::update_collisions(
 
 } // end update constraints
 
-bool Solver::compute_matrices(
+void Solver::init_matrices(
 	const Options *options,
 	SolverData *data)
 {
@@ -258,45 +251,29 @@ bool Solver::compute_matrices(
 	append_energies(options,data,trips);
 	if (trips.size()==0)
 	{
-		printf("**admmpd::Solver Error: No reduction coeffs\n");
-		return false;
+		throw_err("compute_matrices","No reduction coeffs");
 	}
 	int n_row_D = trips.back().row()+1;
-	double dt2 = options->timestep_s * options->timestep_s;
-	if (options->timestep_s <= 0)
-		dt2 = 1.0; // static solve, use dt=1 to not scale matrices
 
-	// Diagonal weight matrix
-	RowSparseMatrix<double> W2(n_row_D,n_row_D);
-	VectorXi W_nnz = VectorXi::Ones(n_row_D);
-	W2.reserve(W_nnz);
-	int ne = data->indices.size();
-	for (int i=0; i<ne; ++i)
-	{
-		const Vector3i &idx = data->indices[i];
-		for (int j=0; j<idx[1]; ++j)
-			W2.coeffRef(idx[0]+j,idx[0]+j) = data->weights[i]*data->weights[i];
-	}
+	RowSparseMatrix<double> W2;
+	compute_weight_matrix_squared(options,data,n_row_D,&W2);
+
+	// Constraint data
+	data->C.resize(1,nx*3);
+	data->d = VectorXd::Zero(1);
+	data->P.resize(1,nx*3);
+	data->q = VectorXd::Zero(1);
 
 	// Mass weighted Laplacian
 	data->D.resize(n_row_D,nx);
 	data->D.setFromTriplets(trips.begin(), trips.end());
 	data->DtW2 = data->D.transpose() * W2;
-	data->A = data->DtW2 * data->D;
-	for (int i=0; i<nx; ++i)
-		data->A.coeffRef(i,i) += data->m[i]/dt2;
-	data->ldltA.compute(data->A);
 	data->b.resize(nx,3);
 	data->b.setZero();
-	data->A_diag_max = data->A.diagonal().lpNorm<Infinity>();
+	update_global_matrix(options,data);
 
-	// Constraint data
-	data->C.resize(1,nx*3);
-	data->d = VectorXd::Zero(1);
-
-	data->PtP.resize(nx*3,nx*3);
-	data->Ptq.resize(nx*3);
-	data->Ptq.setZero();
+	// Perform factorization
+	data->ldlt_A3.compute(data->A3_plus_PtP);
 
 	// ADMM dual/lagrange
 	data->z.resize(n_row_D,3);
@@ -304,9 +281,98 @@ bool Solver::compute_matrices(
 	data->u.resize(n_row_D,3);
 	data->u.setZero();
 
-	return true;
-
 } // end compute matrices
+
+void Solver::compute_weight_matrix_squared(
+	const Options *options,
+	SolverData *data,
+	int rows,
+	RowSparseMatrix<double> *W2) const
+{
+	(void)(options);
+	W2->resize(rows,rows);
+	VectorXi W_nnz = VectorXi::Ones(rows);
+	W2->reserve(W_nnz);
+	int ne = data->indices.size();
+	if (ne != (int)data->weights.size())
+		throw_err("compute_weight_matrix","bad num indices/weights");
+
+	for (int i=0; i<ne; ++i)
+	{
+		const Vector3i &idx = data->indices[i];
+		if (idx[0]+idx[1] > rows)
+			throw_err("compute_weight_matrix","bad matrix dim");
+
+		for (int j=0; j<idx[1]; ++j)
+			W2->coeffRef(idx[0]+j,idx[0]+j) = data->weights[i]*data->weights[i];
+	}
+	W2->finalize();
+}
+
+void Solver::update_pin_matrix(
+	const Mesh *mesh,
+	const Options *options,
+	SolverData *data)
+{
+	(void)(options);
+	int nx = data->x.rows();
+	if (nx==0)
+		return;
+
+	// Create pin constraint matrix
+	std::vector<Triplet<double> > trips;
+	std::vector<double> q_coeffs;
+	mesh->linearize_pins(trips, q_coeffs);
+
+	if (q_coeffs.size()==0)
+	{ // no springs
+		data->P.resize(1,nx*3);
+		data->P.setZero();
+		data->q = VectorXd::Zero(1);
+	}
+	else
+	{ // Scale stiffness by A diagonal max
+		int np = q_coeffs.size();
+		data->P.resize(np,nx*3);
+		data->P.setFromTriplets(trips.begin(), trips.end());
+		data->q = Map<VectorXd>(q_coeffs.data(), q_coeffs.size());
+	}
+}
+
+void Solver::update_global_matrix(
+	const Options *options,
+	SolverData *data)
+{
+	int nx = data->x.rows();
+
+	if (data->DtW2.rows() != data->x.rows())
+		throw_err("update_global_matrix","bad matrix dim");
+	
+	if (data->m.rows() != data->x.rows())
+		throw_err("update_global_matrix","no masses");
+
+	if (data->P.cols() != nx*3)
+		throw_err("update_global_matrix","no pin matrix");
+
+	double dt2 = options->timestep_s * options->timestep_s;
+	if (dt2 < 0) // static solve
+		dt2 = 1.0;
+
+	SparseMatrix<double> A = data->DtW2 * data->D;
+	data->A_diag_max = 0;
+	for (int i=0; i<nx; ++i)
+	{
+		A.coeffRef(i,i) += data->m[i]/dt2;
+		double Aii = A.coeff(i,i);
+		if (Aii>data->A_diag_max)
+			data->A_diag_max = Aii;
+	}
+
+	SparseMatrix<double> A3;
+	geom::make_n3<double>(A,A3);
+	double pk = options->mult_pk * data->A_diag_max;
+	data->A3_plus_PtP = A3 + pk * data->P.transpose()*data->P;
+}
 
 void Solver::append_energies(
 	const Options *options,
@@ -327,16 +393,18 @@ void Solver::append_energies(
 	data->weights.reserve(nt);
 	Lame lame;
 	lame.set_from_youngs_poisson(options->youngs, options->poisson);
+	lame.m_material = options->elastic_material;
 
 	// The possibility of having an error in energy initialization
 	// while still wanting to continue the simulation is very low.
-	// We can parallelize this step if need be.
+	// We can parallelize this step.
 
 	int energy_index = 0;
 	for (int i=0; i<nt; ++i)
 	{
 		RowVector4i ele = data->tets.row(i);
 
+		// Initialize the energy
 		data->rest_volumes.emplace_back();
 		data->weights.emplace_back();
 		int energy_dim = EnergyTerm().init_tet(
@@ -355,6 +423,7 @@ void Solver::append_energies(
 			continue;
 		}
 
+		// Record energy indices
 		int ele_dim = ele.cols();
 		for (int j=0; j<ele_dim; ++j)
 		{

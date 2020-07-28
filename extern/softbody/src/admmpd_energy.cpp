@@ -10,7 +10,7 @@
 namespace admmpd {
 using namespace Eigen;
 
-Lame::Lame() : m_model(ELASTIC_ARAP)
+Lame::Lame() : m_material(ELASTIC_ARAP)
 {
 	set_from_youngs_poisson(10000000,0.399);
 }
@@ -90,7 +90,7 @@ void EnergyTerm::update_tet(
 	signed_svd(zi, U, S, V);
 	Vector3d s0 = S;
 
-	switch (lame.m_model)
+	switch (lame.m_material)
 	{
 		default:
 		case ELASTIC_ARAP:
@@ -161,7 +161,7 @@ void EnergyTerm::solve_prox(
 		const Eigen::Vector3d &s0,
 		Eigen::Vector3d &s)
 {
-
+	(void)(index);
 	Vector3d g; // gradient
 	Vector3d p; // descent
 	Vector3d s_prev;
@@ -235,7 +235,7 @@ double EnergyTerm::energy_density(
 	// Compute energy and gradient
 	// https://github.com/mattoverby/admm-elastic/blob/master/src/TetEnergyTerm.cpp
 	// I suppose I should add ARAP for completeness even though it's not used
-	switch (lame.m_model)
+	switch (lame.m_material)
 	{
 		default: {
 			if (g != nullptr) g->setZero();
@@ -282,11 +282,11 @@ void EnergyTerm::hessian_spd(
 	static const Matrix3d I = Matrix3d::Identity();
 
 	// Compute specific Hessian
-	switch (lame.m_model)
+	switch (lame.m_material)
 	{
 		default:
 		{
-			H.setIdentity();
+			H.setIdentity(); // We don't use ARAP hessian
 		} break;
 
 		case ELASTIC_NH:

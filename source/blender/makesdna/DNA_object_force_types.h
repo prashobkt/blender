@@ -215,6 +215,7 @@ typedef struct SoftBody {
   /* ADMM-PD settings */
   struct ADMMPDInterfaceData *admmpd;
   int solver_mode; // 0=legacy, 1=admmpd
+  int admmpd_init_mode; // 0=embedded, 1=tetgen
   int admmpd_substeps; // break time step into smaller bits
   int admmpd_max_admm_iters; // max solver iterations
   int admmpd_self_collision; // 0 or 1
@@ -223,6 +224,7 @@ typedef struct SoftBody {
   float admmpd_youngs; // Youngs mod
   float admmpd_poisson; // Poisson ratio
   float admmpd_density_kgm3; // unit-density of object
+  float admmpd_collisionstiff; // 0 to 1
   float admmpd_goalstiff; // 0 to 1
   float admmpd_floor_z; // floor position
   int admmpd_pad;
@@ -431,6 +433,10 @@ typedef struct SoftBody {
 /* sb->admmpd_material */
 #define ADMMPD_MATERIAL_ARAP 0 // As rigid as possible
 #define ADMMPD_MATERIAL_NH 1 // NeoHookean
+
+/* sb->admmpd_init_mode */
+#define ADMMPD_INIT_MODE_EMBEDDED 0
+#define ADMMPD_INIT_MODE_TETGEN 1
 
 #ifdef __cplusplus
 }

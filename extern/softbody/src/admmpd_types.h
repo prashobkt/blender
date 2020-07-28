@@ -16,15 +16,18 @@
 namespace admmpd {
 template <typename T> using RowSparseMatrix = Eigen::SparseMatrix<T,Eigen::RowMajor>;
 
-enum EnergyTermType {
-    ENERGYTERM_TET = 0
-};
+#define ENERGYTERM_TET 0
+
+#define ELASTIC_ARAP 0 // As-rigid-as-possible
+#define ELASTIC_NH 1 // NeoHookean
 
 struct Options {
     double timestep_s;
+    int substeps;
     int max_admm_iters;
     int max_cg_iters;
     int max_gs_iters;
+    int elastic_material; // ENUM, see admmpd_energy.h
     double gs_omega; // Gauss-Seidel relaxation
     double mult_ck; // stiffness multiplier for constraints
     double mult_pk; // (global) stiffness multiplier for pins
@@ -32,9 +35,12 @@ struct Options {
     double youngs; // Young's modulus // TODO variable per-tet
     double poisson; // Poisson ratio // TODO variable per-tet
     double density_kgm3; // density of mesh
+    double floor; // floor location
+    bool self_collision; // process self collisions
     Eigen::Vector3d grav;
     Options() :
         timestep_s(1.0/24.0),
+        substeps(1),
         max_admm_iters(30),
         max_cg_iters(10),
         max_gs_iters(100),
@@ -45,6 +51,8 @@ struct Options {
         youngs(1000000),
         poisson(0.399),
         density_kgm3(1522),
+        floor(-std::numeric_limits<double>::max()),
+        self_collision(false),
         grav(0,0,-9.8)
         {}
 };
@@ -54,7 +62,7 @@ struct SolverData {
     Eigen::MatrixXi tets; // elements t x 4, copy from mesh
     Eigen::MatrixXd x; // vertices, n x 3
     Eigen::MatrixXd v; // velocity, n x 3
-    // Set in compute_matrices: 
+ 
     Eigen::MatrixXd x_start; // x at t=0 (and goal if k>0), n x 3
     Eigen::VectorXd m; // masses, n x 1
     Eigen::MatrixXd z; // ADMM z variable
@@ -63,29 +71,17 @@ struct SolverData {
     Eigen::MatrixXd Dx; // D * x
     Eigen::MatrixXd b; // M xbar + DtW2(z-u)
     RowSparseMatrix<double> D; // reduction matrix
-    RowSparseMatrix<double> DtW2; // D'W^2
-    RowSparseMatrix<double> A; // M + D'W^2D
+    RowSparseMatrix<double> DtW2; // D'W'W
+
     double A_diag_max; // Max coeff of diag of A
-    RowSparseMatrix<double> C; // linearized constraints (cols = n x 3)
-    Eigen::VectorXd d; // constraints rhs
-    RowSparseMatrix<double> PtP; // pin_k Pt P
-    Eigen::VectorXd Ptq; // pin_k Pt q
-	Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > ldltA;
-    struct GlobalStepData { // Temporaries used in global step
-        RowSparseMatrix<double> A3; // (M + D'W^2D) n3 x n3
-        RowSparseMatrix<double> CtC; // col_k * Ct C
-        RowSparseMatrix<double> A3_CtC_PtP;
-        Eigen::VectorXd Ctd; // k * Ct d
-        Eigen::VectorXd b3_Ctd_Ptx; // M xbar + DtW2(z-u) + col_k Ct d + pin_k Pt x_start
-        // Used by Conjugate-Gradients:
-        Eigen::VectorXd r; // residual
-        Eigen::VectorXd z; // auxilary
-        Eigen::VectorXd p; // direction
-        Eigen::VectorXd A3p; // A3 * p
-        // Used by Gauss-Seidel:
-        std::vector<std::vector<int> > A_colors; // colors of (original) A matrix
-        std::vector<std::vector<int> > A3_plus_CtC_colors; // colors of A3+KtK
-    } gsdata;
+    RowSparseMatrix<double> A3_plus_PtP; // A + pk PtP replicated
+	Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > ldlt_A3;
+
+    RowSparseMatrix<double> P; // pin constraint Px=q (P.cols=3n)
+    Eigen::VectorXd q; // pin constraint rhs
+    RowSparseMatrix<double> C; // collision constraints Cx=d (C.cols=3n)
+    Eigen::VectorXd d; // collision constraints rhs
+
     // Set in append_energies:
     std::vector<std::set<int> > energies_graph; // per-vertex adjacency list (graph)
 	std::vector<Eigen::Vector3i> indices; // per-energy index into D (row, num rows, type)

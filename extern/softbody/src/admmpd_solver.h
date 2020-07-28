@@ -47,7 +47,23 @@ protected:
         const Options *options,
         SolverData *data);
 
-    bool compute_matrices(
+    void init_matrices(
+        const Options *options,
+        SolverData *data);
+
+    void compute_weight_matrix_squared(
+        const Options *options,
+        SolverData *data,
+        int rows,
+        RowSparseMatrix<double> *W2) const;
+
+    void update_pin_matrix(
+        const Mesh *mesh,
+        const Options *options,
+        SolverData *data);
+    
+    // Input: DtW'W, D, and P
+    void update_global_matrix(
         const Options *options,
         SolverData *data);
 

@@ -7,18 +7,13 @@
 #include <Eigen/Sparse>
 #include <Eigen/Geometry>
 #include <vector>
+#include "admmpd_types.h"
 
 namespace admmpd {
 
-enum ELASTIC_ENERGY
-{
-	ELASTIC_ARAP, // As-rigid-as-possible
-	ELASTIC_NH // NeoHookean
-};
-
 class Lame {
 public:
-	ELASTIC_ENERGY m_model;
+	int m_material;
 	double m_mu;
 	double m_lambda;
 	double m_bulk_mod;

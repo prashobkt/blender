@@ -28,23 +28,18 @@
 extern "C" {
 #endif
 
+#include "DNA_object_types.h"
+
 typedef struct ADMMPDInterfaceData {
     // totverts is usually different than mesh_totverts.
     // This is due to the lattice/tetmesh that is generated
     // in init. You can use them as input if reading from cache,
     // as they will be copied to internal solver data before admmpd_solve.
-    int totverts; // number of deformable verts (output)
-    int mesh_totverts; // number of surface mesh vertices (input)
-    int mesh_totfaces; // number of surface mesh faces (input)
-    int init_mode; // 0=tetgen, 1=lattice
-    // Solver data used internally
-    struct ADMMPDInternalData *idata;
+    int out_totverts; // number of deformable verts (output)
+    float in_framerate; // frames per second (input)
+    char last_error[256]; // error message if last returned
+    struct ADMMPDInternalData *idata; // internal data
 } ADMMPDInterfaceData;
-
-typedef struct ADMMPDInitData {
-    float *verts; // n x 3
-    unsigned int *faces; // m x 3
-} ADMMPDInitData;
 
 // SoftBody bodypoint (contains pos,vec)
 typedef struct BodyPoint BodyPoint;
@@ -53,7 +48,9 @@ typedef struct BodyPoint BodyPoint;
 void admmpd_dealloc(ADMMPDInterfaceData*);
 
 // Initializes solver and allocates internal data
-int admmpd_init(ADMMPDInterfaceData*, ADMMPDInitData*);
+// Mode: 0=lattice, 1=tetgen
+// Returns 1 on success, 0 on failure
+int admmpd_init(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3], int mode);
 
 // Copies BodyPoint data (from SoftBody)
 // to internal vertex position and velocity
@@ -83,10 +80,10 @@ void admmpd_copy_to_bodypoint_and_object(
     BodyPoint *pts,
     float (*vertexCos)[3]);
 
-// Copies out_verts and out_verts to internal data
-// Performs solve over the time step
-// Copies internal data to out_verts and out_vel
-void admmpd_solve(ADMMPDInterfaceData*);
+// Performs a time step. Object is passed
+// only to update settings if they have changed.
+// Returns 1 on success, 0 on error
+int admmpd_solve(ADMMPDInterfaceData*, Object*);
 
 #ifdef __cplusplus
 }

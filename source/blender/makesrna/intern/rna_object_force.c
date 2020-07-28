@@ -1793,6 +1793,12 @@ static void rna_def_softbody(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem admmpdinitmode_type_items[] = {
+      {ADMMPD_INIT_MODE_EMBEDDED, "EMBEDDED", 0, "Embedded", "Embed surface in low-res lattice"},
+//      {ADMMPD_INIT_MODE_TETGEN, "TETGEN", 0, "TetGen", "Tetrahedralize the surface mesh"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   static const EnumPropertyItem admmmaterial_type_items[] = {
       {ADMMPD_MATERIAL_ARAP, "ARAP", 0, "ARAP", "As-rigid-as-possible"},
       {ADMMPD_MATERIAL_NH, "NH", 0, "neo-Hookean", "Classic neo-Hookean"},
@@ -1816,14 +1822,20 @@ static void rna_def_softbody(BlenderRNA *brna)
       srna, "Soft Body Settings", "Soft body simulation settings for an object");
 
   /* Solver mode */
+
   prop = RNA_def_property(srna, "solver_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "solver_mode");
   RNA_def_property_enum_items(prop, solvermode_type_items);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Solver", "Choose Solver Type");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   /* ADMM-PD settings */
+
+  prop = RNA_def_property(srna, "admmpd_init_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "admmpd_init_mode");
+  RNA_def_property_enum_items(prop, admmpdinitmode_type_items);
+  RNA_def_property_ui_text(prop, "ADMM-PD Mesh Mode", "ADMM-PD initialization mode");
+  RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   prop = RNA_def_property(srna, "admmpd_substeps", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "admmpd_substeps");
@@ -1878,10 +1890,16 @@ static void rna_def_softbody(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Self Collision", "Enable self collisions (slow)");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
+  prop = RNA_def_property(srna, "admmpd_collisionstiff", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "admmpd_collisionstiff");
+  RNA_def_property_range(prop, 0.0f, 10.0f);
+  RNA_def_property_ui_text(prop, "Stiffness", "Stiffness of collision springs");
+  RNA_def_property_update(prop, 0, "rna_softbody_update");
+
   prop = RNA_def_property(srna, "admmpd_goalstiff", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "admmpd_goalstiff");
-  RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_text(prop, "Stiffness", "Stiffness of goal constraints");
+  RNA_def_property_range(prop, 0.0f, 10.0f);
+  RNA_def_property_ui_text(prop, "Stiffness", "Stiffness of goal springs");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   /* General Settings */

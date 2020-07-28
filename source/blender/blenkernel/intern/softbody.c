@@ -3134,6 +3134,22 @@ SoftBody *sbNew(Scene *scene)
   SoftBody *sb;
   sb = MEM_callocN(sizeof(SoftBody), "softbody");
 
+
+  sb->solver_mode = SOLVER_MODE_ADMMPD;
+  sb->admmpd_init_mode = ADMMPD_INIT_MODE_EMBEDDED;
+  sb->admmpd_substeps = 1;
+  sb->admmpd_max_admm_iters = 30;
+  sb->admmpd_self_collision = 0;
+  sb->admmpd_material = ADMMPD_MATERIAL_ARAP;
+  sb->admmpd_converge_eps = 1e-6;
+  sb->admmpd_youngs = 1000000;
+  sb->admmpd_poisson = 0.399;
+  sb->admmpd_density_kgm3 = 1522;
+  sb->admmpd_collisionstiff = 1;
+  sb->admmpd_goalstiff = 0.7;
+  sb->admmpd_floor_z = -999;
+
+
   sb->mediafrict = 0.5f;
   sb->nodemass = 1.0f;
   sb->grav = 9.8f;
@@ -3544,7 +3560,7 @@ static void sbStoreLastFrame(struct Depsgraph *depsgraph, Object *object, float 
   object_orig->soft->last_frame = framenr;
 }
 
-static void init_admmpd_interface(Object *ob, float (*vertexCos)[3])
+static void init_interface_admmpd(Scene *scene, Object *ob, float (*vertexCos)[3])
 {
   if(ob->type != OB_MESH)
     return;
@@ -3553,79 +3569,27 @@ static void init_admmpd_interface(Object *ob, float (*vertexCos)[3])
   MEdge *medge = me->medge;
   SoftBody *sb = ob->soft;
 
-  if (sb->admmpd != NULL)
-  {
+  if (sb->admmpd != NULL) {
     admmpd_dealloc(sb->admmpd);
     MEM_freeN(sb->admmpd);
     sb->admmpd = NULL;
   }
-  sb->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), "SoftBody_ADMMPD");
-
-  // Resize data
-  int totfaces = poly_to_tri_count(me->totpoly, me->totloop);
-  unsigned int *in_faces = (unsigned int*)MEM_callocN(sizeof(unsigned int)*totfaces*3, __func__);
-  float *in_verts = (float*)MEM_callocN(sizeof(float)*me->totvert*3, __func__);
-//  float *in_goals = (float*)MEM_callocN(sizeof(float)*me->totvert, __func__);
-  sb->admmpd->mesh_totverts = me->totvert;
-  sb->admmpd->mesh_totfaces = totfaces;
-  float default_goal = 0.7f;
-  int defgroup_index = me->dvert ? (sb->vertgroup - 1) : -1;
-  int defgroup_index_spring = me->dvert ? BKE_object_defgroup_name_index(ob, sb->namedVG_Spring_K) : -1;
-
-  // Initialize input vertices
-  for (int i=0; i<me->totvert; ++i)
-  {
-    // Local to global coordinates
-    float vi[3];
-    vi[0] = vertexCos[i][0];
-    vi[1] = vertexCos[i][1];
-    vi[2] = vertexCos[i][2];
-    mul_m4_v3(ob->obmat, vi);
-    for (int j=0; j<3; ++j)
-      in_verts[i*3+j] = vi[j];
-
-//    if (defgroup_index_spring != -1) {
-//      float stiff = BKE_defvert_find_weight(&me->dvert[i], defgroup_index_spring);
-//      printf("idx: %d/%d, stiff:% f\n", i, me->totvert, stiff);
-//    }
-
-  } // end loop input surface verts
-
-  // Initialize input faces
-  MLoopTri *looptri, *lt;
-  looptri = lt = (MLoopTri *)MEM_callocN(sizeof(*looptri)*totfaces, __func__);
-  BKE_mesh_recalc_looptri(me->mloop, me->mpoly, me->mvert, me->totloop, me->totpoly, looptri);
-  for (int i=0; i<totfaces; ++i, ++lt)
-  {
-      in_faces[i*3+0] = me->mloop[lt->tri[0]].v;
-      in_faces[i*3+1] = me->mloop[lt->tri[1]].v;
-      in_faces[i*3+2] = me->mloop[lt->tri[2]].v;
+  sb->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), __func__);
+  sb->admmpd->in_framerate = scene->r.frs_sec / scene->r.frs_sec_base;
+  if (!admmpd_init(sb->admmpd, ob, vertexCos, sb->admmpd_init_mode)) {
+    CLOG_ERROR(&LOG, sb->admmpd->last_error);
   }
-  MEM_freeN(looptri);
-  looptri = NULL;
-
-  // Initalize solver and free tmp data
-  sb->admmpd->init_mode = 1; // 0=tetmesh, 1=lattice
-
-  ADMMPDInitData in_data;
-  in_data.verts = in_verts;
-  in_data.faces = in_faces;
-//  in_data.goals = in_goals;
-  admmpd_init(sb->admmpd, &in_data);
-  MEM_freeN(in_verts);
-//  MEM_freeN(in_goals);
-  MEM_freeN(in_faces);
 
   // Set up softbody to store defo verts
-  if (sb->admmpd->totverts > 0) {
+  if (sb->admmpd->out_totverts > 0) {
     if (sb->totpoint && sb->bpoint != NULL)
     { // Free old data if exists
       MEM_freeN(sb->bpoint);
       sb->bpoint = NULL;
     }
-    sb->totpoint = sb->admmpd->totverts;
+    sb->totpoint = sb->admmpd->out_totverts;
     sb->totspring = 0;
-    sb->bpoint = (BodyPoint*)MEM_callocN(sb->totpoint*sizeof(BodyPoint), "bodypoint");
+    sb->bpoint = (BodyPoint*)MEM_callocN(sb->totpoint*sizeof(BodyPoint), __func__);
   }
 
   // admmpd_init will have created tets with extra vertices besides
@@ -3634,7 +3598,7 @@ static void init_admmpd_interface(Object *ob, float (*vertexCos)[3])
   admmpd_copy_to_bodypoint_and_object(sb->admmpd,sb->bpoint,NULL);
 }
 
-static void admmpd_update_collider(
+static void update_collider_admmpd(
   Depsgraph *depsgraph,
   Collection *collection,
   Object *vertexowner)
@@ -3668,9 +3632,9 @@ static void admmpd_update_collider(
     }
   }
 
-  float *obs_v0 = MEM_callocN(sizeof(float)*3*tot_verts, "obs_v0");
-  float *obs_v1 = MEM_callocN(sizeof(float)*3*tot_verts, "obs_v1");
-  unsigned int *obs_faces = MEM_callocN(sizeof(unsigned int)*3*tot_faces, "obs_faces");
+  float *obs_v0 = MEM_callocN(sizeof(float)*3*tot_verts, __func__);
+  float *obs_v1 = MEM_callocN(sizeof(float)*3*tot_verts, __func__);
+  unsigned int *obs_faces = MEM_callocN(sizeof(unsigned int)*3*tot_faces, __func__);
 
   // Copy over vertices and faces
   int curr_verts = 0;
@@ -3715,7 +3679,7 @@ static void admmpd_update_collider(
   BKE_collision_objects_free(objects);
 }
 
-static void admmpd_update_goal_positions(Object *ob, float (*vertexCos)[3])
+static void update_goal_positions_admmpd(Object *ob, float (*vertexCos)[3])
 {
   if(ob->type != OB_MESH)
     return;
@@ -3724,14 +3688,13 @@ static void admmpd_update_goal_positions(Object *ob, float (*vertexCos)[3])
     return;
 
   Mesh *me = ob->data;
-//  MEdge *medge = me->medge;
   SoftBody *sb = ob->soft;
   if (!sb->admmpd)
     return;
 
-  int nv = sb->admmpd->mesh_totverts;
-  float *goal_k = MEM_callocN(sizeof(float)*nv, "goal_k");
-  float *goal_pos = MEM_callocN(sizeof(float)*3*nv, "goal_pos");
+  int nv = me->totvert;
+  float *goal_k = MEM_callocN(sizeof(float)*nv, __func__);
+  float *goal_pos = MEM_callocN(sizeof(float)*3*nv, __func__);
   int defgroup_index = me->dvert ? (sb->vertgroup - 1) : -1;
 
   for (int i=0; i<nv; i++) {
@@ -3745,8 +3708,9 @@ static void admmpd_update_goal_positions(Object *ob, float (*vertexCos)[3])
     vi[1] = vertexCos[i][1];
     vi[2] = vertexCos[i][2];
     mul_m4_v3(ob->obmat, vi);
-    for (int j=0; j<3; ++j)
+    for (int j=0; j<3; ++j) {
       goal_pos[i*3+j] = vi[j];
+    }
   }
 
   admmpd_update_goals(sb->admmpd, goal_k, goal_pos, nv);
@@ -3754,8 +3718,7 @@ static void admmpd_update_goal_positions(Object *ob, float (*vertexCos)[3])
   MEM_freeN(goal_pos);
 }
 
-/* simulates one step. framenr is in frames */
-void sbObjectStep_admmpd(
+static void sbObjectStep_admmpd(
                   struct Depsgraph *depsgraph,
                   Scene *scene,
                   Object *ob,
@@ -3779,18 +3742,7 @@ void sbObjectStep_admmpd(
 
   BKE_ptcache_id_from_softbody(&pid, ob, sb);
   BKE_ptcache_id_time(&pid, scene, framenr, &startframe, &endframe, &timescale);
-
-//  float dtime = framedelta * timescale;
-//  printf("\n\ndtime:%f\n\n",dtime);
-
-  // check for changes in mesh, should only happen in case the mesh
-  // structure changes during an animation.
-  // Should be short-circuiting the boolean here.
-  if (sb->admmpd != NULL &&
-      sb->admmpd->mesh_totverts != numVerts) {
-    BKE_ptcache_invalidate(cache);
-    return;
-  }
+  float framerate = scene->r.frs_sec / scene->r.frs_sec_base;
 
   // clamp frame ranges
   if (framenr < startframe) {
@@ -3808,7 +3760,7 @@ void sbObjectStep_admmpd(
   //  free_softbody_intern
 
   // Reset cache
-//  if (sb->admmpd && sb->admmpd->mesh_totverts != numVerts)
+//  if ()
 //  {
 //    cache->flag |= PTCACHE_OUTDATED;
 //    BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
@@ -3820,7 +3772,7 @@ void sbObjectStep_admmpd(
   // If it's the first frame we reset the cache and data
   if (framenr == startframe || sb->admmpd == NULL) {
     BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
-    init_admmpd_interface(ob,vertexCos);
+    init_interface_admmpd(scene,ob,vertexCos);
     BKE_ptcache_validate(cache, framenr);
     cache->flag &= ~PTCACHE_REDO_NEEDED;
     sb->last_frame = framenr;
@@ -3884,13 +3836,15 @@ void sbObjectStep_admmpd(
   }
 
   // Update ADMMPD interface variables from cache and perform a solve.
-  // This copies from BodyPoint to ADMM-PD: 
-  // - vertex position
-  // - vertex velocity
-  admmpd_copy_from_bodypoint(sb->admmpd,sb->bpoint);
-  admmpd_update_collider(depsgraph, sb->collision_group, ob);
-  admmpd_update_goal_positions(ob, vertexCos);
-  admmpd_solve(sb->admmpd);
+  admmpd_copy_from_bodypoint(sb->admmpd,sb->bpoint); // bpoint -> admmpd
+  update_collider_admmpd(depsgraph, sb->collision_group, ob); // collision objects -> admmpd
+  update_goal_positions_admmpd(ob, vertexCos); // goal positions -> admmpd
+  sb->admmpd->in_framerate = scene->r.frs_sec / scene->r.frs_sec_base;
+
+  // Solve the time step
+  if (!admmpd_solve(sb->admmpd,ob)) {
+    CLOG_ERROR(&LOG, sb->admmpd->last_error);
+  }
 
   // Copies ADMM-PD data to both bodypoint and vertexCos.
   admmpd_copy_to_bodypoint_and_object(sb->admmpd,sb->bpoint,vertexCos);
@@ -3915,10 +3869,13 @@ void sbObjectStep(struct Depsgraph *depsgraph,
                   float (*vertexCos)[3],
                   int numVerts)
 {
-sbObjectStep_admmpd(depsgraph,scene,ob,cfra,vertexCos,numVerts);
-return;
 
   SoftBody *sb = ob->soft;
+  if (sb->solver_mode == SOLVER_MODE_ADMMPD) {
+    sbObjectStep_admmpd(depsgraph,scene,ob,cfra,vertexCos,numVerts);
+    return;
+  }
+
   PointCache *cache;
   PTCacheID pid;
   float dtime, timescale;

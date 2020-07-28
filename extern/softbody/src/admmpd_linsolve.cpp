@@ -2,6 +2,7 @@
 // Distributed under the MIT License.
 
 #include "admmpd_linsolve.h"
+#include "admmpd_geom.h"
 #include <numeric>
 #include <iostream>
 #include <set>
@@ -13,30 +14,26 @@
 namespace admmpd {
 using namespace Eigen;
 
-// Makes full n3 x n3 matrix
-static inline void make_n3(
-		const RowSparseMatrix<double> &A,
-		RowSparseMatrix<double> &A3)
+void ConjugateGradients::init_solve(
+	const Options *options,
+	SolverData *data)
 {
-	int na = A.rows();
-	SparseMatrix<double> A_cm = A; // A to CM
-	SparseMatrix<double> A3_cm(na*3, na*3);
-	A3_cm.reserve(A_cm.nonZeros()*3);
-	int cols = A_cm.rows();
-	for(int c=0; c<cols; ++c)
-	{
-		for(int dim=0; dim<3; ++dim)
-		{
-			int col = c*3+dim;
-			A3_cm.startVec(col);
-			for(SparseMatrix<double>::InnerIterator itA(A_cm,c); itA; ++itA)
-				A3_cm.insertBack((itA.row()*3+dim), col) = itA.value();
-		}
-	}
-	A3_cm.finalize();
-	A3_cm.makeCompressed();
-	A3 = A3_cm; // to RowMajor
-} // end make_n3
+	int nx3 = 3*data->x.rows();
+	if (nx3==0)
+		return;
+
+	A3_PtP_CtC.resize(nx3,nx3);
+	CtC.resize(nx3,nx3);
+	Ctd.resize(nx3);
+	Ptq.resize(nx3);
+	b3_Ptq_Ctd.resize(nx3);
+	r.resize(nx3);
+	z.resize(nx3);
+	p.resize(nx3);
+	Ap.resize(nx3);
+	double pk = options->mult_pk * data->A_diag_max;
+	Ptq = pk * data->P.transpose()*data->q;
+}
 
 void ConjugateGradients::solve(
 		const Options *options,
@@ -48,75 +45,65 @@ void ConjugateGradients::solve(
 	BLI_assert(options != NULL);
 	int nx = data->x.rows();
 	BLI_assert(nx > 0);
-	BLI_assert(data->A.rows() == nx);
-	BLI_assert(data->A.cols() == nx);
 	BLI_assert(data->b.rows() == nx);
 	BLI_assert(data->C.cols() == nx*3);
 	BLI_assert(data->d.rows() > 0);
 	BLI_assert(data->C.rows() == data->d.rows());
-	BLI_assert(data->PtP.cols() == nx*3);
-	BLI_assert(data->PtP.rows() == nx*3);
 
-	// If we don't have any constraints, we don't need to perform CG
-	data->b.noalias() = data->M_xbar + data->DtW2*(data->z-data->u);
-	if (data->C.nonZeros()==0 && data->PtP.nonZeros()==0)
+	// Update A matrix with collision constraints
+	double ck = options->mult_ck * data->A_diag_max;
+	RowSparseMatrix<double> *A;
+	if (data->C.nonZeros()>0)
 	{
-		data->x = data->ldltA.solve(data->b);
-		return;
+		Ctd = ck * data->C.transpose()*data->d;
+		CtC = ck * data->C.transpose()*data->C;
+		A3_PtP_CtC = data->A3_plus_PtP + CtC;
+		A = &A3_PtP_CtC;
+	}
+	else
+	{
+		Ctd.setZero();
+		A = &data->A3_plus_PtP;
 	}
 
-	// Resize data associated with Conjugate-Gradient
-	admmpd::SolverData::GlobalStepData *gsdata = &data->gsdata;
-	if (gsdata->r.rows() != nx*3)
-	{
-		gsdata->r.resize(nx*3);
-		gsdata->z.resize(nx*3);
-		gsdata->p.resize(nx*3);
-		gsdata->A3p.resize(nx*3);
-		gsdata->b3_Ctd_Ptx.resize(nx*3);
-		make_n3(data->A, gsdata->A3);
-	}
-
-	double col_k = options->mult_ck * data->A_diag_max;
-	gsdata->CtC = col_k * data->C.transpose()*data->C;
-	gsdata->Ctd = col_k * data->C.transpose()*data->d;
-	gsdata->A3_CtC_PtP = gsdata->A3 + gsdata->CtC + data->PtP;
+	// Compute RHS
 	VectorXd x3(nx*3);
+	data->b.noalias() = data->M_xbar + data->DtW2*(data->z-data->u);
 	for (int i=0; i<nx; ++i)
 	{
-		gsdata->b3_Ctd_Ptx.segment<3>(i*3) =
+		b3_Ptq_Ctd.segment<3>(i*3) =
 			data->b.row(i).transpose() + 
-			gsdata->Ctd.segment<3>(i*3) +
-			data->Ptq.segment<3>(i*3);
+			Ptq.segment<3>(i*3) +
+			Ctd.segment<3>(i*3);
 		x3.segment<3>(i*3) = data->x.row(i);
 	}
 
-	gsdata->r.noalias() = gsdata->b3_Ctd_Ptx - gsdata->A3_CtC_PtP*x3;
-	solve_Ax_b(data,&gsdata->z,&gsdata->r);
-	gsdata->p = gsdata->z;
+	r.noalias() = b3_Ptq_Ctd - *A*x3; // b-Ax
+	z = data->ldlt_A3.solve(r);
+	p = z;
 
 	for (int iter=0; iter<options->max_cg_iters; ++iter)
 	{
-		gsdata->A3p.noalias() = gsdata->A3_CtC_PtP*gsdata->p;
-		double p_dot_Ap = gsdata->p.dot(gsdata->A3p);
+		Ap.noalias() = *A*p;
+		double p_dot_Ap = p.dot(Ap);
 		if (p_dot_Ap==0.0)
 			break;
 
-		double zk_dot_rk = gsdata->z.dot(gsdata->r);
+		double zk_dot_rk = z.dot(r);
 		if (zk_dot_rk==0.0)
 			break;
 
 		double alpha = zk_dot_rk / p_dot_Ap;
-		x3.noalias() += alpha * gsdata->p;
-		gsdata->r.noalias() -= alpha * gsdata->A3p;
-		double r_norm = gsdata->r.lpNorm<Infinity>();
+		x3.noalias() += alpha * p;
+		r.noalias() -= alpha * Ap;
+		double r_norm = r.lpNorm<Infinity>();
 		if (r_norm < options->min_res)
 			break;
 
-		solve_Ax_b(data,&gsdata->z,&gsdata->r);
-		double zk1_dot_rk1 = gsdata->z.dot(gsdata->r);
+		z = data->ldlt_A3.solve(r);
+		double zk1_dot_rk1 = z.dot(r);
 		double beta = zk1_dot_rk1 / zk_dot_rk;
-		gsdata->p = gsdata->z + beta*gsdata->p;
+		p = z + beta*p;
 	}
 
 	for (int i=0; i<nx; ++i)
@@ -124,42 +111,7 @@ void ConjugateGradients::solve(
 
 } // end ConjugateGradients solve
 
-// Solve Ax = b in parallel and apply
-// dimensionality mapping with temporaries
-void ConjugateGradients::solve_Ax_b(
-	SolverData *data_,
-	VectorXd *x_,
-	VectorXd *b_)
-{
-	struct LinSolveThreadData {
-		SolverData *data;
-		VectorXd *ls_x;
-		VectorXd *ls_b;
-	};
-
-	auto parallel_lin_solve = [](
-		void *__restrict userdata,
-		const int i,
-		const TaskParallelTLS *__restrict tls)->void
-	{
-		(void)(tls);
-		LinSolveThreadData *td = (LinSolveThreadData*)userdata;
-		int nx = td->ls_x->rows()/3;
-		VectorXd b(nx);
-		for (int j=0; j<nx; ++j)
-			b[j] = td->ls_b->operator[](j*3+i);
-		VectorXd x = td->data->ldltA.solve(b);
-		for (int j=0; j<nx; ++j)
-			td->ls_x->operator[](j*3+i) = x[j];
-	};
-
-	LinSolveThreadData thread_data = {.data=data_, .ls_x=x_, .ls_b=b_};
-	TaskParallelSettings settings;
-	BLI_parallel_range_settings_defaults(&settings);
-	BLI_task_parallel_range(0, 3, &thread_data, parallel_lin_solve, &settings);
-
-} // end solve Ax=b
-
+#if 0
 void GaussSeidel::solve(
 		const Options *options,
 		SolverData *data,
@@ -312,7 +264,11 @@ void GaussSeidel::init_solve(
 
 	// Create large A if we haven't already.
 	if (data->gsdata.A3.nonZeros()==0)
-		make_n3(data->A, data->gsdata.A3);
+	{
+		SparseMatrix<double> A3;
+		geom::make_n3<double>(data->A, A3);
+		data->gsdata.A3 = A3;
+	}
 
 	// TODO
 	// Eventually we'll replace KtK with the full-dof matrix.
@@ -595,5 +551,6 @@ void GaussSeidel::verify_colors(SolverData *data)
 		}
 	}
 } // end verify colors
+#endif
 
 } // namespace admmpd

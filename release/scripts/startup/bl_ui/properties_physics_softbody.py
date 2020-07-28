@@ -338,6 +338,7 @@ class PHYSICS_PT_softbody_admmpdcollision(PhysicButtonsPanel, Panel):
         md = context.soft_body
         softbody = md.settings
         layout.prop(softbody, "admmpd_self_collision")
+        layout.prop(softbody, "admmpd_collisionstiff")
         layout.prop(softbody, "admmpd_floor_z")
 
 class PHYSICS_PT_softbody_collision(PhysicButtonsPanel, Panel):
@@ -410,6 +411,7 @@ class PHYSICS_PT_softbody_solver(PhysicButtonsPanel, Panel):
         elif softbody.solver_mode == 'ADMMPD':
 
             col = flow.column(align=True)
+            col.prop(softbody, "admmpd_init_mode")
             col.prop(softbody, "admmpd_substeps")
             col.prop(softbody, "admmpd_max_admm_iters")
             col.prop(softbody, "admmpd_converge_eps")
