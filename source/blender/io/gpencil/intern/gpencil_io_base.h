@@ -24,6 +24,8 @@
 
 #include "BLI_path_util.h"
 
+#include "BKE_gpencil.h"
+
 #include "DNA_defs.h"
 
 #include "gpencil_io_exporter.h"
@@ -33,6 +35,7 @@ struct Main;
 struct ARegion;
 
 struct bGPDlayer;
+struct bGPDframe;
 struct bGPDstroke;
 
 namespace blender {
@@ -46,28 +49,56 @@ class GpencilExporter {
   void set_out_filename(char *filename);
 
   /* Geometry functions. */
-  bool gpencil_3d_point_to_screen_space(struct ARegion *region,
-                                        const float diff_mat[4][4],
-                                        const float co[3],
-                                        const bool invert,
-                                        float r_co[2]);
+  bool gpencil_3d_point_to_screen_space(const float co[3], float r_co[2]);
 
   bool is_stroke_thickness_constant(struct bGPDstroke *gps);
   float stroke_average_pressure_get(struct bGPDstroke *gps);
-  float stroke_point_radius_get(const struct bGPDlayer *gpl,
-                                struct bGPDstroke *gps,
-                                float diff_mat[4][4]);
+  float stroke_point_radius_get(struct bGPDstroke *gps);
 
   std::string rgb_to_hex(float color[3]);
   std::string to_lower_string(char *input_text);
 
  protected:
+  bool invert_axis[2];
+  float diff_mat[4][4];
+
   GpencilExportParams params;
   char out_filename[FILE_MAX];
   /* Data for easy access. */
   struct Depsgraph *depsgraph;
   struct bGPdata *gpd;
   struct Main *bmain;
+
+  struct bGPDlayer *gpl_current_get(void)
+  {
+    return gpl_cur;
+  }
+  void gpl_current_set(struct bGPDlayer *gpl)
+  {
+    gpl_cur = gpl;
+    BKE_gpencil_parent_matrix_get(depsgraph, params.ob, gpl, diff_mat);
+  }
+  struct bGPDframe *gpf_current_get(void)
+  {
+    return gpf_cur;
+  }
+  void gpf_current_set(struct bGPDframe *gpf)
+  {
+    gpf_cur = gpf;
+  }
+  struct bGPDstroke *gps_current_get(void)
+  {
+    return gps_cur;
+  }
+  void gps_current_set(struct bGPDstroke *gps)
+  {
+    gps_cur = gps;
+  }
+
+ private:
+  struct bGPDlayer *gpl_cur;
+  struct bGPDframe *gpf_cur;
+  struct bGPDstroke *gps_cur;
 };
 
 }  // namespace gpencil

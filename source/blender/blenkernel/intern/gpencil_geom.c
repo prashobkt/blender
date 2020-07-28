@@ -54,8 +54,8 @@
 #include "BKE_material.h"
 #include "BKE_object.h"
 
-#include "UI_view2d.h"
-#include "ED_view3d.h"
+//#include "UI_view2d.h"
+//#include "ED_view3d.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -3116,6 +3116,7 @@ bGPDstroke *BKE_gpencil_stroke_perimeter_from_view(struct RegionView3D *rv3d,
   return perimeter_stroke;
 }
 
+#if 0
 /**
  * Calculates the perimeter of a stroke projected from the view and
  * returns it as a flat 2D stroke.
@@ -3196,4 +3197,5 @@ bGPDstroke *BKE_gpencil_stroke_perimeter_from_view_2d(struct ARegion *region,
 
   return perimeter_stroke;
 }
+#endif
 /** \} */

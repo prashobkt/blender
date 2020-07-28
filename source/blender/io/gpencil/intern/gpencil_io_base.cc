@@ -72,21 +72,22 @@ void GpencilExporter::set_out_filename(char *filename)
 
 /* Convert to screen space.
  * TODO: Cleanup using a more generic BKE function. */
-bool GpencilExporter::gpencil_3d_point_to_screen_space(struct ARegion *region,
-                                                       const float diff_mat[4][4],
-                                                       const float co[3],
-                                                       const bool invert,
-                                                       float r_co[2])
+bool GpencilExporter::gpencil_3d_point_to_screen_space(const float co[3], float r_co[2])
 {
   float parent_co[3];
   mul_v3_m4v3(parent_co, diff_mat, co);
   float screen_co[2];
   eV3DProjTest test = (eV3DProjTest)(V3D_PROJ_RET_OK);
-  if (ED_view3d_project_float_global(region, parent_co, screen_co, test) == V3D_PROJ_RET_OK) {
+  if (ED_view3d_project_float_global(params.region, parent_co, screen_co, test) ==
+      V3D_PROJ_RET_OK) {
     if (!ELEM(V2D_IS_CLIPPED, screen_co[0], screen_co[1])) {
       copy_v2_v2(r_co, screen_co);
+      /* Invert X axis. */
+      if (invert_axis[0]) {
+        r_co[0] = params.region->winx - r_co[0];
+      }
       /* Invert Y axis. */
-      if (invert) {
+      if (invert_axis[1]) {
         r_co[1] = params.region->winy - r_co[1];
       }
 
@@ -96,8 +97,12 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(struct ARegion *region,
   r_co[0] = V2D_IS_CLIPPED;
   r_co[1] = V2D_IS_CLIPPED;
 
+  /* Invert X axis. */
+  if (invert_axis[0]) {
+    r_co[0] = params.region->winx - r_co[0];
+  }
   /* Invert Y axis. */
-  if (invert) {
+  if (invert_axis[1]) {
     r_co[1] = params.region->winy - r_co[1];
   }
 
@@ -151,23 +156,22 @@ bool GpencilExporter::is_stroke_thickness_constant(struct bGPDstroke *gps)
   return true;
 }
 
-float GpencilExporter::stroke_point_radius_get(const struct bGPDlayer *gpl,
-                                               struct bGPDstroke *gps,
-                                               float diff_mat[4][4])
+float GpencilExporter::stroke_point_radius_get(struct bGPDstroke *gps)
 {
+  const bGPDlayer *gpl = gpl_current_get();
   RegionView3D *rv3d = (RegionView3D *)params.region->regiondata;
   bGPDspoint *pt = NULL;
   float v1[2], screen_co[2], screen_ex[2];
 
   pt = &gps->points[0];
-  gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, true, screen_co);
+  gpencil_3d_point_to_screen_space(&pt->x, screen_co);
 
   /* Radius. */
   bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
       rv3d, gpd, gpl, gps, 3, diff_mat);
 
   pt = &gps_perimeter->points[0];
-  gpencil_3d_point_to_screen_space(params.region, diff_mat, &pt->x, true, screen_ex);
+  gpencil_3d_point_to_screen_space(&pt->x, screen_ex);
 
   sub_v2_v2v2(v1, screen_co, screen_ex);
   float radius = len_v2(v1);

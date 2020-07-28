@@ -28,6 +28,7 @@
 extern "C" {
 #endif
 
+struct ARegion;
 struct bContext;
 struct BoundBox;
 struct Depsgraph;
