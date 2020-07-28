@@ -60,9 +60,8 @@ namespace gpencil {
  * \param C: Context.
  * \param filename: Path of the file provided by save dialog.
  */
-void GpencilExporter::set_out_filename(struct bContext *C, char *filename)
+void GpencilExporter::set_out_filename(char *filename)
 {
-  Main *bmain = CTX_data_main(C);
   BLI_strncpy(out_filename, filename, FILE_MAX);
   BLI_path_abs(out_filename, BKE_main_blendfile_path(bmain));
 

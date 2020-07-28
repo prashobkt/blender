@@ -43,7 +43,7 @@ class GpencilExporter {
 
  public:
   virtual bool write(std::string actual_frame) = 0;
-  void set_out_filename(struct bContext *C, char *filename);
+  void set_out_filename(char *filename);
 
   /* Geometry functions. */
   bool gpencil_3d_point_to_screen_space(struct ARegion *region,
@@ -67,6 +67,7 @@ class GpencilExporter {
   /* Data for easy access. */
   struct Depsgraph *depsgraph;
   struct bGPdata *gpd;
+  struct Main *bmain;
 };
 
 }  // namespace gpencil

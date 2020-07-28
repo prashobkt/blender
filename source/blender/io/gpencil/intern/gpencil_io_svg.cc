@@ -72,11 +72,12 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *params)
   this->params.mode = params->mode;
   this->params.flag = params->flag;
 
+  this->bmain = CTX_data_main(params->C);
   this->depsgraph = CTX_data_depsgraph_pointer(params->C);
   this->gpd = (bGPdata *)params->ob->data;
 
   /* Prepare output filename with full path. */
-  set_out_filename(params->C, params->filename);
+  set_out_filename(params->filename);
 }
 
 /* Main write method for SVG format. */
