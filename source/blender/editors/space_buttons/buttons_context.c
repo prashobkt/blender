@@ -1102,20 +1102,6 @@ int buttons_context(const bContext *C, const char *member, bContextDataResult *r
 
 /************************* Drawing the Path ************************/
 
-// static void pin_cb(bContext *C, void *UNUSED(arg1), void *UNUSED(arg2))
-// {
-//   SpaceProperties *sbuts = CTX_wm_space_properties(C);
-
-//   if (sbuts->flag & SB_PIN_CONTEXT) {
-//     sbuts->pinid = buttons_context_id_path(C);
-//   }
-//   else {
-//     sbuts->pinid = NULL;
-//   }
-
-//   ED_area_tag_redraw(CTX_wm_area(C));
-// }
-
 static bool buttons_panel_context_poll(const bContext *C, PanelType *UNUSED(pt))
 {
   SpaceProperties *sbuts = CTX_wm_space_properties(C);
