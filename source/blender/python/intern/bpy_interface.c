@@ -647,8 +647,11 @@ void BPY_DECREF_RNA_INVALIDATE(void *pyob_ptr)
 /**
  * \return success
  */
-bool BPY_execute_string_as_number(
-    bContext *C, const char *imports[], const char *expr, const bool verbose, double *r_value)
+bool BPY_execute_string_as_number(bContext *C,
+                                  const char *imports[],
+                                  const char *expr,
+                                  const char *report_prefix,
+                                  double *r_value)
 {
   PyGILState_STATE gilstate;
   bool ok = true;
@@ -667,8 +670,8 @@ bool BPY_execute_string_as_number(
   ok = PyC_RunString_AsNumber(imports, expr, "<expr as number>", r_value);
 
   if (ok == false) {
-    if (verbose) {
-      BPy_errors_to_report_ex(CTX_wm_reports(C), false, false);
+    if (report_prefix != NULL) {
+      BPy_errors_to_report_ex(CTX_wm_reports(C), report_prefix, false, false);
     }
     else {
       PyErr_Clear();
@@ -686,7 +689,7 @@ bool BPY_execute_string_as_number(
 bool BPY_execute_string_as_string_and_size(bContext *C,
                                            const char *imports[],
                                            const char *expr,
-                                           const bool verbose,
+                                           const char *report_prefix,
                                            char **r_value,
                                            size_t *r_value_size)
 {
@@ -704,8 +707,8 @@ bool BPY_execute_string_as_string_and_size(bContext *C,
   ok = PyC_RunString_AsStringAndSize(imports, expr, "<expr as str>", r_value, r_value_size);
 
   if (ok == false) {
-    if (verbose) {
-      BPy_errors_to_report_ex(CTX_wm_reports(C), false, false);
+    if (report_prefix != NULL) {
+      BPy_errors_to_report_ex(CTX_wm_reports(C), false, false, report_prefix);
     }
     else {
       PyErr_Clear();
@@ -717,12 +720,15 @@ bool BPY_execute_string_as_string_and_size(bContext *C,
   return ok;
 }
 
-bool BPY_execute_string_as_string(
-    bContext *C, const char *imports[], const char *expr, const bool verbose, char **r_value)
+bool BPY_execute_string_as_string(bContext *C,
+                                  const char *imports[],
+                                  const char *expr,
+                                  const char *report_prefix,
+                                  char **r_value)
 {
   size_t value_dummy_size;
   return BPY_execute_string_as_string_and_size(
-      C, imports, expr, verbose, r_value, &value_dummy_size);
+      C, imports, expr, report_prefix, r_value, &value_dummy_size);
 }
 
 /**
@@ -730,8 +736,11 @@ bool BPY_execute_string_as_string(
  *
  * \return success
  */
-bool BPY_execute_string_as_intptr(
-    bContext *C, const char *imports[], const char *expr, const bool verbose, intptr_t *r_value)
+bool BPY_execute_string_as_intptr(bContext *C,
+                                  const char *imports[],
+                                  const char *expr,
+                                  const char *report_prefix,
+                                  intptr_t *r_value)
 {
   BLI_assert(r_value && expr);
   PyGILState_STATE gilstate;
@@ -747,8 +756,8 @@ bool BPY_execute_string_as_intptr(
   ok = PyC_RunString_AsIntPtr(imports, expr, "<expr as intptr>", r_value);
 
   if (ok == false) {
-    if (verbose) {
-      BPy_errors_to_report_ex(CTX_wm_reports(C), false, false);
+    if (report_prefix != NULL) {
+      BPy_errors_to_report_ex(CTX_wm_reports(C), report_prefix, false, false);
     }
     else {
       PyErr_Clear();
