@@ -70,11 +70,10 @@ static inline void options_from_object(Object *ob, admmpd::Options *op)
   op->mult_pk = std::max(0.f,std::min(1.f,sb->admmpd_goalstiff));
   op->mult_ck = std::max(0.f,std::min(1.f,sb->admmpd_collisionstiff));
   op->density_kgm3 = std::max(1.f,sb->admmpd_density_kgm3);
-  op->youngs = std::max(0.f,sb->admmpd_youngs);
+  op->youngs = std::pow(10.f, std::max(0.f,sb->admmpd_youngs_exp));
   op->poisson = std::max(0.f,std::min(0.499f,sb->admmpd_poisson));
   op->floor = sb->admmpd_floor_z;
   op->self_collision = sb->admmpd_self_collision;
-  op->substeps = sb->admmpd_substeps;
 
   switch(sb->admmpd_material)
   {
@@ -263,7 +262,7 @@ int admmpd_init(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3], i
   iface->idata->data = std::make_unique<admmpd::SolverData>();
   float fps = std::min(1000.f,std::max(1.f,iface->in_framerate));
   admmpd::Options *op = iface->idata->options.get();
-  op->timestep_s = 1.0/fps;
+  op->timestep_s = (1.0/fps) / float(std::max(1,sb->admmpd_substeps));
   options_from_object(ob,op);
 
   // Initialize the mesh
@@ -405,7 +404,7 @@ void admmpd_copy_to_bodypoint_and_object(ADMMPDInterfaceData *iface, BodyPoint *
 int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob)
 {
   
-  if (iface==NULL || ob==NULL)
+  if (iface==NULL || ob==NULL || ob->soft==NULL)
   {
     strcpy_error(iface, "NULL input");
     return 0;
@@ -422,11 +421,15 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob)
 
   try
   {
-    admmpd::Solver().solve(
+    int substeps = std::max(1,ob->soft->admmpd_substeps);
+    for (int i=0; i<substeps; ++i)
+    {
+      admmpd::Solver().solve(
         iface->idata->mesh.get(),
         iface->idata->options.get(),
         iface->idata->data.get(),
         iface->idata->collision.get());
+    }
   }
   catch(const std::exception &e)
   {

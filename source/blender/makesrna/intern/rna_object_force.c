@@ -1855,10 +1855,10 @@ static void rna_def_softbody(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Tolerance", "Solver tolerance");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
-  prop = RNA_def_property(srna, "admmpd_youngs", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "admmpd_youngs");
-  RNA_def_property_range(prop, 1.f, 1e+10f);
-  RNA_def_property_ui_text(prop, "Young's modulus", "Material stiffness");
+  prop = RNA_def_property(srna, "admmpd_youngs_exp", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "admmpd_youngs_exp");
+  RNA_def_property_range(prop, 1.f, 10.f);
+  RNA_def_property_ui_text(prop, "Young's mod", "Young's modulus exponent: 10^(n)");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   prop = RNA_def_property(srna, "admmpd_poisson", PROP_FLOAT, PROP_NONE);

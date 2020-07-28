@@ -23,7 +23,6 @@ template <typename T> using RowSparseMatrix = Eigen::SparseMatrix<T,Eigen::RowMa
 
 struct Options {
     double timestep_s;
-    int substeps;
     int max_admm_iters;
     int max_cg_iters;
     int max_gs_iters;
@@ -41,7 +40,6 @@ struct Options {
     Eigen::Vector3d grav;
     Options() :
         timestep_s(1.0/24.0),
-        substeps(1),
         max_admm_iters(30),
         max_cg_iters(10),
         max_gs_iters(100),

@@ -221,7 +221,7 @@ typedef struct SoftBody {
   int admmpd_self_collision; // 0 or 1
   int admmpd_material; // see enum
   float admmpd_converge_eps; // convergence epsilon
-  float admmpd_youngs; // Youngs mod
+  float admmpd_youngs_exp; // Youngs mod exponent
   float admmpd_poisson; // Poisson ratio
   float admmpd_density_kgm3; // unit-density of object
   float admmpd_collisionstiff; // 0 to 1

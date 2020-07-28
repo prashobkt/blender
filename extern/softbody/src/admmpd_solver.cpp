@@ -65,37 +65,31 @@ int Solver::solve(
 
 	ConjugateGradients cg;
 	cg.init_solve(options,data);
+	double dt = options->timestep_s;
 
-	int substeps = std::max(1,options->substeps);
-	double dt = options->timestep_s / double(substeps);
+	// Init the solve which computes
+	// quantaties like M_xbar and makes sure
+	// the variables are sized correctly.
+	init_solve(mesh,options,data,collision);
 
+	// Begin solver loop
 	int iters = 0;
-	for (int i=0; i<substeps; ++i)
+	for (; iters < options->max_admm_iters; ++iters)
 	{
-		// Init the solve which computes
-		// quantaties like M_xbar and makes sure
-		// the variables are sized correctly.
-		init_solve(mesh,options,data,collision);
+		// Update ADMM z/u
+		solve_local_step(options,data);
 
-		// Begin solver loop
-		for (; iters < options->max_admm_iters; ++iters)
-		{
-			// Update ADMM z/u
-			solve_local_step(options,data);
+		// Collision detection and linearization
+		update_collisions(options,data,collision);
 
-			// Collision detection and linearization
-			update_collisions(options,data,collision);
+		// Solve Ax=b s.t. Px=q and Cx=d
+		cg.solve(options,data,collision);
 
-			// Solve Ax=b s.t. Px=q and Cx=d
-			cg.solve(options,data,collision);
+	} // end solver iters
 
-		} // end solver iters
-
-		// Update velocity (if not static solve)
-		if (dt > 0.0)
-			data->v.noalias() = (data->x-data->x_start)*(1.0/dt);
-
-	}
+	// Update velocity (if not static solve)
+	if (dt > 0.0)
+		data->v.noalias() = (data->x-data->x_start)*(1.0/dt);
 
 	return iters;
 } // end solve
@@ -120,8 +114,7 @@ void Solver::init_solve(
 	// - update velocity with explicit forces
 	// - update pin constraint matrix (goal positions)
 	// - set x init guess
-	double dt = std::max(0.0, options->timestep_s) /
-		double(std::max(1, options->substeps));
+	double dt = std::max(0.0, options->timestep_s);
 	data->x_start = data->x;
 	for (int i=0; i<nx; ++i)
 	{
@@ -356,8 +349,7 @@ void Solver::update_global_matrix(
 	if (data->P.cols() != nx*3)
 		throw_err("update_global_matrix","no pin matrix");
 
-	double dt = options->timestep_s /
-		double(std::max(1,options->substeps));
+	double dt = options->timestep_s;
 	double dt2 = dt*dt;
 	if (dt2 < 0) // static solve
 		dt2 = 1.0;

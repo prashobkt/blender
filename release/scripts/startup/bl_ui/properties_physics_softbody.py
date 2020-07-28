@@ -91,7 +91,7 @@ class PHYSICS_PT_softbody_object(PhysicButtonsPanel, Panel):
         elif softbody.solver_mode=='ADMMPD':
 
             col = flow.column()
-            col.prop(softbody, "admmpd_youngs")
+            col.prop(softbody, "admmpd_youngs_exp")
             col.prop(softbody, "admmpd_poisson")
             col.prop(softbody, "admmpd_material")
             col.prop(softbody, "admmpd_density_kgm3")
