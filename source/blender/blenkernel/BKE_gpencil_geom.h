@@ -142,6 +142,12 @@ struct bGPDstroke *BKE_gpencil_stroke_perimeter_from_view(struct RegionView3D *r
                                                           struct bGPDstroke *gps,
                                                           int subdivisions,
                                                           float diff_mat[4][4]);
+struct bGPDstroke *BKE_gpencil_stroke_perimeter_from_view_2d(struct ARegion *region,
+                                                             const struct bGPdata *gpd,
+                                                             const struct bGPDlayer *gpl,
+                                                             struct bGPDstroke *gps,
+                                                             int subdivisions,
+                                                             float diff_mat[4][4]);
 #ifdef __cplusplus
 }
 #endif

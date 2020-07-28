@@ -54,6 +54,9 @@
 #include "BKE_material.h"
 #include "BKE_object.h"
 
+#include "UI_view2d.h"
+#include "ED_view3d.h"
+
 #include "DEG_depsgraph_query.h"
 
 /* GP Object - Boundbox Support */
@@ -3106,6 +3109,87 @@ bGPDstroke *BKE_gpencil_stroke_perimeter_from_view(struct RegionView3D *rv3d,
   BKE_gpencil_stroke_geometry_update(perimeter_stroke);
 
   perimeter_stroke->flag |= GP_STROKE_SELECT | GP_STROKE_CYCLIC;
+
+  return perimeter_stroke;
+}
+
+/**
+ * Calculates the perimeter of a stroke projected from the view and
+ * returns it as a flat 2D stroke.
+ * \param subdivisions: Number of subdivions for the start and end caps
+ * \return: bGPDstroke pointer to stroke perimeter
+ */
+bGPDstroke *BKE_gpencil_stroke_perimeter_from_view_2d(struct ARegion *region,
+                                                      const bGPdata *gpd,
+                                                      const bGPDlayer *gpl,
+                                                      bGPDstroke *gps,
+                                                      int subdivisions,
+                                                      float diff_mat[4][4])
+{
+  if (gps->totpoints == 0) {
+    return NULL;
+  }
+  RegionView3D *rv3d = (RegionView3D *)region->regiondata;
+  bGPDstroke *gps_cpy = BKE_gpencil_stroke_duplicate(gps, true);
+  BKE_gpencil_stroke_to_view_space(rv3d, gps_cpy, diff_mat);
+
+  int num_perimeter_points = 0;
+  ListBase *perimeter_points = gpencil_stroke_perimeter_ex(
+      gpd, gpl, gps_cpy, subdivisions, &num_perimeter_points);
+
+  if (num_perimeter_points == 0) {
+    return NULL;
+  }
+
+  /* create new stroke */
+  bGPDstroke *perimeter_stroke = BKE_gpencil_stroke_new(gps->mat_nr, num_perimeter_points, 1);
+
+  tPerimeterPoint *curr = perimeter_points->first;
+  for (int i = 0; i < num_perimeter_points; i++) {
+    bGPDspoint *pt = &perimeter_stroke->points[i];
+
+    // float vec4[3];
+    // copy_v4_v4();
+    // const float scalar = (vec4[3] != 0.0f) ? (1.0f / vec4[3]) : 0.0f;
+    // const float fx = ((float)region->winx / 2.0f) * (1.0f + (vec4[0] * scalar));
+    // const float fy = ((float)region->winy / 2.0f) * (1.0f + (vec4[1] * scalar));
+
+    copy_v3_v3(&pt->x, &curr->x);
+
+    /* Set pressure to zero and strength to one */
+    pt->pressure = 0.0f;
+    pt->strength = 1.0f;
+
+    pt->flag |= GP_SPOINT_SELECT;
+
+    curr = curr->next;
+  }
+
+  BKE_gpencil_stroke_from_view_space(rv3d, perimeter_stroke, diff_mat);
+  for (int i = 0; i < num_perimeter_points; i++) {
+    bGPDspoint *pt = &perimeter_stroke->points[i];
+    float parent_co[3];
+    mul_v3_m4v3(parent_co, diff_mat, &pt->x);
+    float screen_co[2];
+    //  eV3DProjTest test = (eV3DProjTest)(V3D_PROJ_RET_CLIP_BB | V3D_PROJ_RET_CLIP_WIN);
+    eV3DProjTest test = (eV3DProjTest)(V3D_PROJ_RET_OK);
+    if (ED_view3d_project_float_global(region, parent_co, screen_co, test) == V3D_PROJ_RET_OK) {
+      if (!ELEM(V2D_IS_CLIPPED, screen_co[0], screen_co[1])) {
+        copy_v2_v2(&pt->x, screen_co);
+        pt->z = 0.0f;
+      }
+    }
+  }
+
+  /* free temp data */
+  BLI_freelistN(perimeter_points);
+  MEM_freeN(perimeter_points);
+  BKE_gpencil_free_stroke(gps_cpy);
+
+  /* triangles cache needs to be recalculated */
+  BKE_gpencil_stroke_geometry_update(perimeter_stroke);
+
+  perimeter_stroke->flag |= GP_STROKE_SELECT | GP_STROKE_CYCLIC | GP_STROKE_2DSPACE;
 
   return perimeter_stroke;
 }
