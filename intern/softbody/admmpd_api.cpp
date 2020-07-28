@@ -74,6 +74,7 @@ static inline void options_from_object(Object *ob, admmpd::Options *op)
   op->poisson = std::max(0.f,std::min(0.499f,sb->admmpd_poisson));
   op->floor = sb->admmpd_floor_z;
   op->self_collision = sb->admmpd_self_collision;
+  op->substeps = sb->admmpd_substeps;
 
   switch(sb->admmpd_material)
   {

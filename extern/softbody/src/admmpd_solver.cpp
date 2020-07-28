@@ -62,11 +62,14 @@ int Solver::solve(
 
 	update_pin_matrix(mesh,options,data);
 	update_global_matrix(options,data);
+
 	ConjugateGradients cg;
 	cg.init_solve(options,data);
 
+	int substeps = std::max(1,options->substeps);
+	double dt = options->timestep_s / double(substeps);
+
 	int iters = 0;
-	int substeps = 1;//std::max(1,options->substeps);
 	for (int i=0; i<substeps; ++i)
 	{
 		// Init the solve which computes
@@ -89,7 +92,6 @@ int Solver::solve(
 		} // end solver iters
 
 		// Update velocity (if not static solve)
-		double dt = options->timestep_s / double(substeps);
 		if (dt > 0.0)
 			data->v.noalias() = (data->x-data->x_start)*(1.0/dt);
 
@@ -119,7 +121,7 @@ void Solver::init_solve(
 	// - update pin constraint matrix (goal positions)
 	// - set x init guess
 	double dt = std::max(0.0, options->timestep_s) /
-		std::max(1.0, double(options->substeps));
+		double(std::max(1, options->substeps));
 	data->x_start = data->x;
 	for (int i=0; i<nx; ++i)
 	{
@@ -195,7 +197,7 @@ void Solver::update_collisions(
 	if (collision==NULL)
 		return;
 
-	collision->detect(&data->x_start, &data->x);
+	collision->detect(options, &data->x_start, &data->x);
 
 	std::vector<double> d_coeffs;
 	std::vector<Eigen::Triplet<double> > trips;
@@ -354,7 +356,9 @@ void Solver::update_global_matrix(
 	if (data->P.cols() != nx*3)
 		throw_err("update_global_matrix","no pin matrix");
 
-	double dt2 = options->timestep_s * options->timestep_s;
+	double dt = options->timestep_s /
+		double(std::max(1,options->substeps));
+	double dt2 = dt*dt;
 	if (dt2 < 0) // static solve
 		dt2 = 1.0;
 

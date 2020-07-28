@@ -100,6 +100,7 @@ EmbeddedMeshCollision::EmbeddedMeshCollision(std::shared_ptr<EmbeddedMesh> mesh_
 
 
 int EmbeddedMeshCollision::detect(
+	const admmpd::Options *options,
 	const Eigen::MatrixXd *x0,
 	const Eigen::MatrixXd *x1)
 {
@@ -107,10 +108,9 @@ int EmbeddedMeshCollision::detect(
 		return 0;
 
 	// Do we even need to process collisions?
-	if ((!this->settings.obs_collision || !obsdata.has_obs()) &&
-		!this->settings.self_collision)
+	if (!this->obsdata.has_obs() && !options->self_collision)
 	{
-		if (x1->col(1).minCoeff() > this->settings.floor_z)
+		if (x1->col(1).minCoeff() > options->floor)
 		{
 			return 0;
 		}
@@ -129,7 +129,7 @@ int EmbeddedMeshCollision::detect(
 	// Thread data for detection
 	//
 	typedef struct {
-		const Collision::Settings *settings;
+		const Options *options;
 		const Collision *collision;
 		const EmbeddedMesh *embmesh;
 		const Collision::ObstacleData *obsdata;
@@ -156,23 +156,20 @@ int EmbeddedMeshCollision::detect(
 		Vector3d pt_t1 = td->embmesh->get_mapped_facet_vertex(*td->x1,vi);
 
 		// Special case, check if we are below the floor
-		if (td->settings->floor_collision)
+		if (pt_t1[2] < td->options->floor)
 		{
-			if (pt_t1[2] < td->settings->floor_z)
-			{
-				vi_pairs.emplace_back();
-				VFCollisionPair &pair = vi_pairs.back();
-				pair.p_idx = vi;
-				pair.p_is_obs = false;
-				pair.q_idx = -1;
-				pair.q_is_obs = 1;
-				pair.q_bary.setZero();
-				pair.q_pt = Vector3d(pt_t1[0],pt_t1[1],td->settings->floor_z);
-			}
+			vi_pairs.emplace_back();
+			VFCollisionPair &pair = vi_pairs.back();
+			pair.p_idx = vi;
+			pair.p_is_obs = false;
+			pair.q_idx = -1;
+			pair.q_is_obs = 1;
+			pair.q_bary.setZero();
+			pair.q_pt = Vector3d(pt_t1[0],pt_t1[1],td->options->floor);
 		}
 
 		// Detect against obstacles
-		if (td->settings->obs_collision)
+		if (td->obsdata->has_obs())
 		{
 			std::pair<bool,VFCollisionPair> pt_hit_obs =
 				td->collision->detect_against_obs(pt_t1,td->obsdata);
@@ -185,7 +182,7 @@ int EmbeddedMeshCollision::detect(
 		}
 
 		// Detect against self
-		if (td->settings->self_collision)
+		if (td->options->self_collision)
 		{
 			std::pair<bool,VFCollisionPair> pt_hit_self =
 				td->collision->detect_against_self(vi, pt_t1, td->x1);
@@ -198,7 +195,7 @@ int EmbeddedMeshCollision::detect(
 	}; // end detect for a single embedded vertex
 
 	DetectThreadData thread_data = {
-		.settings = &settings,
+		.options = options,
 		.collision = this,
 		.embmesh = mesh.get(),
 		.obsdata = &obsdata,

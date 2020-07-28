@@ -36,6 +36,7 @@ struct Options {
     double poisson; // Poisson ratio // TODO variable per-tet
     double density_kgm3; // density of mesh
     double floor; // floor location
+    double collision_thickness;
     bool self_collision; // process self collisions
     Eigen::Vector3d grav;
     Options() :
@@ -46,12 +47,13 @@ struct Options {
         max_gs_iters(100),
         gs_omega(1),
         mult_ck(3),
-        mult_pk(1),
+        mult_pk(3),
         min_res(1e-8),
         youngs(1000000),
         poisson(0.399),
         density_kgm3(1522),
         floor(-std::numeric_limits<double>::max()),
+        collision_thickness(1e-6),
         self_collision(false),
         grav(0,0,-9.8)
         {}

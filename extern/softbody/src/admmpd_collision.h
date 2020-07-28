@@ -24,21 +24,6 @@ struct VFCollisionPair {
 class Collision {
 public:
 
-    struct Settings {
-        double collision_eps;
-        double floor_z;
-        bool floor_collision;
-        bool obs_collision;
-        bool self_collision;
-        Settings() :
-            collision_eps(1e-10),
-            floor_z(-std::numeric_limits<double>::max()),
-            floor_collision(true),
-            obs_collision(true),
-            self_collision(false)
-            {}
-    } settings;
-
     struct ObstacleData {
         bool has_obs() const { return F.rows()>0; }
         Eigen::MatrixXd V;
@@ -68,6 +53,7 @@ public:
     // Performs collision detection.
     // Returns the number of active constraints.
     virtual int detect(
+        const admmpd::Options *options,
         const Eigen::MatrixXd *x0,
         const Eigen::MatrixXd *x1) = 0;
 
@@ -85,10 +71,6 @@ public:
         int nv,
         const unsigned int *faces,
         int nf);
-
-    // Special case for floor since it's common.
-    virtual void set_floor(double z) { settings.floor_z=z; }
-    virtual double get_floor() const { return settings.floor_z; }
 
     // Linearize the constraints about x and return Jacobian.
     virtual void linearize(
@@ -117,6 +99,7 @@ public:
 
     // Performs collision detection and stores pairs
     int detect(
+        const admmpd::Options *options,
         const Eigen::MatrixXd *x0,
         const Eigen::MatrixXd *x1);
 
