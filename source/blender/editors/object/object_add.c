@@ -1190,11 +1190,13 @@ static int object_gpencil_add_exec(bContext *C, wmOperator *op)
         ob_name = "Stroke";
         break;
       }
+#ifdef WITH_LINEART
       case GP_LRT_OBJECT:
       case GP_LRT_COLLECTION: {
         ob_name = "Line Art";
         break;
       }
+#endif
       default: {
         break;
       }
@@ -1235,6 +1237,7 @@ static int object_gpencil_add_exec(bContext *C, wmOperator *op)
       ED_gpencil_create_monkey(C, ob, mat);
       break;
     }
+#ifdef WITH_LINEART
     case GP_LRT_COLLECTION:
     case GP_LRT_OBJECT: {
       float radius = RNA_float_get(op->ptr, "radius");
@@ -1274,6 +1277,7 @@ static int object_gpencil_add_exec(bContext *C, wmOperator *op)
       Scene *scene = CTX_data_scene(C);
       scene->lineart.flags |= LRT_AUTO_UPDATE;
     }
+#endif
     case GP_EMPTY:
       /* do nothing */
       break;
@@ -1292,6 +1296,53 @@ static int object_gpencil_add_exec(bContext *C, wmOperator *op)
   }
 
   return OPERATOR_FINISHED;
+}
+
+const EnumPropertyItem *object_gpencil_add_options(bContext *C,
+                                                   PointerRNA *UNUSED(ptr),
+                                                   PropertyRNA *UNUSED(prop),
+                                                   bool *r_free)
+{
+  bGPdata *gpd = CTX_data_gpencil_data(C);
+  bGPDlayer *gpl;
+  EnumPropertyItem *item = NULL, *item_ref = rna_enum_object_gpencil_type_items;
+  int totitem = 0;
+  int i = 0;
+  int orig_count = RNA_enum_items_count(item_ref);
+
+  if (ELEM(NULL, C, gpd)) {
+    return item_ref;
+  }
+
+  /* Create new layer */
+  /* TODO: have some way of specifying that we don't want this? */
+
+  const int tot = BLI_listbase_count(&gpd->layers);
+
+  /* Default types. */
+  for (i = 0; i < orig_count; i++) {
+    if (item_ref[i].value == GP_LRT_OBJECT || item_ref[i].value == GP_LRT_COLLECTION) {
+#ifdef WITH_LINEART
+      if (item_ref[i].value == GP_LRT_OBJECT) {
+        Object *ob = CTX_data_active_object(C);
+        if (!ob || ob->type != OB_MESH) {
+          continue;
+        }
+        /* separator before line art types */
+        RNA_enum_item_add_separator(&item, &totitem);
+      }
+#else
+      /* Don't show line art options when not compiled with one. */
+      continue;
+#endif
+    }
+    RNA_enum_item_add(&item, &totitem, &item_ref[i]);
+  }
+
+  RNA_enum_item_end(&item, &totitem);
+  *r_free = true;
+
+  return item;
 }
 
 void OBJECT_OT_gpencil_add(wmOperatorType *ot)
@@ -1314,6 +1365,7 @@ void OBJECT_OT_gpencil_add(wmOperatorType *ot)
   ED_object_add_generic_props(ot, false);
 
   ot->prop = RNA_def_enum(ot->srna, "type", rna_enum_object_gpencil_type_items, 0, "Type", "");
+  RNA_def_enum_funcs(ot->prop, object_gpencil_add_options);
 }
 
 /** \} */
