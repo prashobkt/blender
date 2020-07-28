@@ -216,7 +216,7 @@ ccl_device void kernel_branched_path_volume_connect_light(KernelGlobals *kg,
                      sd->time,
                      sd->P_pick,
                      sd->N_pick,
-                     ray->t,
+                     sd->t_pick,
                      state->bounce,
                      &ls);
 

@@ -187,7 +187,7 @@ ccl_device_forceinline VolumeIntegrateResult kernel_path_volume(KernelGlobals *k
     shader_setup_from_volume(kg, sd, &volume_ray);
     kernel_volume_decoupled_record(kg, state, &volume_ray, sd, &volume_segment, step_size);
 
-    kernel_update_light_picking(kg, sd, state, NULL);
+    kernel_update_light_picking(kg, sd, state, &volume_ray);
 
     volume_segment.sampling_method = sampling_method;
 

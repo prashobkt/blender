@@ -48,8 +48,8 @@ ccl_device void kernel_update_light_picking(KernelGlobals *kg,
                                             Ray *ray)
 {
   if (ray) {
-    sd->P_pick = sd->P;  // ray->P + ray->D * ray->t;
-    sd->N_pick = -ray->D;
+    sd->P_pick = ray->P;
+    sd->N_pick = ray->D;
     sd->t_pick = ray->t;
     return;
   }

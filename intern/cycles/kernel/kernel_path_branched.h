@@ -102,7 +102,7 @@ ccl_device_forceinline void kernel_branched_path_volume(KernelGlobals *kg,
     shader_setup_from_volume(kg, sd, &volume_ray);
     kernel_volume_decoupled_record(kg, state, &volume_ray, sd, &volume_segment, step_size);
 
-    kernel_update_light_picking(kg, sd, state, ray);
+    kernel_update_light_picking(kg, sd, state, &volume_ray);
 
     /* direct light sampling */
     if (volume_segment.closure_flag & SD_SCATTER) {
