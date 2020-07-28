@@ -722,7 +722,7 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
 
       /* Point inside near plane */
       if (-rt->v[0]->fbcoord[3] > rt->v[0]->fbcoord[2] ||
-          rt->v[1]->fbcoord[2] > rt->v[0]->fbcoord[3]) {
+          rt->v[0]->fbcoord[2] > rt->v[0]->fbcoord[3]) {
         in0 = 1;
       }
       if (-rt->v[1]->fbcoord[3] > rt->v[1]->fbcoord[2] ||
