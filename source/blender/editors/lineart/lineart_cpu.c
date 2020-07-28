@@ -3982,6 +3982,11 @@ void ED_lineart_post_frame_update_external(bContext *C, Scene *scene, Depsgraph 
   else if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_FRESH)) {
     /* At this stage GP should have all the data. We clear the flag */
     ED_lineart_modifier_sync_flag_set(LRT_SYNC_IDLE, false);
+    /* Due to using GPencil modifiers, and the scene is updated each time some value is changed, we
+     * really don't need to keep the buffer any longer. If in the future we want fast refresh on
+     * parameter changes (e.g. thickness or picking different result in an already validated
+     * buffer), remove this call below. */
+    ED_lineart_destroy_render_data_external();
   }
 }
 
