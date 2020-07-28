@@ -176,10 +176,11 @@ void GpencilExporterSVG::export_style_list(void)
       linearrgb_to_srgb_v3_v3(col, gp_style->fill_rgba);
       std::string stroke_hex = rgb_to_hex(col);
       sprintf(out,
-              "\n\t.stylefill%d{stroke: %s; fill: %s;}",
+              "\n\t.stylefill%d{stroke: %s; fill: %s; fill-opacity: %f}",
               id,
               stroke_hex.c_str(),
-              stroke_hex.c_str());
+              stroke_hex.c_str(),
+              gp_style->fill_rgba[3]);
       txt.append(out);
     }
   }
@@ -229,26 +230,23 @@ void GpencilExporterSVG::export_layers(void)
       if (gps->totpoints == 0) {
         continue;
       }
-
-      MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
+      gps_current_set(gps);
+      MaterialGPencilStyle *gp_style = gp_style_current_get();
       bool is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
                         (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
       bool is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
                       (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
 
       if (gps->totpoints == 1) {
-        gps_current_set(gps);
-
         export_point(gpl_node);
       }
       else {
         bool is_normalized = ((params.flag & GP_EXPORT_NORM_THICKNESS) != 0);
-        gps_current_set(gps);
 
         /* Fill. */
         if ((is_fill) && (params.flag & GP_EXPORT_FILL)) {
           if (is_normalized) {
-            export_stroke_polyline(gpl_node, gp_style, true);
+            export_stroke_polyline(gpl_node, true);
           }
           else {
             export_stroke_path(gpl_node, true);
@@ -258,7 +256,7 @@ void GpencilExporterSVG::export_layers(void)
         /* Stroke. */
         if (is_stroke) {
           if (is_normalized) {
-            export_stroke_polyline(gpl_node, gp_style, false);
+            export_stroke_polyline(gpl_node, false);
           }
           else {
             bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
@@ -289,6 +287,7 @@ void GpencilExporterSVG::export_layers(void)
 void GpencilExporterSVG::export_point(pugi::xml_node gpl_node)
 {
   bGPDstroke *gps = gps_current_get();
+  MaterialGPencilStyle *gp_style = gp_style_current_get();
 
   BLI_assert(gps->totpoints == 1);
   float screen_co[2];
@@ -307,6 +306,8 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node)
   /* Radius. */
   float radius = stroke_point_radius_get(gps);
   gps_node.append_attribute("r").set_value(radius);
+
+  gps_node.append_attribute("fill-opacity").set_value(gp_style->fill_rgba[3]);
 }
 
 /**
@@ -353,11 +354,10 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
  * \param diff_mat: Transformation matrix.
  * \param is_fill: True if the stroke is only fill
  */
-void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node,
-                                                struct MaterialGPencilStyle *gp_style,
-                                                const bool is_fill)
+void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const bool is_fill)
 {
   bGPDstroke *gps = gps_current_get();
+  MaterialGPencilStyle *gp_style = gp_style_current_get();
 
   const bool is_thickness_const = is_stroke_thickness_constant(gps);
   const bool cyclic = ((gps->flag & GP_STROKE_CYCLIC) != 0);

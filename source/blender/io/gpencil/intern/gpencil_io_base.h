@@ -25,8 +25,10 @@
 #include "BLI_path_util.h"
 
 #include "BKE_gpencil.h"
+#include "BKE_material.h"
 
 #include "DNA_defs.h"
+#include "DNA_gpencil_types.h"
 
 #include "gpencil_io_exporter.h"
 
@@ -37,6 +39,7 @@ struct ARegion;
 struct bGPDlayer;
 struct bGPDframe;
 struct bGPDstroke;
+struct MaterialGPencilStyle;
 
 namespace blender {
 namespace io {
@@ -93,12 +96,19 @@ class GpencilExporter {
   void gps_current_set(struct bGPDstroke *gps)
   {
     gps_cur = gps;
+    gp_style = BKE_gpencil_material_settings(params.ob, gps->mat_nr + 1);
+  }
+
+  struct MaterialGPencilStyle *gp_style_current_get(void)
+  {
+    return gp_style;
   }
 
  private:
   struct bGPDlayer *gpl_cur;
   struct bGPDframe *gpf_cur;
   struct bGPDstroke *gps_cur;
+  struct MaterialGPencilStyle *gp_style;
 };
 
 }  // namespace gpencil

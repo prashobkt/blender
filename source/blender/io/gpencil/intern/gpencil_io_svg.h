@@ -58,9 +58,7 @@ class GpencilExporterSVG : public GpencilExporter {
 
   void export_stroke_path(pugi::xml_node gpl_node, const bool is_fill);
 
-  void export_stroke_polyline(pugi::xml_node gpl_node,
-                              struct MaterialGPencilStyle *gp_style,
-                              const bool is_fill);
+  void export_stroke_polyline(pugi::xml_node gpl_node, const bool is_fill);
 };
 
 }  // namespace gpencil
