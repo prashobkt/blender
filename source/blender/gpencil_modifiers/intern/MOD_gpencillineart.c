@@ -129,6 +129,11 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
   bGPdata *gpd = ob->data;
 
+  Scene *s = DEG_get_evaluated_scene(depsgraph);
+  if (!(s->lineart.flags & LRT_AUTO_UPDATE)) {
+    return;
+  }
+
   /* Guard early, don't trigger calculation when no gpencil frame is present. Probably should
    * disable in the isModifierDisabled() function but we need addtional arg for depsgraph and
    * gpd.*/
