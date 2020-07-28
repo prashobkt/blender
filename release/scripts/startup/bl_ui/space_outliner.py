@@ -312,7 +312,7 @@ class OUTLINER_MT_object(Menu):
             layout.operator("outliner.id_operation", text="Unlink").type = 'UNLINK'
             layout.separator()
 
-        layout.operator("outliner.collection_new", text="New Collection").nested = True
+        layout.operator("outliner.collection_new", text="New Collection")
 
         layout.separator()
 
