@@ -85,6 +85,9 @@ typedef struct uiLayoutRoot {
   int type;
   int opcontext;
 
+  /** If true, the root will be removed as part of the property search process.
+   * Necessary for cases like searching the contents of closed panels, where the
+   * block-level tag isn't enough because there might be buttons in the header. */
   bool search_only;
 
   int emw, emh;
@@ -828,7 +831,8 @@ static void ui_item_enum_expand_exec(uiLayout *layout,
    *   this doubles the icon_only parameter.
    * - we *never* draw (i.e. really use) the enum label uiname, it is just used as a mere flag!
    *
-   * Unfortunately, fixing this implies an API "soft break", so better to defer it for later... :/
+   * Unfortunately, fixing this implies an API "soft break", so better to defer it for later...
+   * :/
    * - mont29
    */
 
@@ -1990,8 +1994,8 @@ static uiBut *ui_layout_heading_label_add(uiLayout *layout,
  */
 static uiLayout *ui_item_prop_split_layout_hack(uiLayout *layout_parent, uiLayout *layout_split)
 {
-  /* Tag item as using property split layout, this is inherited to children so they can get special
-   * treatment if needed. */
+  /* Tag item as using property split layout, this is inherited to children so they can get
+   * special treatment if needed. */
   layout_parent->item.flag |= UI_ITEM_INSIDE_PROP_SEP;
 
   if (layout_parent->item.type == ITEM_LAYOUT_ROW) {
@@ -2017,9 +2021,9 @@ void uiItemFullR(uiLayout *layout,
   char namestr[UI_MAX_NAME_STR];
   const bool use_prop_sep = ((layout->item.flag & UI_ITEM_PROP_SEP) != 0);
   const bool inside_prop_sep = ((layout->item.flag & UI_ITEM_INSIDE_PROP_SEP) != 0);
-  /* Columns can define a heading to insert. If the first item added to a split layout doesn't have
-   * a label to display in the first column, the heading is inserted there. Otherwise it's inserted
-   * as a new row before the first item. */
+  /* Columns can define a heading to insert. If the first item added to a split layout doesn't
+   * have a label to display in the first column, the heading is inserted there. Otherwise it's
+   * inserted as a new row before the first item. */
   uiLayout *heading_layout = ui_layout_heading_find(layout);
   /* Although checkboxes use the split layout, they are an exception and should only place their
    * label in the second column, to not make that almost empty.
@@ -3277,7 +3281,8 @@ uiBut *uiItemL_respect_property_split(uiLayout *layout,
   if (layout->item.flag & UI_ITEM_PROP_SEP) {
     uiBlock *block = uiLayoutGetBlock(layout);
     uiPropertySplitWrapper split_wrapper = uiItemPropertySplitWrapperCreate(layout);
-    /* Further items added to 'layout' will automatically be added to split_wrapper.property_row */
+    /* Further items added to 'layout' will automatically be added to split_wrapper.property_row
+     */
 
     label_but = uiItemL_(split_wrapper.label_column, text, icon);
     UI_block_layout_set_current(block, split_wrapper.property_row);
@@ -5167,6 +5172,7 @@ void uiLayoutRootSetSearchOnly(uiLayout *layout, bool search_only)
  * \{ */
 
 // #define PROPERTY_SEARCH_USE_TOOLTIPS
+// #define PROPERTY_SEARCH_USE_PANEL_LABELS
 #define DEBUG_LAYOUT_ROOTS
 
 static void ui_layout_free(uiLayout *layout);
@@ -5527,11 +5533,13 @@ static bool ui_block_search_layout(uiBlock *block)
 
   /* Also search based on panel labels. */
   bool panel_label_matches = false;
-  // if ((block->panel != NULL) && (block->panel->type != NULL)) {
-  //   if (BLI_strcasestr(block->panel->type->label, block->search_filter)) {
-  //     panel_label_matches = true;
-  //   }
-  // }
+#ifdef PROPERTY_SEARCH_USE_PANEL_LABELS
+  if ((block->panel != NULL) && (block->panel->type != NULL)) {
+    if (BLI_strcasestr(block->panel->type->label, block->search_filter)) {
+      panel_label_matches = true;
+    }
+  }
+#endif
 
   /* Apply search filter. */
   if (!panel_label_matches) {
@@ -5550,20 +5558,21 @@ static bool ui_block_search_layout(uiBlock *block)
     }
   }
 
-  /* Change layouts to the single column search layout. */
-  if (!all_roots_empty && !block->search_only) {
+  /* Replace label button strings with RNA property names. */
+  if (!all_roots_empty && !UI_block_is_search_only(block)) {
     ui_block_replace_labels(block);
   }
 
   /* Set empty flags. */
-  if (block->search_only) {
+  if (UI_block_is_search_only(block)) {
     /* Make sure all of the block's buttons are hidden. They might not have
      * been hidden if a layout wasn't searched. */
     LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
       but->flag |= UI_HIDDEN;
     }
   }
-  SET_FLAG_FROM_TEST(block->flag, all_roots_empty || block->search_only, UI_BLOCK_FILTERED_EMPTY);
+  SET_FLAG_FROM_TEST(
+      block->flag, all_roots_empty || UI_block_is_search_only(block), UI_BLOCK_FILTERED_EMPTY);
   if (block->panel != NULL) {
     ui_panel_set_search_filtered(block->panel, all_roots_empty);
   }
@@ -5577,7 +5586,7 @@ static bool ui_block_search_layout(uiBlock *block)
   }
 #endif
 
-  return all_roots_empty || block->search_only;
+  return all_roots_empty || UI_block_is_search_only(block);
 }
 
 /** \} */
@@ -6118,9 +6127,9 @@ static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout,
       panel->layout = NULL;
     }
 
-    /* draw_header() is often used to add a checkbox to the header. If we add the label like below
-     * the label is disconnected from the checkbox, adding a weird looking gap. As workaround, let
-     * the checkbox add the label instead. */
+    /* draw_header() is often used to add a checkbox to the header. If we add the label like
+     * below the label is disconnected from the checkbox, adding a weird looking gap. As
+     * workaround, let the checkbox add the label instead. */
     if (!ui_layout_has_panel_label(row, pt)) {
       uiItemL(row, CTX_IFACE_(pt->translation_context, pt->label), ICON_NONE);
     }

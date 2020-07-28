@@ -159,6 +159,9 @@ enum {
   UI_BLOCK_SHOW_SHORTCUT_ALWAYS = 1 << 23,
   /** All items have been removed from the block by the search filter. */
   UI_BLOCK_FILTERED_EMPTY = 1 << 24,
+  /** The block is only used during the layout process and will not be drawn,
+   * for the case of a subpanel of a closed panel. */
+  UI_BLOCK_SEARCH_ONLY = 1 << 25,
 };
 
 /** #uiPopupBlockHandle.menuretval */
@@ -674,7 +677,8 @@ enum {
 void UI_block_theme_style_set(uiBlock *block, char theme_style);
 char UI_block_emboss_get(uiBlock *block);
 void UI_block_emboss_set(uiBlock *block, char dt);
-bool UI_block_has_search_filter(uiBlock *block);
+bool UI_block_has_search_filter(const uiBlock *block);
+bool UI_block_is_search_only(const uiBlock *block);
 void UI_block_set_search_only(uiBlock *block, bool search_only);
 
 void UI_block_free(const struct bContext *C, uiBlock *block);

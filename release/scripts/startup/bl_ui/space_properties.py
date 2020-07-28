@@ -33,7 +33,6 @@ class PROPERTIES_HT_header(Header):
         layout.prop(view, "filter_text", icon='VIEWZOOM', text="")
         layout.separator_spacer()
         
-        # Note: pin ID doesn't properly work with this simple button in python yet.
         row = layout.row()
         row.emboss = 'NONE'
         row.operator("buttons.toggle_pin", icon=('PINNED' if view.use_pin_id else 'UNPINNED'), text="")

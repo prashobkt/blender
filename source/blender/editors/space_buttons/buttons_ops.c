@@ -54,7 +54,7 @@
 #include "buttons_intern.h" /* own include */
 
 /********************** filter operator *********************/
-/* Note: almost duplicate of file browser operator. */
+/* Note: Almost a duplicate of the file browser operator. */
 
 static int buttons_start_filter_exec(bContext *C, wmOperator *UNUSED(op))
 {
@@ -72,12 +72,12 @@ static int buttons_start_filter_exec(bContext *C, wmOperator *UNUSED(op))
 
 void BUTTONS_OT_start_filter(struct wmOperatorType *ot)
 {
-  /* identifiers */
+  /* Identifiers. */
   ot->name = "Filter";
   ot->description = "Start entering filter text";
   ot->idname = "BUTTONS_OT_start_filter";
 
-  /* api callbacks */
+  /* Callbacks. */
   ot->exec = buttons_start_filter_exec;
   ot->poll = ED_operator_buttons_active;
 }

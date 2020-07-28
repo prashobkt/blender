@@ -3369,7 +3369,7 @@ uiBlock *UI_block_begin(const bContext *C, ARegion *region, const char *name, sh
   block->dt = dt;
   block->evil_C = (void *)C; /* XXX */
 
-  /* Set the search filter in the properties editor. */
+  /* Set the search filter for the properties editor. */
   if ((region && region->regiontype == RGN_TYPE_WINDOW) &&
       (area && area->spacetype == SPACE_PROPERTIES)) {
     SpaceProperties *sbuts = CTX_wm_space_properties(C);
@@ -3425,14 +3425,19 @@ void UI_block_theme_style_set(uiBlock *block, char theme_style)
   block->theme_style = theme_style;
 }
 
-bool UI_block_has_search_filter(uiBlock *block)
+bool UI_block_has_search_filter(const uiBlock *block)
 {
   return block->search_filter != NULL && block->search_filter[0] != '\0';
 }
 
+bool UI_block_is_search_only(const uiBlock *block)
+{
+  return block->flag & UI_BLOCK_SEARCH_ONLY;
+}
+
 void UI_block_set_search_only(uiBlock *block, bool search_only)
 {
-  block->search_only = search_only;
+  SET_FLAG_FROM_TEST(block->flag, search_only, UI_BLOCK_SEARCH_ONLY);
 }
 
 static void ui_but_build_drawstr_float(uiBut *but, double value)

@@ -4455,15 +4455,6 @@ static void rna_def_space_properties(BlenderRNA *brna)
   RNA_def_property_update(
       prop, NC_SPACE | ND_SPACE_PROPERTIES, "rna_SpaceProperties_context_update");
 
-  prop = RNA_def_property(srna, "context_search_filter_active", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, buttons_context_items);
-  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
-  RNA_def_property_enum_funcs(
-      prop, NULL, "rna_SpaceProperties_context_set", "rna_SpaceProperties_context_itemf");
-  RNA_def_property_ui_text(prop, "", "");
-  RNA_def_property_update(
-      prop, NC_SPACE | ND_SPACE_PROPERTIES, "rna_SpaceProperties_context_update");
-
   /* pinned data */
   prop = RNA_def_property(srna, "pin_id", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "pinid");
@@ -4478,6 +4469,16 @@ static void rna_def_space_properties(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_pin_id", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", SB_PIN_CONTEXT);
   RNA_def_property_ui_text(prop, "Pin ID", "Use the pinned context");
+
+  /* Property search. */
+  prop = RNA_def_property(srna, "context_search_filter_active", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, buttons_context_items);
+  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
+  RNA_def_property_enum_funcs(
+      prop, NULL, "rna_SpaceProperties_context_set", "rna_SpaceProperties_context_itemf");
+  RNA_def_property_ui_text(prop, "", "");
+  RNA_def_property_update(
+      prop, NC_SPACE | ND_SPACE_PROPERTIES, "rna_SpaceProperties_context_update");
 
   prop = RNA_def_property(srna, "filter_text", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "search_string");

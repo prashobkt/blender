@@ -1689,14 +1689,14 @@ void UI_panels_draw(const bContext *C, ARegion *region)
    * and we need child panels to draw on top. */
   LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
     if (block->active && block->panel && !(block->panel->flag & PNL_SELECT) &&
-        !block->search_only && !UI_panel_is_search_filtered(block->panel)) {
+        !UI_block_is_search_only(block) && !UI_panel_is_search_filtered(block->panel)) {
       UI_block_draw(C, block);
     }
   }
 
   LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
     if (block->active && block->panel && (block->panel->flag & PNL_SELECT) &&
-        !block->search_only && !UI_panel_is_search_filtered(block->panel)) {
+        !UI_block_is_search_only(block) && !UI_panel_is_search_filtered(block->panel)) {
       UI_block_draw(C, block);
     }
   }

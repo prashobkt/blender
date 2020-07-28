@@ -2519,7 +2519,6 @@ void ED_region_panels_layout_ex(const bContext *C,
                                 const bool vertical,
                                 const char *category_override)
 {
-  // printf("ED_REGION_PANELS_LAYOUT_EX\n");
   /* collect panels to draw */
   WorkSpace *workspace = CTX_wm_workspace(C);
   LinkNode *panel_types_stack = NULL;

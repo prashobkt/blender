@@ -1105,7 +1105,7 @@ int buttons_context(const bContext *C, const char *member, bContextDataResult *r
 static bool buttons_panel_context_poll(const bContext *C, PanelType *UNUSED(pt))
 {
   SpaceProperties *sbuts = CTX_wm_space_properties(C);
-  return (sbuts->mainb != BCONTEXT_TOOL);
+  return sbuts->mainb != BCONTEXT_TOOL;
 }
 
 static void buttons_panel_context_draw(const bContext *C, Panel *panel)
@@ -1174,9 +1174,6 @@ static void buttons_panel_context_draw(const bContext *C, Panel *panel)
       }
     }
   }
-
-  // UI_but_flag_disable(but, UI_BUT_UNDO); /* skip undo on screen buttons */
-  // UI_but_func_set(but, pin_cb, NULL, NULL);
 }
 
 void buttons_context_register(ARegionType *art)
