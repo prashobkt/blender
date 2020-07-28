@@ -1303,8 +1303,6 @@ const EnumPropertyItem *object_gpencil_add_options(bContext *C,
                                                    PropertyRNA *UNUSED(prop),
                                                    bool *r_free)
 {
-  bGPdata *gpd = CTX_data_gpencil_data(C);
-  bGPDlayer *gpl;
   EnumPropertyItem *item = NULL, *item_ref = rna_enum_object_gpencil_type_items;
   int totitem = 0;
   int i = 0;

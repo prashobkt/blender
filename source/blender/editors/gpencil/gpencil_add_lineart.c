@@ -100,7 +100,6 @@ void ED_gpencil_create_lineart(bContext *C, Object *ob, float mat[4][4])
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   bGPdata *gpd = (bGPdata *)ob->data;
-  bGPDstroke *gps;
 
   /* create colors */
   int color_black = gpencil_lineart_material(bmain, ob, &gp_stroke_material_black, false);
@@ -112,7 +111,7 @@ void ED_gpencil_create_lineart(bContext *C, Object *ob, float mat[4][4])
   bGPDlayer *lines = BKE_gpencil_layer_addnew(gpd, "Lines", true);
 
   /* frames */
-  bGPDframe *frame_lines = BKE_gpencil_frame_addnew(lines, CFRA);
+  BKE_gpencil_frame_addnew(lines, CFRA);
 
   /* update depsgraph */
   /* To trigger modifier update, this is still needed although we don't have any strokes. */
