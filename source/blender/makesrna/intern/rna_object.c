@@ -159,6 +159,16 @@ const EnumPropertyItem rna_enum_object_gpencil_type_items[] = {
     {GP_EMPTY, "EMPTY", ICON_EMPTY_AXIS, "Blank", "Create an empty grease pencil object"},
     {GP_STROKE, "STROKE", ICON_STROKE, "Stroke", "Create a simple stroke with basic colors"},
     {GP_MONKEY, "MONKEY", ICON_MONKEY, "Monkey", "Construct a Suzanne grease pencil object"},
+    {GP_LRT_COLLECTION,
+     "LRT_COLLECTION",
+     ICON_GROUP,
+     "Collection Line Art",
+     "Quickly set up Line Art for active collection"},
+    {GP_LRT_OBJECT,
+     "LRT_OBJECT",
+     ICON_CUBE,
+     "Object Line Art",
+     "Quickly set up Line Art for active collection"},
     {0, NULL, 0, NULL, NULL}};
 
 static const EnumPropertyItem parent_type_items[] = {
