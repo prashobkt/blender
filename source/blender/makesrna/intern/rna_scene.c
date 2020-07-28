@@ -7288,7 +7288,8 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_ui_text(
       prop, "Auto Update", "Automatically update Line Art cache when frame changes");
-  RNA_def_property_update(prop, NC_SCENE, NULL);
+  /* Also use this update callback to trigger the modifier to clear the frame */
+  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
   prop = RNA_def_property(srna, "gpencil_overwrite", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_GPENCIL_OVERWRITE);

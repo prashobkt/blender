@@ -3948,6 +3948,11 @@ void SCENE_OT_lineart_bake_strokes(wmOperatorType *ot)
 void ED_lineart_post_frame_update_external(bContext *C, Scene *scene, Depsgraph *dg)
 {
   if (!(scene->lineart.flags & LRT_AUTO_UPDATE)) {
+    /* This way the modifier will update, removing remaing strokes in the viewport. */
+    if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
+      ED_lineart_modifier_sync_flag_set(LRT_SYNC_IDLE, false);
+      lineart_gpencil_notify_targets(dg);
+    }
     return;
   }
   if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
