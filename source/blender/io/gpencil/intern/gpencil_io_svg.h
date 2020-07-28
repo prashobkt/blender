@@ -27,10 +27,12 @@
 
 struct Main;
 struct Material;
-struct GpencilExportParams;
 struct ARegion;
 
+struct bGPDlayer;
 struct bGPDstroke;
+struct GpencilExportParams;
+struct MaterialGPencilStyle;
 
 namespace blender {
 namespace io {
@@ -51,10 +53,23 @@ class GpencilExporterSVG : public GpencilExporter {
   void create_document_header(void);
   void export_layers(void);
   void export_style_list(void);
-  void export_stroke(pugi::xml_node gpl_node,
-                     struct bGPDstroke *gps,
-                     float diff_mat[4][4],
-                     const bool is_fill);
+
+  void export_point(pugi::xml_node gpl_node,
+                    struct bGPDlayer *gpl,
+                    struct bGPDstroke *gps,
+                    float diff_mat[4][4]);
+
+  void export_stroke_path(pugi::xml_node gpl_node,
+                          struct bGPDstroke *gps,
+                          float diff_mat[4][4],
+                          const bool is_fill);
+
+  void export_stroke_polyline(pugi::xml_node gpl_node,
+                              struct bGPDlayer *gpl,
+                              struct bGPDstroke *gps,
+                              struct MaterialGPencilStyle *gp_style,
+                              float diff_mat[4][4],
+                              const bool is_fill);
 };
 
 }  // namespace gpencil

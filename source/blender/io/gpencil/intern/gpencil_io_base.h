@@ -28,8 +28,12 @@
 
 #include "gpencil_io_exporter.h"
 
+struct Depsgraph;
 struct Main;
 struct ARegion;
+
+struct bGPDlayer;
+struct bGPDstroke;
 
 namespace blender {
 namespace io {
@@ -39,13 +43,20 @@ class GpencilExporter {
 
  public:
   virtual bool write(std::string actual_frame) = 0;
-  void set_out_filename(struct bContext *C, char *filename);
+  void set_out_filename(char *filename);
 
   /* Geometry functions. */
   bool gpencil_3d_point_to_screen_space(struct ARegion *region,
                                         const float diff_mat[4][4],
                                         const float co[3],
+                                        const bool invert,
                                         float r_co[2]);
+
+  bool is_stroke_thickness_constant(struct bGPDstroke *gps);
+  float stroke_average_pressure_get(struct bGPDstroke *gps);
+  float stroke_point_radius_get(const struct bGPDlayer *gpl,
+                                struct bGPDstroke *gps,
+                                float diff_mat[4][4]);
 
   std::string rgb_to_hex(float color[3]);
   std::string to_lower_string(char *input_text);
@@ -53,6 +64,10 @@ class GpencilExporter {
  protected:
   GpencilExportParams params;
   char out_filename[FILE_MAX];
+  /* Data for easy access. */
+  struct Depsgraph *depsgraph;
+  struct bGPdata *gpd;
+  struct Main *bmain;
 };
 
 }  // namespace gpencil
