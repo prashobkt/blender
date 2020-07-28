@@ -695,7 +695,10 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
   double cam_pos[3];
   double clip_start;
   copy_v3_v3_db(cam_pos, rb->camera_pos);
-  clip_start = rb->near_clip;
+
+  /* This ensures all things are inside frustum in 2d stage. (precision issue) */
+  clip_start = rb->near_clip + 0.01;
+
   mul_v3db_db(clip_advance, -clip_start);
   add_v3_v3_db(cam_pos, clip_advance);
 
@@ -718,13 +721,16 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
       rt = (void *)(((unsigned char *)reln->pointer) + rb->triangle_size * i);
 
       /* Point inside near plane */
-      if (rt->v[0]->fbcoord[2] < 0) {
+      if (-rt->v[0]->fbcoord[3] > rt->v[0]->fbcoord[2] ||
+          rt->v[1]->fbcoord[2] > rt->v[0]->fbcoord[3]) {
         in0 = 1;
       }
-      if (rt->v[1]->fbcoord[2] < 0) {
+      if (-rt->v[1]->fbcoord[3] > rt->v[1]->fbcoord[2] ||
+          rt->v[1]->fbcoord[2] > rt->v[1]->fbcoord[3]) {
         in1 = 1;
       }
-      if (rt->v[2]->fbcoord[2] < 0) {
+      if (-rt->v[2]->fbcoord[3] > rt->v[2]->fbcoord[2] ||
+          rt->v[2]->fbcoord[2] > rt->v[2]->fbcoord[3]) {
         in2 = 1;
       }
 
@@ -1301,6 +1307,7 @@ static void lineart_main_perspective_division(LineartRenderBuffer *rb)
 {
   LineartRenderVert *rv;
   int i;
+  float far = rb->far_clip, near = rb->near_clip;
 
   if (!rb->cam_is_persp) {
     return;
@@ -1312,6 +1319,8 @@ static void lineart_main_perspective_division(LineartRenderBuffer *rb)
       /* Do not divide Z, we use Z to back transform cut points in later chaining process. */
       rv[i].fbcoord[0] /= rv[i].fbcoord[3];
       rv[i].fbcoord[1] /= rv[i].fbcoord[3];
+      /* Re-map z into (0-1) range, because we no longer need NDC at the moment. */
+      rv[i].fbcoord[2] = -2 * rv[i].fbcoord[2] / (far - near) - (far + near) / (far - near);
       rv[i].fbcoord[0] -= rb->shift_x * 2;
       rv[i].fbcoord[1] -= rb->shift_y * 2;
     }
@@ -3986,7 +3995,7 @@ void ED_lineart_post_frame_update_external(bContext *C, Scene *scene, Depsgraph 
      * really don't need to keep the buffer any longer. If in the future we want fast refresh on
      * parameter changes (e.g. thickness or picking different result in an already validated
      * buffer), remove this call below. */
-    ED_lineart_destroy_render_data_external();
+    // ED_lineart_destroy_render_data_external();
   }
 }
 
