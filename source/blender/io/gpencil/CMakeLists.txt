@@ -54,7 +54,7 @@ set(LIB
   bf_blenlib
   bf_io_common
 
-  #${PUGIXML_LIBRARIES}
+  ${PUGIXML_LIBRARIES}
 )
 
 list(APPEND LIB

@@ -334,7 +334,7 @@ if(WITH_OPENIMAGEIO)
     find_package_wrapper(PugiXML)
   else()
     set(PUGIXML_INCLUDE_DIR "${OPENIMAGEIO_INCLUDE_DIR/OpenImageIO}")
-    set(PUGIXML_LIBRARIES "")
+    #set(PUGIXML_LIBRARIES "")
   endif()
 
   set(OPENIMAGEIO_LIBRARIES
