@@ -91,10 +91,9 @@ static const ColorTemplate gp_stroke_material_black = {
 };
 
 /* ***************************************************************** */
-/* Stroke API */
+/* LineArt API */
 
-/* Add a Simple stroke with colors
- * (original design created by Daniel M. Lara and Matias Mendiola). */
+/* Add a Simple LineArt setup. */
 void ED_gpencil_create_lineart(bContext *C, Object *ob, float mat[4][4])
 {
   Main *bmain = CTX_data_main(C);
