@@ -1310,26 +1310,19 @@ const EnumPropertyItem *object_gpencil_add_options(bContext *C,
   int i = 0;
   int orig_count = RNA_enum_items_count(item_ref);
 
-  if (ELEM(NULL, C, gpd)) {
-    return item_ref;
-  }
-
-  /* Create new layer */
-  /* TODO: have some way of specifying that we don't want this? */
-
-  const int tot = BLI_listbase_count(&gpd->layers);
-
   /* Default types. */
   for (i = 0; i < orig_count; i++) {
     if (item_ref[i].value == GP_LRT_OBJECT || item_ref[i].value == GP_LRT_COLLECTION) {
 #ifdef WITH_LINEART
-      if (item_ref[i].value == GP_LRT_OBJECT) {
+      if (item_ref[i].value == GP_LRT_COLLECTION) {
+        /* separator before line art types */
+        RNA_enum_item_add_separator(&item, &totitem);
+      }
+      else if (item_ref[i].value == GP_LRT_OBJECT) {
         Object *ob = CTX_data_active_object(C);
         if (!ob || ob->type != OB_MESH) {
           continue;
         }
-        /* separator before line art types */
-        RNA_enum_item_add_separator(&item, &totitem);
       }
 #else
       /* Don't show line art options when not compiled with one. */
