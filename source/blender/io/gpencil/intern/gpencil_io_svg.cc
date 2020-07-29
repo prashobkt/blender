@@ -62,26 +62,10 @@ namespace gpencil {
 
 /* Constructor. */
 GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *params)
+    : GpencilExporter(params)
 {
-  this->params.frame_start = params->frame_start;
-  this->params.frame_end = params->frame_end;
-  this->params.ob = params->ob;
-  this->params.region = params->region;
-  this->params.C = params->C;
-  this->params.filename = params->filename;
-  this->params.mode = params->mode;
-  this->params.flag = params->flag;
-
-  /* Easy access data. */
-  this->bmain = CTX_data_main(params->C);
-  this->depsgraph = CTX_data_depsgraph_pointer(params->C);
-  this->rv3d = (RegionView3D *)params->region->regiondata;
-  this->gpd = (bGPdata *)params->ob->data;
   this->invert_axis[0] = false;
   this->invert_axis[1] = true;
-
-  /* Prepare output filename with full path. */
-  set_out_filename(params->filename);
 }
 
 /* Main write method for SVG format. */
@@ -107,9 +91,6 @@ bool GpencilExporterSVG::write(std::string actual_frame)
 /* Create document header and main svg node. */
 void GpencilExporterSVG::create_document_header(void)
 {
-  int x = params.region->winx;
-  int y = params.region->winy;
-
   /* Add a custom document declaration node. */
   pugi::xml_node decl = doc.prepend_child(pugi::node_declaration);
   decl.append_attribute("version") = "1.0";
@@ -128,11 +109,11 @@ void GpencilExporterSVG::create_document_header(void)
   main_node.append_attribute("x").set_value("0px");
   main_node.append_attribute("y").set_value("0px");
 
-  std::string width = std::to_string(x) + "px";
-  std::string height = std::to_string(y) + "px";
+  std::string width = std::to_string(winx) + "px";
+  std::string height = std::to_string(winy) + "px";
   main_node.append_attribute("width").set_value(width.c_str());
   main_node.append_attribute("height").set_value(height.c_str());
-  std::string viewbox = "0 0 " + std::to_string(x) + " " + std::to_string(y);
+  std::string viewbox = "0 0 " + std::to_string(winx) + " " + std::to_string(winy);
   main_node.append_attribute("viewBox").set_value(viewbox.c_str());
 }
 
@@ -152,15 +133,11 @@ void GpencilExporterSVG::export_style_list(void)
 
   for (int i = 0; i < mat_len; i++) {
     MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, i + 1);
-
-    bool is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
-                      (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
-    bool is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
-                    (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
+    gp_style_current_set(gp_style);
 
     int id = i + 1;
 
-    if (is_stroke) {
+    if (gp_style_is_stroke()) {
       char out[128];
       linearrgb_to_srgb_v3_v3(col, gp_style->stroke_rgba);
       std::string stroke_hex = rgb_to_hex(col);
@@ -172,7 +149,7 @@ void GpencilExporterSVG::export_style_list(void)
       txt.append(out);
     }
 
-    if (is_fill) {
+    if (gp_style_is_fill()) {
       char out[128];
       linearrgb_to_srgb_v3_v3(col, gp_style->fill_rgba);
       std::string stroke_hex = rgb_to_hex(col);
@@ -230,11 +207,6 @@ void GpencilExporterSVG::export_layers(void)
         continue;
       }
       gps_current_set(gps);
-      MaterialGPencilStyle *gp_style = gp_style_current_get();
-      bool is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
-                        (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
-      bool is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
-                      (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
 
       if (gps->totpoints == 1) {
         export_point(gpl_node);
@@ -243,7 +215,7 @@ void GpencilExporterSVG::export_layers(void)
         bool is_normalized = ((params.flag & GP_EXPORT_NORM_THICKNESS) != 0);
 
         /* Fill. */
-        if ((is_fill) && (params.flag & GP_EXPORT_FILL)) {
+        if ((gp_style_is_fill()) && (params.flag & GP_EXPORT_FILL)) {
           if (is_normalized) {
             export_stroke_polyline(gpl_node, true);
           }
@@ -253,7 +225,7 @@ void GpencilExporterSVG::export_layers(void)
         }
 
         /* Stroke. */
-        if (is_stroke) {
+        if (gp_style_is_stroke()) {
           if (is_normalized) {
             export_stroke_polyline(gpl_node, false);
           }

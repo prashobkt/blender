@@ -24,11 +24,7 @@
 
 #include "BLI_path_util.h"
 
-#include "BKE_gpencil.h"
-#include "BKE_material.h"
-
 #include "DNA_defs.h"
-#include "DNA_gpencil_types.h"
 
 #include "gpencil_io_exporter.h"
 
@@ -49,8 +45,8 @@ namespace gpencil {
 class GpencilExporter {
 
  public:
+  GpencilExporter(const struct GpencilExportParams *params);
   virtual bool write(std::string actual_frame) = 0;
-  void set_out_filename(char *filename);
 
   /* Geometry functions. */
   bool gpencil_3d_point_to_screen_space(const float co[3], float r_co[2]);
@@ -73,44 +69,29 @@ class GpencilExporter {
   struct bGPdata *gpd;
   struct Main *bmain;
   struct RegionView3D *rv3d;
+  int winx, winy;
 
-  struct bGPDlayer *gpl_current_get(void)
-  {
-    return gpl_cur;
-  }
-  void gpl_current_set(struct bGPDlayer *gpl)
-  {
-    gpl_cur = gpl;
-    BKE_gpencil_parent_matrix_get(depsgraph, params.ob, gpl, diff_mat);
-  }
-  struct bGPDframe *gpf_current_get(void)
-  {
-    return gpf_cur;
-  }
-  void gpf_current_set(struct bGPDframe *gpf)
-  {
-    gpf_cur = gpf;
-  }
-  struct bGPDstroke *gps_current_get(void)
-  {
-    return gps_cur;
-  }
-  void gps_current_set(struct bGPDstroke *gps)
-  {
-    gps_cur = gps;
-    gp_style = BKE_gpencil_material_settings(params.ob, gps->mat_nr + 1);
-  }
+  struct bGPDlayer *gpl_current_get(void);
+  struct bGPDframe *gpf_current_get(void);
+  struct bGPDstroke *gps_current_get(void);
+  struct MaterialGPencilStyle *gp_style_current_get(void);
+  bool gp_style_is_stroke(void);
+  bool gp_style_is_fill(void);
 
-  struct MaterialGPencilStyle *gp_style_current_get(void)
-  {
-    return gp_style;
-  }
+  void gpl_current_set(struct bGPDlayer *gpl);
+  void gpf_current_set(struct bGPDframe *gpf);
+  void gps_current_set(struct bGPDstroke *gps);
+  void gp_style_current_set(MaterialGPencilStyle *gp_style);
 
  private:
   struct bGPDlayer *gpl_cur;
   struct bGPDframe *gpf_cur;
   struct bGPDstroke *gps_cur;
   struct MaterialGPencilStyle *gp_style;
+  bool is_stroke;
+  bool is_fill;
+
+  void set_out_filename(char *filename);
 };
 
 }  // namespace gpencil

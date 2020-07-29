@@ -27,6 +27,7 @@
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_geom.h"
 #include "BKE_main.h"
+#include "BKE_material.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
@@ -35,6 +36,7 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_gpencil_types.h"
+#include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
@@ -55,6 +57,31 @@ namespace blender {
 namespace io {
 namespace gpencil {
 
+/* Constructor. */
+GpencilExporter::GpencilExporter(const struct GpencilExportParams *params)
+{
+  this->params.frame_start = params->frame_start;
+  this->params.frame_end = params->frame_end;
+  this->params.ob = params->ob;
+  this->params.region = params->region;
+  this->params.C = params->C;
+  this->params.filename = params->filename;
+  this->params.mode = params->mode;
+  this->params.flag = params->flag;
+
+  /* Easy access data. */
+  this->bmain = CTX_data_main(params->C);
+  this->depsgraph = CTX_data_depsgraph_pointer(params->C);
+  this->rv3d = (RegionView3D *)params->region->regiondata;
+  this->gpd = (bGPdata *)params->ob->data;
+
+  this->winx = params->region->winx;
+  this->winy = params->region->winy;
+
+  /* Prepare output filename with full path. */
+  set_out_filename(params->filename);
+}
+
 /**
  * Set output file input_text full path.
  * \param C: Context.
@@ -71,7 +98,7 @@ void GpencilExporter::set_out_filename(char *filename)
 }
 
 /* Convert to screen space.
- * TODO: Cleanup using a more generic BKE function. */
+ * TODO: Cleanup using a more generic BKE function.?? */
 bool GpencilExporter::gpencil_3d_point_to_screen_space(const float co[3], float r_co[2])
 {
   float parent_co[3];
@@ -84,11 +111,11 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(const float co[3], float 
       copy_v2_v2(r_co, screen_co);
       /* Invert X axis. */
       if (invert_axis[0]) {
-        r_co[0] = params.region->winx - r_co[0];
+        r_co[0] = winx - r_co[0];
       }
       /* Invert Y axis. */
       if (invert_axis[1]) {
-        r_co[1] = params.region->winy - r_co[1];
+        r_co[1] = winy - r_co[1];
       }
 
       return true;
@@ -99,11 +126,11 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(const float co[3], float 
 
   /* Invert X axis. */
   if (invert_axis[0]) {
-    r_co[0] = params.region->winx - r_co[0];
+    r_co[0] = winx - r_co[0];
   }
   /* Invert Y axis. */
   if (invert_axis[1]) {
-    r_co[1] = params.region->winy - r_co[1];
+    r_co[1] = winy - r_co[1];
   }
 
   return false;
@@ -217,6 +244,62 @@ std::string GpencilExporter::to_lower_string(char *input_text)
 
   return text;
 }
+
+struct bGPDlayer *GpencilExporter::gpl_current_get(void)
+{
+  return gpl_cur;
+}
+
+void GpencilExporter::gpl_current_set(struct bGPDlayer *gpl)
+{
+  gpl_cur = gpl;
+  BKE_gpencil_parent_matrix_get(depsgraph, params.ob, gpl, diff_mat);
+}
+struct bGPDframe *GpencilExporter::gpf_current_get(void)
+{
+  return gpf_cur;
+}
+
+void GpencilExporter::gpf_current_set(struct bGPDframe *gpf)
+{
+  gpf_cur = gpf;
+}
+struct bGPDstroke *GpencilExporter::gps_current_get(void)
+{
+  return gps_cur;
+}
+
+void GpencilExporter::gps_current_set(struct bGPDstroke *gps)
+{
+  gps_cur = gps;
+  gp_style = BKE_gpencil_material_settings(params.ob, gps->mat_nr + 1);
+  gp_style_current_set(gp_style);
+}
+
+void GpencilExporter::gp_style_current_set(MaterialGPencilStyle *gp_style)
+{
+  this->gp_style = gp_style;
+  is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
+               (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
+  is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
+             (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
+}
+
+struct MaterialGPencilStyle *GpencilExporter::gp_style_current_get(void)
+{
+  return gp_style;
+}
+
+bool GpencilExporter::gp_style_is_stroke(void)
+{
+  return is_stroke;
+}
+
+bool GpencilExporter::gp_style_is_fill(void)
+{
+  return is_fill;
+}
+
 }  // namespace gpencil
 }  // namespace io
 }  // namespace blender
