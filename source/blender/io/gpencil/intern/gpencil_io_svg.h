@@ -34,6 +34,8 @@ struct bGPDstroke;
 struct GpencilExportParams;
 struct MaterialGPencilStyle;
 
+#define SVG_EXPORTER_VERSION " Generator: Blender, SVG Export for Grease Pencil v1.0 "
+
 namespace blender {
 namespace io {
 namespace gpencil {

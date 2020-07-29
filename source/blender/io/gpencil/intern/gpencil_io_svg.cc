@@ -97,7 +97,7 @@ void GpencilExporterSVG::create_document_header(void)
   decl.append_attribute("encoding") = "UTF-8";
 
   pugi::xml_node comment = doc.append_child(pugi::node_comment);
-  comment.set_value(" Generator: Blender, SVG Export for Grease Pencil ");
+  comment.set_value(SVG_EXPORTER_VERSION);
 
   pugi::xml_node doctype = doc.append_child(pugi::node_doctype);
   doctype.set_value(
