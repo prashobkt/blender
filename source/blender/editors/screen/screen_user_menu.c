@@ -186,7 +186,6 @@ void ED_screen_user_menu_item_add_operator(ListBase *lb,
   if (!STREQ(ui_name, ot->name)) {
     STRNCPY(umi_op->item.ui_name, ui_name);
   }
-  IDProperty *properties;
   STRNCPY(umi_op->op_idname, ot->idname);
   umi_op->prop = prop ? IDP_CopyProperty(prop) : NULL;
 }
@@ -268,7 +267,7 @@ static void screen_user_menu_draw_submenu(bContext *C, uiLayout *layout, void *a
   screen_user_menu_draw_items(C, layout, lb, false);
 }
 
-bool screen_user_menu_draw_items(bContext *C, uiLayout *layout, ListBase *lb, bool is_pie)
+bool screen_user_menu_draw_items(const bContext *C, uiLayout *layout, ListBase *lb, bool is_pie)
 {
   /* Enable when we have the ability to edit menus. */
   char label[512];

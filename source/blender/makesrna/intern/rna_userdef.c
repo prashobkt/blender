@@ -1080,7 +1080,9 @@ static void rna_UserDef_studiolight_light_ambient_get(PointerRNA *ptr, float *va
 static bUserMenu *rna_UserDef_usermenus_get_current(UserDef *userdef, bool ensure)
 {
   const char **contexts_list = CTX_data_list_mode_string();
+#  if 0 /* UNUSED */
   ListBase *umg_list = &userdef->user_menus;
+#  endif
 
   bUserMenusGroup *umg = userdef->runtime.umg_select;
   bUserMenu *bum = NULL;
@@ -1372,7 +1374,7 @@ static void rna_UserDef_usermenus_item_move(UserDef *userdef, bool up)
       BLI_addtail(&umi_sm->items, umi);
     else
       BLI_addhead(&umi_sm->items, umi);
-    umi->parent = umi_toward;
+    umi->parent = (bUserMenuItem_SubMenu *)umi_toward;
   }
   else {
 
@@ -1422,7 +1424,7 @@ static void rna_UserDef_usermenus_pie_set(PointerRNA *ptr, int value)
     BKE_blender_user_menu_item_free_list(lb);
     if (value)
       for (int i = 0; i < 8; i++) {
-        bUserMenuItem *new_umi = BKE_blender_user_menu_item_add(lb, USER_MENU_TYPE_SEP);
+        /* bUserMenuItem *new_umi = */ BKE_blender_user_menu_item_add(lb, USER_MENU_TYPE_SEP);
       }
   }
   umg->pie = value;
@@ -1448,7 +1450,7 @@ static void rna_UserDef_usermenus_item_op_set(PointerRNA *ptr, const char *value
   free(opptr);
 }
 
-static void rna_UserDef_usermenu_draw(UserDef *userdef,
+static void rna_UserDef_usermenu_draw(UserDef *UNUSED(userdef),
                                       bContext *C,
                                       uiLayout *layout,
                                       bUserMenusGroup *umg)
@@ -6546,7 +6548,6 @@ static void rna_def_userdef_usermenusgroup(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
   FunctionRNA *func;
-  PropertyRNA *parm;
 
   /* user menus group */
   srna = RNA_def_struct(brna, "UserMenusGroup", NULL);
@@ -6574,7 +6575,7 @@ static void rna_def_userdef_usermenusgroup(BlenderRNA *brna)
 
   func = RNA_def_function(srna, "set_keymap", "rna_UserDef_usermenus_set_keymap");
   RNA_def_function_ui_description(func, "set the keymap of the menu");
-  parm = RNA_def_pointer(func, "kmi", "KeyMapItem", "", "the new keymap");
+  RNA_def_pointer(func, "kmi", "KeyMapItem", "", "the new keymap");
 }
 
 static void rna_def_userdef_usermenus_editor(BlenderRNA *brna)
@@ -6593,6 +6594,7 @@ static void rna_def_userdef_usermenus_editor(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+#  if 0 /* TODO(campbell): remove this? */
   static const EnumPropertyItem um_item_type[] = {
       {USER_MENU_TYPE_OPERATOR, "OPERATOR", 0, "Operator", "Operator"},
       {USER_MENU_TYPE_MENU, "MENU", 0, "Menu", "Menu"},
@@ -6600,6 +6602,7 @@ static void rna_def_userdef_usermenus_editor(BlenderRNA *brna)
       {USER_MENU_TYPE_PROP, "PROPERTY", 0, "Property", "Property"},
       {0, NULL, 0, NULL, NULL},
   };
+#  endif
 
   StructRNA *srna = RNA_def_struct(brna, "PreferencesUserMenus", NULL);
   RNA_def_struct_sdna(srna, "UserDef");

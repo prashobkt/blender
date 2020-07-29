@@ -413,7 +413,7 @@ void ED_screen_user_menu_item_add_prop(struct bContext *C,
 
 void ED_screen_user_menu_item_remove(struct ListBase *lb, struct bUserMenuItem *umi);
 void ED_screen_user_menu_register(void);
-bool screen_user_menu_draw_items(struct bContext *C,
+bool screen_user_menu_draw_items(const struct bContext *C,
                                  struct uiLayout *layout,
                                  struct ListBase *lb,
                                  bool is_pie);
