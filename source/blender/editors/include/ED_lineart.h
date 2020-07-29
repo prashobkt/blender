@@ -86,13 +86,18 @@ typedef struct LineartRenderLineSegment {
   double at;
   /** Occlusion level after "at" point */
   unsigned char occlusion;
-  /** For determining lines beind a glass window material. (TODO: implement this) */
-  short material_mask_mark;
+
+  /** For determining lines beind a glass window material. (TODO: implement this)
+   *  the size of this variable should also be dynamically decided, 1 byte to 8 byte,
+   *  allows 8 to 64 materials for "transparent mask". 1 byte (8 materials) should be
+   *  enought for most cases.
+   */
+  /* short material_mask_mark; */
 } LineartRenderLineSegment;
 
 typedef struct LineartRenderVert {
   struct LineartRenderVert *next, *prev;
-  double gloc[4];
+  double gloc[3];
   double fbcoord[4];
   /**  Used as "r" when intersecting */
   struct BMVert *v;
@@ -116,9 +121,6 @@ typedef struct LineartRenderLine {
 
   /**  Still need this entry because culled lines will not add to object reln node */
   struct Object *object_ref;
-
-  /**  For gpencil stroke modifier */
-  int edge_idx;
 } LineartRenderLine;
 
 typedef struct LineartRenderLineChain {

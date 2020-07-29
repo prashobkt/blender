@@ -1428,7 +1428,6 @@ static void lineart_geometry_object_load(Object *ob,
         }
       }
       if (use_smooth_contour_modifier_contour) {
-        rl->edge_idx = i;
         if (BM_elem_flag_test(e->v1, BM_ELEM_SELECT) && BM_elem_flag_test(e->v2, BM_ELEM_SELECT)) {
           rl->flags |= LRT_EDGE_FLAG_CONTOUR;
         }
