@@ -27,15 +27,16 @@ using blender::io::gpencil::GpencilExporterSVG;
 
 bool gpencil_io_export(const GpencilExportParams *params)
 {
+  bool result = false;
   switch (params->mode) {
     case GP_EXPORT_TO_SVG: {
       GpencilExporterSVG writter = GpencilExporterSVG(params);
-      writter.write(std::string(params->frame));
+      result = writter.write(std::string(params->frame));
       break;
     }
     default:
       break;
   }
 
-  return true;
+  return result;
 }

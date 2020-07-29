@@ -190,8 +190,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
       sprintf(params.frame, "%04d", i);
     }
 
-    gpencil_io_export(&params);
-    done |= true;
+    done |= gpencil_io_export(&params);
 
     if (only_active_frame) {
       break;
@@ -205,6 +204,9 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   }
   if (done) {
     BKE_report(op->reports, RPT_INFO, "SVG export file created");
+  }
+  else {
+    BKE_report(op->reports, RPT_WARNING, "Unable to export SVG");
   }
 
   return OPERATOR_FINISHED;

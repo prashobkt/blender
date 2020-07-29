@@ -83,9 +83,7 @@ bool GpencilExporterSVG::write(std::string actual_frame)
     frame_file.replace(found, 8, actual_frame + ".svg");
   }
 
-  doc.save_file(frame_file.c_str());
-
-  return true;
+  return doc.save_file(frame_file.c_str());
 }
 
 /* Create document header and main svg node. */
