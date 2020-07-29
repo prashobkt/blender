@@ -66,6 +66,8 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
+extern LineartSharedResource lineart_share;
+
 static void initData(GpencilModifierData *md)
 {
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
@@ -223,9 +225,15 @@ static void bakeModifier(Main *UNUSED(bmain),
   }
 
   if (scene->lineart.flags & LRT_AUTO_UPDATE) {
-    while (ED_lineart_modifier_sync_flag_check(LRT_SYNC_WAITING)) {
-      ; /* If auto update is on, line art would be running if  LRT_SYNC_WAITING is set, we just
-           wait for it's done.*/
+    if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_IDLE)) {
+      /* Need to run it once again. */
+      ED_lineart_modifier_sync_flag_set(LRT_SYNC_WAITING, 1);
+      BLI_spin_lock(&lineart_share.lock_loader);
+      ED_lineart_compute_feature_lines_background(depsgraph, 1);
+    }
+    while (!ED_lineart_modifier_sync_flag_check(LRT_SYNC_FRESH) ||
+           !ED_lineart_calculation_flag_check(LRT_RENDER_FINISHED)) {
+      /* Wait till it's done. */
     }
   }
   else if (!ED_lineart_modifier_sync_flag_check(LRT_SYNC_FRESH) ||

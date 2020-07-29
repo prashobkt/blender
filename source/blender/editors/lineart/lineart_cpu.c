@@ -3927,7 +3927,7 @@ void ED_lineart_post_frame_update_external(bContext *C, Scene *scene, Depsgraph 
      * really don't need to keep the buffer any longer. If in the future we want fast refresh on
      * parameter changes (e.g. thickness or picking different result in an already validated
      * buffer), remove this call below. */
-    // ED_lineart_destroy_render_data_external();
+    ED_lineart_destroy_render_data_external();
   }
 }
 
