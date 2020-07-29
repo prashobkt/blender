@@ -1839,6 +1839,7 @@ static int treesort_obtype_alpha(const void *v1, const void *v2)
 }
 #endif
 
+/* TODO (Nathan): Why have I kept this around? */
 /* sort happens on each subtree individual */
 static void outliner_sort(ListBase *lb)
 {

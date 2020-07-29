@@ -1409,6 +1409,7 @@ void ED_object_constraint_dependency_tag_update(Main *bmain, Object *ob, bConstr
   DEG_relations_tag_update(bmain);
 }
 
+/* TODO (Nathan): Use the reports? */
 bool ED_object_constraint_move_to_index(ReportList *reports,
                                         Object *ob,
                                         bConstraint *con,
