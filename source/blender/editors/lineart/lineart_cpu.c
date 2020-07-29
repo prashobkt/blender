@@ -381,6 +381,7 @@ static void lineart_occlusion_single_line(LineartRenderBuffer *rb,
         }
       }
     }
+    printf("nba lrub %f %f %f %f\n", nba->l, nba->r, nba->u, nba->b);
 
     nba = lineart_bounding_area_next(nba, rl, x, y, k, positive_x, positive_y, &x, &y);
   }
@@ -3373,14 +3374,20 @@ static LineartBoundingArea *linear_bounding_areat_first_possible(LineartRenderBu
     return lineart_get_bounding_area(rb, data[0], data[1]);
   }
   else {
-    if ((lineart_LineIntersectTest2d(rl->l->fbcoord, rl->r->fbcoord, LU, RU, &sr) && sr < r &&
-         sr > 0) ||
-        (lineart_LineIntersectTest2d(rl->l->fbcoord, rl->r->fbcoord, LB, RB, &sr) && sr < r &&
-         sr > 0) ||
-        (lineart_LineIntersectTest2d(rl->l->fbcoord, rl->r->fbcoord, LB, LU, &sr) && sr < r &&
-         sr > 0) ||
-        (lineart_LineIntersectTest2d(rl->l->fbcoord, rl->r->fbcoord, RB, RU, &sr) && sr < r &&
-         sr > 0)) {
+    if (lineart_LineIntersectTest2d(rl->l->fbcoord, rl->r->fbcoord, LU, RU, &sr) && sr < r &&
+        sr > 0) {
+      r = sr;
+    }
+    if (lineart_LineIntersectTest2d(rl->l->fbcoord, rl->r->fbcoord, LB, RB, &sr) && sr < r &&
+        sr > 0) {
+      r = sr;
+    }
+    if (lineart_LineIntersectTest2d(rl->l->fbcoord, rl->r->fbcoord, LB, LU, &sr) && sr < r &&
+        sr > 0) {
+      r = sr;
+    }
+    if (lineart_LineIntersectTest2d(rl->l->fbcoord, rl->r->fbcoord, RB, RU, &sr) && sr < r &&
+        sr > 0) {
       r = sr;
     }
     interp_v2_v2v2_db(data, rl->l->fbcoord, rl->r->fbcoord, r);
