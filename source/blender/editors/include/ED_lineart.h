@@ -245,9 +245,10 @@ typedef struct LineartRenderBuffer {
   float cam_obmat[4][4];
   double camera_pos[3];
   double near_clip, far_clip;
-  double shift_x, shift_y;
-  double chaining_image_threshold;
-  double chaining_geometry_threshold;
+  float shift_x, shift_y;
+  float chaining_image_threshold;
+  float chaining_geometry_threshold;
+  float angle_splitting_threshold;
 } LineartRenderBuffer;
 
 typedef enum eLineartRenderStatus {
@@ -485,6 +486,8 @@ void ED_lineart_chain_feature_lines(LineartRenderBuffer *rb);
 void ED_lineart_chain_split_for_fixed_occlusion(LineartRenderBuffer *rb);
 void ED_lineart_chain_connect(LineartRenderBuffer *rb, const int do_geometry_space);
 void ED_lineart_chain_discard_short(LineartRenderBuffer *rb, const float threshold);
+void ED_lineart_chain_split_angle(LineartRenderBuffer *rb, float angle_threshold_rad);
+
 int ED_lineart_chain_count(const LineartRenderLineChain *rlc);
 void ED_lineart_chain_clear_picked_flag(struct LineartRenderBuffer *rb);
 

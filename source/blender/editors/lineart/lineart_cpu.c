@@ -114,8 +114,8 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *spl,
                                                             const char override_cam_is_persp,
                                                             const double vp[4][4],
                                                             const double *camera_dir,
-                                                            const double cam_shift_x,
-                                                            const double cam_shift_y,
+                                                            const float cam_shift_x,
+                                                            const float cam_shift_y,
                                                             double *from,
                                                             double *to);
 
@@ -381,8 +381,6 @@ static void lineart_occlusion_single_line(LineartRenderBuffer *rb,
         }
       }
     }
-    printf("nba lrub %f %f %f %f\n", nba->l, nba->r, nba->u, nba->b);
-
     nba = lineart_bounding_area_next(nba, rl, x, y, k, positive_x, positive_y, &x, &y);
   }
 }
@@ -1659,8 +1657,8 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl
                                                             const char override_cam_is_persp,
                                                             const double vp[4][4],
                                                             const double *camera_dir,
-                                                            const double cam_shift_x,
-                                                            const double cam_shift_y,
+                                                            const float cam_shift_x,
+                                                            const float cam_shift_y,
                                                             double *from,
                                                             double *to)
 {
@@ -2388,6 +2386,7 @@ LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *scene)
     rb->shift_y = c->shifty;
   }
 
+  rb->angle_splitting_threshold = scene->lineart.angle_splitting_threshold;
   rb->chaining_image_threshold = scene->lineart.chaining_image_threshold;
   rb->chaining_geometry_threshold = scene->lineart.chaining_geometry_threshold;
 
@@ -3507,6 +3506,8 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
 
     /* This configuration ensures there won't be accidental lost of short segments */
     ED_lineart_chain_discard_short(rb, MIN3(t_image, t_geom, 0.01f) - FLT_EPSILON);
+
+    ED_lineart_chain_split_angle(rb, rb->angle_splitting_threshold);
   }
   // Set after GP done.
   // ED_lineart_calculation_flag_set(LRT_RENDER_FINISHED);

@@ -1731,8 +1731,8 @@ typedef struct SceneLineart {
 
   int _pad;
 
-  /** cosine angle, for splitting strokes at sharp points */
-  float separation_angle;
+  /**  0-PI angle, for splitting strokes at sharp points */
+  float angle_splitting_threshold;
 
   /* CPU mode */
   float chaining_geometry_threshold;

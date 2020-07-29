@@ -721,6 +721,7 @@ class RENDER_PT_lineart(RenderButtonsPanel, Panel):
 
         else:
             layout.prop(lineart, "crease_threshold", slider=True)
+            layout.prop(lineart, "angle_splitting_threshold", slider=True)
 
             layout.prop(lineart, "chaining_image_threshold")
             layout.prop(lineart, "chaining_geometry_threshold")

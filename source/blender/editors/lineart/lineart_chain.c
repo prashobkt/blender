@@ -848,3 +848,58 @@ void ED_lineart_chain_clear_picked_flag(LineartRenderBuffer *rb)
     rlc->picked = 0;
   }
 }
+
+/* This should always be the last stage!, see the end of
+ * ED_lineart_chain_split_for_fixed_occlusion().*/
+void ED_lineart_chain_split_angle(LineartRenderBuffer *rb, float angle_threshold_rad)
+{
+  LineartRenderLineChain *rlc, *new_rlc;
+  LineartRenderLineChainItem *rlci, *next_rlci, *prev_rlci;
+  ListBase swap = {0};
+
+  swap.first = rb->chains.first;
+  swap.last = rb->chains.last;
+
+  rb->chains.last = rb->chains.first = NULL;
+
+  while ((rlc = BLI_pophead(&swap)) != NULL) {
+    rlc->next = rlc->prev = NULL;
+    BLI_addtail(&rb->chains, rlc);
+    LineartRenderLineChainItem *first_rlci = (LineartRenderLineChainItem *)rlc->chain.first;
+    for (rlci = first_rlci->next; rlci; rlci = next_rlci) {
+      next_rlci = rlci->next;
+      prev_rlci = rlci->prev;
+      float angle = M_PI;
+      if (next_rlci && prev_rlci) {
+        angle = angle_v2v2v2(prev_rlci->pos, rlci->pos, next_rlci->pos);
+      }
+      else {
+        break; /* No need to split at the last point anyway.*/
+      }
+      if (angle < angle_threshold_rad) {
+        new_rlc = lineart_chain_create(rb);
+        new_rlc->chain.first = rlci;
+        new_rlc->chain.last = rlc->chain.last;
+        rlc->chain.last = rlci->prev;
+        ((LineartRenderLineChainItem *)rlc->chain.last)->next = 0;
+        rlci->prev = 0;
+
+        /*  end the previous one */
+        lineart_chain_append_point(rb,
+                                   rlc,
+                                   rlci->pos[0],
+                                   rlci->pos[1],
+                                   rlci->gpos[0],
+                                   rlci->gpos[1],
+                                   rlci->gpos[2],
+                                   rlci->normal,
+                                   rlci->line_type,
+                                   rlc->level);
+        new_rlc->object_ref = rlc->object_ref;
+        new_rlc->type = rlc->type;
+        new_rlc->level = rlc->level;
+        rlc = new_rlc;
+      }
+    }
+  }
+}
