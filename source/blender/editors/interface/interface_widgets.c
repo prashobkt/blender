@@ -53,6 +53,7 @@
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
+#include "GPU_platform.h"
 #include "GPU_state.h"
 
 #ifdef WITH_INPUT_IME
@@ -1208,6 +1209,26 @@ void UI_widgetbase_draw_cache_end(void)
   GPU_blend(false);
 }
 
+/* Disable cached/instanced drawing and enforce single widget drawing pipeline.
+ * Works around interface artifacts happening on certain driver and hardware
+ * configurations. */
+static bool draw_widgetbase_batch_skip_draw_cache(void)
+{
+  /* MacOS is known to have issues on Mac Mini and MacBook Pro with Intel Iris GPU.
+   * For example, T78307. */
+  if (GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_MAC, GPU_DRIVER_ANY)) {
+    return true;
+  }
+
+  /* There are also reports that some AMD and Mesa driver configuration suffer from the
+   * same issue, T78803. */
+  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_UNIX, GPU_DRIVER_OPENSOURCE)) {
+    return true;
+  }
+
+  return false;
+}
+
 static void draw_widgetbase_batch(uiWidgetBase *wtb)
 {
   wtb->uniform_params.tria_type = wtb->tria1.type;
@@ -1216,7 +1237,7 @@ static void draw_widgetbase_batch(uiWidgetBase *wtb)
   copy_v2_v2(wtb->uniform_params.tria1_center, wtb->tria1.center);
   copy_v2_v2(wtb->uniform_params.tria2_center, wtb->tria2.center);
 
-  if (g_widget_base_batch.enabled) {
+  if (g_widget_base_batch.enabled && !draw_widgetbase_batch_skip_draw_cache()) {
     g_widget_base_batch.params[g_widget_base_batch.count] = wtb->uniform_params;
     g_widget_base_batch.count++;
 
@@ -1335,7 +1356,7 @@ static void widget_draw_preview(BIFIconID icon, float alpha, const rcti *rect)
 
 static int ui_but_draw_menu_icon(const uiBut *but)
 {
-  return (but->flag & UI_BUT_ICON_SUBMENU) && (but->dt == UI_EMBOSS_PULLDOWN);
+  return (but->flag & UI_BUT_ICON_SUBMENU) && (but->emboss == UI_EMBOSS_PULLDOWN);
 }
 
 /* icons have been standardized... and this call draws in untransformed coordinates */
@@ -1396,7 +1417,7 @@ static void widget_draw_icon(
           but->str && but->str[0] == '\0') {
         xs = rect->xmin + 2.0f * ofs;
       }
-      else if (but->dt == UI_EMBOSS_NONE || but->type == UI_BTYPE_LABEL) {
+      else if (but->emboss == UI_EMBOSS_NONE || but->type == UI_BTYPE_LABEL) {
         xs = rect->xmin + 2.0f * ofs;
       }
       else {
@@ -2354,7 +2375,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
       /* pass (even if its a menu toolbar) */
     }
     else if (ui_block_is_pie_menu(but->block)) {
-      if (but->dt == UI_EMBOSS_RADIAL) {
+      if (but->emboss == UI_EMBOSS_RADIAL) {
         rect->xmin += 0.3f * U.widget_unit;
       }
     }
@@ -4480,7 +4501,7 @@ void ui_draw_but(const bContext *C, struct ARegion *region, uiStyle *style, uiBu
   uiWidgetType *wt = NULL;
 
   /* handle menus separately */
-  if (but->dt == UI_EMBOSS_PULLDOWN) {
+  if (but->emboss == UI_EMBOSS_PULLDOWN) {
     switch (but->type) {
       case UI_BTYPE_LABEL:
         widget_draw_text_icon(&style->widgetlabel, &tui->wcol_menu_back, but, rect);
@@ -4493,7 +4514,7 @@ void ui_draw_but(const bContext *C, struct ARegion *region, uiStyle *style, uiBu
         break;
     }
   }
-  else if (but->dt == UI_EMBOSS_NONE) {
+  else if (but->emboss == UI_EMBOSS_NONE) {
     /* "nothing" */
     switch (but->type) {
       case UI_BTYPE_LABEL:
@@ -4504,11 +4525,11 @@ void ui_draw_but(const bContext *C, struct ARegion *region, uiStyle *style, uiBu
         break;
     }
   }
-  else if (but->dt == UI_EMBOSS_RADIAL) {
+  else if (but->emboss == UI_EMBOSS_RADIAL) {
     wt = widget_type(UI_WTYPE_MENU_ITEM_RADIAL);
   }
   else {
-    BLI_assert(but->dt == UI_EMBOSS);
+    BLI_assert(but->emboss == UI_EMBOSS);
 
     switch (but->type) {
       case UI_BTYPE_LABEL:
@@ -4757,7 +4778,7 @@ void ui_draw_but(const bContext *C, struct ARegion *region, uiStyle *style, uiBu
     }
 
     if (state & (UI_BUT_DISABLED | UI_BUT_INACTIVE)) {
-      if (but->dt != UI_EMBOSS_PULLDOWN) {
+      if (but->emboss != UI_EMBOSS_PULLDOWN) {
         disabled = true;
       }
     }

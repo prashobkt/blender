@@ -135,6 +135,7 @@ set(SRC
   function/nodes/node_fn_combine_strings.cc
   function/nodes/node_fn_float_compare.cc
   function/nodes/node_fn_group_instance_id.cc
+  function/nodes/node_fn_object_transforms.cc
   function/nodes/node_fn_switch.cc
   function/node_function_util.cc
 
@@ -159,7 +160,7 @@ set(SRC
   shader/nodes/node_shader_bsdf_velvet.c
   shader/nodes/node_shader_bump.c
   shader/nodes/node_shader_camera.c
-  shader/nodes/node_shader_clamp.c
+  shader/nodes/node_shader_clamp.cc
   shader/nodes/node_shader_common.c
   shader/nodes/node_shader_curves.c
   shader/nodes/node_shader_displacement.c
@@ -277,6 +278,7 @@ set(SRC
   intern/node_common.c
   intern/node_exec.c
   intern/node_socket.cc
+  intern/node_tree_dependencies.cc
   intern/node_tree_multi_function.cc
   intern/node_tree_ref.cc
   intern/node_util.c
@@ -291,6 +293,7 @@ set(SRC
   NOD_composite.h
   NOD_derived_node_tree.hh
   NOD_function.h
+  NOD_node_tree_dependencies.hh
   NOD_node_tree_multi_function.hh
   NOD_node_tree_ref.hh
   NOD_shader.h

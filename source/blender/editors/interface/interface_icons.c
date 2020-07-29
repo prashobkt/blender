@@ -881,7 +881,7 @@ void UI_icons_reload_internal_textures(void)
     }
 
     if (need_icons_with_border && icongltex.tex[1] == NULL) {
-      icongltex.tex[0] = GPU_texture_create_nD(b32buf_border->x,
+      icongltex.tex[1] = GPU_texture_create_nD(b32buf_border->x,
                                                b32buf_border->y,
                                                0,
                                                2,
@@ -891,7 +891,7 @@ void UI_icons_reload_internal_textures(void)
                                                0,
                                                false,
                                                NULL);
-      GPU_texture_add_mipmap(icongltex.tex[0], GPU_DATA_UNSIGNED_BYTE, 1, b16buf_border->rect);
+      GPU_texture_add_mipmap(icongltex.tex[1], GPU_DATA_UNSIGNED_BYTE, 1, b16buf_border->rect);
     }
   }
 
@@ -1517,18 +1517,8 @@ static void icon_draw_rect(float x,
     immUniform1f("factor", desaturate);
   }
 
-  immDrawPixelsTex(&state,
-                   draw_x,
-                   draw_y,
-                   draw_w,
-                   draw_h,
-                   GL_RGBA,
-                   GL_UNSIGNED_BYTE,
-                   GL_NEAREST,
-                   rect,
-                   1.0f,
-                   1.0f,
-                   col);
+  immDrawPixelsTex(
+      &state, draw_x, draw_y, draw_w, draw_h, GPU_RGBA8, false, rect, 1.0f, 1.0f, col);
 
   if (ima) {
     IMB_freeImBuf(ima);

@@ -17,20 +17,16 @@
 #include "simulation_solver.hh"
 
 #include "BKE_customdata.h"
+#include "BKE_persistent_data_handle.hh"
 
 #include "BLI_rand.hh"
+#include "BLI_set.hh"
+
+#include "DEG_depsgraph_query.h"
 
 namespace blender::sim {
 
-ParticleForce::~ParticleForce()
-{
-}
-
-ParticleEmitter::~ParticleEmitter()
-{
-}
-
-static CustomDataType cpp_to_custom_data_type(const fn::CPPType &type)
+static CustomDataType cpp_to_custom_data_type(const CPPType &type)
 {
   if (type.is<float3>()) {
     return CD_PROP_FLOAT3;
@@ -45,52 +41,52 @@ static CustomDataType cpp_to_custom_data_type(const fn::CPPType &type)
   return CD_PROP_FLOAT;
 }
 
-static const fn::CPPType &custom_to_cpp_data_type(CustomDataType type)
+static const CPPType &custom_to_cpp_data_type(CustomDataType type)
 {
   switch (type) {
     case CD_PROP_FLOAT3:
-      return fn::CPPType::get<float3>();
+      return CPPType::get<float3>();
     case CD_PROP_FLOAT:
-      return fn::CPPType::get<float>();
+      return CPPType::get<float>();
     case CD_PROP_INT32:
-      return fn::CPPType::get<int32_t>();
+      return CPPType::get<int32_t>();
     default:
       BLI_assert(false);
-      return fn::CPPType::get<float>();
+      return CPPType::get<float>();
   }
 }
 
 class CustomDataAttributesRef {
  private:
   Array<void *> buffers_;
-  uint size_;
-  const fn::AttributesInfo &info_;
+  int64_t size_;
+  const AttributesInfo &info_;
 
  public:
-  CustomDataAttributesRef(CustomData &custom_data, uint size, const fn::AttributesInfo &info)
+  CustomDataAttributesRef(CustomData &custom_data, int64_t size, const AttributesInfo &info)
       : buffers_(info.size(), nullptr), size_(size), info_(info)
   {
-    for (uint attribute_index : info.index_range()) {
+    for (int attribute_index : info.index_range()) {
       StringRefNull name = info.name_of(attribute_index);
-      const fn::CPPType &cpp_type = info.type_of(attribute_index);
+      const CPPType &cpp_type = info.type_of(attribute_index);
       CustomDataType custom_type = cpp_to_custom_data_type(cpp_type);
       void *data = CustomData_get_layer_named(&custom_data, custom_type, name.c_str());
       buffers_[attribute_index] = data;
     }
   }
 
-  operator fn::MutableAttributesRef()
+  operator MutableAttributesRef()
   {
-    return fn::MutableAttributesRef(info_, buffers_, size_);
+    return MutableAttributesRef(info_, buffers_, size_);
   }
 
-  operator fn::AttributesRef() const
+  operator AttributesRef() const
   {
-    return fn::AttributesRef(info_, buffers_, size_);
+    return AttributesRef(info_, buffers_, size_);
   }
 };
 
-static void ensure_attributes_exist(ParticleSimulationState *state, const fn::AttributesInfo &info)
+static void ensure_attributes_exist(ParticleSimulationState *state, const AttributesInfo &info)
 {
   bool found_layer_to_remove;
   do {
@@ -98,7 +94,7 @@ static void ensure_attributes_exist(ParticleSimulationState *state, const fn::At
     for (int layer_index = 0; layer_index < state->attributes.totlayer; layer_index++) {
       CustomDataLayer *layer = &state->attributes.layers[layer_index];
       BLI_assert(layer->name != nullptr);
-      const fn::CPPType &cpp_type = custom_to_cpp_data_type((CustomDataType)layer->type);
+      const CPPType &cpp_type = custom_to_cpp_data_type((CustomDataType)layer->type);
       StringRefNull name = layer->name;
       if (!info.has_attribute(name, cpp_type)) {
         found_layer_to_remove = true;
@@ -108,9 +104,9 @@ static void ensure_attributes_exist(ParticleSimulationState *state, const fn::At
     }
   } while (found_layer_to_remove);
 
-  for (uint attribute_index : info.index_range()) {
+  for (int attribute_index : info.index_range()) {
     StringRefNull attribute_name = info.name_of(attribute_index);
-    const fn::CPPType &cpp_type = info.type_of(attribute_index);
+    const CPPType &cpp_type = info.type_of(attribute_index);
     CustomDataType custom_type = cpp_to_custom_data_type(cpp_type);
     if (CustomData_get_layer_named(&state->attributes, custom_type, attribute_name.c_str()) ==
         nullptr) {
@@ -120,15 +116,157 @@ static void ensure_attributes_exist(ParticleSimulationState *state, const fn::At
                                               nullptr,
                                               state->tot_particles,
                                               attribute_name.c_str());
-      cpp_type.fill_uninitialized(
-          info.default_of(attribute_index), data, (uint)state->tot_particles);
+      cpp_type.fill_uninitialized(info.default_of(attribute_index), data, state->tot_particles);
     }
   }
 }
 
+BLI_NOINLINE static void simulate_particle_chunk(SimulationSolveContext &solve_context,
+                                                 ParticleSimulationState &state,
+                                                 MutableAttributesRef attributes,
+                                                 MutableSpan<float> remaining_durations,
+                                                 float end_time)
+{
+  int particle_amount = attributes.size();
+
+  Span<const ParticleAction *> begin_actions =
+      solve_context.influences.particle_time_step_begin_actions.lookup_as(state.head.name);
+  for (const ParticleAction *action : begin_actions) {
+    ParticleChunkContext particles{IndexMask(particle_amount), attributes};
+    ParticleActionContext action_context{solve_context, particles};
+    action->execute(action_context);
+  }
+
+  Array<float3> force_vectors{particle_amount, {0, 0, 0}};
+  Span<const ParticleForce *> forces = solve_context.influences.particle_forces.lookup_as(
+      state.head.name);
+  for (const ParticleForce *force : forces) {
+    ParticleChunkContext particles{IndexMask(particle_amount), attributes};
+    ParticleForceContext particle_force_context{solve_context, particles, force_vectors};
+    force->add_force(particle_force_context);
+  }
+
+  MutableSpan<float3> positions = attributes.get<float3>("Position");
+  MutableSpan<float3> velocities = attributes.get<float3>("Velocity");
+  MutableSpan<float> birth_times = attributes.get<float>("Birth Time");
+  MutableSpan<int> dead_states = attributes.get<int>("Dead");
+
+  for (int i : IndexRange(particle_amount)) {
+    const float time_step = remaining_durations[i];
+    velocities[i] += force_vectors[i] * time_step;
+    positions[i] += velocities[i] * time_step;
+
+    if (end_time - birth_times[i] > 2) {
+      dead_states[i] = true;
+    }
+  }
+
+  Span<const ParticleAction *> end_actions =
+      solve_context.influences.particle_time_step_end_actions.lookup_as(state.head.name);
+  for (const ParticleAction *action : end_actions) {
+    ParticleChunkContext particles{IndexMask(particle_amount), attributes};
+    ParticleActionContext action_context{solve_context, particles};
+    action->execute(action_context);
+  }
+}
+
+BLI_NOINLINE static void simulate_existing_particles(SimulationSolveContext &solve_context,
+                                                     ParticleSimulationState &state,
+                                                     const AttributesInfo &attributes_info)
+{
+  CustomDataAttributesRef custom_data_attributes{
+      state.attributes, state.tot_particles, attributes_info};
+  MutableAttributesRef attributes = custom_data_attributes;
+
+  Array<float> remaining_durations(state.tot_particles, solve_context.solve_interval.duration());
+  simulate_particle_chunk(
+      solve_context, state, attributes, remaining_durations, solve_context.solve_interval.stop());
+}
+
+BLI_NOINLINE static void run_emitters(SimulationSolveContext &solve_context,
+                                      ParticleAllocators &particle_allocators)
+{
+  for (const ParticleEmitter *emitter : solve_context.influences.particle_emitters) {
+    ParticleEmitterContext emitter_context{
+        solve_context, particle_allocators, solve_context.solve_interval};
+    emitter->emit(emitter_context);
+  }
+}
+
+BLI_NOINLINE static int count_particles_after_time_step(ParticleSimulationState &state,
+                                                        ParticleAllocator &allocator)
+{
+  CustomDataAttributesRef custom_data_attributes{
+      state.attributes, state.tot_particles, allocator.attributes_info()};
+  MutableAttributesRef attributes = custom_data_attributes;
+  int new_particle_amount = attributes.get<int>("Dead").count(0);
+
+  for (MutableAttributesRef emitted_attributes : allocator.get_allocations()) {
+    new_particle_amount += emitted_attributes.get<int>("Dead").count(0);
+  }
+
+  return new_particle_amount;
+}
+
+BLI_NOINLINE static void remove_dead_and_add_new_particles(ParticleSimulationState &state,
+                                                           ParticleAllocator &allocator)
+{
+  const int new_particle_amount = count_particles_after_time_step(state, allocator);
+
+  CustomDataAttributesRef custom_data_attributes{
+      state.attributes, state.tot_particles, allocator.attributes_info()};
+
+  Vector<MutableAttributesRef> particle_sources;
+  particle_sources.append(custom_data_attributes);
+  particle_sources.extend(allocator.get_allocations());
+
+  CustomDataLayer *dead_layer = nullptr;
+
+  for (CustomDataLayer &layer : MutableSpan(state.attributes.layers, state.attributes.totlayer)) {
+    StringRefNull name = layer.name;
+    if (name == "Dead") {
+      dead_layer = &layer;
+      continue;
+    }
+    const CPPType &cpp_type = custom_to_cpp_data_type((CustomDataType)layer.type);
+    GMutableSpan new_buffer{
+        cpp_type,
+        MEM_mallocN_aligned(new_particle_amount * cpp_type.size(), cpp_type.alignment(), AT),
+        new_particle_amount};
+
+    int current = 0;
+    for (MutableAttributesRef attributes : particle_sources) {
+      Span<int> dead_states = attributes.get<int>("Dead");
+      GSpan source_buffer = attributes.get(name);
+      BLI_assert(source_buffer.type() == cpp_type);
+      for (int i : attributes.index_range()) {
+        if (dead_states[i] == 0) {
+          cpp_type.copy_to_uninitialized(source_buffer[i], new_buffer[current]);
+          current++;
+        }
+      }
+    }
+
+    if (layer.data != nullptr) {
+      MEM_freeN(layer.data);
+    }
+    layer.data = new_buffer.data();
+  }
+
+  BLI_assert(dead_layer != nullptr);
+  if (dead_layer->data != nullptr) {
+    MEM_freeN(dead_layer->data);
+  }
+  dead_layer->data = MEM_callocN(sizeof(int) * new_particle_amount, AT);
+
+  state.tot_particles = new_particle_amount;
+  state.next_particle_id += allocator.total_allocated();
+}
+
 void initialize_simulation_states(Simulation &simulation,
                                   Depsgraph &UNUSED(depsgraph),
-                                  const SimulationInfluences &UNUSED(influences))
+                                  const SimulationInfluences &UNUSED(influences),
+                                  const bke::PersistentDataHandleMap &UNUSED(handle_map))
 {
   simulation.current_simulation_time = 0.0f;
 }
@@ -136,94 +274,82 @@ void initialize_simulation_states(Simulation &simulation,
 void solve_simulation_time_step(Simulation &simulation,
                                 Depsgraph &depsgraph,
                                 const SimulationInfluences &influences,
+                                const bke::PersistentDataHandleMap &handle_map,
+                                const DependencyAnimations &dependency_animations,
                                 float time_step)
 {
-  SimulationSolveContext solve_context{simulation, depsgraph, influences};
-  TimeInterval simulation_time_interval{simulation.current_simulation_time, time_step};
+  SimulationStateMap state_map;
+  LISTBASE_FOREACH (SimulationState *, state, &simulation.states) {
+    state_map.add(state);
+  }
 
-  Map<std::string, std::unique_ptr<fn::AttributesInfo>> attribute_infos;
-  Map<std::string, std::unique_ptr<ParticleAllocator>> particle_allocators;
-  LISTBASE_FOREACH (ParticleSimulationState *, state, &simulation.states) {
-    const fn::AttributesInfoBuilder &builder = *influences.particle_attributes_builder.lookup_as(
+  SimulationSolveContext solve_context{simulation,
+                                       depsgraph,
+                                       influences,
+                                       TimeInterval(simulation.current_simulation_time, time_step),
+                                       state_map,
+                                       handle_map,
+                                       dependency_animations};
+
+  Span<ParticleSimulationState *> particle_simulation_states =
+      state_map.lookup<ParticleSimulationState>();
+
+  Map<std::string, std::unique_ptr<AttributesInfo>> attribute_infos;
+  Map<std::string, std::unique_ptr<ParticleAllocator>> particle_allocators_map;
+  for (ParticleSimulationState *state : particle_simulation_states) {
+    const AttributesInfoBuilder &builder = *influences.particle_attributes_builder.lookup_as(
         state->head.name);
-    auto info = std::make_unique<fn::AttributesInfo>(builder);
+    auto info = std::make_unique<AttributesInfo>(builder);
 
     ensure_attributes_exist(state, *info);
 
-    particle_allocators.add_new(
-        state->head.name, std::make_unique<ParticleAllocator>(*info, state->next_particle_id));
+    uint32_t hash_seed = DefaultHash<StringRef>{}(state->head.name);
+    particle_allocators_map.add_new(
+        state->head.name,
+        std::make_unique<ParticleAllocator>(*info, state->next_particle_id, hash_seed));
     attribute_infos.add_new(state->head.name, std::move(info));
   }
 
-  LISTBASE_FOREACH (ParticleSimulationState *, state, &simulation.states) {
-    const fn::AttributesInfo &attributes_info = *attribute_infos.lookup_as(state->head.name);
-    CustomDataAttributesRef custom_data_attributes{
-        state->attributes, (uint)state->tot_particles, attributes_info};
-    fn::MutableAttributesRef attributes = custom_data_attributes;
+  ParticleAllocators particle_allocators{particle_allocators_map};
 
-    MutableSpan<float3> positions = attributes.get<float3>("Position");
-    MutableSpan<float3> velocities = attributes.get<float3>("Velocity");
+  for (ParticleSimulationState *state : particle_simulation_states) {
+    const AttributesInfo &attributes_info = *attribute_infos.lookup_as(state->head.name);
+    simulate_existing_particles(solve_context, *state, attributes_info);
+  }
 
-    Array<float3> force_vectors{(uint)state->tot_particles, {0, 0, 0}};
-    const Vector<const ParticleForce *> *forces = influences.particle_forces.lookup_ptr(
-        state->head.name);
+  run_emitters(solve_context, particle_allocators);
 
-    if (forces != nullptr) {
-      ParticleChunkContext particle_chunk_context{IndexMask((uint)state->tot_particles),
-                                                  attributes};
-      ParticleForceContext particle_force_context{
-          solve_context, particle_chunk_context, force_vectors};
+  for (ParticleSimulationState *state : particle_simulation_states) {
+    ParticleAllocator &allocator = *particle_allocators.try_get_allocator(state->head.name);
 
-      for (const ParticleForce *force : *forces) {
-        force->add_force(particle_force_context);
+    for (MutableAttributesRef attributes : allocator.get_allocations()) {
+      Span<const ParticleAction *> actions = influences.particle_birth_actions.lookup_as(
+          state->head.name);
+      for (const ParticleAction *action : actions) {
+        ParticleChunkContext chunk_context{IndexRange(attributes.size()), attributes};
+        ParticleActionContext action_context{solve_context, chunk_context};
+        action->execute(action_context);
       }
     }
-
-    for (uint i : positions.index_range()) {
-      velocities[i] += force_vectors[i] * time_step;
-      positions[i] += velocities[i] * time_step;
-    }
   }
 
-  for (const ParticleEmitter *emitter : influences.particle_emitters) {
-    ParticleEmitterContext emitter_context{
-        solve_context, particle_allocators, simulation_time_interval};
-    emitter->emit(emitter_context);
-  }
+  for (ParticleSimulationState *state : particle_simulation_states) {
+    ParticleAllocator &allocator = *particle_allocators.try_get_allocator(state->head.name);
 
-  LISTBASE_FOREACH (ParticleSimulationState *, state, &simulation.states) {
-    const fn::AttributesInfo &attributes_info = *attribute_infos.lookup_as(state->head.name);
-    ParticleAllocator &allocator = *particle_allocators.lookup_as(state->head.name);
-
-    const uint emitted_particle_amount = allocator.total_allocated();
-    const uint old_particle_amount = state->tot_particles;
-    const uint new_particle_amount = old_particle_amount + emitted_particle_amount;
-
-    CustomData_realloc(&state->attributes, new_particle_amount);
-
-    CustomDataAttributesRef custom_data_attributes{
-        state->attributes, new_particle_amount, attributes_info};
-    fn::MutableAttributesRef attributes = custom_data_attributes;
-
-    uint offset = old_particle_amount;
-    for (fn::MutableAttributesRef emitted_attributes : allocator.get_allocations()) {
-      fn::MutableAttributesRef dst_attributes = attributes.slice(
-          IndexRange(offset, emitted_attributes.size()));
-      for (uint attribute_index : attributes.info().index_range()) {
-        fn::GMutableSpan emitted_data = emitted_attributes.get(attribute_index);
-        fn::GMutableSpan dst = dst_attributes.get(attribute_index);
-        const fn::CPPType &type = dst.type();
-        type.copy_to_uninitialized_n(
-            emitted_data.buffer(), dst.buffer(), emitted_attributes.size());
+    for (MutableAttributesRef attributes : allocator.get_allocations()) {
+      Array<float> remaining_durations(attributes.size());
+      Span<float> birth_times = attributes.get<float>("Birth Time");
+      const float end_time = solve_context.solve_interval.stop();
+      for (int i : attributes.index_range()) {
+        remaining_durations[i] = end_time - birth_times[i];
       }
-      offset += emitted_attributes.size();
+      simulate_particle_chunk(solve_context, *state, attributes, remaining_durations, end_time);
     }
 
-    state->tot_particles = new_particle_amount;
-    state->next_particle_id += emitted_particle_amount;
+    remove_dead_and_add_new_particles(*state, allocator);
   }
 
-  simulation.current_simulation_time = simulation_time_interval.end();
+  simulation.current_simulation_time = solve_context.solve_interval.stop();
 }
 
 }  // namespace blender::sim

@@ -1699,6 +1699,11 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
   /* set flags */
   G.f |= G_FLAG_RENDER_VIEWPORT;
 
+  /* There are too many functions inside the draw manager that check the shading type,
+   * so use a temporary override instead. */
+  const eDrawType drawtype_orig = v3d->shading.type;
+  v3d->shading.type = drawtype;
+
   {
     /* free images which can have changed on frame-change
      * warning! can be slow so only free animated images - campbell */
@@ -1739,6 +1744,7 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
 
   UI_Theme_Restore(&theme_state);
 
+  v3d->shading.type = drawtype_orig;
   G.f &= ~G_FLAG_RENDER_VIEWPORT;
 }
 
@@ -1948,10 +1954,10 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
                            NULL);
 
   if (ibuf->rect_float) {
-    GPU_offscreen_read_pixels(ofs, GL_FLOAT, ibuf->rect_float);
+    GPU_offscreen_read_pixels(ofs, GPU_DATA_FLOAT, ibuf->rect_float);
   }
   else if (ibuf->rect) {
-    GPU_offscreen_read_pixels(ofs, GL_UNSIGNED_BYTE, ibuf->rect);
+    GPU_offscreen_read_pixels(ofs, GPU_DATA_UNSIGNED_BYTE, ibuf->rect);
   }
 
   /* unbind */
