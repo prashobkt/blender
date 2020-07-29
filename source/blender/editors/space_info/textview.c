@@ -463,7 +463,7 @@ int textview_draw(TextViewContext *tvc,
           (data_flag & TVC_LINE_ICON_FG) ? icon_fg : NULL,
           (data_flag & TVC_LINE_ICON_BG) ? icon_bg : NULL,
           bg_sel);
-      while (text_line_iter->prev) {
+      while (text_line_iter->prev && !is_out_of_view_y) {
         text_line_iter = text_line_iter->prev;
         is_out_of_view_y |= !textview_draw_string(
             &tds,
@@ -475,6 +475,8 @@ int textview_draw(TextViewContext *tvc,
             NULL,
             bg_sel);
       }
+
+      textview_clear_text_lines(&text_lines);
 
       if (do_draw) {
         /* We always want the cursor to draw. */
@@ -494,8 +496,6 @@ int textview_draw(TextViewContext *tvc,
       }
 
       iter_index++;
-
-      textview_clear_text_lines(&text_lines);
     } while (tvc->step(tvc));
   }
 
