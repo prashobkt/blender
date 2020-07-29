@@ -1870,37 +1870,19 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl
   return 1;
 }
 
-static LineartRenderLine *lineart_triangle_share_edge(const LineartRenderTriangle *l,
-                                                      const LineartRenderTriangle *r)
+static bool *lineart_triangle_share_edge(const LineartRenderTriangle *l,
+                                         const LineartRenderTriangle *r)
 {
-  if (l->rl[0] == r->rl[0]) {
-    return r->rl[0];
+  if (l->rl[0]->tl == r || l->rl[0]->tr == r || l->rl[1]->tl == r || l->rl[1]->tr == r ||
+      l->rl[1]->tl == r || l->rl[1]->tr == r) {
+    return true;
   }
-  if (l->rl[0] == r->rl[1]) {
-    return r->rl[1];
+  if (l->rl[0] == r->rl[0] || l->rl[0] == r->rl[1] || l->rl[0] == r->rl[2] ||
+      l->rl[1] == r->rl[0] || l->rl[1] == r->rl[1] || l->rl[1] == r->rl[2] ||
+      l->rl[2] == r->rl[0] || l->rl[2] == r->rl[1] || l->rl[2] == r->rl[2]) {
+    return true;
   }
-  if (l->rl[0] == r->rl[2]) {
-    return r->rl[2];
-  }
-  if (l->rl[1] == r->rl[0]) {
-    return r->rl[0];
-  }
-  if (l->rl[1] == r->rl[1]) {
-    return r->rl[1];
-  }
-  if (l->rl[1] == r->rl[2]) {
-    return r->rl[2];
-  }
-  if (l->rl[2] == r->rl[0]) {
-    return r->rl[0];
-  }
-  if (l->rl[2] == r->rl[1]) {
-    return r->rl[1];
-  }
-  if (l->rl[2] == r->rl[2]) {
-    return r->rl[2];
-  }
-  return 0;
+  return false;
 }
 
 static LineartRenderVert *lineart_triangle_share_point(const LineartRenderTriangle *l,
