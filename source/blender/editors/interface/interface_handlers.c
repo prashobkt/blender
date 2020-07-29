@@ -866,7 +866,7 @@ static void ui_apply_but_autokey(bContext *C, uiBut *but)
 
     buf = WM_prop_pystring_assign(C, &but->rnapoin, but->rnaprop, but->rnaindex);
     if (buf) {
-      BKE_report(CTX_wm_reports(C), RPT_PROPERTY, buf);
+      BKE_report_format(CTX_wm_reports(C), RPT_PROPERTY, RPT_PYTHON, buf);
       MEM_freeN(buf);
 
       WM_event_add_notifier(C, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);

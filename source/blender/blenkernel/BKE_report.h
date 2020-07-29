@@ -42,7 +42,10 @@ void BKE_reports_init(ReportList *reports, int flag);
 void BKE_reports_clear(ReportList *reports);
 ReportList *BKE_reports_duplicate(ReportList *reports);
 
+void BKE_report_format(ReportList *reports, ReportType type, int flags, const char *message);
 void BKE_report(ReportList *reports, ReportType type, const char *message);
+void BKE_reportf_format(ReportList *reports, ReportType type, int flags, const char *format, ...)
+    ATTR_PRINTF_FORMAT(4, 5);
 void BKE_reportf(ReportList *reports, ReportType type, const char *format, ...)
     ATTR_PRINTF_FORMAT(3, 4);
 

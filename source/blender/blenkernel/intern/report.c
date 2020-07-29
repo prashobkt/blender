@@ -146,7 +146,7 @@ ReportList *BKE_reports_duplicate(ReportList *reports)
   return reports_new;
 }
 
-void BKE_report(ReportList *reports, ReportType type, const char *_message)
+void BKE_report_format(ReportList *reports, ReportType type, int flags, const char *_message)
 {
   Report *report;
   int len;
@@ -164,15 +164,8 @@ void BKE_report(ReportList *reports, ReportType type, const char *_message)
     char *message_alloc;
     report = MEM_callocN(sizeof(Report), "Report");
     report->type = type;
+    report->flag = flags;
     report->typestr = BKE_report_type_str(type);
-
-    /* TODO (grzelins) hack: we want to pass flags in argument */
-    if (report->type == RPT_PROPERTY) {
-      report->flag = RPT_PYTHON;
-    }
-    if (report->type == RPT_OPERATOR) {
-      report->flag = RPT_PYTHON;
-    }
 
     len = strlen(message);
     message_alloc = MEM_mallocN(sizeof(char) * (len + 1), "ReportMessage");
@@ -183,9 +176,13 @@ void BKE_report(ReportList *reports, ReportType type, const char *_message)
   }
 }
 
-void BKE_reportf(ReportList *reports, ReportType type, const char *_format, ...)
+void BKE_report(ReportList *reports, ReportType type, const char *_message)
 {
-  Report *report;
+  BKE_report_format(reports, type, 0, _message);
+}
+
+void BKE_reportf_format(ReportList *reports, ReportType type, int flags, const char *_format, ...)
+{
   va_list args;
   const char *format = TIP_(_format);
   DynStr *message = BLI_dynstr_new();
@@ -194,41 +191,29 @@ void BKE_reportf(ReportList *reports, ReportType type, const char *_format, ...)
   BLI_dynstr_vappendf(message, format, args);
   va_end(args);
 
-  /* TODO (grzelins) it is crucial to show anything when UI is not available, maybe enable this
-   * logger on warning level by default (and use appropriate severity level)? for example in
-   * versioning_280.c "Eevee material conversion problem" check logger to avoid allocating memory
-   * if logger is off
-   */
-  if (CLOG_CHECK_IN_USE(&LOG)) {
-    char *message_cstring = BLI_dynstr_get_cstring(message);
-    CLOG_AT_SEVERITY(&LOG,
-                     report_type_to_severity(type),
-                     0,
-                     "ReportList(%p):%s: %s",
-                     reports,
-                     BKE_report_type_str(type),
-                     message_cstring);
-    MEM_freeN(message_cstring);
-  }
+  char *cstring = BLI_dynstr_get_cstring(message);
 
-  if (reports) {
-    report = MEM_callocN(sizeof(Report), "Report");
+  BKE_report_format(reports, type, flags, cstring);
 
-    report->message = BLI_dynstr_get_cstring(message);
-    report->len = BLI_dynstr_get_len(message);
-    report->type = type;
-    report->typestr = BKE_report_type_str(type);
+  MEM_freeN(cstring);
+  BLI_dynstr_free(message);
+}
 
-    /* TODO (grzelins) hack: we want to pass flags in argument */
-    if (report->type == RPT_PROPERTY) {
-      report->flag = RPT_PYTHON;
-    }
-    if (report->type == RPT_OPERATOR) {
-      report->flag = RPT_PYTHON;
-    }
+void BKE_reportf(ReportList *reports, ReportType type, const char *_format, ...)
+{
+  va_list args;
+  const char *format = TIP_(_format);
+  DynStr *message = BLI_dynstr_new();
 
-    BLI_addtail(&reports->list, report);
-  }
+  va_start(args, _format);
+  BLI_dynstr_vappendf(message, format, args);
+  va_end(args);
+
+  char *cstring = BLI_dynstr_get_cstring(message);
+
+  BKE_report_format(reports, type, 0, cstring);
+
+  MEM_freeN(cstring);
   BLI_dynstr_free(message);
 }
 
