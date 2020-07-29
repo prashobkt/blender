@@ -101,8 +101,8 @@ void GpencilExporterSVG::create_document_header(void)
 
   pugi::xml_node doctype = doc.append_child(pugi::node_doctype);
   doctype.set_value(
-      "svg PUBLIC \"-//W3C//DTD SVG 1.0//EN\" "
-      "\"http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd\"");
+      "svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" "
+      "\"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\"");
 
   main_node = doc.append_child("svg");
   main_node.append_attribute("version").set_value("1.0");
