@@ -7331,11 +7331,11 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
-  prop = RNA_def_property(srna, "angle_splitting_threshold", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "angle_splitting_threshold", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_default(prop, 0.5f);
   RNA_def_property_ui_text(prop, "Angle Splitting", "angle splitting threshold in radian");
   /*  Don't allow value very close to PI, or we get a lot of small segments.*/
-  RNA_def_property_ui_range(prop, 0.0f, M_PI - 0.1, 0.01f, 2);
+  RNA_def_property_ui_range(prop, 0.0f, DEG2RAD(179), 0.01f, 2);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
