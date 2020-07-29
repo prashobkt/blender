@@ -3141,6 +3141,7 @@ SoftBody *sbNew(Scene *scene)
   sb->admmpd_max_admm_iters = 30;
   sb->admmpd_self_collision = 0;
   sb->admmpd_material = ADMMPD_MATERIAL_ARAP;
+  sb->admmpd_embed_res = 3;
   sb->admmpd_converge_eps = 1e-6;
   sb->admmpd_youngs_exp = 6;
   sb->admmpd_poisson = 0.399;
@@ -3148,7 +3149,7 @@ SoftBody *sbNew(Scene *scene)
   sb->admmpd_collisionstiff = 1;
   sb->admmpd_goalstiff = 0.7;
   sb->admmpd_floor_z = -999;
-
+  sb->admmpd_gravity = -9.8;
 
   sb->mediafrict = 0.5f;
   sb->nodemass = 1.0f;

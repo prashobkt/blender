@@ -220,6 +220,7 @@ typedef struct SoftBody {
   int admmpd_max_admm_iters; // max solver iterations
   int admmpd_self_collision; // 0 or 1
   int admmpd_material; // see enum
+  int admmpd_embed_res; // embedded resolution depth
   float admmpd_converge_eps; // convergence epsilon
   float admmpd_youngs_exp; // Youngs mod exponent
   float admmpd_poisson; // Poisson ratio
@@ -227,6 +228,7 @@ typedef struct SoftBody {
   float admmpd_collisionstiff; // 0 to 1
   float admmpd_goalstiff; // 0 to 1
   float admmpd_floor_z; // floor position
+  float admmpd_gravity; // in m/s^2
   int admmpd_pad;
 
 

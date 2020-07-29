@@ -92,6 +92,7 @@ class PHYSICS_PT_softbody_object(PhysicButtonsPanel, Panel):
 
             col = flow.column()
             col.prop(softbody, "admmpd_material")
+            col.prop(softbody, "admmpd_embed_res")
             col.prop(softbody, "admmpd_youngs_exp")
             col.prop(softbody, "admmpd_poisson")
             col.prop(softbody, "admmpd_density_kgm3")
@@ -414,6 +415,7 @@ class PHYSICS_PT_softbody_solver(PhysicButtonsPanel, Panel):
             col.prop(softbody, "admmpd_substeps")
             col.prop(softbody, "admmpd_max_admm_iters")
             col.prop(softbody, "admmpd_converge_eps")
+            col.prop(softbody, "admmpd_gravity")
 
 class PHYSICS_PT_softbody_solver_diagnostics(PhysicButtonsPanel, Panel):
     bl_label = "Diagnostics"

@@ -74,6 +74,7 @@ static inline void options_from_object(Object *ob, admmpd::Options *op)
   op->poisson = std::max(0.f,std::min(0.499f,sb->admmpd_poisson));
   op->floor = sb->admmpd_floor_z;
   op->self_collision = sb->admmpd_self_collision;
+  op->grav[2] = sb->admmpd_gravity;
 
   switch(sb->admmpd_material)
   {
@@ -216,6 +217,9 @@ static inline int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, Object *o
 
   iface->out_totverts = 0;
   iface->idata->mesh = std::make_shared<admmpd::EmbeddedMesh>();
+  std::shared_ptr<admmpd::EmbeddedMesh> emb_msh =
+    std::dynamic_pointer_cast<admmpd::EmbeddedMesh>(iface->idata->mesh);
+  emb_msh->options.max_subdiv_levels = ob->soft->admmpd_embed_res;
   bool success = iface->idata->mesh->create(
     v.data(),
     v.size()/3,
@@ -231,10 +235,7 @@ static inline int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, Object *o
     return 0;
   }
 
-  std::shared_ptr<admmpd::EmbeddedMesh> emb_msh =
-    std::dynamic_pointer_cast<admmpd::EmbeddedMesh>(iface->idata->mesh);
   iface->idata->collision = std::make_unique<admmpd::EmbeddedMeshCollision>(emb_msh);
-
   return 1;
 }
 

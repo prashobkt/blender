@@ -1837,6 +1837,12 @@ static void rna_def_softbody(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Mesh Mode", "ADMM-PD initialization mode");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
+  prop = RNA_def_property(srna, "admmpd_gravity", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "admmpd_gravity");
+  //RNA_def_property_range(prop, 1.f, 10.f);
+  RNA_def_property_ui_text(prop, "Gravity", "Gravity in m/s^2");
+  RNA_def_property_update(prop, 0, "rna_softbody_update");
+
   prop = RNA_def_property(srna, "admmpd_substeps", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "admmpd_substeps");
   RNA_def_property_range(prop, 1.f, 100.f);
@@ -1871,6 +1877,12 @@ static void rna_def_softbody(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "admmpd_material");
   RNA_def_property_enum_items(prop, admmmaterial_type_items);
   RNA_def_property_ui_text(prop, "Material", "Elastic material model");
+  RNA_def_property_update(prop, 0, "rna_softbody_update");
+
+  prop = RNA_def_property(srna, "admmpd_embed_res", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "admmpd_embed_res");
+  RNA_def_property_range(prop, 1.f, 5.f);
+  RNA_def_property_ui_text(prop, "Lattice Resolution", "Max depth of lattice subdivisions");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   prop = RNA_def_property(srna, "admmpd_density_kgm3", PROP_FLOAT, PROP_NONE);
