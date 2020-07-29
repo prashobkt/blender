@@ -69,6 +69,7 @@ set(DEFSRC
   rna_packedfile.c
   rna_palette.c
   rna_particle.c
+  rna_pointcloud.c
   rna_pose.c
   rna_render.c
   rna_rigidbody.c
@@ -82,7 +83,6 @@ set(DEFSRC
   rna_sound.c
   rna_space.c
   rna_speaker.c
-  rna_pointcloud.c
   rna_test.c
   rna_text.c
   rna_texture.c
@@ -175,6 +175,7 @@ set(SRC
   ${DEFSRC}
   ${APISRC}
   ../../../../intern/clog/clog.c
+  ../../../../intern/guardedalloc/intern/leak_detector.cc
   ../../../../intern/guardedalloc/intern/mallocn.c
   ../../../../intern/guardedalloc/intern/mallocn_guarded_impl.c
   ../../../../intern/guardedalloc/intern/mallocn_lockfree_impl.c
@@ -360,7 +361,7 @@ blender_include_dirs(
   ../../imbuf
   ../../makesdna
   ../../nodes/
-  ../../physics
+  ../../simulation
   ../../windowmanager
   ../../editors/include
   ../../render/extern/include

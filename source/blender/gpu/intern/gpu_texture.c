@@ -45,6 +45,16 @@
 
 #include "gpu_context_private.h"
 
+#define WARN_NOT_BOUND(_tex) \
+  { \
+    if (_tex->number == -1) { \
+      fprintf(stderr, "Warning : Trying to set parameter on a texture not bound.\n"); \
+      BLI_assert(0); \
+      return; \
+    } \
+  } \
+  ((void)0)
+
 static struct GPUTextureGlobal {
   /** Texture used in place of invalid textures (not loaded correctly, missing). */
   GPUTexture *invalid_tex_1D;
@@ -52,6 +62,7 @@ static struct GPUTextureGlobal {
   GPUTexture *invalid_tex_3D;
   /** Sampler objects used to replace internal texture parameters. */
   GLuint samplers[GPU_SAMPLER_MAX];
+  GLuint icon_sampler;
 } GG = {NULL};
 
 /* Maximum number of FBOs a texture can be attached to. */
@@ -1175,8 +1186,27 @@ GPUTexture *GPU_texture_create_buffer(eGPUTextureFormat tex_format, const GLuint
   return tex;
 }
 
-GPUTexture *GPU_texture_from_bindcode(int textarget, int bindcode)
+static GLenum convert_target_to_gl(eGPUTextureTarget target)
 {
+  switch (target) {
+    case TEXTARGET_2D:
+      return GL_TEXTURE_2D;
+    case TEXTARGET_CUBE_MAP:
+      return GL_TEXTURE_CUBE_MAP;
+    case TEXTARGET_2D_ARRAY:
+      return GL_TEXTURE_2D_ARRAY;
+    case TEXTARGET_TILE_MAPPING:
+      return GL_TEXTURE_1D_ARRAY;
+    default:
+      BLI_assert(0);
+      return GL_TEXTURE_2D;
+  }
+}
+
+GPUTexture *GPU_texture_from_bindcode(eGPUTextureTarget target, int bindcode)
+{
+  GLenum textarget = convert_target_to_gl(target);
+
   GPUTexture *tex = MEM_callocN(sizeof(GPUTexture), "GPUTexture");
   tex->bindcode = bindcode;
   tex->refcount = 1;
@@ -1464,18 +1494,11 @@ void GPU_texture_update_sub(GPUTexture *tex,
   BLI_assert((int)tex->format > -1);
   BLI_assert(tex->components > -1);
 
-  const uint bytesize = gpu_get_bytesize(tex->format);
   GLenum data_format = gpu_get_gl_dataformat(tex->format, &tex->format_flag);
   GLenum data_type = gpu_get_gl_datatype(gpu_data_format);
-  GLint alignment;
 
-  /* The default pack size for textures is 4, which won't work for byte based textures */
-  if (bytesize == 1) {
-    glGetIntegerv(GL_UNPACK_ALIGNMENT, &alignment);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  }
+  WARN_NOT_BOUND(tex);
 
-  glBindTexture(tex->target, tex->bindcode);
   switch (tex->target) {
     case GL_TEXTURE_1D:
       glTexSubImage1D(tex->target, 0, offset_x, width, data_format, data_type, pixels);
@@ -1503,12 +1526,6 @@ void GPU_texture_update_sub(GPUTexture *tex,
     default:
       BLI_assert(!"tex->target mode not supported");
   }
-
-  if (bytesize == 1) {
-    glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
-  }
-
-  glBindTexture(tex->target, 0);
 }
 
 void *GPU_texture_read(GPUTexture *tex, eGPUDataFormat gpu_data_format, int miplvl)
@@ -1802,16 +1819,6 @@ void GPU_texture_unbind_all(void)
   glActiveTexture(GL_TEXTURE0);
 }
 
-#define WARN_NOT_BOUND(_tex) \
-  { \
-    if (_tex->number == -1) { \
-      fprintf(stderr, "Warning : Trying to set parameter on a texture not bound.\n"); \
-      BLI_assert(0); \
-      return; \
-    } \
-  } \
-  ((void)0)
-
 void GPU_texture_generate_mipmap(GPUTexture *tex)
 {
   WARN_NOT_BOUND(tex);
@@ -1961,15 +1968,40 @@ void GPU_texture_wrap_mode(GPUTexture *tex, bool use_repeat, bool use_clamp)
   SET_FLAG_FROM_TEST(tex->sampler_state, !use_clamp, GPU_SAMPLER_CLAMP_BORDER);
 }
 
-void GPU_texture_swizzle_channel_auto(GPUTexture *tex, int channels)
+static int gpu_texture_swizzle_to_enum(const char swizzle)
+{
+  switch (swizzle) {
+    case 'w':
+    case 'a':
+      return GL_ALPHA;
+    case 'z':
+    case 'b':
+      return GL_BLUE;
+    case 'y':
+    case 'g':
+      return GL_GREEN;
+    case '0':
+      return GL_ZERO;
+    case '1':
+      return GL_ONE;
+    case 'x':
+    case 'r':
+    default:
+      return GL_RED;
+  }
+}
+
+void GPU_texture_swizzle_set(GPUTexture *tex, const char swizzle[4])
 {
   WARN_NOT_BOUND(tex);
 
+  GLint gl_swizzle[4] = {gpu_texture_swizzle_to_enum(swizzle[0]),
+                         gpu_texture_swizzle_to_enum(swizzle[1]),
+                         gpu_texture_swizzle_to_enum(swizzle[2]),
+                         gpu_texture_swizzle_to_enum(swizzle[3])};
+
   glActiveTexture(GL_TEXTURE0 + tex->number);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_R, GL_RED);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_G, (channels >= 2) ? GL_GREEN : GL_RED);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_B, (channels >= 3) ? GL_BLUE : GL_RED);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_A, (channels >= 4) ? GL_ALPHA : GL_ONE);
+  glTexParameteriv(tex->target_base, GL_TEXTURE_SWIZZLE_RGBA, gl_swizzle);
 }
 
 void GPU_texture_free(GPUTexture *tex)
@@ -2176,11 +2208,23 @@ void GPU_samplers_init(void)
      * - GL_TEXTURE_LOD_BIAS is 0.0f.
      **/
   }
+
+  /* Custom sampler for icons. */
+  glGenSamplers(1, &GG.icon_sampler);
+  glSamplerParameteri(GG.icon_sampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+  glSamplerParameteri(GG.icon_sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glSamplerParameteri(GG.icon_sampler, GL_TEXTURE_LOD_BIAS, -0.5f);
+}
+
+void GPU_sampler_icon_bind(int unit)
+{
+  glBindSampler(unit, GG.icon_sampler);
 }
 
 void GPU_samplers_free(void)
 {
   glDeleteSamplers(GPU_SAMPLER_MAX, GG.samplers);
+  glDeleteSamplers(1, &GG.icon_sampler);
 }
 
 /** \} */

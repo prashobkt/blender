@@ -56,10 +56,10 @@ def main():
         ['EDGE', {1, 2, 3, 5}, "test 17",  'Pyr4_test', 'Pyr4_result_5', 'bevel', {'offset': 0.2, 'segments': 3}],
         ['EDGE', {2, 3}, "test 18",  'Pyr4_test', 'Pyr4_result_6', 'bevel', {'offset': 0.2, 'segments': 2}],
         ['EDGE', {1, 2, 3, 5}, "test 19",  'Pyr4_test', 'Pyr4_result_7', 'bevel', {'offset': 0.2, 'segments': 4, 'profile': 0.15}],
-        ['VERT', {1}, "test 20",  'Pyr4_test', 'Pyr4_result_8', 'bevel', {'offset': 0.75, 'segments': 4, 'vertex_only': True}],
+        ['VERT', {1}, "test 20",  'Pyr4_test', 'Pyr4_result_8', 'bevel', {'offset': 0.75, 'segments': 4, 'affect': 'VERTICES'}],
         # 20
         ['VERT', {1}, "test 21",  'Pyr4_test', 'Pyr4_result_9', 'bevel',
-         {'offset': 0.75, 'segments': 3, 'vertex_only': True, 'profile': 0.25}],
+         {'offset': 0.75, 'segments': 3, 'affect': 'VERTICES', 'profile': 0.25}],
         ['EDGE', {2, 3}, "test 22",  'Pyr6_test', 'Pyr6_result_1', 'bevel', {'offset': 0.2}],
         ['EDGE', {8, 2, 3}, "test 23",  'Pyr6_test', 'Pyr6_result_2', 'bevel', {'offset': 0.2, 'segments': 2}],
         ['EDGE', {0, 2, 3, 4, 6, 7, 9, 10, 11}, "test 24",  'Pyr6_test', 'Pyr6_result_3', 'bevel',
@@ -68,8 +68,9 @@ def main():
         # 25
         ['EDGE', {8, 9, 11}, "test 26",  'Sept_test', 'Sept_result_2', 'bevel', {'offset': 0.1, 'offset_type': 'WIDTH'}],
         ['EDGE', {2, 8, 9, 12, 13, 14}, "test 27",  'Saddle_test', 'Saddle_result_1', 'bevel', {'offset': 0.3, 'segments': 5}],
-        ['VERT', {4}, "test 28",  'Saddle_test', 'Saddle_result_2', 'bevel', {'offset': 0.6, 'segments': 6, 'vertex_only': True}],
+        ['VERT', {4}, "test 28",  'Saddle_test', 'Saddle_result_2', 'bevel', {'offset': 0.6, 'segments': 6, 'affect': 'VERTICES'}],
         ['EDGE', {2, 5, 8, 11, 14, 18, 21, 24, 27, 30, 34, 37, 40, 43, 46, 50, 53, 56, 59, 62, 112, 113, 114, 115}, "test 29",
+
          'Bent_test', 'Bent_result_1', 'bevel', {'offset': 0.2, 'segments': 3}],
         ['EDGE', {1, 8, 9, 10, 11}, "test 31",  'Bentlines_test', 'Bentlines_result_1', 'bevel', {'offset': 0.2, 'segments': 3}],
         # 30
@@ -82,17 +83,17 @@ def main():
         ['EDGE', {0, 1, 2, 10}, "test 36",  'Wires_test', 'Wires_test_result_1', 'bevel', {'offset': 0.3}],
         # 35
         ['VERT', {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, "test 37",  'Wires_test', 'Wires_test_result_2', 'bevel',
-         {'offset': 0.3, 'vertex_only': True}],
+         {'offset': 0.3, 'affect': 'VERTICES'}],
         ['EDGE', {3, 4, 5}, "test 38",  'tri', 'tri_result_1', 'bevel', {'offset': 0.2}],
         ['EDGE', {3, 4, 5}, "test 39",  'tri', 'tri_result_2', 'bevel', {'offset': 0.2, 'segments': 2}],
         ['EDGE', {3, 4, 5}, "test 40",  'tri', 'tri_result_3', 'bevel', {'offset': 0.2, 'segments': 3}],
         ['EDGE', {3, 4}, "test 41",  'tri', 'tri_result_4', 'bevel', {'offset': 0.2}],
         # 40
         ['EDGE', {3, 4}, "test 42",  'tri', 'tri_result_5', 'bevel', {'offset': 0.2, 'segments': 2}],
-        ['VERT', {3}, "test 43",  'tri', 'tri_result_6', 'bevel', {'offset': 0.2, 'vertex_only': True}],
-        ['VERT', {3}, "test 44",  'tri', 'tri_result_7', 'bevel', {'offset': 0.2, 'segments': 2, 'vertex_only': True}],
-        ['VERT', {3}, "test 45",  'tri', 'tri_result_8', 'bevel', {'offset': 0.2, 'segments': 3, 'vertex_only': True}],
-        ['VERT', {1}, "test 46",  'tri', 'tri_result_9', 'bevel', {'offset': 0.2, 'vertex_only': True}],
+        ['VERT', {3}, "test 43",  'tri', 'tri_result_6', 'bevel', {'offset': 0.2, 'affect': 'VERTICES'}],
+        ['VERT', {3}, "test 44",  'tri', 'tri_result_7', 'bevel', {'offset': 0.2, 'segments': 2, 'affect': 'VERTICES'}],
+        ['VERT', {3}, "test 45",  'tri', 'tri_result_8', 'bevel', {'offset': 0.2, 'segments': 3, 'affect': 'VERTICES'}],
+        ['VERT', {1}, "test 46",  'tri', 'tri_result_9', 'bevel', {'offset': 0.2, 'affect': 'VERTICES'}],
         # 45
         ['EDGE', {3, 4, 5}, "test 47",  'tri1gap', 'tri1gap_result_1', 'bevel', {'offset': 0.2}],
         ['EDGE', {3, 4, 5}, "test 48",  'tri1gap', 'tri1gap_result_2', 'bevel', {'offset': 0.2, 'segments': 2}],
@@ -104,7 +105,7 @@ def main():
         ['EDGE', {3, 5}, "test 53",  'tri1gap', 'tri1gap_result_7', 'bevel', {'offset': 0.2}],
         ['EDGE', {3, 5}, "test 54",  'tri1gap', 'tri1gap_result_8', 'bevel', {'offset': 0.2, 'segments': 2}],
         ['EDGE', {3, 5}, "test 55",  'tri1gap', 'tri1gap_result_9', 'bevel', {'offset': 0.2, 'segments': 3}],
-        ['VERT', {3}, "test 56",  'tri1gap', 'tri1gap_result_10', 'bevel', {'offset': 0.2, 'vertex_only': True}],
+        ['VERT', {3}, "test 56",  'tri1gap', 'tri1gap_result_10', 'bevel', {'offset': 0.2, 'affect': 'VERTICES'}],
         # 55
         ['EDGE', {3, 4, 5}, "test 57",  'tri2gaps', 'tri2gaps_result_1', 'bevel', {'offset': 0.2}],
         ['EDGE', {3, 4, 5}, "test 58",  'tri2gaps', 'tri2gaps_result_2', 'bevel', {'offset': 0.2, 'segments': 2}],

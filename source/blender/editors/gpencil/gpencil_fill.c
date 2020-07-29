@@ -398,8 +398,8 @@ static bool gpencil_render_offscreen(tGPDfill *tgpf)
   GPU_matrix_push();
   GPU_matrix_identity_set();
 
-  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
+  GPU_clear(GPU_COLOR_BIT | GPU_DEPTH_BIT);
 
   ED_view3d_update_viewmat(
       tgpf->depsgraph, tgpf->scene, tgpf->v3d, tgpf->region, NULL, winmat, NULL, true);
@@ -416,10 +416,10 @@ static bool gpencil_render_offscreen(tGPDfill *tgpf)
 
   /* create a image to see result of template */
   if (ibuf->rect_float) {
-    GPU_offscreen_read_pixels(offscreen, GL_FLOAT, ibuf->rect_float);
+    GPU_offscreen_read_pixels(offscreen, GPU_DATA_FLOAT, ibuf->rect_float);
   }
   else if (ibuf->rect) {
-    GPU_offscreen_read_pixels(offscreen, GL_UNSIGNED_BYTE, ibuf->rect);
+    GPU_offscreen_read_pixels(offscreen, GPU_DATA_UNSIGNED_BYTE, ibuf->rect);
   }
   if (ibuf->rect_float && ibuf->rect) {
     IMB_rect_from_float(ibuf);

@@ -27,19 +27,25 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_ID.h"
+#include "DNA_collection_types.h"
 #include "DNA_key_types.h"
 #include "DNA_object_types.h"
+#include "DNA_scene_types.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
 #include "BKE_armature.h"
+#include "BKE_collection.h"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
+#include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_override.h"
+#include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
+#include "BKE_scene.h"
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
@@ -149,8 +155,8 @@ void BKE_lib_override_library_clear(IDOverrideLibrary *override, const bool do_i
 {
   BLI_assert(override != NULL);
 
-  if (override->runtime != NULL) {
-    BLI_ghash_clear(override->runtime, NULL, NULL);
+  if (!ELEM(NULL, override->runtime, override->runtime->rna_path_to_override_properties)) {
+    BLI_ghash_clear(override->runtime->rna_path_to_override_properties, NULL, NULL);
   }
 
   LISTBASE_FOREACH (IDOverrideLibraryProperty *, op, &override->properties) {
@@ -170,8 +176,10 @@ void BKE_lib_override_library_free(struct IDOverrideLibrary **override, const bo
   BLI_assert(*override != NULL);
 
   if ((*override)->runtime != NULL) {
-    BLI_ghash_free((*override)->runtime, NULL, NULL);
-    (*override)->runtime = NULL;
+    if ((*override)->runtime->rna_path_to_override_properties != NULL) {
+      BLI_ghash_free((*override)->runtime->rna_path_to_override_properties, NULL, NULL);
+    }
+    MEM_SAFE_FREE((*override)->runtime);
   }
 
   BKE_lib_override_library_clear(*override, do_id_user);
@@ -354,19 +362,284 @@ bool BKE_lib_override_library_create_from_tag(Main *bmain)
   return success;
 }
 
-/* We only build override GHash on request. */
-BLI_INLINE IDOverrideLibraryRuntime *override_library_rna_path_mapping_ensure(
-    IDOverrideLibrary *override)
+static bool lib_override_hierarchy_recursive_tag(Main *bmain, ID *id, const uint tag)
 {
-  if (override->runtime == NULL) {
-    override->runtime = BLI_ghash_new(
-        BLI_ghashutil_strhash_p_murmur, BLI_ghashutil_strcmp, __func__);
-    for (IDOverrideLibraryProperty *op = override->properties.first; op != NULL; op = op->next) {
-      BLI_ghash_insert(override->runtime, op->rna_path, op);
+  void **entry_vp = BLI_ghash_lookup_p(bmain->relations->id_user_to_used, id);
+  if (entry_vp == NULL) {
+    /* Already processed. */
+    return (id->tag & tag) != 0;
+  }
+
+  /* This way we won't process again that ID should we encounter it again through another
+   * relationship hierarchy.
+   * Note that this does not free any memory from relations, so we can still use the entries.
+   */
+  BKE_main_relations_ID_remove(bmain, id);
+
+  for (MainIDRelationsEntry *entry = *entry_vp; entry != NULL; entry = entry->next) {
+    if ((entry->usage_flag & IDWALK_CB_LOOPBACK) != 0) {
+      /* Never consider 'loop back' relationships ('from', 'parents', 'owner' etc. pointers) as
+       * actual dependencies. */
+      continue;
+    }
+    /* We only consider IDs from the same library. */
+    if (entry->id_pointer != NULL && (*entry->id_pointer)->lib == id->lib) {
+      if (lib_override_hierarchy_recursive_tag(bmain, *entry->id_pointer, tag)) {
+        id->tag |= tag;
+      }
     }
   }
 
+  return (id->tag & tag) != 0;
+}
+
+/**
+ * Tag all IDs in given \a bmain that are being used by given \a id_root ID or its dependencies,
+ * recursively.
+ *
+ * This will include all local IDs, and all IDs from the same library as the \a id_root.
+ *
+ * \param id_root The root of the hierarchy of dependencies to be tagged.
+ * \param do_create_main_relashionships Whether main relations needs to be created or already exist
+ *                                      (in any case, they will be freed by this function).
+ */
+void BKE_lib_override_library_dependencies_tag(struct Main *bmain,
+                                               struct ID *id_root,
+                                               const uint tag,
+                                               const bool do_create_main_relashionships)
+{
+  if (do_create_main_relashionships) {
+    BKE_main_relations_create(bmain, 0);
+  }
+
+  /* Then we tag all intermediary data-blocks in-between two overridden ones (e.g. if a shapekey
+   * has a driver using an armature object's bone, we need to override the shapekey/obdata, the
+   * objects using them, etc.) */
+  lib_override_hierarchy_recursive_tag(bmain, id_root, tag);
+
+  BKE_main_relations_free(bmain);
+}
+
+static int lib_override_library_make_tag_ids_cb(LibraryIDLinkCallbackData *cb_data)
+{
+  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_LOOPBACK)) {
+    return IDWALK_RET_STOP_RECURSION;
+  }
+
+  ID *id_root = cb_data->user_data;
+  Library *library_root = id_root->lib;
+  ID *id = *cb_data->id_pointer;
+  ID *id_owner = cb_data->id_owner;
+
+  BLI_assert(id_owner == cb_data->id_self);
+
+  if (ELEM(id, NULL, id_owner)) {
+    return IDWALK_RET_NOP;
+  }
+
+  BLI_assert(id->lib != NULL);
+  BLI_assert(id_owner->lib == library_root);
+
+  if (id->tag & LIB_TAG_DOIT) {
+    /* Already processed, but maybe not with the same chain of dependency, so we need to check that
+     * one nonetheless. */
+    return IDWALK_RET_STOP_RECURSION;
+  }
+
+  if (id->lib != library_root) {
+    /* We do not override data-blocks from other libraries, nor do we process them. */
+    return IDWALK_RET_STOP_RECURSION;
+  }
+
+  /* We tag all collections and objects for override. And we also tag all other data-blocks which
+   * would user one of those. */
+  if (ELEM(GS(id->name), ID_OB, ID_GR)) {
+    id->tag |= LIB_TAG_DOIT;
+  }
+
+  return IDWALK_RET_NOP;
+}
+
+/**
+ * Advanced 'smart' function to create fully functional overrides.
+ *
+ * \note Currently it only does special things if given \a id_root is an object of collection, more
+ * specific behaviors may be added in the future for other ID types.
+ *
+ * \note It will overrides all IDs tagged with \a LIB_TAG_DOIT, and it does not clear that tag at
+ * its beginning, so caller code can add extra data-blocks to be overridden as well.
+ *
+ * \note In the future that same function may be extended to support 'refresh' of overrides
+ * (rebuilding overrides from linked data, trying to preserve local overrides already defined).
+ *
+ * \param id_root The root ID to create an override from.
+ * \param id_reference some reference ID used to do some post-processing after overrides have been
+ *                     created, may be NULL. Typically, the Empty object instantiating the linked
+ *                     collection we override, currently.
+ * \return true if override was successfully created.
+ */
+bool BKE_lib_override_library_create(
+    Main *bmain, Scene *scene, ViewLayer *view_layer, ID *id_root, ID *id_reference)
+{
+  /* Tag all collections and objects, as well as other IDs using them. */
+  id_root->tag |= LIB_TAG_DOIT;
+
+  BKE_main_relations_create(bmain, 0);
+
+  if (ELEM(GS(id_root->name), ID_OB, ID_GR)) {
+    BKE_library_foreach_ID_link(bmain,
+                                id_root,
+                                lib_override_library_make_tag_ids_cb,
+                                id_root,
+                                IDWALK_READONLY | IDWALK_RECURSE);
+
+    /* Then, we remove (untag) bone shape objects, you shall never want to override those
+     * (hopefully)... */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->type == OB_ARMATURE && ob->pose != NULL && (ob->id.tag & LIB_TAG_DOIT)) {
+        for (bPoseChannel *pchan = ob->pose->chanbase.first; pchan != NULL; pchan = pchan->next) {
+          if (pchan->custom != NULL) {
+            pchan->custom->id.tag &= ~LIB_TAG_DOIT;
+          }
+        }
+      }
+    }
+  }
+
+  /* Note that this call will also free the main relations data we created above. */
+  BKE_lib_override_library_dependencies_tag(bmain, id_root, LIB_TAG_DOIT, false);
+
+  const bool success = BKE_lib_override_library_create_from_tag(bmain);
+
+  if (success) {
+    BKE_main_collection_sync(bmain);
+
+    switch (GS(id_root->name)) {
+      case ID_GR: {
+        Object *ob_reference = id_reference != NULL && GS(id_reference->name) == ID_OB ?
+                                   (Object *)id_reference :
+                                   NULL;
+        Collection *collection_new = ((Collection *)id_root->newid);
+        if (ob_reference != NULL) {
+          BKE_collection_add_from_object(bmain, scene, ob_reference, collection_new);
+        }
+        else {
+          BKE_collection_add_from_collection(
+              bmain, scene, ((Collection *)id_root), collection_new);
+        }
+
+        FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (collection_new, ob_new) {
+          if (ob_new != NULL && ob_new->id.override_library != NULL) {
+            if (ob_reference != NULL) {
+              Base *base;
+              if ((base = BKE_view_layer_base_find(view_layer, ob_new)) == NULL) {
+                BKE_collection_object_add_from(bmain, scene, ob_reference, ob_new);
+                base = BKE_view_layer_base_find(view_layer, ob_new);
+                DEG_id_tag_update_ex(
+                    bmain, &ob_new->id, ID_RECALC_TRANSFORM | ID_RECALC_BASE_FLAGS);
+              }
+
+              if (ob_new == (Object *)ob_reference->id.newid) {
+                /* TODO: is setting active needed? */
+                BKE_view_layer_base_select_and_set_active(view_layer, base);
+              }
+            }
+            else if (BKE_view_layer_base_find(view_layer, ob_new) == NULL) {
+              BKE_collection_object_add(bmain, collection_new, ob_new);
+              DEG_id_tag_update_ex(bmain, &ob_new->id, ID_RECALC_TRANSFORM | ID_RECALC_BASE_FLAGS);
+            }
+          }
+        }
+        FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
+        break;
+      }
+      case ID_OB: {
+        BKE_collection_object_add_from(
+            bmain, scene, (Object *)id_root, ((Object *)id_root->newid));
+        break;
+      }
+      default:
+        break;
+    }
+
+    /* We need to ensure all new overrides of objects are properly instantiated. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      Object *ob_new = (Object *)ob->id.newid;
+      if (ob_new != NULL) {
+        BLI_assert(ob_new->id.override_library != NULL &&
+                   ob_new->id.override_library->reference == &ob->id);
+
+        Collection *default_instantiating_collection = NULL;
+        if (BKE_view_layer_base_find(view_layer, ob_new) == NULL) {
+          if (default_instantiating_collection == NULL) {
+            switch (GS(id_root->name)) {
+              case ID_GR: {
+                default_instantiating_collection = BKE_collection_add(
+                    bmain, (Collection *)id_root, "OVERRIDE_HIDDEN");
+                break;
+              }
+              case ID_OB: {
+                /* Add the new container collection to one of the collections instantiating the
+                 * root object, or scene's master collection if none found. */
+                Object *ob_root = (Object *)id_root;
+                LISTBASE_FOREACH (Collection *, collection, &bmain->collections) {
+                  if (BKE_collection_has_object(collection, ob_root) &&
+                      BKE_view_layer_has_collection(view_layer, collection) &&
+                      !ID_IS_LINKED(collection) && !ID_IS_OVERRIDE_LIBRARY(collection)) {
+                    default_instantiating_collection = BKE_collection_add(
+                        bmain, collection, "OVERRIDE_HIDDEN");
+                  }
+                }
+                if (default_instantiating_collection == NULL) {
+                  default_instantiating_collection = BKE_collection_add(
+                      bmain, scene->master_collection, "OVERRIDE_HIDDEN");
+                }
+                break;
+              }
+              default:
+                BLI_assert(0);
+            }
+            /* Hide the collection from viewport and render. */
+            default_instantiating_collection->flag |= COLLECTION_RESTRICT_VIEWPORT |
+                                                      COLLECTION_RESTRICT_RENDER;
+          }
+
+          BKE_collection_object_add(bmain, default_instantiating_collection, ob_new);
+          DEG_id_tag_update_ex(bmain, &ob_new->id, ID_RECALC_TRANSFORM | ID_RECALC_BASE_FLAGS);
+        }
+      }
+    }
+  }
+
+  /* Cleanup. */
+  BKE_main_id_clear_newpoins(bmain);
+  BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
+
+  return success;
+}
+
+BLI_INLINE IDOverrideLibraryRuntime *override_library_rna_path_runtime_ensure(
+    IDOverrideLibrary *override)
+{
+  if (override->runtime == NULL) {
+    override->runtime = MEM_callocN(sizeof(*override->runtime), __func__);
+  }
   return override->runtime;
+}
+
+/* We only build override GHash on request. */
+BLI_INLINE GHash *override_library_rna_path_mapping_ensure(IDOverrideLibrary *override)
+{
+  IDOverrideLibraryRuntime *override_runtime = override_library_rna_path_runtime_ensure(override);
+  if (override_runtime->rna_path_to_override_properties == NULL) {
+    override_runtime->rna_path_to_override_properties = BLI_ghash_new(
+        BLI_ghashutil_strhash_p_murmur, BLI_ghashutil_strcmp, __func__);
+    for (IDOverrideLibraryProperty *op = override->properties.first; op != NULL; op = op->next) {
+      BLI_ghash_insert(override_runtime->rna_path_to_override_properties, op->rna_path, op);
+    }
+  }
+
+  return override_runtime->rna_path_to_override_properties;
 }
 
 /**
@@ -375,7 +648,7 @@ BLI_INLINE IDOverrideLibraryRuntime *override_library_rna_path_mapping_ensure(
 IDOverrideLibraryProperty *BKE_lib_override_library_property_find(IDOverrideLibrary *override,
                                                                   const char *rna_path)
 {
-  IDOverrideLibraryRuntime *override_runtime = override_library_rna_path_mapping_ensure(override);
+  GHash *override_runtime = override_library_rna_path_mapping_ensure(override);
   return BLI_ghash_lookup(override_runtime, rna_path);
 }
 
@@ -393,8 +666,7 @@ IDOverrideLibraryProperty *BKE_lib_override_library_property_get(IDOverrideLibra
     op->rna_path = BLI_strdup(rna_path);
     BLI_addtail(&override->properties, op);
 
-    IDOverrideLibraryRuntime *override_runtime = override_library_rna_path_mapping_ensure(
-        override);
+    GHash *override_runtime = override_library_rna_path_mapping_ensure(override);
     BLI_ghash_insert(override_runtime, op->rna_path, op);
 
     if (r_created) {
@@ -440,8 +712,11 @@ void lib_override_library_property_clear(IDOverrideLibraryProperty *op)
 void BKE_lib_override_library_property_delete(IDOverrideLibrary *override,
                                               IDOverrideLibraryProperty *override_property)
 {
-  if (override->runtime != NULL) {
-    BLI_ghash_remove(override->runtime, override_property->rna_path, NULL, NULL);
+  if (!ELEM(NULL, override->runtime, override->runtime->rna_path_to_override_properties)) {
+    BLI_ghash_remove(override->runtime->rna_path_to_override_properties,
+                     override_property->rna_path,
+                     NULL,
+                     NULL);
   }
   lib_override_library_property_clear(override_property);
   BLI_freelinkN(&override->properties, override_property);
@@ -870,11 +1145,11 @@ void BKE_lib_override_library_main_operations_create(Main *bmain, const bool for
   TaskPool *task_pool = BLI_task_pool_create(bmain, TASK_PRIORITY_HIGH);
 
   FOREACH_MAIN_ID_BEGIN (bmain, id) {
-    if ((ID_IS_OVERRIDE_LIBRARY_REAL(id) && force_auto) ||
-        (id->tag & LIB_TAG_OVERRIDE_LIBRARY_AUTOREFRESH)) {
+    if (ID_IS_OVERRIDE_LIBRARY_REAL(id) &&
+        (force_auto || (id->tag & LIB_TAG_OVERRIDE_LIBRARY_AUTOREFRESH))) {
       BLI_task_pool_push(task_pool, lib_override_library_operations_create_cb, id, false, NULL);
-      id->tag &= ~LIB_TAG_OVERRIDE_LIBRARY_AUTOREFRESH;
     }
+    id->tag &= ~LIB_TAG_OVERRIDE_LIBRARY_AUTOREFRESH;
   }
   FOREACH_MAIN_ID_END;
 
@@ -889,6 +1164,137 @@ void BKE_lib_override_library_main_operations_create(Main *bmain, const bool for
 #ifdef DEBUG_OVERRIDE_TIMEIT
   TIMEIT_END_AVERAGED(BKE_lib_override_library_main_operations_create);
 #endif
+}
+
+static bool lib_override_library_id_reset_do(Main *bmain, ID *id_root)
+{
+  bool was_op_deleted = false;
+
+  LISTBASE_FOREACH_MUTABLE (
+      IDOverrideLibraryProperty *, op, &id_root->override_library->properties) {
+    bool do_op_delete = true;
+    const bool is_collection = op->rna_prop_type == PROP_COLLECTION;
+    if (is_collection || op->rna_prop_type == PROP_POINTER) {
+      PointerRNA ptr_root, ptr_root_lib, ptr, ptr_lib;
+      PropertyRNA *prop, *prop_lib;
+
+      RNA_pointer_create(id_root, &RNA_ID, id_root, &ptr_root);
+      RNA_pointer_create(id_root->override_library->reference,
+                         &RNA_ID,
+                         id_root->override_library->reference,
+                         &ptr_root_lib);
+
+      bool prop_exists = RNA_path_resolve_property(&ptr_root, op->rna_path, &ptr, &prop);
+      BLI_assert(prop_exists);
+      prop_exists = RNA_path_resolve_property(&ptr_root_lib, op->rna_path, &ptr_lib, &prop_lib);
+
+      if (prop_exists) {
+        BLI_assert(ELEM(RNA_property_type(prop), PROP_POINTER, PROP_COLLECTION));
+        BLI_assert(RNA_property_type(prop) == RNA_property_type(prop_lib));
+        if (is_collection) {
+          ptr.type = RNA_property_pointer_type(&ptr, prop);
+          ptr_lib.type = RNA_property_pointer_type(&ptr_lib, prop_lib);
+        }
+        else {
+          ptr = RNA_property_pointer_get(&ptr, prop);
+          ptr_lib = RNA_property_pointer_get(&ptr_lib, prop_lib);
+        }
+        if (ptr.owner_id != NULL && ptr_lib.owner_id != NULL) {
+          BLI_assert(ptr.type == ptr_lib.type);
+          do_op_delete = !(RNA_struct_is_ID(ptr.type) && ptr.owner_id->override_library != NULL &&
+                           ptr.owner_id->override_library->reference == ptr_lib.owner_id);
+        }
+      }
+    }
+
+    if (do_op_delete) {
+      BKE_lib_override_library_property_delete(id_root->override_library, op);
+      was_op_deleted = true;
+    }
+  }
+
+  if (was_op_deleted) {
+    DEG_id_tag_update_ex(bmain, id_root, ID_RECALC_COPY_ON_WRITE);
+    IDOverrideLibraryRuntime *override_runtime = override_library_rna_path_runtime_ensure(
+        id_root->override_library);
+    override_runtime->tag |= IDOVERRIDE_LIBRARY_RUNTIME_TAG_NEEDS_RELOAD;
+  }
+
+  return was_op_deleted;
+}
+
+/** Reset all overrides in given \a id_root, while preserving ID relations. */
+void BKE_lib_override_library_id_reset(Main *bmain, ID *id_root)
+{
+  if (!ID_IS_OVERRIDE_LIBRARY_REAL(id_root)) {
+    return;
+  }
+
+  if (lib_override_library_id_reset_do(bmain, id_root)) {
+    if (id_root->override_library->runtime != NULL &&
+        (id_root->override_library->runtime->tag & IDOVERRIDE_LIBRARY_RUNTIME_TAG_NEEDS_RELOAD) !=
+            0) {
+      BKE_lib_override_library_update(bmain, id_root);
+      id_root->override_library->runtime->tag &= ~IDOVERRIDE_LIBRARY_RUNTIME_TAG_NEEDS_RELOAD;
+    }
+  }
+}
+
+static void lib_override_library_id_hierarchy_recursive_reset(Main *bmain, ID *id_root)
+{
+  if (!ID_IS_OVERRIDE_LIBRARY_REAL(id_root)) {
+    return;
+  }
+
+  void **entry_pp = BLI_ghash_lookup(bmain->relations->id_user_to_used, id_root);
+  if (entry_pp == NULL) {
+    /* Already processed. */
+    return;
+  }
+
+  lib_override_library_id_reset_do(bmain, id_root);
+
+  /* This way we won't process again that ID should we encounter it again through another
+   * relationship hierarchy.
+   * Note that this does not free any memory from relations, so we can still use the entries.
+   */
+  BKE_main_relations_ID_remove(bmain, id_root);
+
+  for (MainIDRelationsEntry *entry = *entry_pp; entry != NULL; entry = entry->next) {
+    if ((entry->usage_flag & IDWALK_CB_LOOPBACK) != 0) {
+      /* Never consider 'loop back' relationships ('from', 'parents', 'owner' etc. pointers) as
+       * actual dependencies. */
+      continue;
+    }
+    /* We only consider IDs from the same library. */
+    if (entry->id_pointer != NULL) {
+      ID *id_entry = *entry->id_pointer;
+      if (id_entry->override_library != NULL) {
+        lib_override_library_id_hierarchy_recursive_reset(bmain, id_entry);
+      }
+    }
+  }
+}
+
+/** Reset all overrides in given \a id_root and its dependencies, while preserving ID relations. */
+void BKE_lib_override_library_id_hierarchy_reset(Main *bmain, ID *id_root)
+{
+  BKE_main_relations_create(bmain, 0);
+
+  lib_override_library_id_hierarchy_recursive_reset(bmain, id_root);
+
+  BKE_main_relations_free(bmain);
+
+  ID *id;
+  FOREACH_MAIN_ID_BEGIN (bmain, id) {
+    if (!ID_IS_OVERRIDE_LIBRARY_REAL(id) || id->override_library->runtime == NULL ||
+        (id->override_library->runtime->tag & IDOVERRIDE_LIBRARY_RUNTIME_TAG_NEEDS_RELOAD) == 0) {
+      continue;
+    }
+    BKE_lib_override_library_update(bmain, id);
+    id->override_library->runtime->tag &= ~IDOVERRIDE_LIBRARY_RUNTIME_TAG_NEEDS_RELOAD;
+  }
+  FOREACH_MAIN_ID_END;
 }
 
 /** Set or clear given tag in all operations as unused in that override property data. */
@@ -1026,8 +1432,6 @@ void BKE_lib_override_library_update(Main *bmain, ID *local)
   Key *local_key = BKE_key_from_id(local);
   Key *tmp_key = BKE_key_from_id(tmp_id);
   if (local_key != NULL && tmp_key != NULL) {
-    /* This is some kind of hard-coded 'always enforced override'... */
-    tmp_key->from = local_key->from;
     tmp_key->id.flag |= (local_key->id.flag & LIB_EMBEDDED_DATA_LIB_OVERRIDE);
   }
 
@@ -1045,6 +1449,18 @@ void BKE_lib_override_library_update(Main *bmain, ID *local)
   /* This also transfers all pointers (memory) owned by local to tmp_id, and vice-versa.
    * So when we'll free tmp_id, we'll actually free old, outdated data from local. */
   BKE_lib_id_swap(bmain, local, tmp_id);
+
+  if (local_key != NULL && tmp_key != NULL) {
+    /* This is some kind of hard-coded 'always enforced override'... */
+    BKE_lib_id_swap(bmain, &local_key->id, &tmp_key->id);
+    tmp_key->id.flag |= (local_key->id.flag & LIB_EMBEDDED_DATA_LIB_OVERRIDE);
+    /* The swap of local and tmp_id inverted those pointers, we need to redefine proper
+     * relationships. */
+    *BKE_key_from_id_p(local) = local_key;
+    *BKE_key_from_id_p(tmp_id) = tmp_key;
+    local_key->from = local;
+    tmp_key->from = tmp_id;
+  }
 
   /* Again, horribly inn-efficient in our case, we need something off-Main
    * (aka more generic nolib copy/free stuff)! */
@@ -1064,6 +1480,7 @@ void BKE_lib_override_library_update(Main *bmain, ID *local)
   /* Full rebuild of Depsgraph! */
   /* Note: this is really brute force, in theory updates from RNA should have handle this already,
    * but for now let's play it safe. */
+  DEG_id_tag_update_ex(bmain, local, ID_RECALC_ALL);
   DEG_relations_tag_update(bmain);
 }
 

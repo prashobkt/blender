@@ -500,6 +500,10 @@ static void doVertSlide(TransInfo *t, float perc)
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     VertSlideData *sld = tc->custom.mode.data;
+    if (sld == NULL) {
+      continue;
+    }
+
     TransDataVertSlideVert *svlist = sld->sv, *sv;
     int i;
 
@@ -597,7 +601,7 @@ static void applyVertSlide(TransInfo *t, const int UNUSED(mval[2]))
   t->values_final[0] = final;
 
   /* header string */
-  ofs += BLI_strncpy_rlen(str + ofs, TIP_("Vert Slide: "), sizeof(str) - ofs);
+  ofs += BLI_strncpy_rlen(str + ofs, TIP_("Vertex Slide: "), sizeof(str) - ofs);
   if (hasNumInput(&t->num)) {
     char c[NUM_STR_REP_LEN];
     outputNumInput(&(t->num), c, &t->scene->unit);

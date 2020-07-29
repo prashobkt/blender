@@ -63,7 +63,7 @@ void OVERLAY_paint_init(OVERLAY_Data *vedata)
   const DRWContextState *draw_ctx = DRW_context_state_get();
 
   pd->painting.in_front = pd->use_in_front && draw_ctx->obact &&
-                          (draw_ctx->obact->dtx & OB_DRAWXRAY);
+                          (draw_ctx->obact->dtx & OB_DRAW_IN_FRONT);
   pd->painting.alpha_blending = paint_object_is_rendered_transparent(draw_ctx->v3d,
                                                                      draw_ctx->obact);
 }
@@ -136,7 +136,7 @@ void OVERLAY_paint_cache_init(OVERLAY_Data *vedata)
         state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_BLEND_ALPHA;
         DRW_PASS_CREATE(psl->paint_color_ps, state | pd->clipping_state);
 
-        GPUTexture *tex = GPU_texture_from_blender(imapaint->stencil, NULL, NULL, GL_TEXTURE_2D);
+        GPUTexture *tex = GPU_texture_from_blender(imapaint->stencil, NULL, NULL, TEXTARGET_2D);
 
         const bool mask_premult = (imapaint->stencil->alpha_mode == IMA_ALPHA_PREMUL);
         const bool mask_inverted = (imapaint->flag & IMAGEPAINT_PROJECT_LAYER_STENCIL_INV) != 0;

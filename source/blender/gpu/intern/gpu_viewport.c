@@ -38,7 +38,6 @@
 #include "DNA_vec_types.h"
 
 #include "GPU_framebuffer.h"
-#include "GPU_glew.h"
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 #include "GPU_texture.h"
@@ -630,13 +629,13 @@ void GPU_viewport_stereo_composite(GPUViewport *viewport, Stereo3dFormat *stereo
   if (settings == S3D_DISPLAY_ANAGLYPH) {
     switch (stereo_format->anaglyph_type) {
       case S3D_ANAGLYPH_REDCYAN:
-        glColorMask(GL_FALSE, GL_TRUE, GL_TRUE, GL_TRUE);
+        GPU_color_mask(false, true, true, true);
         break;
       case S3D_ANAGLYPH_GREENMAGENTA:
-        glColorMask(GL_TRUE, GL_FALSE, GL_TRUE, GL_TRUE);
+        GPU_color_mask(true, false, true, true);
         break;
       case S3D_ANAGLYPH_YELLOWBLUE:
-        glColorMask(GL_FALSE, GL_FALSE, GL_TRUE, GL_TRUE);
+        GPU_color_mask(false, false, true, true);
         break;
     }
   }
@@ -666,7 +665,7 @@ void GPU_viewport_stereo_composite(GPUViewport *viewport, Stereo3dFormat *stereo
   GPU_matrix_pop();
 
   if (settings == S3D_DISPLAY_ANAGLYPH) {
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    GPU_color_mask(true, true, true, true);
   }
 
   GPU_framebuffer_restore();

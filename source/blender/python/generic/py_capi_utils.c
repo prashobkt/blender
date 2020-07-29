@@ -634,7 +634,7 @@ error_cleanup:
 
 PyObject *PyC_ExceptionBuffer_Simple(void)
 {
-  PyObject *string_io_buf;
+  PyObject *string_io_buf = NULL;
 
   PyObject *error_type, *error_value, *error_traceback;
 
@@ -648,7 +648,19 @@ PyObject *PyC_ExceptionBuffer_Simple(void)
     return NULL;
   }
 
-  string_io_buf = PyObject_Str(error_value);
+  if (PyErr_GivenExceptionMatches(error_type, PyExc_SyntaxError)) {
+    /* Special exception for syntax errors,
+     * in these cases the full error is verbose and not very useful,
+     * just use the initial text so we know what the error is. */
+    if (PyTuple_CheckExact(error_value) && PyTuple_GET_SIZE(error_value) >= 1) {
+      string_io_buf = PyObject_Str(PyTuple_GET_ITEM(error_value, 0));
+    }
+  }
+
+  if (string_io_buf == NULL) {
+    string_io_buf = PyObject_Str(error_value);
+  }
+
   /* Python does this too */
   if (UNLIKELY(string_io_buf == NULL)) {
     string_io_buf = PyUnicode_FromFormat("<unprintable %s object>", Py_TYPE(error_value)->tp_name);
@@ -804,8 +816,12 @@ void PyC_MainModule_Restore(PyObject *main_mod)
   Py_XDECREF(main_mod);
 }
 
-/* Must be called before Py_Initialize,
- * expects output of BKE_appdir_folder_id(BLENDER_PYTHON, NULL). */
+/**
+ * - Must be called before #Py_Initialize.
+ * - Expects output of `BKE_appdir_folder_id(BLENDER_PYTHON, NULL)`.
+ * - Note that the `PYTHONPATH` environment variable isn't reliable, see T31506.
+     Use #Py_SetPythonHome instead.
+ */
 void PyC_SetHomePath(const char *py_path_bundle)
 {
   if (py_path_bundle == NULL) {
@@ -824,24 +840,14 @@ void PyC_SetHomePath(const char *py_path_bundle)
   /* OSX allow file/directory names to contain : character (represented as / in the Finder)
    * but current Python lib (release 3.1.1) doesn't handle these correctly */
   if (strchr(py_path_bundle, ':')) {
-    printf(
-        "Warning : Blender application is located in a path containing : or / chars\
-           \nThis may make python import function fail\n");
+    fprintf(stderr,
+            "Warning! Blender application is located in a path containing ':' or '/' chars\n"
+            "This may make python import function fail\n");
   }
 #  endif
 
-#  if 0 /* disable for now [#31506] - campbell */
-#    ifdef _WIN32
-  /* cmake/MSVC debug build crashes without this, why only
-   * in this case is unknown.. */
   {
-    /*BLI_setenv("PYTHONPATH", py_path_bundle)*/;
-  }
-#    endif
-#  endif
-
-  {
-    static wchar_t py_path_bundle_wchar[1024];
+    wchar_t py_path_bundle_wchar[1024];
 
     /* Can't use this, on linux gives bug: #23018,
      * TODO: try LANG="en_US.UTF-8" /usr/bin/blender, suggested 2008 */

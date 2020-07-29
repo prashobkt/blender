@@ -870,12 +870,13 @@ void MANTA::initializeRNAMap(FluidModifierData *fmd)
   mRNAMap["GUIDING_ALPHA"] = to_string(fds->guide_alpha);
   mRNAMap["GUIDING_BETA"] = to_string(fds->guide_beta);
   mRNAMap["GUIDING_FACTOR"] = to_string(fds->guide_vel_factor);
-  mRNAMap["GRAVITY_X"] = to_string(fds->gravity[0]);
-  mRNAMap["GRAVITY_Y"] = to_string(fds->gravity[1]);
-  mRNAMap["GRAVITY_Z"] = to_string(fds->gravity[2]);
+  mRNAMap["GRAVITY_X"] = to_string(fds->gravity_final[0]);
+  mRNAMap["GRAVITY_Y"] = to_string(fds->gravity_final[1]);
+  mRNAMap["GRAVITY_Z"] = to_string(fds->gravity_final[2]);
   mRNAMap["CACHE_DIR"] = cacheDirectory;
   mRNAMap["COMPRESSION_OPENVDB"] = vdbCompressionMethod;
   mRNAMap["PRECISION_OPENVDB"] = vdbPrecisionHalf;
+  mRNAMap["PP_PARTICLE_MAXIMUM"] = to_string(fds->sys_particle_maximum);
 
   /* Fluid object names. */
   mRNAMap["NAME_FLAGS"] = FLUID_NAME_FLAGS;
@@ -1256,6 +1257,7 @@ bool MANTA::readData(FluidModifierData *fmd, int framenr, bool resumable)
        << ", '" << volume_format << "', " << resumable_cache << ")";
     pythonCommands.push_back(ss.str());
     result &= runPythonString(pythonCommands);
+    return (mSmokeFromFile = result);
   }
   if (mUsingLiquid) {
     ss.str("");
@@ -1263,6 +1265,7 @@ bool MANTA::readData(FluidModifierData *fmd, int framenr, bool resumable)
        << ", '" << volume_format << "', " << resumable_cache << ")";
     pythonCommands.push_back(ss.str());
     result &= runPythonString(pythonCommands);
+    return (mFlipFromFile = result);
   }
   return result;
 }
@@ -1296,7 +1299,7 @@ bool MANTA::readNoise(FluidModifierData *fmd, int framenr, bool resumable)
      << ", '" << volume_format << "', " << resumable_cache << ")";
   pythonCommands.push_back(ss.str());
 
-  return runPythonString(pythonCommands);
+  return (mNoiseFromFile = runPythonString(pythonCommands));
 }
 
 bool MANTA::readMesh(FluidModifierData *fmd, int framenr)
@@ -1331,7 +1334,7 @@ bool MANTA::readMesh(FluidModifierData *fmd, int framenr)
     pythonCommands.push_back(ss.str());
   }
 
-  return runPythonString(pythonCommands);
+  return (mMeshFromFile = runPythonString(pythonCommands));
 }
 
 bool MANTA::readParticles(FluidModifierData *fmd, int framenr, bool resumable)
@@ -1365,7 +1368,7 @@ bool MANTA::readParticles(FluidModifierData *fmd, int framenr, bool resumable)
      << framenr << ", '" << volume_format << "', " << resumable_cache << ")";
   pythonCommands.push_back(ss.str());
 
-  return runPythonString(pythonCommands);
+  return (mParticlesFromFile = runPythonString(pythonCommands));
 }
 
 bool MANTA::readGuiding(FluidModifierData *fmd, int framenr, bool sourceDomain)

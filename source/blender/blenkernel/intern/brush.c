@@ -1484,6 +1484,7 @@ void BKE_brush_sculpt_reset(Brush *br)
     case SCULPT_TOOL_SLIDE_RELAX:
       br->spacing = 10;
       br->alpha = 1.0f;
+      br->slide_deform_type = BRUSH_SLIDE_DEFORM_DRAG;
       break;
     case SCULPT_TOOL_CLAY:
       br->flag |= BRUSH_SIZE_PRESSURE;
@@ -1533,6 +1534,7 @@ void BKE_brush_sculpt_reset(Brush *br)
       break;
     case SCULPT_TOOL_SMOOTH:
       br->flag &= ~BRUSH_SPACE_ATTEN;
+      br->automasking_flags |= BRUSH_AUTOMASKING_BOUNDARY_EDGES;
       br->spacing = 5;
       br->alpha = 0.7f;
       br->surface_smooth_shape_preservation = 0.5f;

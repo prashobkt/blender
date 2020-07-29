@@ -135,6 +135,7 @@ set(SRC
   function/nodes/node_fn_combine_strings.cc
   function/nodes/node_fn_float_compare.cc
   function/nodes/node_fn_group_instance_id.cc
+  function/nodes/node_fn_object_transforms.cc
   function/nodes/node_fn_switch.cc
   function/node_function_util.cc
 
@@ -159,7 +160,7 @@ set(SRC
   shader/nodes/node_shader_bsdf_velvet.c
   shader/nodes/node_shader_bump.c
   shader/nodes/node_shader_camera.c
-  shader/nodes/node_shader_clamp.c
+  shader/nodes/node_shader_clamp.cc
   shader/nodes/node_shader_common.c
   shader/nodes/node_shader_curves.c
   shader/nodes/node_shader_displacement.c
@@ -176,7 +177,7 @@ set(SRC
   shader/nodes/node_shader_layer_weight.c
   shader/nodes/node_shader_light_falloff.c
   shader/nodes/node_shader_light_path.c
-  shader/nodes/node_shader_map_range.c
+  shader/nodes/node_shader_map_range.cc
   shader/nodes/node_shader_mapping.c
   shader/nodes/node_shader_math.cc
   shader/nodes/node_shader_mixRgb.c
@@ -193,7 +194,7 @@ set(SRC
   shader/nodes/node_shader_rgb.c
   shader/nodes/node_shader_script.c
   shader/nodes/node_shader_sepcombHSV.c
-  shader/nodes/node_shader_sepcombRGB.c
+  shader/nodes/node_shader_sepcombRGB.cc
   shader/nodes/node_shader_sepcombXYZ.cc
   shader/nodes/node_shader_shaderToRgb.c
   shader/nodes/node_shader_squeeze.c
@@ -215,7 +216,7 @@ set(SRC
   shader/nodes/node_shader_tex_white_noise.c
   shader/nodes/node_shader_uvAlongStroke.c
   shader/nodes/node_shader_uvmap.c
-  shader/nodes/node_shader_valToRgb.c
+  shader/nodes/node_shader_valToRgb.cc
   shader/nodes/node_shader_value.cc
   shader/nodes/node_shader_vectTransform.c
   shader/nodes/node_shader_vector_displacement.c
@@ -273,9 +274,13 @@ set(SRC
   texture/node_texture_tree.c
   texture/node_texture_util.c
 
+  intern/derived_node_tree.cc
   intern/node_common.c
   intern/node_exec.c
   intern/node_socket.cc
+  intern/node_tree_dependencies.cc
+  intern/node_tree_multi_function.cc
+  intern/node_tree_ref.cc
   intern/node_util.c
 
   composite/node_composite_util.h
@@ -286,7 +291,11 @@ set(SRC
 
   NOD_common.h
   NOD_composite.h
+  NOD_derived_node_tree.hh
   NOD_function.h
+  NOD_node_tree_dependencies.hh
+  NOD_node_tree_multi_function.hh
+  NOD_node_tree_ref.hh
   NOD_shader.h
   NOD_simulation.h
   NOD_socket.h

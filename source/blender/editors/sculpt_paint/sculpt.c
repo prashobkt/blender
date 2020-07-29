@@ -389,7 +389,7 @@ bool SCULPT_vertex_any_face_set_visible_get(SculptSession *ss, int index)
   return true;
 }
 
-bool SCULPT_vertex_all_face_sets_visible_get(SculptSession *ss, int index)
+bool SCULPT_vertex_all_face_sets_visible_get(const SculptSession *ss, int index)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES: {
@@ -788,28 +788,13 @@ void SCULPT_vertex_neighbors_get(SculptSession *ss,
   }
 }
 
-static bool sculpt_check_boundary_vertex_in_base_mesh(SculptSession *ss, const int index)
+static bool sculpt_check_boundary_vertex_in_base_mesh(const SculptSession *ss, const int index)
 {
-  const MeshElemMap *vert_map = &ss->pmap[index];
-  if (vert_map->count <= 1) {
-    return true;
-  }
-  for (int i = 0; i < vert_map->count; i++) {
-    const MPoly *p = &ss->mpoly[vert_map->indices[i]];
-    unsigned f_adj_v[2];
-    if (poly_get_adj_loops_from_vert(p, ss->mloop, index, f_adj_v) != -1) {
-      int j;
-      for (j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
-        if (!(vert_map->count != 2 || ss->pmap[f_adj_v[j]].count <= 2)) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
+  BLI_assert(ss->vertex_info.boundary);
+  return BLI_BITMAP_TEST(ss->vertex_info.boundary, index);
 }
 
-bool SCULPT_vertex_is_boundary(SculptSession *ss, const int index)
+bool SCULPT_vertex_is_boundary(const SculptSession *ss, const int index)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES: {
@@ -2433,7 +2418,7 @@ float SCULPT_brush_strength_factor(SculptSession *ss,
 
   /* Hardness. */
   float final_len = len;
-  const float hardness = br->hardness;
+  const float hardness = cache->paint_brush.hardness;
   float p = len / cache->radius;
   if (p < hardness) {
     final_len = 0.0f;
@@ -3115,11 +3100,23 @@ static void do_topology_slide_task_cb_ex(void *__restrict userdata,
                                                       thread_id);
       float current_disp[3];
       float current_disp_norm[3];
-      float final_disp[3];
-      zero_v3(final_disp);
-      sub_v3_v3v3(current_disp, ss->cache->location, ss->cache->last_location);
+      float final_disp[3] = {0.0f, 0.0f, 0.0f};
+
+      switch (brush->slide_deform_type) {
+        case BRUSH_SLIDE_DEFORM_DRAG:
+          sub_v3_v3v3(current_disp, ss->cache->location, ss->cache->last_location);
+          break;
+        case BRUSH_SLIDE_DEFORM_PINCH:
+          sub_v3_v3v3(current_disp, ss->cache->location, vd.co);
+          break;
+        case BRUSH_SLIDE_DEFORM_EXPAND:
+          sub_v3_v3v3(current_disp, vd.co, ss->cache->location);
+          break;
+      }
+
       normalize_v3_v3(current_disp_norm, current_disp);
       mul_v3_v3fl(current_disp, current_disp_norm, ss->cache->bstrength);
+
       SculptVertexNeighborIter ni;
       SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vd.index, ni) {
         float vertex_disp[3];
@@ -6633,6 +6630,50 @@ static void sculpt_update_brush_delta(UnifiedPaintSettings *ups, Object *ob, Bru
   }
 }
 
+static void sculpt_update_cache_paint_variants(StrokeCache *cache, const Brush *brush)
+{
+  cache->paint_brush.hardness = brush->hardness;
+  if (brush->paint_flags & BRUSH_PAINT_HARDNESS_PRESSURE) {
+    cache->paint_brush.hardness *= brush->paint_flags & BRUSH_PAINT_HARDNESS_PRESSURE_INVERT ?
+                                       1.0f - cache->pressure :
+                                       cache->pressure;
+  }
+
+  cache->paint_brush.flow = brush->flow;
+  if (brush->paint_flags & BRUSH_PAINT_FLOW_PRESSURE) {
+    cache->paint_brush.flow *= brush->paint_flags & BRUSH_PAINT_FLOW_PRESSURE_INVERT ?
+                                   1.0f - cache->pressure :
+                                   cache->pressure;
+  }
+
+  cache->paint_brush.wet_mix = brush->wet_mix;
+  if (brush->paint_flags & BRUSH_PAINT_WET_MIX_PRESSURE) {
+    cache->paint_brush.wet_mix *= brush->paint_flags & BRUSH_PAINT_WET_MIX_PRESSURE_INVERT ?
+                                      1.0f - cache->pressure :
+                                      cache->pressure;
+
+    /* This makes wet mix more sensible in higher values, which allows to create brushes that have
+     * a wider pressure range were they only blend colors without applying too much of the brush
+     * color. */
+    cache->paint_brush.wet_mix = 1.0f - pow2f(1.0f - cache->paint_brush.wet_mix);
+  }
+
+  cache->paint_brush.wet_persistence = brush->wet_persistence;
+  if (brush->paint_flags & BRUSH_PAINT_WET_PERSISTENCE_PRESSURE) {
+    cache->paint_brush.wet_persistence = brush->paint_flags &
+                                                 BRUSH_PAINT_WET_PERSISTENCE_PRESSURE_INVERT ?
+                                             1.0f - cache->pressure :
+                                             cache->pressure;
+  }
+
+  cache->paint_brush.density = brush->density;
+  if (brush->paint_flags & BRUSH_PAINT_DENSITY_PRESSURE) {
+    cache->paint_brush.density = brush->paint_flags & BRUSH_PAINT_DENSITY_PRESSURE_INVERT ?
+                                     1.0f - cache->pressure :
+                                     cache->pressure;
+  }
+}
+
 /* Initialize the stroke cache variants from operator properties. */
 static void sculpt_update_cache_variants(bContext *C, Sculpt *sd, Object *ob, PointerRNA *ptr)
 {
@@ -6698,6 +6739,8 @@ static void sculpt_update_cache_variants(bContext *C, Sculpt *sd, Object *ob, Po
     cache->radius = cache->initial_radius;
     cache->dyntopo_pixel_radius = ups->initial_pixel_radius;
   }
+
+  sculpt_update_cache_paint_variants(cache, brush);
 
   cache->radius_squared = cache->radius * cache->radius;
 
@@ -8486,6 +8529,37 @@ static void sculpt_connected_components_ensure(Object *ob)
       next_id++;
     }
   }
+}
+
+void SCULPT_boundary_info_ensure(Object *object)
+{
+  SculptSession *ss = object->sculpt;
+  if (ss->vertex_info.boundary) {
+    return;
+  }
+
+  Mesh *base_mesh = BKE_mesh_from_object(object);
+  ss->vertex_info.boundary = BLI_BITMAP_NEW(base_mesh->totvert, "Boundary info");
+  int *adjacent_faces_edge_count = MEM_calloc_arrayN(
+      base_mesh->totedge, sizeof(int), "Adjacent face edge count");
+
+  for (int p = 0; p < base_mesh->totpoly; p++) {
+    MPoly *poly = &base_mesh->mpoly[p];
+    for (int l = 0; l < poly->totloop; l++) {
+      MLoop *loop = &base_mesh->mloop[l + poly->loopstart];
+      adjacent_faces_edge_count[loop->e]++;
+    }
+  }
+
+  for (int e = 0; e < base_mesh->totedge; e++) {
+    if (adjacent_faces_edge_count[e] < 2) {
+      MEdge *edge = &base_mesh->medge[e];
+      BLI_BITMAP_SET(ss->vertex_info.boundary, edge->v1, true);
+      BLI_BITMAP_SET(ss->vertex_info.boundary, edge->v2, true);
+    }
+  }
+
+  MEM_freeN(adjacent_faces_edge_count);
 }
 
 void SCULPT_fake_neighbors_ensure(Sculpt *sd, Object *ob, const float max_dist)

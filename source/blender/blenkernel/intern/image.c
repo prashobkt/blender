@@ -57,6 +57,7 @@
 #include "DNA_packedFile_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
+#include "DNA_simulation_types.h"
 #include "DNA_world_types.h"
 
 #include "BLI_blenlib.h"
@@ -64,7 +65,7 @@
 #include "BLI_mempool.h"
 #include "BLI_system.h"
 #include "BLI_threads.h"
-#include "BLI_timecode.h" /* for stamp timecode format */
+#include "BLI_timecode.h" /* For stamp time-code format. */
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -3240,6 +3241,12 @@ static void image_walk_id_all_users(
       if (scene->nodetree && scene->use_nodes && !skip_nested_nodes) {
         image_walk_ntree_all_users(scene->nodetree, &scene->id, customdata, callback);
       }
+      break;
+    }
+    case ID_SIM: {
+      Simulation *simulation = (Simulation *)id;
+      image_walk_ntree_all_users(simulation->nodetree, &simulation->id, customdata, callback);
+      break;
     }
     default:
       break;
@@ -3344,8 +3351,7 @@ static void image_free_tile(Image *ima, ImageTile *tile)
   for (int i = 0; i < TEXTARGET_COUNT; i++) {
     /* Only two textures depends on all tiles, so if this is a secondary tile we can keep the other
      * two. */
-    if (tile != ima->tiles.first &&
-        !(ELEM(i, TEXTARGET_TEXTURE_2D_ARRAY, TEXTARGET_TEXTURE_TILE_MAPPING))) {
+    if (tile != ima->tiles.first && !(ELEM(i, TEXTARGET_2D_ARRAY, TEXTARGET_TILE_MAPPING))) {
       continue;
     }
 
@@ -3622,13 +3628,13 @@ ImageTile *BKE_image_add_tile(struct Image *ima, int tile_number, const char *la
 
   for (int eye = 0; eye < 2; eye++) {
     /* Reallocate GPU tile array. */
-    if (ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY][eye] != NULL) {
-      GPU_texture_free(ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY][eye]);
-      ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY][eye] = NULL;
+    if (ima->gputexture[TEXTARGET_2D_ARRAY][eye] != NULL) {
+      GPU_texture_free(ima->gputexture[TEXTARGET_2D_ARRAY][eye]);
+      ima->gputexture[TEXTARGET_2D_ARRAY][eye] = NULL;
     }
-    if (ima->gputexture[TEXTARGET_TEXTURE_TILE_MAPPING][eye] != NULL) {
-      GPU_texture_free(ima->gputexture[TEXTARGET_TEXTURE_TILE_MAPPING][eye]);
-      ima->gputexture[TEXTARGET_TEXTURE_TILE_MAPPING][eye] = NULL;
+    if (ima->gputexture[TEXTARGET_TILE_MAPPING][eye] != NULL) {
+      GPU_texture_free(ima->gputexture[TEXTARGET_TILE_MAPPING][eye]);
+      ima->gputexture[TEXTARGET_TILE_MAPPING][eye] = NULL;
     }
   }
 
@@ -5213,24 +5219,32 @@ int BKE_image_user_frame_get(const ImageUser *iuser, int cfra, bool *r_is_in_ran
 void BKE_image_user_frame_calc(Image *ima, ImageUser *iuser, int cfra)
 {
   if (iuser) {
-    bool is_in_range;
-    const int framenr = BKE_image_user_frame_get(iuser, cfra, &is_in_range);
+    if (ima && BKE_image_is_animated(ima)) {
+      /* Compute current frame for animated image. */
+      bool is_in_range;
+      const int framenr = BKE_image_user_frame_get(iuser, cfra, &is_in_range);
 
-    if (is_in_range) {
-      iuser->flag |= IMA_USER_FRAME_IN_RANGE;
+      if (is_in_range) {
+        iuser->flag |= IMA_USER_FRAME_IN_RANGE;
+      }
+      else {
+        iuser->flag &= ~IMA_USER_FRAME_IN_RANGE;
+      }
+
+      iuser->framenr = framenr;
     }
     else {
-      iuser->flag &= ~IMA_USER_FRAME_IN_RANGE;
+      /* Set fixed frame number for still image. */
+      iuser->framenr = 0;
+      iuser->flag |= IMA_USER_FRAME_IN_RANGE;
     }
 
-    iuser->framenr = framenr;
-
-    if (ima && BKE_image_is_animated(ima) && ima->gpuframenr != framenr) {
+    if (ima && ima->gpuframenr != iuser->framenr) {
       /* Note: a single texture and refresh doesn't really work when
        * multiple image users may use different frames, this is to
        * be improved with perhaps a GPU texture cache. */
       ima->gpuflag |= IMA_GPU_REFRESH;
-      ima->gpuframenr = framenr;
+      ima->gpuframenr = iuser->framenr;
     }
 
     if (iuser->ok == 0) {
