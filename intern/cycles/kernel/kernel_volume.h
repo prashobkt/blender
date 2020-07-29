@@ -1127,6 +1127,9 @@ ccl_device VolumeIntegrateResult kernel_volume_decoupled_scatter(KernelGlobals *
 
   kernel_update_light_picking(kg, sd, state, NULL);
 
+  sd->N_pick = ray->D;
+  sd->t_pick = ray->t;
+
   return VOLUME_PATH_SCATTERED;
 }
 #  endif /* __SPLIT_KERNEL */

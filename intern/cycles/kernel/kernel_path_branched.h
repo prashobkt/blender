@@ -178,7 +178,7 @@ ccl_device_forceinline void kernel_branched_path_volume(KernelGlobals *kg,
       VolumeIntegrateResult result = kernel_volume_integrate(
           kg, &ps, sd, &volume_ray, L, &tp, step_size);
 
-      kernel_update_light_picking(kg, sd, &ps, NULL);
+      kernel_update_light_picking(kg, sd, &ps, &volume_ray);
 
 #      ifdef __VOLUME_SCATTER__
       if (result == VOLUME_PATH_SCATTERED) {
