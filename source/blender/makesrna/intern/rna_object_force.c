@@ -1834,7 +1834,7 @@ static void rna_def_softbody(BlenderRNA *brna)
   prop = RNA_def_property(srna, "admmpd_init_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "admmpd_init_mode");
   RNA_def_property_enum_items(prop, admmpdinitmode_type_items);
-  RNA_def_property_ui_text(prop, "ADMM-PD Mesh Mode", "ADMM-PD initialization mode");
+  RNA_def_property_ui_text(prop, "Mesh Mode", "ADMM-PD initialization mode");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   prop = RNA_def_property(srna, "admmpd_substeps", PROP_INT, PROP_NONE);

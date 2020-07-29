@@ -39,11 +39,12 @@ bool Solver::init(
 	data->x = mesh->rest_prim_verts();
 	data->v.resize(data->x.rows(), 3);
 	data->v.setZero();
-	data->tets = mesh->prims();
 	mesh->compute_masses(data->x, options->density_kgm3, data->m);
-	init_matrices(options,data);
+	init_matrices(mesh,options,data);
 
-	printf("Solver::init:\n\tNum tets: %d\n\tNum verts: %d\n",(int)data->tets.rows(),(int)data->x.rows());
+	int nt = mesh->prims().rows();
+	int nx = data->x.rows();
+	printf("Solver::init:\n\tNum tets: %d\n\tNum verts: %d\n",nt,nx);
 
 	return true;
 } // end init
@@ -60,8 +61,8 @@ int Solver::solve(
 	BLI_assert(data->x.rows() > 0);
 	BLI_assert(options->max_admm_iters > 0);
 
-	update_pin_matrix(mesh,options,data);
-	update_global_matrix(options,data);
+	update_pin_matrix(mesh,options,data); // P,q
+	update_global_matrix(options,data); // A+PtP
 
 	ConjugateGradients cg;
 	cg.init_solve(options,data);
@@ -83,7 +84,15 @@ int Solver::solve(
 		update_collisions(options,data,collision);
 
 		// Solve Ax=b s.t. Px=q and Cx=d
+		data->x_prev = data->x;
 		cg.solve(options,data,collision);
+
+		// Check convergence
+		if (options->min_res>0)
+		{
+			if (residual_norm(options,data) < options->min_res)
+				break;
+		}
 
 	} // end solver iters
 
@@ -93,6 +102,16 @@ int Solver::solve(
 
 	return iters;
 } // end solve
+
+double Solver::residual_norm(
+	const Options *options,
+	SolverData *data)
+{
+	(void)(options);
+	double ra = ((data->D*data->x) - data->z).norm();
+	double rx = (data->D*(data->x-data->x_prev)).norm();
+	return ra + rx;
+}
 
 void Solver::init_solve(
 	const Mesh *mesh,
@@ -220,6 +239,7 @@ void Solver::update_collisions(
 } // end update constraints
 
 void Solver::init_matrices(
+	const Mesh *mesh,
 	const Options *options,
 	SolverData *data)
 {
@@ -243,15 +263,15 @@ void Solver::init_matrices(
 
 	// Add per-element energies to data
 	std::vector<Triplet<double> > trips;
-	append_energies(options,data,trips);
+	append_energies(mesh,options,data,trips);
 	if (trips.size()==0)
 	{
 		throw_err("compute_matrices","No reduction coeffs");
 	}
 	int n_row_D = trips.back().row()+1;
 
-	RowSparseMatrix<double> W2;
-	compute_weight_matrix_squared(options,data,n_row_D,&W2);
+	update_weight_matrix(options,data,n_row_D);
+	RowSparseMatrix<double> W2 = data->W*data->W;
 
 	// Constraint data
 	data->C.resize(1,nx*3);
@@ -263,8 +283,6 @@ void Solver::init_matrices(
 	data->D.resize(n_row_D,nx);
 	data->D.setFromTriplets(trips.begin(), trips.end());
 	data->DtW2 = data->D.transpose() * W2;
-	data->b.resize(nx,3);
-	data->b.setZero();
 	update_global_matrix(options,data);
 
 	// Perform factorization
@@ -278,30 +296,29 @@ void Solver::init_matrices(
 
 } // end compute matrices
 
-void Solver::compute_weight_matrix_squared(
+void Solver::update_weight_matrix(
 	const Options *options,
 	SolverData *data,
-	int rows,
-	RowSparseMatrix<double> *W2) const
+	int rows)
 {
 	(void)(options);
-	W2->resize(rows,rows);
+	data->W.resize(rows,rows);
 	VectorXi W_nnz = VectorXi::Ones(rows);
-	W2->reserve(W_nnz);
+	data->W.reserve(W_nnz);
 	int ne = data->indices.size();
 	if (ne != (int)data->weights.size())
-		throw_err("compute_weight_matrix","bad num indices/weights");
+		throw_err("update_weight_matrix","bad num indices/weights");
 
 	for (int i=0; i<ne; ++i)
 	{
 		const Vector3i &idx = data->indices[i];
 		if (idx[0]+idx[1] > rows)
-			throw_err("compute_weight_matrix","bad matrix dim");
+			throw_err("update_weight_matrix","bad matrix dim");
 
 		for (int j=0; j<idx[1]; ++j)
-			W2->coeffRef(idx[0]+j,idx[0]+j) = data->weights[i]*data->weights[i];
+			data->W.coeffRef(idx[0]+j,idx[0]+j) = data->weights[i];
 	}
-	W2->finalize();
+	data->W.finalize();
 }
 
 void Solver::update_pin_matrix(
@@ -354,30 +371,32 @@ void Solver::update_global_matrix(
 	if (dt2 < 0) // static solve
 		dt2 = 1.0;
 
-	SparseMatrix<double> A = data->DtW2 * data->D;
+	data->A = data->DtW2 * data->D;
 	data->A_diag_max = 0;
 	for (int i=0; i<nx; ++i)
 	{
-		A.coeffRef(i,i) += data->m[i]/dt2;
-		double Aii = A.coeff(i,i);
+		data->A.coeffRef(i,i) += data->m[i]/dt2;
+		double Aii = data->A.coeff(i,i);
 		if (Aii>data->A_diag_max)
 			data->A_diag_max = Aii;
 	}
 
 	SparseMatrix<double> A3;
-	geom::make_n3<double>(A,A3);
+	geom::make_n3<double>(data->A,A3);
 	double pk = options->mult_pk * data->A_diag_max;
 	data->A3_plus_PtP = A3 + pk * data->P.transpose()*data->P;
 }
 
 void Solver::append_energies(
+	const Mesh *mesh,
 	const Options *options,
 	SolverData *data,
 	std::vector<Triplet<double> > &D_triplets)
 {
 	BLI_assert(data != NULL);
 	BLI_assert(options != NULL);
-	int nt = data->tets.rows();
+	Ref<const MatrixXi> tets = mesh->prims();
+	int nt = tets.rows();
 	BLI_assert(nt > 0);
 
 	int nx = data->x.rows();
@@ -398,7 +417,7 @@ void Solver::append_energies(
 	int energy_index = 0;
 	for (int i=0; i<nt; ++i)
 	{
-		RowVector4i ele = data->tets.row(i);
+		RowVector4i ele = tets.row(i);
 
 		// Initialize the energy
 		data->rest_volumes.emplace_back();

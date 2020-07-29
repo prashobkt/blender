@@ -32,31 +32,45 @@ public:
 
 protected:
 
-    void update_collisions(
+    // Returns the combined residual norm
+    double residual_norm(
         const Options *options,
-        SolverData *data,
-        Collision *collision);
+        SolverData *data);
 
+    // Computes start-of-solve quantites
     void init_solve(
         const Mesh *mesh,
         const Options *options,
         SolverData *data,
         Collision *collision);
 
+    // Performs collision detection
+    // and updates C, d
+    void update_collisions(
+        const Options *options,
+        SolverData *data,
+        Collision *collision);
+
+    // Update z and u in parallel
 	void solve_local_step(
         const Options *options,
         SolverData *data);
 
+    // Called once at start of simulation.
+    // Computes constant quantities
     void init_matrices(
+        const Mesh *mesh,
         const Options *options,
         SolverData *data);
 
-    void compute_weight_matrix_squared(
+    // Computes the W matrix
+    // from the current weights
+    void update_weight_matrix(
         const Options *options,
         SolverData *data,
-        int rows,
-        RowSparseMatrix<double> *W2) const;
+        int rows);
 
+    // Linearizes pin constraints P, q
     void update_pin_matrix(
         const Mesh *mesh,
         const Options *options,
@@ -67,7 +81,9 @@ protected:
         const Options *options,
         SolverData *data);
 
+    // Generates energies from the mesh
 	void append_energies(
+        const Mesh *mesh,
 		const Options *options,
 		SolverData *data,
 		std::vector<Eigen::Triplet<double> > &D_triplets);

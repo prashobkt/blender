@@ -23,6 +23,7 @@ void ConjugateGradients::init_solve(
 		return;
 
 	A3_PtP_CtC.resize(nx3,nx3);
+	b.resize(data->x.rows(),data->x.cols());
 	CtC.resize(nx3,nx3);
 	Ctd.resize(nx3);
 	Ptq.resize(nx3);
@@ -45,7 +46,6 @@ void ConjugateGradients::solve(
 	BLI_assert(options != NULL);
 	int nx = data->x.rows();
 	BLI_assert(nx > 0);
-	BLI_assert(data->b.rows() == nx);
 	BLI_assert(data->C.cols() == nx*3);
 	BLI_assert(data->d.rows() > 0);
 	BLI_assert(data->C.rows() == data->d.rows());
@@ -68,11 +68,11 @@ void ConjugateGradients::solve(
 
 	// Compute RHS
 	VectorXd x3(nx*3);
-	data->b.noalias() = data->M_xbar + data->DtW2*(data->z-data->u);
+	b.noalias() = data->M_xbar + data->DtW2*(data->z-data->u);
 	for (int i=0; i<nx; ++i)
 	{
 		b3_Ptq_Ctd.segment<3>(i*3) =
-			data->b.row(i).transpose() + 
+			b.row(i).transpose() + 
 			Ptq.segment<3>(i*3) +
 			Ctd.segment<3>(i*3);
 		x3.segment<3>(i*3) = data->x.row(i);

@@ -39,6 +39,7 @@ public:
 protected:
 	RowSparseMatrix<double> A3_PtP_CtC;
 	RowSparseMatrix<double> CtC;
+	Eigen::MatrixXd b; // M xbar + DtW2(z-u)
 	Eigen::VectorXd Ctd; // ck * Ct d
 	Eigen::VectorXd Ptq; // pk * Pt q
 	Eigen::VectorXd b3_Ptq_Ctd; // M xbar + DtW2(z-u) + ck Ct d + pk Pt q

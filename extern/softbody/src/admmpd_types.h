@@ -58,20 +58,19 @@ struct Options {
 };
 
 struct SolverData {
-    // Set from input
-    Eigen::MatrixXi tets; // elements t x 4, copy from mesh
     Eigen::MatrixXd x; // vertices, n x 3
     Eigen::MatrixXd v; // velocity, n x 3
- 
     Eigen::MatrixXd x_start; // x at t=0 (and goal if k>0), n x 3
+    Eigen::MatrixXd x_prev; // x at k-1
     Eigen::VectorXd m; // masses, n x 1
     Eigen::MatrixXd z; // ADMM z variable
     Eigen::MatrixXd u; // ADMM u aug lag with W inv
     Eigen::MatrixXd M_xbar; // M*(x + dt v)
     Eigen::MatrixXd Dx; // D * x
-    Eigen::MatrixXd b; // M xbar + DtW2(z-u)
     RowSparseMatrix<double> D; // reduction matrix
     RowSparseMatrix<double> DtW2; // D'W'W
+    RowSparseMatrix<double> A; // M + DtW'WD
+    RowSparseMatrix<double> W; // weight matrix
 
     double A_diag_max; // Max coeff of diag of A
     RowSparseMatrix<double> A3_plus_PtP; // A + pk PtP replicated

@@ -178,6 +178,7 @@ static inline int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, Object *ob
         if (diff > 1e-10)
         {
           strcpy_error(iface, "Bad TetGen assumption: change in surface verts");
+          return 0;
         }
       }
     }
@@ -287,6 +288,7 @@ int admmpd_init(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3], i
   catch(const std::exception &e)
   {
     strcpy_error(iface, e.what());
+    return 0;
   }
 
   // Initialize the solver
@@ -300,6 +302,7 @@ int admmpd_init(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3], i
   catch(const std::exception &e)
   {
     strcpy_error(iface, e.what());
+    return 0;
   }
 
   return 1;
