@@ -668,6 +668,7 @@ static void lineart_triangle_post(LineartRenderTriangle *rt, LineartRenderTriang
   mul_v3db_db(rt->gc, 1.0f / 3.0f);
 
   copy_v3_v3_db(rt->gn, orig->gn);
+  rt->cull_status = LRT_CULL_GENERATED;
 }
 
 /** This function cuts triangles that are (partially or fully) behind near clipping plane.
@@ -1876,11 +1877,6 @@ static bool lineart_triangle_share_edge(const LineartRenderTriangle *l,
       l->rl[1]->tl == r || l->rl[1]->tr == r) {
     return true;
   }
-  if (l->rl[0] == r->rl[0] || l->rl[0] == r->rl[1] || l->rl[0] == r->rl[2] ||
-      l->rl[1] == r->rl[0] || l->rl[1] == r->rl[1] || l->rl[1] == r->rl[2] ||
-      l->rl[2] == r->rl[0] || l->rl[2] == r->rl[1] || l->rl[2] == r->rl[2]) {
-    return true;
-  }
   return false;
 }
 
@@ -2148,8 +2144,9 @@ static void lineart_triangle_intersections_in_bounding_area(LineartRenderBuffer 
     next_lip = lip->next;
     testing_triangle = lip->data;
     if (testing_triangle == rt || testing_triangle->testing == rt ||
+        (rt->cull_status == LRT_CULL_GENERATED &&
+         testing_triangle->cull_status == LRT_CULL_GENERATED) ||
         lineart_triangle_share_edge(rt, testing_triangle)) {
-
       continue;
     }
 
@@ -3085,7 +3082,7 @@ static void lineart_add_triangles(LineartRenderBuffer *rb)
     rt = reln->pointer;
     lim = reln->element_count;
     for (i = 0; i < lim; i++) {
-      if (rt->cull_status) {
+      if (rt->cull_status == LRT_CULL_USED || rt->cull_status == LRT_CULL_DISCARD) {
         rt = (void *)(((unsigned char *)rt) + rb->triangle_size);
         continue;
       }

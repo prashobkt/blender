@@ -325,6 +325,7 @@ typedef enum eLineartCullState {
   LRT_CULL_DONT_CARE = 0,
   LRT_CULL_USED = 1,
   LRT_CULL_DISCARD = 2,
+  LRT_CULL_GENERATED = 3,
 } eLineartCullState;
 
 /** Controls how many lines a worker thread is processing at one request.
