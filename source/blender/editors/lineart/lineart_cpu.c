@@ -1858,7 +1858,7 @@ static bool lineart_triangle_share_edge(const LineartRenderTriangle *l,
                                         const LineartRenderTriangle *r)
 {
   if (l->rl[0]->tl == r || l->rl[0]->tr == r || l->rl[1]->tl == r || l->rl[1]->tr == r ||
-      l->rl[1]->tl == r || l->rl[1]->tr == r) {
+      l->rl[2]->tl == r || l->rl[2]->tr == r) {
     return true;
   }
   return false;
@@ -2111,7 +2111,10 @@ static void lineart_triangle_intersections_in_bounding_area(LineartRenderBuffer 
                                                             LineartRenderTriangle *rt,
                                                             LineartBoundingArea *ba)
 {
+  /* testing_triangle->testing[0] is used to store pairing triangle reference.
+   * See definition of LineartRenderTriangleThread for more info. */
   LineartRenderTriangle *testing_triangle;
+  LineartRenderTriangleThread *rtt;
   LinkData *lip, *next_lip;
 
   double *G0 = rt->v[0]->gloc, *G1 = rt->v[1]->gloc, *G2 = rt->v[2]->gloc;
@@ -2127,14 +2130,15 @@ static void lineart_triangle_intersections_in_bounding_area(LineartRenderBuffer 
   for (lip = ba->linked_triangles.first; lip; lip = next_lip) {
     next_lip = lip->next;
     testing_triangle = lip->data;
-    if (testing_triangle == rt || testing_triangle->testing == rt ||
+    rtt = (LineartRenderTriangleThread *)testing_triangle;
+    if (testing_triangle == rt || rtt->testing[0] == (LineartRenderLine *)rt ||
         (rt->cull_status == LRT_CULL_GENERATED &&
          testing_triangle->cull_status == LRT_CULL_GENERATED) ||
         lineart_triangle_share_edge(rt, testing_triangle)) {
       continue;
     }
 
-    testing_triangle->testing = rt;
+    rtt->testing[0] = (LineartRenderLine *)rt;
     double *RG0 = testing_triangle->v[0]->gloc, *RG1 = testing_triangle->v[1]->gloc,
            *RG2 = testing_triangle->v[2]->gloc;
 

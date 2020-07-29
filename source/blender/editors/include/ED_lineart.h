@@ -60,12 +60,15 @@ typedef struct LineartRenderTriangle {
   short material_id;
   ListBase intersecting_verts;
   char cull_status;
-  /**  Should be testing** , Use testing[NumOfThreads] to access. */
-  struct LineartRenderTriangle *testing;
 } LineartRenderTriangle;
 
 typedef struct LineartRenderTriangleThread {
   struct LineartRenderTriangle base;
+  /** This variable is used to store per-thread triangle-line testing pair,
+   *  also re-used to store triangle-triangle pair for intersection testing stage.
+   *  Do not directly use LineartRenderTriangleThread, but use it as a pointer,
+   * the size of LineartRenderTriangle is dynamically allocated to contain set thread number of
+   * "testing" field, at least one thread is present, thus we always have at least testing[0].*/
   struct LineartRenderLine *testing[127];
 } LineartRenderTriangleThread;
 
@@ -91,7 +94,6 @@ typedef struct LineartRenderVert {
   struct LineartRenderVert *next, *prev;
   double gloc[4];
   double fbcoord[4];
-  int fbcoordi[2];
   /**  Used as "r" when intersecting */
   struct BMVert *v;
   struct LineartRenderLine *intersecting_line;
