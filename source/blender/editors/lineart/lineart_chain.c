@@ -265,7 +265,7 @@ void ED_lineart_chain_feature_lines(LineartRenderBuffer *rb)
         for (rls = new_rl->segments.last; rls; rls = rls->prev) {
           double gpos[3], lpos[3];
           double *lfb = new_rl->l->fbcoord, *rfb = new_rl->r->fbcoord;
-          double global_at = lfb[2] * rls->at / (rls->at * lfb[2] + (1 - rls->at) * rfb[2]);
+          double global_at = lfb[3] * rls->at / (rls->at * lfb[3] + (1 - rls->at) * rfb[3]);
           interp_v3_v3v3_db(lpos, new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
           interp_v3_v3v3_db(gpos, new_rl->l->gloc, new_rl->r->gloc, global_at);
           lineart_chain_push_point(rb,
@@ -288,7 +288,7 @@ void ED_lineart_chain_feature_lines(LineartRenderBuffer *rb)
         for (; rls; rls = rls->next) {
           double gpos[3], lpos[3];
           double *lfb = new_rl->l->fbcoord, *rfb = new_rl->r->fbcoord;
-          double global_at = lfb[2] * rls->at / (rls->at * lfb[2] + (1 - rls->at) * rfb[2]);
+          double global_at = lfb[3] * rls->at / (rls->at * lfb[3] + (1 - rls->at) * rfb[3]);
           interp_v3_v3v3_db(lpos, new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
           interp_v3_v3v3_db(gpos, new_rl->l->gloc, new_rl->r->gloc, global_at);
           lineart_chain_push_point(rb,
@@ -338,7 +338,7 @@ void ED_lineart_chain_feature_lines(LineartRenderBuffer *rb)
     for (rls = rls->next; rls; rls = rls->next) {
       double gpos[3], lpos[3];
       double *lfb = rl->l->fbcoord, *rfb = rl->r->fbcoord;
-      double global_at = lfb[2] * rls->at / (rls->at * lfb[2] + (1 - rls->at) * rfb[2]);
+      double global_at = lfb[3] * rls->at / (rls->at * lfb[3] + (1 - rls->at) * rfb[3]);
       interp_v3_v3v3_db(lpos, rl->l->fbcoord, rl->r->fbcoord, rls->at);
       interp_v3_v3v3_db(gpos, rl->l->gloc, rl->r->gloc, global_at);
       lineart_chain_append_point(
@@ -391,7 +391,7 @@ void ED_lineart_chain_feature_lines(LineartRenderBuffer *rb)
         for (rls = new_rl->segments.last; rls; rls = rls->prev) {
           double gpos[3], lpos[3];
           double *lfb = new_rl->l->fbcoord, *rfb = new_rl->r->fbcoord;
-          double global_at = lfb[2] * rls->at / (rls->at * lfb[2] + (1 - rls->at) * rfb[2]);
+          double global_at = lfb[3] * rls->at / (rls->at * lfb[3] + (1 - rls->at) * rfb[3]);
           interp_v3_v3v3_db(lpos, new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
           interp_v3_v3v3_db(gpos, new_rl->l->gloc, new_rl->r->gloc, global_at);
           last_occlusion = rls->prev ? rls->prev->occlusion : last_occlusion;
@@ -415,7 +415,7 @@ void ED_lineart_chain_feature_lines(LineartRenderBuffer *rb)
         for (; rls; rls = rls->next) {
           double gpos[3], lpos[3];
           double *lfb = new_rl->l->fbcoord, *rfb = new_rl->r->fbcoord;
-          double global_at = lfb[2] * rls->at / (rls->at * lfb[2] + (1 - rls->at) * rfb[2]);
+          double global_at = lfb[3] * rls->at / (rls->at * lfb[3] + (1 - rls->at) * rfb[3]);
           interp_v3_v3v3_db(lpos, new_rl->l->fbcoord, new_rl->r->fbcoord, rls->at);
           interp_v3_v3v3_db(gpos, new_rl->l->gloc, new_rl->r->gloc, global_at);
           lineart_chain_append_point(rb,
