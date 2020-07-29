@@ -101,7 +101,7 @@ typedef struct uiPopupBlockHandle uiPopupBlockHandle;
 /* use for clamping popups within the screen */
 #define UI_SCREEN_MARGIN 10
 
-/* uiBlock->dt and uiBut->dt */
+/** #uiBlock.emboss and #uiBut.emboss */
 enum {
   UI_EMBOSS = 0,          /* use widget style for drawing */
   UI_EMBOSS_NONE = 1,     /* Nothing, only icon and/or text */
@@ -662,7 +662,7 @@ bool UI_popup_block_name_exists(const struct bScreen *screen, const char *name);
 uiBlock *UI_block_begin(const struct bContext *C,
                         struct ARegion *region,
                         const char *name,
-                        short dt);
+                        char emboss);
 void UI_block_end_ex(const struct bContext *C, uiBlock *block, const int xy[2], int r_xy[2]);
 void UI_block_end(const struct bContext *C, uiBlock *block);
 void UI_block_draw(const struct bContext *C, struct uiBlock *block);
@@ -676,7 +676,7 @@ enum {
 };
 void UI_block_theme_style_set(uiBlock *block, char theme_style);
 char UI_block_emboss_get(uiBlock *block);
-void UI_block_emboss_set(uiBlock *block, char dt);
+void UI_block_emboss_set(uiBlock *block, char emboss);
 bool UI_block_has_search_filter(const uiBlock *block);
 bool UI_block_is_search_only(const uiBlock *block);
 void UI_block_set_search_only(uiBlock *block, bool search_only);
