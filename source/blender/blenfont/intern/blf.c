@@ -43,6 +43,7 @@
 #include "DNA_vec_types.h"
 
 #include "BLI_math.h"
+#include "BLI_string.h"
 #include "BLI_threads.h"
 
 #include "BLF_api.h"
@@ -1006,35 +1007,30 @@ void BLF_draw_buffer(int fontid, const char *str, size_t len)
 
 char *BLF_state_sprintN(int fontid)
 {
-  DynStr *message = BLI_dynstr_new();
   FontBLF *font = blf_get(fontid);
-  if (font) {
-    BLI_dynstr_appendf(message,
-                       "fontid %d %p\n"
-                       "  name:    '%s'\n"
-                       "  size:     %u\n"
-                       "  dpi:      %u\n"
-                       "  pos:      %.6f %.6f %.6f\n"
-                       "  aspect:   (%d) %.6f %.6f %.6f\n"
-                       "  angle:    (%d) %.6f\n"
-                       "  flag:     %d",
-                       fontid,
-                       (void *)font,
-                       font->name,
-                       font->size,
-                       font->dpi,
-                       UNPACK3(font->pos),
-                       (font->flags & BLF_ROTATION) != 0,
-                       UNPACK3(font->aspect),
-                       (font->flags & BLF_ASPECT) != 0,
-                       font->angle,
-                       font->flags);
+  if (font != NULL) {
+    return BLI_sprintfN(
+        "fontid %d %p\n"
+        "  name:     '%s'\n"
+        "  size:     %u\n"
+        "  dpi:      %u\n"
+        "  pos:      %.6f %.6f %.6f\n"
+        "  aspect:   (%d) %.6f %.6f %.6f\n"
+        "  angle:    (%d) %.6f\n"
+        "  flag:     %d",
+        fontid,
+        (void *)font,
+        font->name,
+        font->size,
+        font->dpi,
+        UNPACK3(font->pos),
+        (font->flags & BLF_ROTATION) != 0,
+        UNPACK3(font->aspect),
+        (font->flags & BLF_ASPECT) != 0,
+        font->angle,
+        font->flags);
   }
   else {
-    BLI_dynstr_appendf(message, "fontid %d (NULL)", fontid);
+    return BLI_sprintfN("fontid %d (NULL)", fontid);
   }
-
-  char *cstring = BLI_dynstr_get_cstring(message);
-  BLI_dynstr_free(message);
-  return cstring;
 }
