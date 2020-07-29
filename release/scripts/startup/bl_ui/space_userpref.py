@@ -644,6 +644,27 @@ class USERPREF_PT_system_video_sequencer(SystemPanel, CenterAlignMixIn, Panel):
         col.prop(system, "sequencer_disk_cache_compression", text="Compression")
 
 
+class USERPREF_PT_system_logging(SystemPanel, CenterAlignMixIn, Panel):
+    bl_label = "Logging"
+
+    def draw_centered(self, context, layout):
+        prefs = context.preferences
+        system = prefs.system
+
+        layout.prop(system, "log_use_basename")
+        layout.prop(system, "log_use_timestamp")
+        layout.prop(system, "log_severity")
+        layout.prop(system, "verbose")
+
+        col = layout.column()
+        col.active = system.log_severity == 'LOG_VERBOSE'
+        col.prop(system, "log_verbosity")
+
+        layout.prop(system, "log_use_stdout")
+        col = layout.column()
+        col.active = not system.log_use_stdout
+        col.prop(system, "log_output_file")
+
 # -----------------------------------------------------------------------------
 # Viewport Panels
 
@@ -2233,6 +2254,7 @@ classes = (
     USERPREF_PT_system_cycles_devices,
     USERPREF_PT_system_memory,
     USERPREF_PT_system_video_sequencer,
+    USERPREF_PT_system_logging,
     USERPREF_PT_system_sound,
 
     USERPREF_MT_interface_theme_presets,

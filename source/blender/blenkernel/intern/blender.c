@@ -81,10 +81,6 @@ void BKE_blender_free(void)
   BKE_main_free(G_MAIN);
   G_MAIN = NULL;
 
-  if (G.log.file != NULL) {
-    fclose(G.log.file);
-  }
-
   BKE_spacetypes_free(); /* after free main, it uses space callbacks */
 
   IMB_exit();
@@ -152,8 +148,6 @@ void BKE_blender_globals_init(void)
 #else
   G.f &= ~G_FLAG_SCRIPT_AUTOEXEC;
 #endif
-
-  G.log.level = 1;
 }
 
 void BKE_blender_globals_clear(void)

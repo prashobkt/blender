@@ -857,19 +857,8 @@ static int arg_handle_log_file_set(int argc, const char **argv, void *UNUSED(dat
 {
   const char *arg_id = "--log-file";
   if (argc > 1) {
-    errno = 0;
-    FILE *fp = BLI_fopen(argv[1], "w");
-    if (fp == NULL) {
-      const char *err_msg = errno ? strerror(errno) : "unknown";
-      printf("\nError: %s '%s %s'.\n", err_msg, arg_id, argv[1]);
-    }
-    else {
-      if (UNLIKELY(G.log.file != NULL)) {
-        fclose(G.log.file);
-      }
-      G.log.file = fp;
-      CLG_output_set(G.log.file);
-    }
+    CLG_file_output_path_set(argv[1]);
+    CLG_use_stdout_set(false);
     return 1;
   }
   else {
@@ -1528,6 +1517,7 @@ static int arg_handle_verbosity_set(int argc, const char **argv, void *UNUSED(da
 #  else
     (void)level;
 #  endif
+    G.log.level = level;
 
     return 1;
   }

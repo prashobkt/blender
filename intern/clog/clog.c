@@ -44,6 +44,7 @@
 
 /* For printing timestamp. */
 #define __STDC_FORMAT_MACROS
+#include <errno.h>
 #include <inttypes.h>
 
 /* Only other dependency (could use regular malloc too). */
@@ -87,7 +88,7 @@ typedef struct CLogContext {
   bool use_basename;
   bool use_timestamp;
 
-  /** Borrowed, not owned. */
+  /** Owned. */
   int output;
   FILE *output_file;
 
@@ -105,6 +106,9 @@ typedef struct CLogContext {
     void (*backtrace_fn)(void *file_handle);
   } callbacks;
 
+  bool use_stdout;
+  /** used only is use_stdout is false */
+  char output_file_path[256];
 } CLogContext;
 
 /** \} */
@@ -604,18 +608,73 @@ void CLG_logf(CLG_LogType *lg,
 /** \name Logging Context API
  * \{ */
 
-static void CLG_ctx_output_set(CLogContext *ctx, void *file_handle)
+static void CLG_ctx_output_update(CLogContext *ctx)
 {
-  ctx->output_file = file_handle;
+  if (ctx->use_stdout && ctx->output_file != stdout) {
+    /* set output to stdout */
+    if (ctx->output_file != NULL) {
+      fclose(ctx->output_file);
+    }
+    ctx->output_file = stdout;
+  }
+
+  if (!ctx->use_stdout) {
+    FILE *fp = fopen(ctx->output_file_path, "w");
+    if (fp == NULL) {
+      const char *err_msg = errno ? strerror(errno) : "unknown";
+      printf("Error: %s '%s'.\n", err_msg, ctx->output_file_path);
+      return;
+    }
+    ctx->output_file = fp;
+  }
   ctx->output = fileno(ctx->output_file);
 #if defined(__unix__) || defined(__APPLE__)
   ctx->use_color = isatty(ctx->output);
 #endif
 }
 
+static char *CLG_ctx_file_output_path_get(CLogContext *ctx)
+{
+  return ctx->output_file_path;
+}
+
+static void CLG_ctx_file_output_path_set(CLogContext *ctx, const char *value)
+{
+  if (strcmp(ctx->output_file_path, value) != 0) {
+    strcpy(ctx->output_file_path, value);
+    if (!ctx->use_stdout) {
+      CLG_ctx_output_update(ctx);
+    }
+  }
+}
+
+static bool CLG_ctx_use_stdout_get(CLogContext *ctx)
+{
+  return ctx->use_stdout;
+}
+
+static void CLG_ctx_use_stdout_set(CLogContext *ctx, bool value)
+{
+  if (ctx->use_stdout == value) {
+    return;
+  }
+  ctx->use_stdout = value;
+  CLG_ctx_output_update(ctx);
+}
+
+static bool CLG_ctx_output_use_basename_get(CLogContext *ctx)
+{
+  return ctx->use_basename;
+}
+
 static void CLG_ctx_output_use_basename_set(CLogContext *ctx, int value)
 {
   ctx->use_basename = (bool)value;
+}
+
+static bool CLG_ctx_output_use_timestamp_get(CLogContext *ctx)
+{
+  return ctx->use_timestamp;
 }
 
 static void CLG_ctx_output_use_timestamp_set(CLogContext *ctx, int value)
@@ -665,12 +724,22 @@ static void CLG_ctx_type_filter_include(CLogContext *ctx,
   clg_ctx_type_filter_append(&ctx->filters[1], type_match, type_match_len);
 }
 
+static enum CLG_Severity CLG_ctx_severity_level_get(CLogContext *ctx)
+{
+  return ctx->default_type.severity_level;
+}
+
 static void CLG_ctx_severity_level_set(CLogContext *ctx, enum CLG_Severity level)
 {
   ctx->default_type.severity_level = level;
   for (CLG_LogType *ty = ctx->types; ty; ty = ty->next) {
     ty->severity_level = level;
   }
+}
+
+static short CLG_ctx_verbosity_level_get(CLogContext *ctx)
+{
+  return ctx->default_type.verbosity_level;
 }
 
 static void CLG_ctx_verbosity_level_set(CLogContext *ctx, unsigned short level)
@@ -695,7 +764,8 @@ static CLogContext *CLG_ctx_init(void)
   ctx->use_color = true;
   ctx->default_type.severity_level = CLG_SEVERITY_INFO;
   ctx->default_type.verbosity_level = 0;
-  CLG_ctx_output_set(ctx, stdout);
+  ctx->use_stdout = true;
+  CLG_ctx_output_update(ctx);
 
   return ctx;
 }
@@ -707,6 +777,9 @@ static void CLG_ctx_free(CLogContext *ctx)
     log_next = log->next;
     clog_log_record_free(log);
     log = log_next;
+  }
+  if (ctx->output_file != NULL) {
+    fclose(ctx->output_file);
   }
   ctx->log_records.first = NULL;
   ctx->log_records.last = NULL;
@@ -753,14 +826,39 @@ void CLG_exit(void)
   CLG_ctx_free(g_ctx);
 }
 
-void CLG_output_set(void *file_handle)
+void CLG_file_output_path_set(const char *CLG_file_output_path_get)
 {
-  CLG_ctx_output_set(g_ctx, file_handle);
+  CLG_ctx_file_output_path_set(g_ctx, CLG_file_output_path_get);
+}
+
+char *CLG_file_output_path_get()
+{
+  return CLG_ctx_file_output_path_get(g_ctx);
+}
+
+bool CLG_use_stdout_get()
+{
+  return CLG_ctx_use_stdout_get(g_ctx);
+}
+
+void CLG_use_stdout_set(bool value)
+{
+  CLG_ctx_use_stdout_set(g_ctx, value);
+}
+
+bool CLG_output_use_basename_get()
+{
+  return CLG_ctx_output_use_basename_get(g_ctx);
 }
 
 void CLG_output_use_basename_set(int value)
 {
   CLG_ctx_output_use_basename_set(g_ctx, value);
+}
+
+bool CLG_output_use_timestamp_get()
+{
+  return CLG_ctx_output_use_timestamp_get(g_ctx);
 }
 
 void CLG_output_use_timestamp_set(int value)
@@ -793,9 +891,19 @@ void CLG_severity_level_set(enum CLG_Severity level)
   CLG_ctx_severity_level_set(g_ctx, level);
 }
 
+enum CLG_Severity CLG_severity_level_get()
+{
+  return CLG_ctx_severity_level_get(g_ctx);
+}
+
 void CLG_verbosity_level_set(unsigned short level)
 {
   CLG_ctx_verbosity_level_set(g_ctx, level);
+}
+
+short CLG_verbosity_level_get()
+{
+  return CLG_ctx_verbosity_level_get(g_ctx);
 }
 
 LogRecordList *CLG_log_record_get()

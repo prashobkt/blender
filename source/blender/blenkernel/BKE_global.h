@@ -88,10 +88,10 @@ typedef struct Global {
   int f;
 
   struct {
-    /** Logging vars (different loggers may use). */
-    int level; /* currently unused */
+    /** Verbosity for third party loggers */
+    int level;
     /** FILE handle or use stderr (we own this so close when done). */
-    void *file;
+    void *file; /* currently unused */
   } log;
 
   /** debug flag, #G_DEBUG, #G_DEBUG_PYTHON & friends, set python or command line args */

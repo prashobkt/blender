@@ -18,6 +18,8 @@
  * \ingroup RNA
  */
 
+#include <BLI_string.h>
+#include <CLG_log.h>
 #include <limits.h>
 #include <stdlib.h>
 
@@ -172,6 +174,7 @@ static const EnumPropertyItem rna_enum_userdef_viewport_aa_items[] = {
 #ifdef RNA_RUNTIME
 
 #  include "BLI_math_vector.h"
+#  include <stdbool.h>
 
 #  include "DNA_object_types.h"
 #  include "DNA_screen_types.h"
@@ -1069,6 +1072,86 @@ static void rna_UserDef_studiolight_light_ambient_get(PointerRNA *ptr, float *va
 int rna_show_statusbar_vram_editable(struct PointerRNA *UNUSED(ptr), const char **UNUSED(r_info))
 {
   return GPU_mem_stats_supported() ? PROP_EDITABLE : 0;
+}
+
+static enum CLG_Severity rna_clog_log_severity_get(PointerRNA *UNUSED(ptr))
+{
+  return CLG_severity_level_get();
+}
+
+static void rna_clog_log_severity_set(PointerRNA *UNUSED(ptr), int value)
+{
+  CLG_severity_level_set(value);
+}
+
+static int rna_clog_log_verbosity_get(PointerRNA *UNUSED(ptr))
+{
+  return CLG_verbosity_level_get();
+}
+
+static void rna_clog_log_verbosity_set(PointerRNA *UNUSED(ptr), int value)
+{
+  CLG_verbosity_level_set(value);
+}
+
+static bool rna_clog_log_use_basename_get(PointerRNA *UNUSED(ptr))
+{
+  return CLG_output_use_basename_get();
+}
+
+static void rna_clog_log_use_basename_set(PointerRNA *UNUSED(ptr), int value)
+{
+  CLG_output_use_basename_set(value);
+}
+
+static bool rna_clog_log_use_timestamp_get(PointerRNA *UNUSED(ptr))
+{
+  return CLG_output_use_timestamp_get();
+}
+
+static void rna_clog_log_use_timestamp_set(PointerRNA *UNUSED(ptr), int value)
+{
+  CLG_output_use_timestamp_set(value);
+}
+
+static bool rna_clog_log_use_stdout_get(PointerRNA *UNUSED(ptr))
+{
+  return CLG_use_stdout_get();
+}
+
+static void rna_clog_log_use_stdout_set(PointerRNA *UNUSED(ptr), int value)
+{
+  CLG_use_stdout_set(value);
+}
+
+static int rna_verbose_get(PointerRNA *UNUSED(ptr))
+{
+  return G.log.level;
+}
+
+static void rna_verbose_set(PointerRNA *UNUSED(ptr), int value)
+{
+  G.log.level = value;
+#  ifdef WITH_LIBMV
+  libmv_setLoggingVerbosity(value);
+#  elif defined(WITH_CYCLES_LOGGING)
+  CCL_logging_verbosity_set(value);
+#  endif
+}
+
+static void rna_clog_log_output_file_get(PointerRNA *UNUSED(ptr), char *value)
+{
+  BLI_strncpy(value, CLG_file_output_path_get(), FILE_MAX);
+}
+
+static int rna_clog_log_output_file_length(PointerRNA *UNUSED(ptr))
+{
+  return strlen(CLG_file_output_path_get());
+}
+
+static void rna_clog_log_output_file_set(PointerRNA *UNUSED(ptr), const char *value)
+{
+  CLG_file_output_path_set(value);
 }
 
 #else
@@ -5607,6 +5690,52 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_HIDDEN);
   RNA_def_property_ui_text(prop, "Legacy Compute Device Type", "For backwards compatibility only");
 #  endif
+
+  static const EnumPropertyItem clog_log_severity[] = {
+      {CLG_SEVERITY_VERBOSE, "LOG_VERBOSE", ICON_NONE, "Log severity verbose", ""},
+      {CLG_SEVERITY_INFO, "LOG_INFO", ICON_INFO, "Log severity info", ""},
+      {CLG_SEVERITY_WARN, "LOG_WARN", ALERT_ICON_WARNING, "Log severity warning", ""},
+      {CLG_SEVERITY_ERROR, "LOG_ERROR", ICON_ERROR, "Log severity error", ""},
+      {CLG_SEVERITY_FATAL, "LOG_FATAL", ICON_ERROR, "Log severity fatal", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  /* TODO (grzelns) check ranges, add descriptions */
+  prop = RNA_def_property(srna, "log_severity", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_funcs(
+      prop, "rna_clog_log_severity_get", "rna_clog_log_severity_set", NULL);
+  RNA_def_property_enum_items(prop, clog_log_severity);
+  RNA_def_property_ui_text(prop, "Log Severity", "");
+
+  prop = RNA_def_property(srna, "log_verbosity", PROP_INT, PROP_NONE);
+  RNA_def_property_int_funcs(
+      prop, "rna_clog_log_verbosity_get", "rna_clog_log_verbosity_set", NULL);
+  RNA_def_property_ui_text(prop, "Log Verbosity", "Log level, when severity is set to verbose");
+
+  /* filters are implemented in strange way, it is not worth to implement it now
+    prop = RNA_def_property(srna, "log_filter_include", PROP_STRING, PROP_NONE);
+    RNA_def_property_string_funcs(prop,
+                                  "rna_clog_log_filter_include_get",
+                                  "rna_clog_log_filter_include_length",
+                                  "rna_clog_log_filter_include_set");
+    prop = RNA_def_property(srna, "log_filter_exclude", PROP_STRING, PROP_NONE);
+  */
+  prop = RNA_def_property(srna, "log_use_basename", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(
+      prop, "rna_clog_log_use_basename_get", "rna_clog_log_use_basename_set");
+  prop = RNA_def_property(srna, "log_use_timestamp", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(
+      prop, "rna_clog_log_use_timestamp_get", "rna_clog_log_use_timestamp_set");
+  prop = RNA_def_property(srna, "log_use_stdout", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(
+      prop, "rna_clog_log_use_stdout_get", "rna_clog_log_use_stdout_set");
+  prop = RNA_def_property(srna, "log_output_file", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(prop,
+                                "rna_clog_log_output_file_get",
+                                "rna_clog_log_output_file_length",
+                                "rna_clog_log_output_file_set");
+  prop = RNA_def_property(srna, "verbose", PROP_INT, PROP_NONE);
+  RNA_def_property_int_funcs(prop, "rna_verbose_get", "rna_verbose_set", NULL);
 }
 
 static void rna_def_userdef_input(BlenderRNA *brna)

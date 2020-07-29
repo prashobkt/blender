@@ -88,6 +88,7 @@ extern "C" {
 /* For printing timestamp. */
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
+#include <stdbool.h>
 
 #define STRINGIFY_ARG(x) "" #x
 #define STRINGIFY_APPEND(a, b) "" a #b
@@ -170,8 +171,13 @@ void clog_log_record_free(CLG_LogRecord *log_record);
 void CLG_init(void);
 void CLG_exit(void);
 
-void CLG_output_set(void *file_handle);
+bool CLG_use_stdout_get(void);
+void CLG_use_stdout_set(bool value);
+char *CLG_file_output_path_get(void);
+void CLG_file_output_path_set(const char *value);
+bool CLG_output_use_basename_get(void);
 void CLG_output_use_basename_set(int value);
+bool CLG_output_use_timestamp_get(void);
 void CLG_output_use_timestamp_set(int value);
 void CLG_fatal_fn_set(void (*fatal_fn)(void *file_handle));
 void CLG_backtrace_fn_set(void (*fatal_fn)(void *file_handle));
@@ -179,7 +185,9 @@ void CLG_backtrace_fn_set(void (*fatal_fn)(void *file_handle));
 void CLG_type_filter_include(const char *type_filter, int type_filter_len);
 void CLG_type_filter_exclude(const char *type_filter, int type_filter_len);
 
+enum CLG_Severity CLG_severity_level_get(void);
 void CLG_severity_level_set(enum CLG_Severity level);
+short CLG_verbosity_level_get(void);
 void CLG_verbosity_level_set(unsigned short level);
 struct LogRecordList *CLG_log_record_get(void);
 
