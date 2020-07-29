@@ -656,17 +656,6 @@ static void lineart_render_line_assign_with_triangle(LineartRenderTriangle *rt)
 
 static void lineart_triangle_post(LineartRenderTriangle *rt, LineartRenderTriangle *orig)
 {
-  if (rt->v[0]) {
-    add_v3_v3_db(rt->gc, rt->v[0]->fbcoord);
-  }
-  if (rt->v[1]) {
-    add_v3_v3_db(rt->gc, rt->v[1]->fbcoord);
-  }
-  if (rt->v[2]) {
-    add_v3_v3_db(rt->gc, rt->v[2]->fbcoord);
-  }
-  mul_v3db_db(rt->gc, 1.0f / 3.0f);
-
   copy_v3_v3_db(rt->gn, orig->gn);
   rt->cull_status = LRT_CULL_GENERATED;
 }
@@ -1474,11 +1463,6 @@ static void lineart_geometry_object_load(Object *ob,
       rt->rl[2] = &orl[BM_elem_index_get(loop->e)];
 
       rt->material_id = f->mat_nr;
-
-      add_v3_v3_db(rt->gc, rt->v[0]->fbcoord);
-      add_v3_v3_db(rt->gc, rt->v[1]->fbcoord);
-      add_v3_v3_db(rt->gc, rt->v[2]->fbcoord);
-      mul_v3db_db(rt->gc, 1.0f / 3.0f);
 
       double gn[3];
       copy_v3db_v3fl(gn, f->no);

@@ -56,7 +56,6 @@ typedef struct LineartRenderTriangle {
   struct LineartRenderVert *v[3];
   struct LineartRenderLine *rl[3];
   double gn[3];
-  double gc[3];
   /*  struct BMFace *F; */
   short material_id;
   ListBase intersecting_verts;
