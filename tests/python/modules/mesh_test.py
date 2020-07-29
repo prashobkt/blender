@@ -119,6 +119,29 @@ class FluidSpec:
         return "Fluid Modifier: " + self.modifier_name + " of type " + self.modifier_type + \
                " with parameters: " + str(self.modifier_parameters) + " with frame end: " + str(self.frame_end)
 
+class ParticleSystemSpec:
+    """
+    Holds a Particle System modifier and its parameters.
+    """
+
+    def __init__(self, modifier_name: str, modifier_type: str, modifier_parameters: dict, frame_end: int):
+        """
+        Constructs a particle system spec.
+        :param modifier_name: str - name of object modifier, e.g. "Particles"
+        :param modifier_type: str - type of object modifier, e.g. "PARTICLE_SYSTEM", can be removed
+        :param modifier_parameters: dict - {name : val} dictionary giving modifier parameters, e.g. {"seed" : 1}
+        :param frame_end:int - the last frame of the simulation at which the modifier is applied
+        """
+        self.modifier_name = modifier_name
+        self.modifier_type = modifier_type
+        self.modifier_parameters = modifier_parameters
+        self.frame_end = frame_end
+
+    def __str__(self):
+        return "Physics Modifier: " + self.modifier_name + " of type " + self.modifier_type + \
+               " with parameters: " + str(self.modifier_parameters) + " with frame end: " + str(self.frame_end)
+
+
 
 class OperatorSpec:
     """
@@ -208,10 +231,10 @@ class MeshTest:
         for operation in operations_stack:
             if not (isinstance(operation, ModifierSpec) or isinstance(operation, OperatorSpec) or isinstance(operation, PhysicsSpec)
                     or isinstance(operation, ObjectOperatorSpec) or isinstance(operation, DeformModifierSpec)
-                    or isinstance(operation, FluidSpec)):
-                raise ValueError("Expected operation of type {} or {} or {} or {} or {}. Got {}".
+                    or isinstance(operation, FluidSpec) or isinstance(operation, ParticleSystemSpec)):
+                raise ValueError("Expected operation of type {} or {} or {} or {} or {} or {}. Got {}".
                                  format(type(ModifierSpec), type(OperatorSpec), type(PhysicsSpec),
-                                        type(DeformModifierSpec), type(FluidSpec),
+                                        type(DeformModifierSpec), type(FluidSpec), type(ParticleSystemSpec),
                                         type(operation)))
         self.operations_stack = operations_stack
         self.apply_modifier = apply_modifiers
@@ -418,6 +441,46 @@ class MeshTest:
         if self.apply_modifier:
             self._apply_modifier(test_object, fluid_spec.modifier_name)
 
+    def _apply_particle_system(self, test_object, particle_sys_spec: ParticleSystemSpec):
+        """
+        Applies Particle System settings to test objects
+        """
+        bpy.context.scene.frame_set(0)
+        bpy.ops.object.select_all(action='DESELECT')
+
+        test_object.modifiers.new(particle_sys_spec.modifier_name, particle_sys_spec.modifier_type)
+
+        settings_name = test_object.particle_systems.active.settings.name
+        particle_setting = bpy.data.particles[settings_name]
+        if self.verbose:
+            print("Created modifier '{}' of type '{}'.".
+                  format(particle_sys_spec.modifier_name, particle_sys_spec.modifier_type))
+
+        for param_name in particle_sys_spec.modifier_parameters:
+            try:
+                if param_name == "seed":
+                    system_setting = test_object.particle_systems[particle_sys_spec.modifier_name]
+                    setattr(system_setting, param_name, particle_sys_spec.modifier_parameters[param_name])
+                else:
+                    setattr(particle_setting, param_name, particle_sys_spec.modifier_parameters[param_name])
+
+                if self.verbose:
+                    print("\t set parameter '{}' with value '{}'".
+                          format(param_name, particle_sys_spec.modifier_parameters[param_name]))
+            except AttributeError:
+                # Clean up first
+                bpy.ops.object.delete()
+                raise AttributeError("Modifier '{}' has no parameter named '{}'".
+                                     format(particle_sys_spec.modifier_type, param_name))
+
+        bpy.context.scene.frame_set(20)
+        test_object.select_set(True)
+        bpy.ops.object.duplicates_make_real()
+        test_object.select_set(True)
+        bpy.ops.object.join()
+        if self.apply_modifier:
+            self._apply_modifier(test_object, particle_sys_spec.modifier_name)
+
     def _apply_operator(self, test_object, operator: OperatorSpec):
         """
         Apply operator on test object.
@@ -542,10 +605,13 @@ class MeshTest:
             elif isinstance(operation, FluidSpec):
                 self._apply_fluid_settings(evaluated_test_object, operation)
 
+            elif isinstance(operation, ParticleSystemSpec):
+                self._apply_particle_system(evaluated_test_object, operation)
+
             else:
-                raise ValueError("Expected operation of type {} or {} or {} or {} or {}. Got {}".
+                raise ValueError("Expected operation of type {} or {} or {} or {} or {} or {}. Got {}".
                                  format(type(ModifierSpec), type(OperatorSpec), type(PhysicsSpec),
-                                        type(ObjectOperatorSpec), type(FluidSpec), type(operation)))
+                                        type(ObjectOperatorSpec), type(FluidSpec), type(ParticleSystemSpec), type(operation)))
 
         # Compare resulting mesh with expected one.
         if self.verbose:
