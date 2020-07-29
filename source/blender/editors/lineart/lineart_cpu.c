@@ -1869,8 +1869,8 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl
   return 1;
 }
 
-static bool *lineart_triangle_share_edge(const LineartRenderTriangle *l,
-                                         const LineartRenderTriangle *r)
+static bool lineart_triangle_share_edge(const LineartRenderTriangle *l,
+                                        const LineartRenderTriangle *r)
 {
   if (l->rl[0]->tl == r || l->rl[0]->tr == r || l->rl[1]->tl == r || l->rl[1]->tr == r ||
       l->rl[1]->tl == r || l->rl[1]->tr == r) {
