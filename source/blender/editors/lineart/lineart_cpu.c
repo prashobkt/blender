@@ -696,8 +696,7 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
   double clip_start;
   copy_v3_v3_db(cam_pos, rb->camera_pos);
 
-  /* This ensures all things are inside frustum in 2d stage. (precision issue) */
-  clip_start = rb->near_clip + 0.01;
+  clip_start = rb->near_clip;
 
   mul_v3db_db(clip_advance, -clip_start);
   add_v3_v3_db(cam_pos, clip_advance);
