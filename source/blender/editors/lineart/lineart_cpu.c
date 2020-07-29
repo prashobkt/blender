@@ -128,7 +128,7 @@ static void lineart_render_line_cut(LineartRenderBuffer *rb,
                                     double start,
                                     double end)
 {
-  LineartRenderLineSegment *rls = rl->segments.first, *irls;
+  LineartRenderLineSegment *rls, *irls;
   LineartRenderLineSegment *start_segment = 0, *end_segment = 0;
   LineartRenderLineSegment *ns = 0, *ns2 = 0;
   int untouched = 0;
@@ -237,8 +237,8 @@ static void lineart_render_line_cut(LineartRenderBuffer *rb,
   }
 
   char min_occ = 127;
-  LISTBASE_FOREACH (LineartRenderLineSegment *, rls, &rl->segments) {
-    min_occ = MIN2(min_occ, rls->occlusion);
+  LISTBASE_FOREACH (LineartRenderLineSegment *, iirls, &rl->segments) {
+    min_occ = MIN2(min_occ, iirls->occlusion);
   }
   rl->min_occ = min_occ;
 }
@@ -1307,7 +1307,7 @@ static void lineart_main_perspective_division(LineartRenderBuffer *rb)
 {
   LineartRenderVert *rv;
   int i;
-  float far = rb->far_clip, near = rb->near_clip;
+  /* float far = rb->far_clip, near = rb->near_clip;*/
 
   if (!rb->cam_is_persp) {
     return;
@@ -1320,7 +1320,8 @@ static void lineart_main_perspective_division(LineartRenderBuffer *rb)
       rv[i].fbcoord[0] /= rv[i].fbcoord[3];
       rv[i].fbcoord[1] /= rv[i].fbcoord[3];
       /* Re-map z into (0-1) range, because we no longer need NDC at the moment. */
-      rv[i].fbcoord[2] = -2 * rv[i].fbcoord[2] / (far - near) - (far + near) / (far - near);
+      /* But we don't need actual Z either, we use W for linear depth for back-transform. */
+      /* rv[i].fbcoord[2] = -2 * rv[i].fbcoord[2] / (far - near) - (far + near) / (far - near); */
       rv[i].fbcoord[0] -= rb->shift_x * 2;
       rv[i].fbcoord[1] -= rb->shift_y * 2;
     }
@@ -2111,6 +2112,10 @@ static LineartRenderLine *lineart_triangle_generate_intersection_line_only(
   r->fbcoord[0] -= rb->shift_x * 2;
   r->fbcoord[1] -= rb->shift_y * 2;
 
+  /* This z transformation is not the same as the rest of the part, because the data don't go
+   * through normal perspective division calls in the pipeline, but this way the 3D result and
+   * occlution on the generated line is correct, and we don't really use 2D for viewport stroke
+   * generation anyway.*/
   l->fbcoord[2] = ZMin * ZMax / (ZMax - fabs(l->fbcoord[2]) * (ZMax - ZMin));
   r->fbcoord[2] = ZMin * ZMax / (ZMax - fabs(r->fbcoord[2]) * (ZMax - ZMin));
 
@@ -2451,7 +2456,8 @@ bool ED_lineart_calculation_flag_check(eLineartRenderStatus flag)
   return match;
 }
 
-void ED_lineart_modifier_sync_flag_set(eLineartModifierSyncStatus flag, bool is_from_modifier)
+void ED_lineart_modifier_sync_flag_set(eLineartModifierSyncStatus flag,
+                                       bool UNUSED(is_from_modifier))
 {
   BLI_spin_lock(&lineart_share.lock_render_status);
 
@@ -3581,12 +3587,6 @@ void ED_lineart_compute_feature_lines_background(Depsgraph *dg, const int show_f
   BLI_task_pool_push(tp, (TaskRunFunction)lineart_compute_feature_lines_worker, flw, true, NULL);
 }
 
-static bool lineart_camera_exists(bContext *c)
-{
-  Scene *scene = CTX_data_scene(c);
-  return scene->camera ? true : false;
-}
-
 /* Grease Pencil bindings */
 
 static void lineart_gpencil_notify_targets(Depsgraph *dg)
@@ -3605,27 +3605,7 @@ static void lineart_gpencil_notify_targets(Depsgraph *dg)
   DEG_OBJECT_ITER_END;
 }
 
-/* returns flags from LineartEdgeFlag */
-static int lineart_object_line_types(Object *ob)
-{
-  ObjectLineart *obl = &ob->lineart;
-  int result = 0;
-  if (obl->contour.use) {
-    result |= LRT_EDGE_FLAG_CONTOUR;
-  }
-  if (obl->crease.use) {
-    result |= LRT_EDGE_FLAG_CREASE;
-  }
-  if (obl->material.use) {
-    result |= LRT_EDGE_FLAG_MATERIAL;
-  }
-  if (obl->edge_mark.use) {
-    result |= LRT_EDGE_FLAG_EDGE_MARK;
-  }
-  return result;
-}
-
-void ED_lineart_gpencil_generate_from_chain(Depsgraph *depsgraph,
+void ED_lineart_gpencil_generate_from_chain(Depsgraph *UNUSED(depsgraph),
                                             Object *ob,
                                             bGPDlayer *UNUSED(gpl),
                                             bGPDframe *gpf,
@@ -3731,26 +3711,6 @@ void ED_lineart_gpencil_generate_from_chain(Depsgraph *depsgraph,
 
   /* release render lock so cache is free to be manipulated. */
   BLI_spin_unlock(&lineart_share.lock_render_status);
-}
-
-static void lineart_gpencil_clear_flags(Depsgraph *dg, int frame)
-{
-  DEG_OBJECT_ITER_BEGIN (dg,
-                         ob,
-                         DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
-                             DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
-    if (ob->type == OB_GPENCIL) {
-      bGPdata *gpd = ((Object *)ob->id.orig_id)->data;
-      LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-        bGPDframe *gpf = BKE_gpencil_layer_frame_find(gpl, frame);
-        if (gpf == NULL) {
-          continue;
-        }
-        gpf->flag &= ~GP_FRAME_LRT_CLEARED;
-      }
-    }
-  }
-  DEG_OBJECT_ITER_END;
 }
 
 void ED_lineart_gpencil_generate_strokes_direct(Depsgraph *depsgraph,
@@ -3875,6 +3835,9 @@ static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op)
             else if (rb->fuzzy_intersections) {
               use_types = lmd->line_types | LRT_EDGE_FLAG_INTERSECTION;
             }
+            else {
+              use_types = lmd->line_types;
+            }
 
             ED_lineart_gpencil_generate_strokes_direct(
                 dg,
@@ -3889,7 +3852,7 @@ static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op)
                 lmd->target_material ?
                     BKE_gpencil_object_material_index_get(ob, lmd->target_material) :
                     0,
-                lmd->line_types,
+                use_types,
                 lmd->thickness,
                 lmd->opacity,
                 lmd->pre_sample_length);
@@ -3912,26 +3875,6 @@ static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op)
   ED_lineart_update_render_progress(100, NULL);
 
   return OPERATOR_FINISHED;
-}
-
-static bool lineart_active_is_gpencil_object(bContext *C)
-{
-  Object *ob = CTX_data_active_object(C);
-  return ob->type == OB_GPENCIL;
-}
-
-static bool lineart_active_is_source_object(bContext *C)
-{
-  Object *ob = CTX_data_active_object(C);
-  if (ob->type != OB_MESH) {
-    return false;
-  }
-  else {
-    if (ob->lineart.usage == OBJECT_FEATURE_LINE_INCLUDE) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /* Blocking 1 frame update */
