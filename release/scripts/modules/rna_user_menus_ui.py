@@ -50,12 +50,12 @@ def get_keymap(context, index):
                 if kmi.properties.index == index:
                     return kmi
     km = context.window_manager.keyconfigs.user.keymaps['Window']
-    kmi = km.keymap_items.new("wm.call_user_menu",'RIGHTMOUSE', 'PRESS', shift=True, ctrl=True, alt=True)
+    kmi = km.keymap_items.new("wm.call_user_menu",'NONE', 'ANY', shift=False, ctrl=False, alt=False)
     kmi.properties.index = index
     kmi.active = True
     return kmi
 
-def draw_button(context, box, item):
+def draw_button(context, box, item, index):
     prefs = context.preferences
     um = prefs.user_menus
 
@@ -70,8 +70,8 @@ def draw_button(context, box, item):
     row.prop(item, "is_selected", text=name, toggle=1)
     if item.type == "SUBMENU":
         sm = item.get_submenu()
-        if um.active_group.is_pie:
-            row.operator("preferences.menuitem_add", text="", icon='ADD')
+        if um.active_group.is_pie and index >= 0:
+            row.operator("preferences.pie_menuitem_add", text="", icon='ADD').index = index
             row.operator("preferences.menuitem_remove", text="", icon='REMOVE')
             row.operator("preferences.menuitem_up", text="", icon='TRIA_UP')
             row.operator("preferences.menuitem_down", text="", icon='TRIA_DOWN')
@@ -81,7 +81,7 @@ def draw_button(context, box, item):
 
 def draw_item(context, box, items):
     for umi in items:
-        draw_button(context, box, umi)
+        draw_button(context, box, umi, -1)
 
 def draw_item_box(context, row):
     prefs = context.preferences
@@ -99,20 +99,16 @@ def draw_item_box(context, row):
     row = row.split(factor=0.9, align=True)
     col = row.column(align=True)
 
-    col.operator("preferences.menuitem_add", text="", icon='ADD')
+    col.operator("preferences.menuitem_add", text="", icon='ADD').index = -1
     col.operator("preferences.menuitem_remove", text="", icon='REMOVE')
     col.operator("preferences.menuitem_up", text="", icon='TRIA_UP')
     col.operator("preferences.menuitem_down", text="", icon='TRIA_DOWN')
     row.separator()
 
-def draw_pie_item(context, col, items, label):
-    prefs = context.preferences
-    um = prefs.user_menus
-
+def draw_pie_item(context, col, items, label, index):
     row = col.row()
-    #subrow = row.split(factor=0.1)
     row.label(text=label)
-    draw_button(context, row, items)
+    draw_button(context, row, items, index)
 
 def draw_pie(context, row):
     prefs = context.preferences
@@ -122,14 +118,14 @@ def draw_pie(context, row):
     if not cm:
         return
     col = row.column()
-    draw_pie_item(context, col, cm.menu_items[0], "Left : ")
-    draw_pie_item(context, col, cm.menu_items[1], "Right : ")
-    draw_pie_item(context, col, cm.menu_items[2], "Down : ")
-    draw_pie_item(context, col, cm.menu_items[3], "Up : ")
-    draw_pie_item(context, col, cm.menu_items[4], "Upper left : ")
-    draw_pie_item(context, col, cm.menu_items[5], "Upper right : ")
-    draw_pie_item(context, col, cm.menu_items[6], "Lower left : ")
-    draw_pie_item(context, col, cm.menu_items[7], "Lower right : ")
+    draw_pie_item(context, col, cm.menu_items[0], "Left : ", 0)
+    draw_pie_item(context, col, cm.menu_items[1], "Right : ", 1)
+    draw_pie_item(context, col, cm.menu_items[2], "Down : ", 2)
+    draw_pie_item(context, col, cm.menu_items[3], "Up : ", 3)
+    draw_pie_item(context, col, cm.menu_items[4], "Upper left : ", 4)
+    draw_pie_item(context, col, cm.menu_items[5], "Upper right : ", 5)
+    draw_pie_item(context, col, cm.menu_items[6], "Lower left : ", 6)
+    draw_pie_item(context, col, cm.menu_items[7], "Lower right : ", 7)
     row.separator()
         
 
@@ -217,25 +213,6 @@ def menu_id(context, umg):
         i = i + 1
     return -1
 
-    
-def ensure_keymap(context):
-    prefs = context.preferences
-    um = prefs.user_menus
-    umg = um.active_group
-    index = menu_id(context, umg)
-
-    for km in context.window_manager.keyconfigs.user.keymaps:
-        for kmi in km.keymap_items:
-            if kmi.idname == "wm.call_user_menu":
-                if kmi.properties.index == index:
-                    umg.set_keymap(kmi=kmi)
-    if not umg.keymap:
-        km = context.window_manager.keyconfigs.user.keymaps['Window']
-        kmi = km.keymap_items.new("wm.call_user_menu",'RIGHTMOUSE', 'PRESS', shift=True, ctrl=True, alt=True)
-        kmi.properties.index = index
-        kmi.active = True
-        umg.set_keymap(kmi=kmi)
-
 
 def draw_user_menus(context, layout):
     prefs = context.preferences
@@ -243,13 +220,10 @@ def draw_user_menus(context, layout):
 
     if not um.active_group:
         um.active_group = um.menus[0]
-    if not um.active_group.keymap:
-        ensure_keymap(context)
 
     split = layout.split(factor=0.4)
 
     row = split.row()
-    col = layout.column()
 
     rowsub = row.row(align=True)
     rowsub.menu("USERPREF_MT_menu_select", text=um.active_group.name)
@@ -267,12 +241,10 @@ def draw_user_menus(context, layout):
     #rowsub.operator("preferences.keyconfig_export", text="", icon='EXPORT')
 
     row = layout.row()
-    col = layout.column()
 
     layout.separator()
     draw_user_menu_preference(context=context, layout=row)
 
-    col = layout.column()
     row = layout.row()
 
     if um.active_group.is_pie:

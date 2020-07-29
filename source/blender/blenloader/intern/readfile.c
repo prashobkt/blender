@@ -9806,7 +9806,6 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
 
   LISTBASE_FOREACH (bUserMenusGroup *, umg, &user->user_menus) {
     BLI_listbase_clear(&umg->menus);
-    umg->shortcut = NULL;
     BLO_read_list(reader, &umg->menus);
     LISTBASE_FOREACH (bUserMenu *, um, &umg->menus) {
       BLI_listbase_clear(&um->items);

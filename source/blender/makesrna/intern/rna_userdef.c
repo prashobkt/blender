@@ -1080,23 +1080,37 @@ static void rna_UserDef_studiolight_light_ambient_get(PointerRNA *ptr, float *va
 static bUserMenu *rna_UserDef_usermenus_get_current(UserDef *userdef, bool ensure)
 {
   const char **contexts_list = CTX_data_list_mode_string();
-  ListBase *umg_list = &userdef->user_menus;
 
   bUserMenusGroup *umg = userdef->runtime.umg_select;
   bUserMenu *bum = NULL;
 
   if (!umg)
     return NULL;
-  if (userdef->runtime.um_space_select > 0 && userdef->runtime.um_context_select >= 0) {
-    if (ensure) {
-      bum = BKE_blender_user_menu_ensure(&umg->menus,
-                                         userdef->runtime.um_space_select,
-                                         contexts_list[userdef->runtime.um_context_select]);
-    }
-    else {
+  if (userdef->runtime.um_space_select > 0) {
+    if (umg->pie) {
       bum = BKE_blender_user_menu_find(&umg->menus,
                                        userdef->runtime.um_space_select,
                                        contexts_list[userdef->runtime.um_context_select]);
+      if (!bum) {
+        bum = BKE_blender_user_menu_ensure(&umg->menus,
+                                           userdef->runtime.um_space_select,
+                                           contexts_list[userdef->runtime.um_context_select]);
+        for (int i = 0; i < 8; i++) {
+          BKE_blender_user_menu_item_add(&bum->items, USER_MENU_TYPE_SEP);
+        }
+      }
+    }
+    else {
+      if (ensure) {
+        bum = BKE_blender_user_menu_ensure(&umg->menus,
+                                           userdef->runtime.um_space_select,
+                                           contexts_list[userdef->runtime.um_context_select]);
+      }
+      else {
+        bum = BKE_blender_user_menu_find(&umg->menus,
+                                         userdef->runtime.um_space_select,
+                                         contexts_list[userdef->runtime.um_context_select]);
+      }
     }
   }
   return bum;
@@ -1124,11 +1138,6 @@ static bUserMenu *rna_UserDef_usermenus_get_current(UserDef *userdef, bool ensur
 static void rna_UserDef_usermenus_set_group(UserDef *userdef, bUserMenusGroup *umg)
 {
   userdef->runtime.umg_select = umg;
-}
-
-static void rna_UserDef_usermenus_set_keymap(bUserMenusGroup *umg, wmKeyMapItem *kmi)
-{
-  umg->shortcut = kmi;
 }
 
 static void rna_UserDef_usermenus_add_group(UserDef *userdef)
@@ -1305,21 +1314,34 @@ static const EnumPropertyItem *rna_UserDef_usermenus_contexts_itemf(bContext *UN
   return item;
 }*/
 
-static void rna_UserDef_usermenus_item_add(UserDef *userdef)
+static void rna_UserDef_usermenus_item_add(UserDef *userdef, int index)
 {
-  bUserMenu *bum = rna_UserDef_usermenus_get_current(userdef, true);
-  if (!bum)
+  bUserMenu *um = rna_UserDef_usermenus_get_current(userdef, true);
+  if (!um)
     return;
 
-  ListBase *lb = &bum->items;
-  bUserMenuItem_Op *bumi = (bUserMenuItem_Op *)BKE_blender_user_menu_item_add(
-      lb, USER_MENU_TYPE_OPERATOR);
+  ListBase *lb = &um->items;
+  bUserMenuItem_Op *umi = (bUserMenuItem_Op *)BKE_blender_user_menu_item_add(
+      NULL, USER_MENU_TYPE_OPERATOR);
+
+  if (index < 0)
+    BLI_addtail(lb, umi);
+  else {
+    int i = 0;
+    for (bUserMenuItem *insert = lb->first; insert; insert = insert->next, i++) {
+      if (i == index) {
+        BLI_insertlinkbefore(lb, insert, umi);
+        return;
+      }
+    }
+    BLI_addtail(lb, umi);
+  }
 
   // basic operator setup
   wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_add", true);
-  STRNCPY(bumi->item.ui_name, "new item");
-  STRNCPY(bumi->op_idname, ot->idname);
-  userdef->runtime.um_item_select = &bumi->item;
+  STRNCPY(umi->item.ui_name, "new item");
+  STRNCPY(umi->op_idname, ot->idname);
+  userdef->runtime.um_item_select = &umi->item;
 }
 
 static void rna_UserDef_usermenus_item_remove(UserDef *userdef)
@@ -1372,7 +1394,7 @@ static void rna_UserDef_usermenus_item_move(UserDef *userdef, bool up)
       BLI_addtail(&umi_sm->items, umi);
     else
       BLI_addhead(&umi_sm->items, umi);
-    umi->parent = umi_toward;
+    umi->parent = umi_sm;
   }
   else {
 
@@ -1381,6 +1403,38 @@ static void rna_UserDef_usermenus_item_move(UserDef *userdef, bool up)
     else
       BLI_insertlinkafter(lb, umi->next, umi);
   }
+}
+
+static void rna_UserDef_usermenus_pie_item_add(UserDef *userdef, int index)
+{
+  bUserMenu *um = rna_UserDef_usermenus_get_current(userdef, true);
+  if (!um)
+    return;
+
+  bUserMenuItem_Op *umi = NULL;
+  ListBase *lb = &um->items;
+  bUserMenuItem *insert = lb->first;
+  int i = 0;
+  for (insert = lb->first; insert; insert = insert->next, i++) {
+    if (insert->type != USER_MENU_TYPE_SUBMENU)
+      continue;
+    bUserMenuItem_SubMenu *sm = (bUserMenuItem_SubMenu *)insert;
+    if (i == index) {
+      umi = (bUserMenuItem_Op *)BKE_blender_user_menu_item_add(&sm->items,
+                                                               USER_MENU_TYPE_OPERATOR);
+      break;
+    }
+  }
+
+  if (!umi)
+    return;
+
+  // basic operator setup
+  wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_add", true);
+  STRNCPY(umi->item.ui_name, "new item");
+  STRNCPY(umi->op_idname, ot->idname);
+  umi->item.parent = insert;
+  userdef->runtime.um_item_select = &umi->item;
 }
 
 static void rna_UserDef_usermenus_item_type_set(PointerRNA *ptr, int value)
@@ -1422,7 +1476,7 @@ static void rna_UserDef_usermenus_pie_set(PointerRNA *ptr, int value)
     BKE_blender_user_menu_item_free_list(lb);
     if (value)
       for (int i = 0; i < 8; i++) {
-        bUserMenuItem *new_umi = BKE_blender_user_menu_item_add(lb, USER_MENU_TYPE_SEP);
+        BKE_blender_user_menu_item_add(lb, USER_MENU_TYPE_SEP);
       }
   }
   umg->pie = value;
@@ -1448,7 +1502,7 @@ static void rna_UserDef_usermenus_item_op_set(PointerRNA *ptr, const char *value
   free(opptr);
 }
 
-static void rna_UserDef_usermenu_draw(UserDef *userdef,
+static void rna_UserDef_usermenu_draw(UserDef *UNUSED(userdef),
                                       bContext *C,
                                       uiLayout *layout,
                                       bUserMenusGroup *umg)
@@ -6353,6 +6407,8 @@ static void rna_def_userdef_usermenus_items_subtypes(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
+  FunctionRNA *func;
+  PropertyRNA *parm;
 
   /* operator item */
   srna = RNA_def_struct(brna, "um_item_op", NULL);
@@ -6545,8 +6601,6 @@ static void rna_def_userdef_usermenusgroup(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
-  FunctionRNA *func;
-  PropertyRNA *parm;
 
   /* user menus group */
   srna = RNA_def_struct(brna, "UserMenusGroup", NULL);
@@ -6566,15 +6620,6 @@ static void rna_def_userdef_usermenusgroup(BlenderRNA *brna)
   prop = RNA_def_property(srna, "menus", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "UserMenu");
   RNA_def_property_ui_text(prop, "User Menu", "list of user sub menus contained in the group");
-
-  prop = RNA_def_property(srna, "keymap", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, NULL, "shortcut");
-  RNA_def_property_struct_type(prop, "KeyMapItem");
-  RNA_def_property_ui_text(prop, "item", "");
-
-  func = RNA_def_function(srna, "set_keymap", "rna_UserDef_usermenus_set_keymap");
-  RNA_def_function_ui_description(func, "set the keymap of the menu");
-  parm = RNA_def_pointer(func, "kmi", "KeyMapItem", "", "the new keymap");
 }
 
 static void rna_def_userdef_usermenus_editor(BlenderRNA *brna)
@@ -6590,14 +6635,6 @@ static void rna_def_userdef_usermenus_editor(BlenderRNA *brna)
 
   static const EnumPropertyItem um_context_default[] = {
       {0, "NULL", 0, "None", "No context found"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
-  static const EnumPropertyItem um_item_type[] = {
-      {USER_MENU_TYPE_OPERATOR, "OPERATOR", 0, "Operator", "Operator"},
-      {USER_MENU_TYPE_MENU, "MENU", 0, "Menu", "Menu"},
-      {USER_MENU_TYPE_SEP, "SEPARATOR", 0, "Separator", "Separator"},
-      {USER_MENU_TYPE_PROP, "PROPERTY", 0, "Property", "Property"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -6685,6 +6722,7 @@ static void rna_def_userdef_usermenus_editor(BlenderRNA *brna)
 
   func = RNA_def_function(srna, "item_add", "rna_UserDef_usermenus_item_add");
   RNA_def_function_ui_description(func, "add an item to a menu");
+  parm = RNA_def_int(func, "index", 0, -1, 1000, "index", "index to insert the item", -1, 1000);
 
   func = RNA_def_function(srna, "item_remove", "rna_UserDef_usermenus_item_remove");
   RNA_def_function_ui_description(func, "remove an item from a user menu");
@@ -6693,6 +6731,10 @@ static void rna_def_userdef_usermenus_editor(BlenderRNA *brna)
   RNA_def_function_ui_description(func, "up an item");
   parm = RNA_def_boolean(func, "up", false, "", "go up ?");
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "pie_item_add", "rna_UserDef_usermenus_pie_item_add");
+  RNA_def_function_ui_description(func, "add an item to a menu");
+  parm = RNA_def_int(func, "index", 0, -1, 1000, "index", "index to insert the item", -1, 1000);
 
   func = RNA_def_function(srna, "draw_menu", "rna_UserDef_usermenu_draw");
   RNA_def_function_ui_description(func, "draw items of usermenu");

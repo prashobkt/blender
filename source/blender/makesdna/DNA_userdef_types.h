@@ -520,7 +520,6 @@ typedef struct bPathCompare {
 
 typedef struct bUserMenusGroup {
   struct bUserMenusGroup *next, *prev;
-  struct wmKeyMapItem *shortcut;
   /* bUserMenu */
   struct ListBase menus;
   char pie;
@@ -575,15 +574,6 @@ typedef struct bUserMenuItem_Prop {
   char _pad0[4];
 } bUserMenuItem_Prop;
 
-typedef struct bUserMenuItem_But {
-  struct bUserMenuItem_But *next, *prev;
-  struct bUserMenuItem *item;
-  int index;
-  unsigned char pressed;
-  char _pad0[3];
-  struct ListBase subbut;
-} bUserMenuItem_But;
-
 enum {
   USER_MENU_TYPE_SEP = 1,
   USER_MENU_TYPE_OPERATOR = 2,
@@ -622,8 +612,6 @@ typedef struct UserDef_Runtime {
   char _pad0[4];
   struct bUserMenuItem *um_item_select;
   struct bUserMenusGroup *umg_select;
-  /** #bUserMenuItem_But. */
-  struct ListBase um_buttons;
 } UserDef_Runtime;
 
 /**

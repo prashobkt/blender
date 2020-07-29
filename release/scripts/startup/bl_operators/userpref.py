@@ -1168,21 +1168,6 @@ class PREFERENCES_OT_usermenus_select(Operator):
     bl_idname = "preferences.usermenus_select"
     bl_label = "select user menu to edit"
 
-    filepath: StringProperty(
-        subtype='FILE_PATH',
-    )
-
-    def execute(self, _context):
-        if bpy.utils.keyconfig_set(self.filepath, report=self.report):
-            return {'FINISHED'}
-        else:
-            return {'CANCELLED'}
-
-
-class PREFERENCES_OT_usermenus_select(Operator):
-    bl_idname = "preferences.usermenus_select"
-    bl_label = "select user menu to edit"
-
     index: IntProperty()
 
     def execute(self, _context):
@@ -1222,11 +1207,13 @@ class PREFERENCES_OT_menuitem_add(Operator):
     bl_idname = "preferences.menuitem_add"
     bl_label = "Add User Menu Item"
 
+    index: IntProperty()
+
     def execute(self, context):
         prefs = context.preferences
         um = prefs.user_menus
 
-        um.item_add()
+        um.item_add(index=self.index)
         context.preferences.is_dirty = True
         return {'FINISHED'}
 
@@ -1236,16 +1223,16 @@ class PREFERENCES_OT_menuitem_remove(Operator):
     bl_idname = "preferences.menuitem_remove"
     bl_label = "Remove User Menu Item"
 
-    item_id: IntProperty(
-        name="Item Identifier",
-        description="Identifier of the item to remove",
-    )
-
     @classmethod
-    def poll(cls, context):
+    def poll(self, context):
         prefs = context.preferences
         um = prefs.user_menus
         can_remove = um.active_item
+        is_pie = um.active_group.is_pie
+
+        if is_pie and can_remove:
+            if not can_remove.parent:
+                return False
         return can_remove
 
     def execute(self, context):
@@ -1261,22 +1248,29 @@ class PREFERENCES_OT_menuitem_up(Operator):
     bl_idname = "preferences.menuitem_up"
     bl_label = "Move Up An User Menu Item"
 
-    item_id: IntProperty(
-        name="Item Identifier",
-        description="Identifier of the item to remove",
-    )
-
     @classmethod
-    def poll(cls, context):
+    def poll(self, context):
         prefs = context.preferences
         um = prefs.user_menus
         current = um.active_item
+        is_pie = um.active_group.is_pie
         if not current:
             return False
-        prev_item = current.prev
-        if prev_item or current.parent:
-            return True
-        return False
+        
+        if is_pie:
+            if not current.parent:
+                return False
+            prev_item = current.prev
+            if prev_item:
+                return True
+            if current.parent.item.parent:
+                return True
+            return False
+        else:
+            prev_item = current.prev
+            if prev_item or current.parent:
+                return True
+            return False
 
     def execute(self, context):
         prefs = context.preferences
@@ -1291,27 +1285,49 @@ class PREFERENCES_OT_menuitem_down(Operator):
     bl_idname = "preferences.menuitem_down"
     bl_label = "Move Up An User Menu Item"
 
-    item_id: IntProperty(
-        name="Item Identifier",
-        description="Identifier of the item to remove",
-    )
-
     @classmethod
-    def poll(cls, context):
+    def poll(self, context):
         prefs = context.preferences
         um = prefs.user_menus
+        is_pie = um.active_group.is_pie
         current = um.active_item
         if not current:
             return False
-        next_item = current.next
-        if next_item or current.parent:
-            return True
-        return False
+        
+        if is_pie:
+            if not current.parent:
+                return False
+            next_item = current.next
+            if next_item:
+                return True
+            if current.parent.item.parent:
+                return True
+            return False
+        else:
+            next_item = current.next
+            if next_item or current.parent:
+                return True
+            return False
 
     def execute(self, context):
         prefs = context.preferences
         um = prefs.user_menus
         um.item_move(up=False)
+        context.preferences.is_dirty = True
+        return {'FINISHED'}
+
+class PREFERENCES_OT_pie_menuitem_add(Operator):
+    """Add user menu item"""
+    bl_idname = "preferences.pie_menuitem_add"
+    bl_label = "Add User Menu Item"
+
+    index: IntProperty()
+
+    def execute(self, context):
+        prefs = context.preferences
+        um = prefs.user_menus
+
+        um.pie_item_add(index=self.index)
         context.preferences.is_dirty = True
         return {'FINISHED'}
 
@@ -1347,4 +1363,5 @@ classes = (
     PREFERENCES_OT_menuitem_remove,
     PREFERENCES_OT_menuitem_up,
     PREFERENCES_OT_menuitem_down,
+    PREFERENCES_OT_pie_menuitem_add,
 )

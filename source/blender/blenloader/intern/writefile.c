@@ -1234,7 +1234,7 @@ static void write_keymapitem(BlendWriter *writer, const wmKeyMapItem *kmi)
   }
 }
 
-static void write_usermenuitems(BlendWriter *writer, ListBase *lb)
+static void write_usermenuitems(BlendWriter *writer, const ListBase *lb)
 {
   LISTBASE_FOREACH (const bUserMenuItem *, umi, lb) {
     if (umi->type == USER_MENU_TYPE_OPERATOR) {
