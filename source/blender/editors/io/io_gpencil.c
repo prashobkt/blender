@@ -176,24 +176,21 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 
   int oldframe = (int)DEG_get_ctime(depsgraph);
   bool done = false;
-  for (int i = params.frame_start; i < params.frame_end + 1; i++) {
-    if (is_keyframe_empty(gpd_eval, i)) {
-      if (only_active_frame) {
-        break;
-      }
-      continue;
-    }
 
-    if (!only_active_frame) {
+  if (only_active_frame) {
+    done = gpencil_io_export(&params);
+  }
+  else {
+    for (int i = params.frame_start; i < params.frame_end + 1; i++) {
+      if (is_keyframe_empty(gpd_eval, i)) {
+        continue;
+      }
+
       CFRA = i;
       BKE_scene_graph_update_for_newframe(depsgraph, bmain);
       sprintf(params.frame, "%04d", i);
-    }
 
-    done |= gpencil_io_export(&params);
-
-    if (only_active_frame) {
-      break;
+      done |= gpencil_io_export(&params);
     }
   }
 
