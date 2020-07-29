@@ -3504,7 +3504,9 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
     /* This configuration ensures there won't be accidental lost of short segments */
     ED_lineart_chain_discard_short(rb, MIN3(t_image, t_geom, 0.01f) - FLT_EPSILON);
 
-    ED_lineart_chain_split_angle(rb, rb->angle_splitting_threshold);
+    if (rb->angle_splitting_threshold > 0.0001) {
+      ED_lineart_chain_split_angle(rb, rb->angle_splitting_threshold);
+    }
   }
   // Set after GP done.
   // ED_lineart_calculation_flag_set(LRT_RENDER_FINISHED);
