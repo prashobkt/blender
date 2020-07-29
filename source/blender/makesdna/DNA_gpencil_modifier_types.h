@@ -683,7 +683,6 @@ typedef struct MultiplyGpencilModifierData {
   int flag;
   /** Custom index for passes. */
   int layer_pass;
-  char _pad[4];
 
   int flags;
 
@@ -695,9 +694,6 @@ typedef struct MultiplyGpencilModifierData {
   float fading_center;
   float fading_thickness;
   float fading_opacity;
-
-  /* in rad not deg */
-  float split_angle;
 
   /* char _pad[4]; */
 } MultiplyGpencilModifierData;
