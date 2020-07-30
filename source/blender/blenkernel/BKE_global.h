@@ -156,7 +156,7 @@ enum {
   G_DEBUG_XR = (1 << 20),                    /* XR/OpenXR messages */
   G_DEBUG_XR_TIME = (1 << 21),               /* XR/OpenXR timing messages */
 
-  G_DEBUG_GHOST = (1 << 20), /* Debug GHOST module. */
+  G_DEBUG_GHOST = (1 << 22), /* Debug GHOST module. */
 };
 
 #define G_DEBUG_ALL \
