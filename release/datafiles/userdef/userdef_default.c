@@ -230,6 +230,7 @@ const UserDef U_default = {
     .collection_instance_empty_size = 1.0f,
 
     .statusbar_flag = STATUSBAR_SHOW_VERSION,
+    .log_filter = "",
 
     .runtime =
         {

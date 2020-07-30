@@ -879,29 +879,7 @@ static int arg_handle_log_set(int argc, const char **argv, void *UNUSED(data))
 {
   const char *arg_id = "--log";
   if (argc > 1) {
-    const char *str_step = argv[1];
-    while (*str_step) {
-      const char *str_step_end = strchr(str_step, ',');
-      int str_step_len = str_step_end ? (str_step_end - str_step) : strlen(str_step);
-
-      if (str_step[0] == '^') {
-        CLG_type_filter_exclude(str_step + 1, str_step_len - 1);
-      }
-      else {
-        CLG_type_filter_include(str_step, str_step_len);
-      }
-
-      if (str_step_end) {
-        /* Typically only be one, but don't fail on multiple. */
-        while (*str_step_end == ',') {
-          str_step_end++;
-        }
-        str_step = str_step_end;
-      }
-      else {
-        break;
-      }
-    }
+    CLG_type_filter_set(argv[1]);
     return 1;
   }
   else {

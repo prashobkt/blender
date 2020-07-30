@@ -893,6 +893,8 @@ typedef struct UserDef {
 
   UserDef_Experimental experimental;
 
+  char log_filter[256];
+
   /** Runtime data (keep last). */
   UserDef_Runtime runtime;
 } UserDef;

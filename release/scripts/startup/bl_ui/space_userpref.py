@@ -651,6 +651,7 @@ class USERPREF_PT_system_logging(SystemPanel, CenterAlignMixIn, Panel):
         prefs = context.preferences
         system = prefs.system
 
+        layout.prop(system, "log_filter")
         layout.prop(system, "log_use_basename")
         layout.prop(system, "log_use_timestamp")
         layout.prop(system, "verbose")

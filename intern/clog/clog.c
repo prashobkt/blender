@@ -724,6 +724,56 @@ static void CLG_ctx_type_filter_include(CLogContext *ctx,
   clg_ctx_type_filter_append(&ctx->filters[1], type_match, type_match_len);
 }
 
+static void CLG_ctx_type_filters_clear(CLogContext *ctx)
+{
+  for (uint i = 0; i < 2; i++) {
+    while (ctx->filters[i] != NULL) {
+      CLG_IDFilter *item = ctx->filters[i];
+      ctx->filters[i] = item->next;
+      MEM_freeN(item);
+    }
+  }
+}
+
+static void CLG_ctx_type_filter_set(CLogContext *ctx, const char *glob_str)
+{
+  CLG_ctx_type_filters_clear(ctx);
+  const char *str_step = glob_str;
+  while (*str_step) {
+    const char *str_step_end = strchr(str_step, ',');
+    int str_step_len = str_step_end ? (str_step_end - str_step) : strlen(str_step);
+
+    if (str_step[0] == '^') {
+      CLG_ctx_type_filter_exclude(ctx, str_step + 1, str_step_len - 1);
+    }
+    else {
+      CLG_ctx_type_filter_include(ctx, str_step, str_step_len);
+    }
+
+    if (str_step_end) {
+      /* Typically only be one, but don't fail on multiple. */
+      while (*str_step_end == ',') {
+        str_step_end++;
+      }
+      str_step = str_step_end;
+    }
+    else {
+      break;
+    }
+  }
+
+  CLG_LogType *log_type_iter = ctx->types;
+  while (log_type_iter) {
+    if (clg_ctx_filter_check(ctx, log_type_iter->identifier)) {
+      log_type_iter->flag |= CLG_FLAG_USE;
+    }
+    else {
+      log_type_iter->flag &= ~CLG_FLAG_USE;
+    }
+    log_type_iter = log_type_iter->next;
+  }
+}
+
 static enum CLG_Severity CLG_ctx_severity_level_get(CLogContext *ctx)
 {
   return ctx->default_type.severity_level;
@@ -784,19 +834,15 @@ static void CLG_ctx_free(CLogContext *ctx)
   ctx->log_records.first = NULL;
   ctx->log_records.last = NULL;
 
+  /* unregister all types */
   while (ctx->types != NULL) {
     CLG_LogType *item = ctx->types;
     ctx->types = item->next;
     MEM_freeN(item);
   }
 
-  for (uint i = 0; i < 2; i++) {
-    while (ctx->filters[i] != NULL) {
-      CLG_IDFilter *item = ctx->filters[i];
-      ctx->filters[i] = item->next;
-      MEM_freeN(item);
-    }
-  }
+  CLG_ctx_type_filters_clear(ctx);
+
 #ifdef WITH_CLOG_PTHREADS
   pthread_mutex_destroy(&ctx->types_lock);
 #endif
@@ -881,9 +927,50 @@ void CLG_type_filter_exclude(const char *type_match, int type_match_len)
   CLG_ctx_type_filter_exclude(g_ctx, type_match, type_match_len);
 }
 
+void CLG_type_filter_set(const char *glob_str)
+{
+  CLG_ctx_type_filter_set(g_ctx, glob_str);
+}
+
+int CLG_type_filter_get(char *buff, int buff_len)
+{
+  int written = 0;
+  CLG_IDFilter *filters_iter = g_ctx->filters[0]; /* exclude filters */
+  while (filters_iter) {
+    if (filters_iter->next == NULL) {
+      written += sprintf(buff, "^%s", filters_iter->match);
+    }
+    else {
+      written += sprintf(buff, "^%s,", filters_iter->match);
+    }
+    filters_iter = filters_iter->next;
+  }
+
+  filters_iter = g_ctx->filters[1]; /* include filters */
+  if (written != 0 && buff[written - 1] != ',') {
+    written += sprintf(buff, ",");
+  }
+  while (filters_iter) {
+    if (filters_iter->next == NULL) {
+      written += sprintf(buff, "%s", filters_iter->match);
+    }
+    else {
+      written += sprintf(buff, "%s,", filters_iter->match);
+    }
+    filters_iter = filters_iter->next;
+  }
+  assert(written <= buff_len);
+  return written;
+}
+
 void CLG_type_filter_include(const char *type_match, int type_match_len)
 {
   CLG_ctx_type_filter_include(g_ctx, type_match, type_match_len);
+}
+
+void CLG_type_filters_clear()
+{
+  CLG_ctx_type_filters_clear(g_ctx);
 }
 
 void CLG_severity_level_set(enum CLG_Severity level)

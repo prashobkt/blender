@@ -261,7 +261,7 @@ static void info_main_region_listener(wmWindow *UNUSED(win),
         ED_region_tag_redraw(region);
       }
       else if (wmn->data == ND_SPACE_INFO_CHANGE_REPORT_SOURCE) {
-        // todo this is very bad
+        /* TODO (grzelins) this is very bad */
         Main *bmain = G_MAIN;
         wmWindowManager *wm = bmain->wm.first;
         info_report_source_update(wm, sinfo);

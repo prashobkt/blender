@@ -182,7 +182,10 @@ void CLG_output_use_timestamp_set(int value);
 void CLG_fatal_fn_set(void (*fatal_fn)(void *file_handle));
 void CLG_backtrace_fn_set(void (*fatal_fn)(void *file_handle));
 
+void CLG_type_filter_set(const char *glob_str);
+int CLG_type_filter_get(char *buff, int buff_len);
 void CLG_type_filter_include(const char *type_filter, int type_filter_len);
+void CLG_type_filters_clear(void);
 void CLG_type_filter_exclude(const char *type_filter, int type_filter_len);
 
 enum CLG_Severity CLG_severity_level_get(void);
