@@ -1282,7 +1282,7 @@ class PHYSICS_PT_viewport_display(PhysicButtonsPanel, Panel):
 
 
 class PHYSICS_PT_viewport_display_color(PhysicButtonsPanel, Panel):
-    bl_label = "Color Mapping"
+    bl_label = "Grid Display"
     bl_parent_id = 'PHYSICS_PT_viewport_display'
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -1315,7 +1315,7 @@ class PHYSICS_PT_viewport_display_color(PhysicButtonsPanel, Panel):
 
 
 class PHYSICS_PT_viewport_display_debug(PhysicButtonsPanel, Panel):
-    bl_label = "Debug Velocity"
+    bl_label = "Vector Display"
     bl_parent_id = 'PHYSICS_PT_viewport_display'
     bl_options = {'DEFAULT_CLOSED'}
 
