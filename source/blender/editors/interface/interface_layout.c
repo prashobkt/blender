@@ -5156,7 +5156,7 @@ void uiLayoutRootSetSearchOnly(uiLayout *layout, bool search_only)
 
 static void ui_layout_free(uiLayout *layout);
 
-static void ui_layout_free_hide_buttons(uiLayout *layout)
+static void layout_free_and_hide_buttons(uiLayout *layout)
 {
   LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
     if (item->type == ITEM_BUTTON) {
@@ -5166,14 +5166,14 @@ static void ui_layout_free_hide_buttons(uiLayout *layout)
       MEM_freeN(item);
     }
     else {
-      ui_layout_free_hide_buttons((uiLayout *)item);
+      layout_free_and_hide_buttons((uiLayout *)item);
     }
   }
 
   MEM_freeN(layout);
 }
 
-static bool ui_button_search_tag(uiBut *but, char *search_filter)
+static bool button_matches_search_filter(uiBut *but, char *search_filter)
 {
   if (but->optype != NULL) {
     if (BLI_strcasestr(but->optype->name, search_filter)) {
@@ -5201,37 +5201,29 @@ static bool ui_button_search_tag(uiBut *but, char *search_filter)
 
 /**
  * Tag all buttons with whether they matched the search filter or not.
- *
- * \note This doesn't actually remove any buttons, and buttons that were tagged might
- * not even be removed if they were in a layout with property search turned off.
  */
-static bool ui_block_search_filter_tag_buttons(uiBlock *block)
+static bool block_search_filter_tag_buttons(uiBlock *block)
 {
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+    but->flag |= UI_FILTERED;
+  }
+
   bool has_result = false;
   LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
-    /* Flag all label buttons, we don't want to re-display them. */
-    if (but->type == UI_BTYPE_LABEL) {
-      but->flag |= UI_FILTERED;
-    }
-
-    if (ui_button_search_tag(but, block->search_filter)) {
+    if (button_matches_search_filter(but, block->search_filter)) {
       has_result = true;
-      continue;
+      but->flag &= ~UI_FILTERED;
     }
-
-    but->flag |= UI_FILTERED;
   }
 
   /* Remove filter from labels and decorators that correspond to un-filtered buttons. */
   LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     if (!(but->flag & UI_FILTERED)) {
-      uiBut *label_but = but->label_but;
-      uiBut *decorator_but = but->decorator_but;
-      if (label_but != NULL) {
-        label_but->flag &= ~UI_FILTERED;
+      if (but->label_but != NULL) {
+        but->label_but->flag &= ~UI_FILTERED;
       }
-      if (decorator_but != NULL) {
-        decorator_but->flag &= ~UI_FILTERED;
+      if (but->decorator_but != NULL) {
+        but->decorator_but->flag &= ~UI_FILTERED;
       }
     }
   }
@@ -5239,21 +5231,12 @@ static bool ui_block_search_filter_tag_buttons(uiBlock *block)
   return has_result;
 }
 
-static void ui_block_search_layout(uiBlock *block)
+static void block_search(uiBlock *block)
 {
   /* Only continue if the block has the search filter set. */
   if (!(block->search_filter && block->search_filter[0])) {
     return;
   }
-
-#ifdef DEBUG_LAYOUT_ROOTS
-  if (block->panel && (block->panel->flag & PNL_SELECT)) {
-    printf("\nBEFORE %s %p\n", block->name, block);
-    LISTBASE_FOREACH (uiLayoutRoot *, root, &block->layouts) {
-      debug_print_layout((uiItem *)root->layout, 0, false);
-    }
-  }
-#endif
 
   /* Also search based on panel labels. */
   bool panel_label_matches = false;
@@ -5268,13 +5251,13 @@ static void ui_block_search_layout(uiBlock *block)
   /* Apply search filter. */
   bool has_result;
   if (!panel_label_matches) {
-    has_result = ui_block_search_filter_tag_buttons(block);
+    has_result = block_search_filter_tag_buttons(block);
   }
 
   /* Remove search only layout roots before the next step. */
   LISTBASE_FOREACH_MUTABLE (uiLayoutRoot *, root, &block->layouts) {
     if (root->search_only) {
-      ui_layout_free_hide_buttons(root->layout);
+      layout_free_and_hide_buttons(root->layout);
       BLI_remlink(&block->layouts, root);
       MEM_freeN(root);
     }
@@ -5292,17 +5275,8 @@ static void ui_block_search_layout(uiBlock *block)
   SET_FLAG_FROM_TEST(
       block->flag, has_result || UI_block_is_search_only(block), UI_BLOCK_FILTERED_EMPTY);
   if (block->panel != NULL) {
-    ui_panel_set_search_filtered(block->panel, has_result);
+    ui_panel_set_search_filtered(block->panel, !has_result);
   }
-
-#ifdef DEBUG_LAYOUT_ROOTS
-  if (block->panel && (block->panel->flag & PNL_SELECT)) {
-    printf("\nAFTER\n");
-    LISTBASE_FOREACH (uiLayoutRoot *, root, &block->layouts) {
-      debug_print_layout((uiItem *)root->layout, 0, false);
-    }
-  }
-#endif
 }
 
 /** \} */
@@ -5518,9 +5492,12 @@ static void ui_item_layout(uiItem *item)
     }
   }
   else {
+    uiButtonItem *bitem = (uiButtonItem *)item;
     if (item->flag & UI_ITEM_BOX_ITEM) {
-      uiButtonItem *bitem = (uiButtonItem *)item;
       bitem->but->drawflag |= UI_BUT_BOX_ITEM;
+    }
+    if (bitem->but->flag & UI_FILTERED) {
+      bitem->but->flag |= UI_BUT_INACTIVE;
     }
   }
 }
@@ -5720,7 +5697,7 @@ void UI_block_layout_resolve(uiBlock *block, int *r_x, int *r_y)
 
   block->curlayout = NULL;
 
-  ui_block_search_layout(block);
+  block_search(block);
 
   for (root = block->layouts.first; root; root = root->next) {
     ui_layout_add_padding_button(root);
