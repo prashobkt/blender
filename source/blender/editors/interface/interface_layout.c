@@ -5224,11 +5224,11 @@ static bool block_search_filter_tag_buttons(uiBlock *block)
   return has_result;
 }
 
-static void block_search(uiBlock *block)
+static bool block_search(uiBlock *block)
 {
   /* Only continue if the block has the search filter set. */
   if (!(block->search_filter && block->search_filter[0])) {
-    return;
+    return false;
   }
 
   /* Also search based on panel labels. */
@@ -5269,8 +5269,10 @@ static void block_search(uiBlock *block)
   }
 
   if (block->panel != NULL) {
-    ui_panel_set_search_filter_match(block->panel, !has_result);
+    ui_panel_set_search_filter_match(block->panel, has_result);
   }
+
+  return panel_label_matches;
 }
 
 static void block_search_deactive_buttons(uiBlock *block)
@@ -5281,7 +5283,7 @@ static void block_search_deactive_buttons(uiBlock *block)
   }
 
   LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
-    if ((but->flag & UI_SEARCH_FILTER_MATCHES)) {
+    if (!(but->flag & UI_SEARCH_FILTER_MATCHES)) {
       but->flag |= UI_BUT_INACTIVE;
     }
   }
@@ -5702,7 +5704,7 @@ void UI_block_layout_resolve(uiBlock *block, int *r_x, int *r_y)
 
   block->curlayout = NULL;
 
-  block_search(block);
+  const bool search_disabled = block_search(block);
 
   for (root = block->layouts.first; root; root = root->next) {
     ui_layout_add_padding_button(root);
@@ -5712,7 +5714,9 @@ void UI_block_layout_resolve(uiBlock *block, int *r_x, int *r_y)
     ui_layout_free(root->layout);
   }
 
-  block_search_deactive_buttons(block);
+  if (!search_disabled) {
+    block_search_deactive_buttons(block);
+  }
 
   BLI_freelistN(&block->layouts);
 

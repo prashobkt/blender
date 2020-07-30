@@ -867,10 +867,10 @@ void ui_panel_set_search_filter_match(struct Panel *panel, const bool value)
 
 static void panel_matches_search_filter_recursive(const Panel *panel, bool *filter_matches)
 {
-  *filter_matches = *filter_matches && (panel->runtime_flag & PNL_SEARCH_FILTER_MATCHES);
+  *filter_matches |= panel->runtime_flag & PNL_SEARCH_FILTER_MATCHES;
 
   /* If the panel is filtered (removed) we need to check that its children are too. */
-  if (*filter_matches) {
+  if (!*filter_matches) {
     LISTBASE_FOREACH (const Panel *, child_panel, &panel->children) {
       panel_matches_search_filter_recursive(child_panel, filter_matches);
     }
@@ -1053,7 +1053,8 @@ void ui_draw_aligned_panel(uiStyle *style,
     GPU_blend(true);
 
     /* draw with background color */
-    immUniformThemeColor(TH_PANEL_HEADER);
+    immUniformThemeColor(UI_panel_matches_search_filter(panel) ? TH_SEARCH_MATCH :
+                                                                 TH_PANEL_HEADER);
     immRectf(pos, minx, headrect.ymin, maxx, y);
 
     immBegin(GPU_PRIM_LINES, 4);
