@@ -426,7 +426,7 @@ class Cell {
   /* Call this when it is possible that this Cell has zero volume,
    * and if it does, set zero_volume_ to true.
    */
-  void check_for_zero_volume(int this_cell_index, const PatchesInfo &pinfo, const Mesh &mesh);
+  void check_for_zero_volume(const PatchesInfo &pinfo, const Mesh &mesh);
 };
 
 static std::ostream &operator<<(std::ostream &os, const Cell &cell)
@@ -464,7 +464,7 @@ static bool tris_have_same_verts(const Mesh &mesh, int t1, int t2)
  * patches are geometrically identical triangles (perhaps flipped versions of each other).
  * If this Cell has zero volume, set its zero_volume_ member to true.
  */
-void Cell::check_for_zero_volume(int this_cell_index, const PatchesInfo &pinfo, const Mesh &mesh)
+void Cell::check_for_zero_volume(const PatchesInfo &pinfo, const Mesh &mesh)
 {
   if (patches_.size() == 2) {
     const Patch &p1 = pinfo.patch(patches_[0]);
@@ -928,7 +928,7 @@ static void find_cells_from_edge(const Mesh &tm,
       Cell &cell = cinfo.cell(c);
       cell.add_patch(r_index);
       cell.add_patch(rnext_index);
-      cell.check_for_zero_volume(c, pinfo, tm);
+      cell.check_for_zero_volume(pinfo, tm);
       if (dbg_level > 0) {
         std::cout << "  made new cell " << c << "\n";
         std::cout << "  p" << r_index << "." << (r_flipped ? "cell_below" : "cell_above") << " = c"
@@ -942,7 +942,7 @@ static void find_cells_from_edge(const Mesh &tm,
       *rnext_prev_cell = c;
       Cell &cell = cinfo.cell(c);
       cell.add_patch(rnext_index);
-      cell.check_for_zero_volume(c, pinfo, tm);
+      cell.check_for_zero_volume(pinfo, tm);
       if (dbg_level > 0) {
         std::cout << "  p" << rnext_index << "." << (rnext_flipped ? "cell_above" : "cell_below")
                   << " = c" << c << "\n";
@@ -953,7 +953,7 @@ static void find_cells_from_edge(const Mesh &tm,
       *r_follow_cell = c;
       Cell &cell = cinfo.cell(c);
       cell.add_patch(r_index);
-      cell.check_for_zero_volume(c, pinfo, tm);
+      cell.check_for_zero_volume(pinfo, tm);
       if (dbg_level > 0) {
         std::cout << "  p" << r_index << "." << (r_flipped ? "cell_below" : "cell_above") << " = c"
                   << c << "\n";

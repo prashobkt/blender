@@ -2454,6 +2454,18 @@ struct SubdivideTrisData {
    * overlap pairs have that same indexA (they will be continguous).
    */
   Vector<OverlapTriRange> overlap_tri_range;
+
+  SubdivideTrisData(Array<Mesh> &r_tri_subdivided,
+                    const Mesh &tm,
+                    Span<BVHTreeOverlap> overlap,
+                    MArena *arena)
+      : r_tri_subdivided(r_tri_subdivided),
+        tm(tm),
+        overlap(overlap),
+        arena(arena),
+        overlap_tri_range{}
+  {
+  }
 };
 
 static void calc_subdivided_tri_range_func(void *__restrict userdata,
@@ -2505,8 +2517,10 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
     std::cout << "\nCALC_SUBDIVIDED_TRIS\n\n";
   }
   Span<BVHTreeOverlap> overlap = ov.overlap();
-  SubdivideTrisData data = SubdivideTrisData{
-      .r_tri_subdivided = r_tri_subdivided, .tm = tm, .overlap = overlap, .arena = arena};
+  SubdivideTrisData data(r_tri_subdivided, tm, overlap, arena);
+  data.r_tri_subdivided = r_tri_subdivided;
+  data.overlap = overlap;
+  data.arena = arena;
   int overlap_tot = overlap.size();
   data.overlap_tri_range = Vector<OverlapTriRange>();
   data.overlap_tri_range.reserve(overlap_tot);
