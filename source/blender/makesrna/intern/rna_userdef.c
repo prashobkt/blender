@@ -1097,12 +1097,14 @@ static void rna_clog_log_verbosity_set(PointerRNA *UNUSED(ptr), int value)
   CLG_verbosity_level_set(value);
 }
 
-static void rna_Userdef_log_filter_update(struct Main *main,
-                                          struct Scene *scene,
-                                          struct PointerRNA *ptr)
+/*
+static void rna_Userdef_log_filter_update(struct Main *UNUSED(main),
+                                          struct Scene *UNUSED(scene),
+                                          struct PointerRNA *UNUSED(ptr))
 {
   printf("Update!\n");
 }
+*/
 
 static void rna_clog_log_filter_get(PointerRNA *ptr, char *value)
 {

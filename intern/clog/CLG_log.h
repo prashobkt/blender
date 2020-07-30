@@ -212,6 +212,7 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
   ((void)CLOG_ENSURE(clg_ref), \
    ((clg_ref)->type->flag & CLG_FLAG_USE) && ((clg_ref)->type->verbosity_level >= verbose_level))
 
+/** log at severity WARNING or higher is always logged, even if not in use */
 #define CLOG_AT_SEVERITY(clg_ref, severity, verbose_level, ...) \
   { \
     CLG_LogType *_lg_ty = CLOG_ENSURE(clg_ref); \
