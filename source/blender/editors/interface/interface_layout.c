@@ -5153,8 +5153,6 @@ void uiLayoutRootSetSearchOnly(uiLayout *layout, bool search_only)
 // #define PROPERTY_SEARCH_USE_TOOLTIPS
 #define PROPERTY_SEARCH_USE_PANEL_LABELS
 
-static void ui_layout_free(uiLayout *layout);
-
 static void layout_free_and_hide_buttons(uiLayout *layout)
 {
   LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
@@ -5248,6 +5246,9 @@ static void block_search(uiBlock *block)
   if (!panel_label_matches) {
     has_result = block_search_filter_tag_buttons(block);
   }
+  else {
+    has_result = true;
+  }
 
   /* Remove search only layout roots before the next step. */
   LISTBASE_FOREACH_MUTABLE (uiLayoutRoot *, root, &block->layouts) {
@@ -5268,7 +5269,21 @@ static void block_search(uiBlock *block)
   }
 
   if (block->panel != NULL) {
-    ui_panel_set_search_filtered(block->panel, !has_result);
+    ui_panel_set_search_filter_match(block->panel, !has_result);
+  }
+}
+
+static void block_search_deactive_buttons(uiBlock *block)
+{
+  /* Only continue if the block has the search filter set. */
+  if (!(block->search_filter && block->search_filter[0])) {
+    return;
+  }
+
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+    if ((but->flag & UI_SEARCH_FILTER_MATCHES)) {
+      but->flag |= UI_BUT_INACTIVE;
+    }
   }
 }
 
@@ -5485,12 +5500,9 @@ static void ui_item_layout(uiItem *item)
     }
   }
   else {
-    uiButtonItem *bitem = (uiButtonItem *)item;
     if (item->flag & UI_ITEM_BOX_ITEM) {
+      uiButtonItem *bitem = (uiButtonItem *)item;
       bitem->but->drawflag |= UI_BUT_BOX_ITEM;
-    }
-    if (!(bitem->but->flag & UI_SEARCH_FILTER_MATCHES)) {
-      bitem->but->flag |= UI_BUT_INACTIVE;
     }
   }
 }
@@ -5699,6 +5711,8 @@ void UI_block_layout_resolve(uiBlock *block, int *r_x, int *r_y)
     ui_layout_end(block, root->layout, r_x, r_y);
     ui_layout_free(root->layout);
   }
+
+  block_search_deactive_buttons(block);
 
   BLI_freelistN(&block->layouts);
 

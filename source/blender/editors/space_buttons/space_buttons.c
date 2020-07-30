@@ -350,7 +350,7 @@ static void property_search_all_tabs(const bContext *C,
     bool has_unfiltered_panel = false;
     LISTBASE_FOREACH (
         Panel *, panel, use_actual_region ? &main_region->panels : &region_copy->panels) {
-      has_unfiltered_panel |= !UI_panel_is_search_filtered(panel) && UI_panel_is_active(panel);
+      has_unfiltered_panel |= UI_panel_matches_search_filter(panel) && UI_panel_is_active(panel);
     }
     if (has_unfiltered_panel) {
       sbuts->context_search_filter_active |= (1 << i);

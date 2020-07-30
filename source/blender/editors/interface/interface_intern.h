@@ -750,7 +750,7 @@ extern void ui_draw_aligned_panel(struct uiStyle *style,
                                   const rcti *rect,
                                   const bool show_pin,
                                   const bool show_background);
-void ui_panel_set_search_filtered(struct Panel *panel, const bool value);
+void ui_panel_set_search_filter_match(struct Panel *panel, const bool value);
 
 /* interface_draw.c */
 extern void ui_draw_dropshadow(

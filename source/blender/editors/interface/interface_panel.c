@@ -75,8 +75,7 @@
 #define PNL_ANIM_ALIGN (1 << 3)
 #define PNL_NEW_ADDED (1 << 4)
 #define PNL_FIRST (1 << 5)
-#define PNL_SEARCH_FILTERED (1 << 6)
-#define PNL_WAS_SEARCH_FILTERED (1 << 7)
+#define PNL_SEARCH_FILTER_MATCHES (1 << 6)
 
 /* only show pin header button for pinned panels */
 #define USE_PIN_HIDDEN
@@ -861,35 +860,31 @@ static void ui_offset_panel_block(uiBlock *block)
   block->rect.xmin = block->rect.ymin = 0.0;
 }
 
-void ui_panel_set_search_filtered(struct Panel *panel, const bool value)
+void ui_panel_set_search_filter_match(struct Panel *panel, const bool value)
 {
-  SET_FLAG_FROM_TEST(panel->runtime_flag, value, PNL_SEARCH_FILTERED);
+  SET_FLAG_FROM_TEST(panel->runtime_flag, value, PNL_SEARCH_FILTER_MATCHES);
 }
 
-static void panel_is_search_filtered_recursive(const Panel *panel, bool *is_search_filtered)
+static void panel_matches_search_filter_recursive(const Panel *panel, bool *filter_matches)
 {
-  *is_search_filtered = *is_search_filtered && (panel->runtime_flag & PNL_SEARCH_FILTERED);
+  *filter_matches = *filter_matches && (panel->runtime_flag & PNL_SEARCH_FILTER_MATCHES);
 
   /* If the panel is filtered (removed) we need to check that its children are too. */
-  if (*is_search_filtered) {
+  if (*filter_matches) {
     LISTBASE_FOREACH (const Panel *, child_panel, &panel->children) {
-      panel_is_search_filtered_recursive(child_panel, is_search_filtered);
+      panel_matches_search_filter_recursive(child_panel, filter_matches);
     }
   }
 }
 
 /**
- * Find whether a panel and all of its subpanels have been filtered by property search.
- *
- * \note We maintain a separate flag for active and search filtered. This prevents the
- * search filtering from being too invasive to other code and makes animation of search
- * filtered panels possible.
+ * Find whether a panel or any of its subpanels contain a property that matches the search filter.
  */
-bool UI_panel_is_search_filtered(const Panel *panel)
+bool UI_panel_matches_search_filter(const Panel *panel)
 {
-  bool is_search_filtered = true;
-  panel_is_search_filtered_recursive(panel, &is_search_filtered);
-  return is_search_filtered;
+  bool search_filter_matches = false;
+  panel_matches_search_filter_recursive(panel, &search_filter_matches);
+  return search_filter_matches;
 }
 
 /**
