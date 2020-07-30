@@ -269,6 +269,7 @@ const bTheme U_theme_default = {
     .header = RGBA(0x424242ff),
     .header_text = RGBA(0xeeeeeeff),
     .header_text_hi = RGBA(0xffffffff),
+    .search_match_color = RGBA(0x5680c2ff),
     .tab_active = RGBA(0x4b4b4bff),
     .tab_inactive = RGBA(0x2b2b2bff),
     .tab_back = RGBA(0x232323ff),

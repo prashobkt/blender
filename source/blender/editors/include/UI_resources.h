@@ -68,6 +68,7 @@ typedef enum ThemeColorID {
   TH_HEADERDESEL,
   TH_HEADER_TEXT,
   TH_HEADER_TEXT_HI,
+  TH_SEARCH_MATCH,
 
   /* panels */
   TH_PANEL_HEADER,

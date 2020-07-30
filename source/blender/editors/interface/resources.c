@@ -261,6 +261,9 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_HEADER_TEXT_HI:
           cp = ts->header_text_hi;
           break;
+        case TH_SEARCH_MATCH:
+          cp = ts->search_match_color;
+          break;
 
         case TH_PANEL_HEADER:
           cp = ts->panelcolors.header;
