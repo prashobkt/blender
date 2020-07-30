@@ -20,7 +20,7 @@
 
 namespace blender::meshintersect {
 
-constexpr bool DO_OBJ = true;
+constexpr bool DO_OBJ = false;
 
 /* Build and hold a Mesh from a string spec. Also hold and own resources used by Mesh. */
 class MeshBuilder {
@@ -640,6 +640,71 @@ TEST(mesh_intersect, TetTet)
   EXPECT_EQ(f->is_intersect[(v1pos + 2) % 3], false);
   if (DO_OBJ) {
     write_obj_mesh(out, "test_tc_3");
+  }
+}
+
+TEST(mesh_intersect, CubeCubeStep)
+{
+  const char *spec = R"(16 24
+  0 -1 0
+  0 -1 2
+  0 1 0
+  0 1 2
+  2 -1 0
+  2 -1 2
+  2 1 0
+  2 1 2
+  -1 -1 -1
+  -1 -1 1
+  -1 1 -1
+  -1 1 1
+  1 -1 -1
+  1 -1 1
+  1 1 -1
+  1 1 1
+  0 1 3
+  0 3 2
+  2 3 7
+  2 7 6
+  6 7 5
+  6 5 4
+  4 5 1
+  4 1 0
+  2 6 4
+  2 4 0
+  7 3 1
+  7 1 5
+  8 9 11
+  8 11 10
+  10 11 15
+  10 15 14
+  14 15 13
+  14 13 12
+  12 13 9
+  12 9 8
+  10 14 12
+  10 12 8
+  15 11 9
+  15 9 13
+  )";
+
+  MeshBuilder mb(spec);
+  Mesh out = trimesh_self_intersect(mb.mesh, &mb.arena);
+  out.populate_vert();
+  EXPECT_EQ(out.vert_size(), 22);
+  EXPECT_EQ(out.face_size(), 56);
+  if (DO_OBJ) {
+    write_obj_mesh(out, "test_cubecubestep");
+  }
+
+  MeshBuilder mb2(spec);
+  Mesh out2 = trimesh_nary_intersect(
+      mb2.mesh, 2, [](int t) { return t < 12 ? 0 : 1; }, false, &mb2.arena);
+  out2.populate_vert();
+  EXPECT_EQ(out2.vert_size(), 22);
+  EXPECT_EQ(out2.face_size(), 56);
+  if (DO_OBJ) {
+    write_obj_mesh(out2, "test_cubecubestep_nary");
   }
 }
 #endif

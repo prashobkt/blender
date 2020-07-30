@@ -365,7 +365,11 @@ class Cell {
   Vector<int> patches_;
   Array<int> winding_;
   bool winding_assigned_{false};
+  /* flag_ will be true when this cell should be in the output volume. */
   bool flag_{false};
+  /* zero_volume_ will be true when this is a zero-volume cell (inside a stack of identical
+   * triangles). */
+  bool zero_volume_{false};
 
  public:
   Cell() = default;
@@ -413,16 +417,64 @@ class Cell {
   {
     return winding_assigned_;
   }
+
+  bool zero_volume() const
+  {
+    return zero_volume_;
+  }
+
+  /* Call this when it is possible that this Cell has zero volume,
+   * and if it does, set zero_volume_ to true.
+   */
+  void check_for_zero_volume(int this_cell_index, const PatchesInfo &pinfo, const Mesh &mesh);
 };
 
 static std::ostream &operator<<(std::ostream &os, const Cell &cell)
 {
   os << "Cell patches " << cell.patches();
   if (cell.winding().size() > 0) {
-    os << " winding " << cell.winding();
-    os << " flag " << cell.flag();
+    os << " winding=" << cell.winding();
+    os << " flag=" << cell.flag();
   }
+  os << " zv=" << cell.zero_volume();
   return os;
+}
+
+static bool tris_have_same_verts(const Mesh &mesh, int t1, int t2)
+{
+  const Face &tri1 = *mesh.face(t1);
+  const Face &tri2 = *mesh.face(t2);
+  BLI_assert(tri1.size() == 3 && tri2.size() == 3);
+  if (tri1.vert[0] == tri2.vert[0]) {
+    return ((tri1.vert[1] == tri2.vert[1] && tri1.vert[2] == tri2.vert[2]) ||
+            (tri1.vert[1] == tri2.vert[2] && tri1.vert[2] == tri2.vert[1]));
+  }
+  if (tri1.vert[0] == tri2.vert[1]) {
+    return ((tri1.vert[1] == tri2.vert[0] && tri1.vert[2] == tri2.vert[2]) ||
+            (tri1.vert[1] == tri2.vert[2] && tri1.vert[2] == tri2.vert[0]));
+  }
+  if (tri1.vert[0] == tri2.vert[2]) {
+    return ((tri1.vert[1] == tri2.vert[0] && tri1.vert[2] == tri2.vert[1]) ||
+            (tri1.vert[1] == tri2.vert[1] && tri1.vert[2] == tri2.vert[0]));
+  }
+  return false;
+}
+
+/* A Cell will have zero volume if it is bounded by exactly two patches and those
+ * patches are geometrically identical triangles (perhaps flipped versions of each other).
+ * If this Cell has zero volume, set its zero_volume_ member to true.
+ */
+void Cell::check_for_zero_volume(int this_cell_index, const PatchesInfo &pinfo, const Mesh &mesh)
+{
+  if (patches_.size() == 2) {
+    const Patch &p1 = pinfo.patch(patches_[0]);
+    const Patch &p2 = pinfo.patch(patches_[1]);
+    if (p1.tot_tri() == 1 && p2.tot_tri() == 1) {
+      if (tris_have_same_verts(mesh, p1.tri(0), p2.tri(0))) {
+        zero_volume_ = true;
+      }
+    }
+  }
 }
 
 /* Information about all the Cells. */
@@ -876,6 +928,7 @@ static void find_cells_from_edge(const Mesh &tm,
       Cell &cell = cinfo.cell(c);
       cell.add_patch(r_index);
       cell.add_patch(rnext_index);
+      cell.check_for_zero_volume(c, pinfo, tm);
       if (dbg_level > 0) {
         std::cout << "  made new cell " << c << "\n";
         std::cout << "  p" << r_index << "." << (r_flipped ? "cell_below" : "cell_above") << " = c"
@@ -887,25 +940,29 @@ static void find_cells_from_edge(const Mesh &tm,
     else if (*r_follow_cell != NO_INDEX && *rnext_prev_cell == NO_INDEX) {
       int c = *r_follow_cell;
       *rnext_prev_cell = c;
-      cinfo.cell(c).add_patch(rnext_index);
-      if (dbg_level > 0) {
-        std::cout << "  p" << r_index << "." << (r_flipped ? "cell_below" : "cell_above") << " = c"
-                  << c << "\n";
-      }
-    }
-    else if (*r_follow_cell == NO_INDEX && *rnext_prev_cell != NO_INDEX) {
-      int c = *rnext_prev_cell;
-      *r_follow_cell = c;
-      cinfo.cell(c).add_patch(r_index);
+      Cell &cell = cinfo.cell(c);
+      cell.add_patch(rnext_index);
+      cell.check_for_zero_volume(c, pinfo, tm);
       if (dbg_level > 0) {
         std::cout << "  p" << rnext_index << "." << (rnext_flipped ? "cell_above" : "cell_below")
                   << " = c" << c << "\n";
       }
     }
+    else if (*r_follow_cell == NO_INDEX && *rnext_prev_cell != NO_INDEX) {
+      int c = *rnext_prev_cell;
+      *r_follow_cell = c;
+      Cell &cell = cinfo.cell(c);
+      cell.add_patch(r_index);
+      cell.check_for_zero_volume(c, pinfo, tm);
+      if (dbg_level > 0) {
+        std::cout << "  p" << r_index << "." << (r_flipped ? "cell_below" : "cell_above") << " = c"
+                  << c << "\n";
+      }
+    }
     else {
       if (*r_follow_cell != *rnext_prev_cell) {
         std::cout << "IMPLEMENT ME: MERGE CELLS\n";
-        BLI_assert(false);
+        // BLI_assert(false);
       }
     }
   }
@@ -1238,14 +1295,133 @@ static bool apply_bool_op(int bool_optype, const Array<int> &winding)
   }
 }
 
+/* Special processing for extract_from_flag_diffs to handle
+ * triangles that are part of stacks of geometrically identical
+ * triangles enclosing zero volume cells.
+ */
+static void extract_zero_volume_cell_tris(Vector<Facep> &out_tris,
+                                          const Mesh &tm_subdivided,
+                                          const PatchesInfo &pinfo,
+                                          const CellsInfo &cinfo,
+                                          MArena *arena)
+{
+  int dbg_level = 0;
+  if (dbg_level > 0) {
+    std::cout << "extract_zero_volume_cell_tris\n";
+  }
+  /* Find patches that are adjacent to zero-volume cells. */
+  Array<bool> adj_to_zv(pinfo.tot_patch());
+  for (int p : pinfo.index_range()) {
+    const Patch &patch = pinfo.patch(p);
+    if (cinfo.cell(patch.cell_above).zero_volume() || cinfo.cell(patch.cell_below).zero_volume()) {
+      adj_to_zv[p] = true;
+    }
+    else {
+      adj_to_zv[p] = false;
+    }
+  }
+  /* Partition the adj_to_zv patches into stacks. */
+  Vector<Vector<int>> patch_stacks;
+  Array<bool> allocated_to_stack(pinfo.tot_patch(), false);
+  for (int p : pinfo.index_range()) {
+    if (!adj_to_zv[p] || allocated_to_stack[p]) {
+      continue;
+    }
+    int stack_index = patch_stacks.size();
+    patch_stacks.append(Vector<int>{p});
+    Vector<int> &stack = patch_stacks[stack_index];
+    Vector<bool> flipped{false};
+    allocated_to_stack[p] = true;
+    /* We arbitrarily choose p's above and below directions as above and below for whole stack.
+     * Triangles in the stack that don't follow that convention are makred with flipped = true.
+     * The non-zero-volume cell above the whole stack, following this convention, is
+     * above_stack_cell. The non-zero-volume cell below the whole stack is below_stack_cell.
+     */
+    /* First, walk in the above_cell direction from p. */
+    int pwalk = p;
+    const Patch *pwalk_patch = &pinfo.patch(pwalk);
+    int c = pwalk_patch->cell_above;
+    const Cell *cell = &cinfo.cell(c);
+    while (cell->zero_volume()) {
+      /* In zero-volume cells, the cell should have exactly two patches. */
+      BLI_assert(cell->patches().size() == 2);
+      int pother = cell->patches()[0] == pwalk ? cell->patches()[1] : cell->patches()[0];
+      bool flip = pinfo.patch(pother).cell_above == c;
+      flipped.append(flip);
+      stack.append(pother);
+      allocated_to_stack[pother] = true;
+      pwalk = pother;
+      pwalk_patch = &pinfo.patch(pwalk);
+      c = flip ? pwalk_patch->cell_below : pwalk_patch->cell_above;
+      cell = &cinfo.cell(c);
+    }
+    const Cell *above_stack_cell = cell;
+    /* Now walk in the below_cell direction from p. */
+    pwalk = p;
+    pwalk_patch = &pinfo.patch(pwalk);
+    c = pwalk_patch->cell_below;
+    cell = &cinfo.cell(c);
+    while (cell->zero_volume()) {
+      BLI_assert(cell->patches().size() == 2);
+      int pother = cell->patches()[0] == pwalk ? cell->patches()[1] : cell->patches()[0];
+      bool flip = pinfo.patch(pother).cell_below == c;
+      flipped.append(flip);
+      stack.append(pother);
+      allocated_to_stack[pother] = true;
+      pwalk = pother;
+      pwalk_patch = &pinfo.patch(pwalk);
+      c = flip ? pwalk_patch->cell_above : pwalk_patch->cell_below;
+      cell = &cinfo.cell(c);
+    }
+    const Cell *below_stack_cell = cell;
+    if (dbg_level > 0) {
+      std::cout << "process zero-volume patch stack " << stack << "\n";
+      std::cout << "flipped = ";
+      for (bool b : flipped) {
+        std::cout << b << " ";
+      }
+      std::cout << "\n";
+    }
+    if (above_stack_cell->flag() ^ below_stack_cell->flag()) {
+      bool need_flipped_tri = above_stack_cell->flag();
+      if (dbg_level > 0) {
+        std::cout << "need tri " << (need_flipped_tri ? "flipped" : "") << "\n";
+      }
+      int t_to_add = NO_INDEX;
+      for (int i : stack.index_range()) {
+        if (flipped[i] == need_flipped_tri) {
+          t_to_add = pinfo.patch(stack[i]).tri(0);
+          if (dbg_level > 0) {
+            std::cout << "using tri " << t_to_add << "\n";
+          }
+          out_tris.append(tm_subdivided.face(t_to_add));
+          break;
+        }
+      }
+      if (t_to_add == NO_INDEX) {
+        Facep f = tm_subdivided.face(pinfo.patch(p).tri(0));
+        const Face &tri = *f;
+        /* We must need flipped version or else we would have found it above. */
+        Array<Vertp> flipped_vs = {tri[0], tri[2], tri[1]};
+        Array<int> flipped_e_origs = {tri.edge_orig[2], tri.edge_orig[1], tri.edge_orig[0]};
+        Array<bool> flipped_is_intersect = {
+            tri.is_intersect[2], tri.is_intersect[1], tri.is_intersect[0]};
+        Facep flipped_f = arena->add_face(
+            flipped_vs, f->orig, flipped_e_origs, flipped_is_intersect);
+        out_tris.append(flipped_f);
+      }
+    }
+  }
+}
+
 /* Extract the output mesh from tm_subdivided and return it as a new mesh.
  * The cells in cinfo must have cells-to-be-retained flagged.
  * We keep only triangles between flagged and unflagged cells.
  * We flip the normals of any triangle that has a flagged cell above
  * and an unflagged cell below.
- * For all stacks of exact duplicate coplanar triangles, add up orientations
- * as +1 or -1 for each according to CCW vs CW. If the result is nonzero,
- * keep one copy with orientation chosen according to the dominant sign.
+ * For all stacks of exact duplicate coplanar triangles, we want to
+ * include either one version of the triangle or none, depending on
+ * whether the flags on either side of the stack are different or the same.
  */
 static Mesh extract_from_flag_diffs(const Mesh &tm_subdivided,
                                     const PatchesInfo &pinfo,
@@ -1258,6 +1434,7 @@ static Mesh extract_from_flag_diffs(const Mesh &tm_subdivided,
   }
   Vector<Facep> out_tris;
   out_tris.reserve(tm_subdivided.face_size());
+  bool any_zero_volume_cell = false;
   for (int t : tm_subdivided.face_index_range()) {
     int p = pinfo.tri_patch(t);
     const Patch &patch = pinfo.patch(p);
@@ -1269,7 +1446,9 @@ static Mesh extract_from_flag_diffs(const Mesh &tm_subdivided,
       std::cout << " flag_above=" << cell_above.flag() << " flag_below=" << cell_below.flag()
                 << "\n";
     }
-    if (cell_above.flag() ^ cell_below.flag()) {
+    bool adjacent_zero_volume_cell = cell_above.zero_volume() || cell_below.zero_volume();
+    any_zero_volume_cell |= adjacent_zero_volume_cell;
+    if (cell_above.flag() ^ cell_below.flag() && !adjacent_zero_volume_cell) {
       if (dbg_level > 0) {
         std::cout << "need tri " << t << "\n";
       }
@@ -1289,6 +1468,9 @@ static Mesh extract_from_flag_diffs(const Mesh &tm_subdivided,
         out_tris.append(f);
       }
     }
+  }
+  if (any_zero_volume_cell) {
+    extract_zero_volume_cell_tris(out_tris, tm_subdivided, pinfo, cinfo, arena);
   }
   return Mesh(out_tris);
 }

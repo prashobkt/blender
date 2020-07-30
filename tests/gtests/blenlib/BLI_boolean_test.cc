@@ -518,4 +518,54 @@ TEST(boolean_polymesh, TetTeTCoplanarDiff)
   }
 }
 
+TEST(boolean_polymesh, CubeCubeStep)
+{
+  const char *spec = R"(16 12
+  0 -1 0
+  0 -1 2
+  0 1 0
+  0 1 2
+  2 -1 0
+  2 -1 2
+  2 1 0
+  2 1 2
+  -1 -1 -1
+  -1 -1 1
+  -1 1 -1
+  -1 1 1
+  1 -1 -1
+  1 -1 1
+  1 1 -1
+  1 1 1
+  0 1 3 2
+  2 3 7 6
+  6 7 5 4
+  4 5 1 0
+  2 6 4 0
+  7 3 1 5
+  8 9 11 10
+  10 11 15 14
+  14 15 13 12
+  12 13 9 8
+  10 14 12 8
+  15 11 9 13
+  )";
+
+  MeshBuilder mb(spec);
+  Mesh out = boolean_mesh(
+      mb.mesh,
+      BOOLEAN_DIFFERENCE,
+      2,
+      [](int t) { return t < 6 ? 0 : 1; },
+      false,
+      nullptr,
+      &mb.arena);
+  out.populate_vert();
+  EXPECT_EQ(out.vert_size(), 12);
+  EXPECT_EQ(out.face_size(), 8);
+  if (DO_OBJ) {
+    write_obj_mesh(out, "cubecubestep");
+  }
+}
+
 }  // namespace blender::meshintersect

@@ -633,6 +633,8 @@ void Mesh::populate_vert(int max_verts)
   int next_allocate_index = 0;
   for (Facep f : face_) {
     for (Vertp v : *f) {
+      if (v->id == 1) {
+      }
       int index = vert_to_index_.lookup_default(v, NO_INDEX);
       if (index == NO_INDEX) {
         BLI_assert(next_allocate_index < UINT_MAX - 2);
@@ -2727,13 +2729,17 @@ Mesh trimesh_nary_intersect(
 {
   constexpr int dbg_level = 0;
   if (dbg_level > 0) {
-    std::cout << "\nTRIMESH_NARY_INTERSECT\n";
+    std::cout << "\nTRIMESH_NARY_INTERSECT nshapes=" << nshapes << " use_self=" << use_self
+              << "\n";
     for (Facep f : tm_in.faces()) {
       BLI_assert(f->is_tri());
       UNUSED_VARS_NDEBUG(f);
     }
     if (dbg_level > 1) {
       std::cout << "input mesh:\n" << tm_in;
+      for (int t : tm_in.face_index_range()) {
+        std::cout << "shape(" << t << ") = " << shape_fn(tm_in.face(t)->orig) << "\n";
+      }
     }
   }
   if (has_degenerate_tris(tm_in)) {
