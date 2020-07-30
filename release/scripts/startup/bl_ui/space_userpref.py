@@ -645,7 +645,7 @@ class USERPREF_PT_system_video_sequencer(SystemPanel, CenterAlignMixIn, Panel):
 
 
 class USERPREF_PT_system_logging(SystemPanel, CenterAlignMixIn, Panel):
-    bl_label = "Logging"
+    bl_label = "Log & Debug"
 
     def draw_centered(self, context, layout):
         prefs = context.preferences
@@ -664,6 +664,7 @@ class USERPREF_PT_system_logging(SystemPanel, CenterAlignMixIn, Panel):
         col = layout.column()
         col.active = not system.log_use_stdout
         col.prop(system, "log_output_file")
+        layout.prop(system, "debug_value")
         layout.prop(system, "debug")
 
 # -----------------------------------------------------------------------------

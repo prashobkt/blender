@@ -1164,8 +1164,17 @@ static int rna_debug_get(PointerRNA *UNUSED(ptr))
 
 static void rna_debug_set(PointerRNA *UNUSED(ptr), int value)
 {
-  printf("%d\n", value);
   G.debug = value;
+}
+
+static int rna_debug_value_get(PointerRNA *UNUSED(ptr))
+{
+  return G.debug_value;
+}
+
+static void rna_debug_value_set(PointerRNA *UNUSED(ptr), int value)
+{
+  G.debug_value = value;
 }
 #else
 
@@ -5754,10 +5763,13 @@ static void rna_def_userdef_system(BlenderRNA *brna)
                                 "rna_clog_log_output_file_get",
                                 "rna_clog_log_output_file_length",
                                 "rna_clog_log_output_file_set");
+  RNA_def_property_ui_text(prop, "Log Output File", "");
+
   prop = RNA_def_property(srna, "verbose", PROP_INT, PROP_NONE);
   RNA_def_property_int_funcs(prop, "rna_verbose_get", "rna_verbose_set", NULL);
   RNA_def_property_ui_text(prop, "Verbosity Level", "Verbosity for libraries that support it");
 
+  /* TODO (grzelins) now we can start removing bpy.app.debug */
   static const EnumPropertyItem debug_items[] = {
       {G_DEBUG, "DEBUG", ICON_NONE, "Debug", ""},
       {G_DEBUG_FFMPEG, "DEBUG_FFMPEG", ICON_NONE, "Debug FFMPEG", ""},
@@ -5805,6 +5817,11 @@ static void rna_def_userdef_system(BlenderRNA *brna)
       prop,
       "Debug Flags",
       "Boolean, for debug info (started with --debug / --debug_* matching this attribute name");
+
+  /* TODO (grzelins) now we can remove WM_OT_debug_menu */
+  prop = RNA_def_property(srna, "debug_value", PROP_INT, PROP_NONE);
+  RNA_def_property_int_funcs(prop, "rna_debug_value_get", "rna_debug_value_set", NULL);
+  RNA_def_property_ui_text(prop, "Debug Value", "Only developers know what is does");
 }
 
 static void rna_def_userdef_input(BlenderRNA *brna)
