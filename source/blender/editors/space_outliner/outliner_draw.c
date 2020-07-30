@@ -2773,12 +2773,8 @@ static void tselem_draw_icon(uiBlock *block,
     return;
   }
 
-#if 0
   if (outliner_is_collection_tree_element(te)) {
     Collection *collection = outliner_collection_from_tree_element(te);
-
-    /* Reduce alpha to match icon buttons */
-    alpha *= 0.8f;
 
     /* placement of icons, copied from interface_widgets.c */
     float aspect = (0.8f * UI_UNIT_Y) / ICON_DEFAULT_HEIGHT;
@@ -2801,9 +2797,6 @@ static void tselem_draw_icon(uiBlock *block,
   }
   /* Icon is covered by restrict buttons */
   else if (!is_clickable || x >= xmax) {
-#endif /* if 0 */
-
-  if (!is_clickable || x >= xmax) {
     /* Reduce alpha to match icon buttons */
     alpha *= 0.8f;
 
@@ -3219,7 +3212,7 @@ static void outliner_draw_tree_element(bContext *C,
       te->flag |= TE_ACTIVE; /* For lookup in display hierarchies. */
     }
 
-#if 1
+#if 0
     /* Collection colors. */
     if (outliner_is_collection_tree_element(te)) {
       Collection *collection = outliner_collection_from_tree_element(te);
