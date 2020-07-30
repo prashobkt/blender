@@ -17,150 +17,22 @@
 #ifndef __SIM_SIMULATION_SOLVER_HH__
 #define __SIM_SIMULATION_SOLVER_HH__
 
-#include "BLI_float3.hh"
-#include "BLI_span.hh"
-
-#include "DNA_simulation_types.h"
-
-#include "FN_attributes_ref.hh"
-
-#include "particle_allocator.hh"
-#include "time_interval.hh"
+#include "simulation_collect_influences.hh"
 
 struct Depsgraph;
 
 namespace blender::sim {
 
-class ParticleEmitterContext;
-class ParticleForceContext;
-
-class ParticleEmitter {
- public:
-  virtual ~ParticleEmitter();
-  virtual void emit(ParticleEmitterContext &context) const = 0;
-};
-
-class ParticleForce {
- public:
-  virtual ~ParticleForce();
-  virtual void add_force(ParticleForceContext &context) const = 0;
-};
-
-struct SimulationInfluences {
-  Map<std::string, Vector<const ParticleForce *>> particle_forces;
-  Map<std::string, fn::AttributesInfoBuilder *> particle_attributes_builder;
-  Vector<const ParticleEmitter *> particle_emitters;
-};
-
-class SimulationSolveContext {
- private:
-  Simulation &simulation_;
-  Depsgraph &depsgraph_;
-  const SimulationInfluences &influences_;
-
- public:
-  SimulationSolveContext(Simulation &simulation,
-                         Depsgraph &depsgraph,
-                         const SimulationInfluences &influences)
-      : simulation_(simulation), depsgraph_(depsgraph), influences_(influences)
-  {
-  }
-};
-
-class ParticleChunkContext {
- private:
-  IndexMask index_mask_;
-  fn::MutableAttributesRef attributes_;
-
- public:
-  ParticleChunkContext(IndexMask index_mask, fn::MutableAttributesRef attributes)
-      : index_mask_(index_mask), attributes_(attributes)
-  {
-  }
-
-  IndexMask index_mask() const
-  {
-    return index_mask_;
-  }
-
-  fn::MutableAttributesRef attributes()
-  {
-    return attributes_;
-  }
-
-  fn::AttributesRef attributes() const
-  {
-    return attributes_;
-  }
-};
-
-class ParticleEmitterContext {
- private:
-  SimulationSolveContext &solve_context_;
-  Map<std::string, std::unique_ptr<ParticleAllocator>> &particle_allocators_;
-  TimeInterval simulation_time_interval_;
-
- public:
-  ParticleEmitterContext(SimulationSolveContext &solve_context,
-                         Map<std::string, std::unique_ptr<ParticleAllocator>> &particle_allocators,
-                         TimeInterval simulation_time_interval)
-      : solve_context_(solve_context),
-        particle_allocators_(particle_allocators),
-        simulation_time_interval_(simulation_time_interval)
-  {
-  }
-
-  ParticleAllocator *try_get_particle_allocator(StringRef particle_simulation_name)
-  {
-    auto *ptr = particle_allocators_.lookup_ptr_as(particle_simulation_name);
-    if (ptr != nullptr) {
-      return ptr->get();
-    }
-    else {
-      return nullptr;
-    }
-  }
-
-  TimeInterval simulation_time_interval() const
-  {
-    return simulation_time_interval_;
-  }
-};
-
-class ParticleForceContext {
- private:
-  SimulationSolveContext &solve_context_;
-  const ParticleChunkContext &particle_chunk_context_;
-  MutableSpan<float3> force_dst_;
-
- public:
-  ParticleForceContext(SimulationSolveContext &solve_context,
-                       const ParticleChunkContext &particle_chunk_context,
-                       MutableSpan<float3> force_dst)
-      : solve_context_(solve_context),
-        particle_chunk_context_(particle_chunk_context),
-        force_dst_(force_dst)
-  {
-  }
-
-  const ParticleChunkContext &particle_chunk() const
-  {
-    return particle_chunk_context_;
-  }
-
-  MutableSpan<float3> force_dst()
-  {
-    return force_dst_;
-  }
-};
-
 void initialize_simulation_states(Simulation &simulation,
                                   Depsgraph &depsgraph,
-                                  const SimulationInfluences &influences);
+                                  const SimulationInfluences &influences,
+                                  const bke::PersistentDataHandleMap &handle_map);
 
 void solve_simulation_time_step(Simulation &simulation,
                                 Depsgraph &depsgraph,
                                 const SimulationInfluences &influences,
+                                const bke::PersistentDataHandleMap &handle_map,
+                                const DependencyAnimations &dependency_animations,
                                 float time_step);
 
 }  // namespace blender::sim

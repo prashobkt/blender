@@ -199,6 +199,9 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
 
       cb->extra_loose_points = grp = DRW_shgroup_create(sh, extra_ps);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+
+      /* Buffer access for drawing isolated points, matching `extra_lines`. */
+      cb->extra_points = BUF_POINT(grp, formats->point_extra);
     }
     {
       format = formats->pos;
@@ -230,6 +233,11 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
   }
 }
 
+void OVERLAY_extra_point(OVERLAY_ExtraCallBuffers *cb, const float point[3], const float color[4])
+{
+  DRW_buffer_add_entry(cb->extra_points, point, color);
+}
+
 void OVERLAY_extra_line_dashed(OVERLAY_ExtraCallBuffers *cb,
                                const float start[3],
                                const float end[3],
@@ -250,7 +258,7 @@ void OVERLAY_extra_line(OVERLAY_ExtraCallBuffers *cb,
 
 OVERLAY_ExtraCallBuffers *OVERLAY_extra_call_buffer_get(OVERLAY_Data *vedata, Object *ob)
 {
-  bool do_in_front = (ob->dtx & OB_DRAWXRAY) != 0;
+  bool do_in_front = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   return &pd->extra_call_buffers[do_in_front];
 }
@@ -1276,6 +1284,19 @@ static void OVERLAY_relationship_lines(OVERLAY_ExtraCallBuffers *cb,
     OVERLAY_extra_line_dashed(cb, parent_pos, ob->obmat[3], relation_color);
   }
 
+  /* Drawing the hook lines. */
+  for (ModifierData *md = ob->modifiers.first; md; md = md->next) {
+    if (md->type == eModifierType_Hook) {
+      HookModifierData *hmd = (HookModifierData *)md;
+      float center[3];
+      mul_v3_m4v3(center, ob->obmat, hmd->cent);
+      if (hmd->object) {
+        OVERLAY_extra_line_dashed(cb, hmd->object->obmat[3], center, relation_color);
+      }
+      OVERLAY_extra_point(cb, center, relation_color);
+    }
+  }
+
   if (ob->rigidbody_constraint) {
     Object *rbc_ob1 = ob->rigidbody_constraint->ob1;
     Object *rbc_ob2 = ob->rigidbody_constraint->ob2;
@@ -1318,7 +1339,7 @@ static void OVERLAY_relationship_lines(OVERLAY_ExtraCallBuffers *cb,
       else {
         const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(curcon);
 
-        if ((cti && cti->get_constraint_targets) && (curcon->ui_expand_flag && (1 << 0))) {
+        if ((cti && cti->get_constraint_targets) && (curcon->ui_expand_flag & (1 << 0))) {
           ListBase targets = {NULL, NULL};
           bConstraintTarget *ct;
 

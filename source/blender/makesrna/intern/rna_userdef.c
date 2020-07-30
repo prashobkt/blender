@@ -1080,6 +1080,9 @@ static void rna_UserDef_studiolight_light_ambient_get(PointerRNA *ptr, float *va
 static bUserMenu *rna_UserDef_usermenus_get_current(UserDef *userdef, bool ensure)
 {
   const char **contexts_list = CTX_data_list_mode_string();
+#  if 0 /* UNUSED */
+  ListBase *umg_list = &userdef->user_menus;
+#  endif
 
   bUserMenusGroup *umg = userdef->runtime.umg_select;
   bUserMenu *bum = NULL;
@@ -2771,7 +2774,7 @@ static void rna_def_userdef_theme_space_view3d(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "editmesh_active", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
-  RNA_def_property_ui_text(prop, "Active Vert/Edge/Face", "");
+  RNA_def_property_ui_text(prop, "Active Vertex/Edge/Face", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "normal", PROP_FLOAT, PROP_COLOR_GAMMA);
@@ -3470,7 +3473,7 @@ static void rna_def_userdef_theme_space_image(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "editmesh_active", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
-  RNA_def_property_ui_text(prop, "Active Vert/Edge/Face", "");
+  RNA_def_property_ui_text(prop, "Active Vertex/Edge/Face", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "wire_edit", PROP_FLOAT, PROP_COLOR_GAMMA);
@@ -5482,7 +5485,7 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
 
   /* grease pencil */
   prop = RNA_def_property(srna, "grease_pencil_manhattan_distance", PROP_INT, PROP_PIXEL);
-  RNA_def_property_int_sdna(prop, NULL, "gp_manhattendist");
+  RNA_def_property_int_sdna(prop, NULL, "gp_manhattandist");
   RNA_def_property_range(prop, 0, 100);
   RNA_def_property_ui_text(prop,
                            "Grease Pencil Manhattan Distance",
