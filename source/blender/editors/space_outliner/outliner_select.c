@@ -108,13 +108,49 @@ static bool do_outliner_activate_common(bContext *C,
 }
 
 /**
- * Bring the newly selected object into edit mode.
+ * Find a new active object to keep the other objects in the mode.
  *
- * If extend is used, we try to have the other compatible selected objects in the new mode as well.
- * Otherwise only the new object will be active, selected and in the edit mode.
+ * Identify other objects in the tree that are also in the interaction mode
+ * and set the next (circular) as the active object. If none are found, then
+ * the mode should be exited.
  */
-static void do_outliner_item_editmode_toggle(
-    bContext *C, Scene *scene, ViewLayer *view_layer, Base *base, const bool extend)
+static bool outliner_set_new_active(bContext *C, ListBase *tree, Object *ob, int mode)
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+
+  LISTBASE_FOREACH (TreeElement *, te, tree) {
+    TreeStoreElem *tselem = TREESTORE(te);
+    if (tselem->type == 0 && te->idcode == ID_OB) {
+      Object *ob_te = (Object *)tselem->id;
+
+      /* If an object is found in the mode and not the current element. */
+      if (ob_te->mode == mode && ob_te != ob) {
+        Base *base = BKE_view_layer_base_find(view_layer, ob_te);
+        ED_object_base_activate(C, base);
+        return true;
+      }
+    }
+
+    if (outliner_set_new_active(C, &te->subtree, ob, mode)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Bring the newly selected object into edit mode and activate it.
+ *
+ * If extend is used, we try to have the other compatible selected objects in the new mode as
+ * well. Otherwise only the new object will be active, selected and in the edit mode.
+ */
+static void do_outliner_item_editmode_toggle(bContext *C,
+                                             Scene *scene,
+                                             ViewLayer *view_layer,
+                                             TreeElement *te,
+                                             Base *base,
+                                             const bool extend)
 {
   Main *bmain = CTX_data_main(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -122,7 +158,9 @@ static void do_outliner_item_editmode_toggle(
   Object *ob = base->object;
   bool use_all = false;
 
-  if (obact == NULL) {
+  /* TODO (Nathan): These aren't needed because edit/pose mode cannot be entered
+   * from the outliner directly anymore. */
+  /*if (obact == NULL) {
     ED_object_base_activate(C, base);
     DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
@@ -140,7 +178,7 @@ static void do_outliner_item_editmode_toggle(
            ((obact->mode & OB_MODE_POSE) && ELEM(OB_ARMATURE, ob->type, obact->type)) || !extend) {
     use_all = do_outliner_activate_common(
         C, bmain, depsgraph, scene, view_layer, base, extend, true);
-  }
+  }*/
 
   if (use_all) {
     WM_operator_name_call(C, "OBJECT_OT_editmode_toggle", WM_OP_INVOKE_REGION_WIN, NULL);
@@ -148,22 +186,29 @@ static void do_outliner_item_editmode_toggle(
   else {
     bool ok;
     if (BKE_object_is_in_editmode(ob)) {
+      SpaceOutliner *soops = CTX_wm_space_outliner(C);
+      outliner_set_new_active(C, &soops->tree, ob, ob->mode);
+
       ok = ED_object_editmode_exit_ex(bmain, scene, ob, EM_FREEDATA);
     }
     else {
       ok = ED_object_editmode_enter_ex(CTX_data_main(C), scene, ob, EM_NO_CONTEXT);
+      ED_object_base_activate(C, base);
     }
     if (ok) {
       ED_object_base_select(base, (ob->mode & OB_MODE_EDIT) ? BA_SELECT : BA_DESELECT);
-      ED_outliner_select_sync_from_object_tag(C);
       DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
       WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
     }
   }
 }
 
-static void do_outliner_item_posemode_toggle(
-    bContext *C, Scene *scene, ViewLayer *view_layer, Base *base, const bool extend)
+static void do_outliner_item_posemode_toggle(bContext *C,
+                                             Scene *scene,
+                                             ViewLayer *view_layer,
+                                             TreeElement *te,
+                                             Base *base,
+                                             const bool extend)
 {
   Main *bmain = CTX_data_main(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -171,7 +216,7 @@ static void do_outliner_item_posemode_toggle(
   Object *ob = base->object;
   bool use_all = false;
 
-  if (obact == NULL) {
+  /*if (obact == NULL) {
     ED_object_base_activate(C, base);
     DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
@@ -189,7 +234,7 @@ static void do_outliner_item_posemode_toggle(
            ((obact->mode & OB_MODE_EDIT) && ELEM(OB_ARMATURE, ob->type, obact->type))) {
     use_all = do_outliner_activate_common(
         C, bmain, depsgraph, scene, view_layer, base, extend, true);
-  }
+  }*/
 
   if (use_all) {
     WM_operator_name_call(C, "OBJECT_OT_posemode_toggle", WM_OP_INVOKE_REGION_WIN, NULL);
@@ -197,14 +242,17 @@ static void do_outliner_item_posemode_toggle(
   else {
     bool ok = false;
     if (ob->mode & OB_MODE_POSE) {
+      SpaceOutliner *soops = CTX_wm_space_outliner(C);
+      outliner_set_new_active(C, &soops->tree, ob, ob->mode);
+
       ok = ED_object_posemode_exit_ex(bmain, ob);
     }
     else {
       ok = ED_object_posemode_enter_ex(bmain, ob);
+      ED_object_base_activate(C, base);
     }
     if (ok) {
       ED_object_base_select(base, (ob->mode & OB_MODE_POSE) ? BA_SELECT : BA_DESELECT);
-
       DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
       WM_event_add_notifier(C, NC_SCENE | ND_MODE | NS_MODE_OBJECT, NULL);
       WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
@@ -240,10 +288,10 @@ void outliner_object_mode_toggle(bContext *C, Scene *scene, ViewLayer *view_laye
 {
   Object *obact = OBACT(view_layer);
   if (obact->mode & OB_MODE_EDIT) {
-    do_outliner_item_editmode_toggle(C, scene, view_layer, base, true);
+    do_outliner_item_editmode_toggle(C, scene, view_layer, NULL, base, true);
   }
   else if (obact->mode & OB_MODE_POSE) {
-    do_outliner_item_posemode_toggle(C, scene, view_layer, base, true);
+    do_outliner_item_posemode_toggle(C, scene, view_layer, NULL, base, true);
   }
 }
 
@@ -264,14 +312,16 @@ void outliner_item_mode_toggle(bContext *C,
     }
 
     if (tvc->ob_edit && OB_TYPE_SUPPORT_EDITMODE(ob->type)) {
-      do_outliner_item_editmode_toggle(C, tvc->scene, tvc->view_layer, base, extend);
+      do_outliner_item_editmode_toggle(C, tvc->scene, tvc->view_layer, te, base, extend);
     }
     else if (tvc->ob_pose && ob->type == OB_ARMATURE) {
-      do_outliner_item_posemode_toggle(C, tvc->scene, tvc->view_layer, base, extend);
+      do_outliner_item_posemode_toggle(C, tvc->scene, tvc->view_layer, te, base, extend);
     }
     else {
       do_outliner_item_mode_toggle_generic(C, tvc, base);
     }
+
+    ED_outliner_select_sync_from_object_tag(C);
   }
 }
 
