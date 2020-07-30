@@ -149,16 +149,18 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   const bool only_active_frame = RNA_boolean_get(op->ptr, "only_active_frame");
   const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
   const bool use_norm_thickness = RNA_boolean_get(op->ptr, "use_normalized_thickness");
+  const bool use_selected_objects = RNA_boolean_get(op->ptr, "use_selected_objects");
 
   /* Set flags. */
   int flag = 0;
   SET_FLAG_FROM_TEST(flag, use_fill, GP_EXPORT_FILL);
   SET_FLAG_FROM_TEST(flag, use_norm_thickness, GP_EXPORT_NORM_THICKNESS);
+  SET_FLAG_FROM_TEST(flag, use_selected_objects, GP_EXPORT_SELECTED_OBJECTS);
 
   struct GpencilExportParams params = {
       .C = C,
       .region = region,
-      .ob = ob,
+      .obact = ob,
       .filename = filename,
       .mode = GP_EXPORT_TO_SVG,
       .frame_start = RNA_int_get(op->ptr, "start"),
@@ -218,8 +220,12 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
   uiLayoutSetPropDecorate(layout, false);
 
   box = uiLayoutBox(layout);
+
   row = uiLayoutRow(box, false);
   uiItemL(row, IFACE_("Scene Options"), ICON_SCENE_DATA);
+
+  row = uiLayoutRow(box, false);
+  uiItemR(row, imfptr, "use_selected_objects", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(box, false);
   uiItemR(row, imfptr, "only_active_frame", 0, NULL, ICON_NONE);
@@ -346,6 +352,11 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
                   false,
                   "Normalize",
                   "Export strokes with constant thickness along the stroke");
+  RNA_def_boolean(ot->srna,
+                  "use_selected_objects",
+                  true,
+                  "All Selected Objects",
+                  "Export all selected objects, unselect for export active object only");
 
   /* This dummy prop is used to check whether we need to init the start and
    * end frame values to that of the scene's, otherwise they are reset at

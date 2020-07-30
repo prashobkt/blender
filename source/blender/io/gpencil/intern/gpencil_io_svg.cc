@@ -18,6 +18,8 @@
  * \ingroup bgpencil
  */
 #include <iostream>
+#include <iterator>
+#include <list>
 #include <string>
 
 #include "MEM_guardedalloc.h"
@@ -120,45 +122,53 @@ void GpencilExporterSVG::create_document_header(void)
  */
 void GpencilExporterSVG::export_style_list(void)
 {
-  Object *ob = this->params.ob;
-  int mat_len = max_ii(1, ob->totcol);
   main_node.append_child(pugi::node_comment).set_value("List of materials");
   pugi::xml_node style_node = main_node.append_child("style");
   style_node.append_attribute("type").set_value("text/css");
-
   std::string txt;
-  float col[3];
 
-  for (int i = 0; i < mat_len; i++) {
-    MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, i + 1);
-    gp_style_current_set(gp_style);
+  int ob_idx = 1;
+  std::list<Object *>::iterator it;
+  for (it = ob_list.begin(); it != ob_list.end(); ++it) {
+    Object *ob = (Object *)*it;
+    int mat_len = max_ii(1, ob->totcol);
 
-    int id = i + 1;
+    float col[3];
 
-    if (gp_style_is_stroke()) {
-      char out[128];
-      linearrgb_to_srgb_v3_v3(col, gp_style->stroke_rgba);
-      std::string stroke_hex = rgb_to_hex(col);
-      sprintf(out,
-              "\n\t.stylestroke%d{stroke: %s; fill: %s;}",
-              id,
-              stroke_hex.c_str(),
-              stroke_hex.c_str());
-      txt.append(out);
+    for (int i = 0; i < mat_len; i++) {
+      MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, i + 1);
+      gp_style_current_set(gp_style);
+
+      int id = i + 1;
+
+      if (gp_style_is_stroke()) {
+        char out[128];
+        linearrgb_to_srgb_v3_v3(col, gp_style->stroke_rgba);
+        std::string stroke_hex = rgb_to_hex(col);
+        sprintf(out,
+                "\n\t.ob%dstylestroke%d{stroke: %s; fill: %s;}",
+                ob_idx,
+                id,
+                stroke_hex.c_str(),
+                stroke_hex.c_str());
+        txt.append(out);
+      }
+
+      if (gp_style_is_fill()) {
+        char out[128];
+        linearrgb_to_srgb_v3_v3(col, gp_style->fill_rgba);
+        std::string stroke_hex = rgb_to_hex(col);
+        sprintf(out,
+                "\n\t.ob%dstylefill%d{stroke: %s; fill: %s; fill-opacity: %f}",
+                ob_idx,
+                id,
+                stroke_hex.c_str(),
+                stroke_hex.c_str(),
+                gp_style->fill_rgba[3]);
+        txt.append(out);
+      }
     }
-
-    if (gp_style_is_fill()) {
-      char out[128];
-      linearrgb_to_srgb_v3_v3(col, gp_style->fill_rgba);
-      std::string stroke_hex = rgb_to_hex(col);
-      sprintf(out,
-              "\n\t.stylefill%d{stroke: %s; fill: %s; fill-opacity: %f}",
-              id,
-              stroke_hex.c_str(),
-              stroke_hex.c_str(),
-              gp_style->fill_rgba[3]);
-      txt.append(out);
-    }
+    ob_idx++;
   }
   txt.append("\n\t");
   style_node.text().set(txt.c_str());
@@ -167,79 +177,79 @@ void GpencilExporterSVG::export_style_list(void)
 /* Main layer loop. */
 void GpencilExporterSVG::export_layers(void)
 {
-  float color[3] = {1.0f, 0.5f, 0.01f};
-  std::string hex = rgb_to_hex(color);
+  int ob_idx = 0;
+  std::list<Object *>::iterator it;
+  for (it = ob_list.begin(); it != ob_list.end(); ++it) {
+    Object *ob = (Object *)*it;
 
-  Object *ob = params.ob;
+    ob_idx++;
+    ob_idx_set(ob_idx);
+    /* Use evaluated version to get strokes with modifiers. */
+    Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
+    bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
 
-  bGPdata *gpd = (bGPdata *)ob->data;
-
-  /* Use evaluated version to get strokes with modifiers. */
-  Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
-  bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
-
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_eval->layers) {
-    if (gpl->flag & GP_LAYER_HIDE) {
-      continue;
-    }
-    gpl_current_set(gpl);
-
-    /* Layer node. */
-    std::string txt = "Layer: ";
-    txt.append(gpl->info);
-    main_node.append_child(pugi::node_comment).set_value(txt.c_str());
-    pugi::xml_node gpl_node = main_node.append_child("g");
-    gpl_node.append_attribute("id").set_value(gpl->info);
-
-    bGPDframe *gpf = gpl->actframe;
-    if (gpf == NULL) {
-      continue;
-    }
-    gpf_current_set(gpf);
-
-    float diff_mat[4][4];
-    BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat);
-
-    LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-      if (gps->totpoints == 0) {
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_eval->layers) {
+      if (gpl->flag & GP_LAYER_HIDE) {
         continue;
       }
-      gps_current_set(gps);
+      gpl_current_set(gpl);
 
-      if (gps->totpoints == 1) {
-        export_point(gpl_node);
+      /* Layer node. */
+      std::string txt = "Layer: ";
+      txt.append(gpl->info);
+      main_node.append_child(pugi::node_comment).set_value(txt.c_str());
+      pugi::xml_node gpl_node = main_node.append_child("g");
+      gpl_node.append_attribute("id").set_value(gpl->info);
+
+      bGPDframe *gpf = gpl->actframe;
+      if (gpf == NULL) {
+        continue;
       }
-      else {
-        bool is_normalized = ((params.flag & GP_EXPORT_NORM_THICKNESS) != 0);
+      gpf_current_set(gpf);
 
-        /* Fill. */
-        if ((gp_style_is_fill()) && (params.flag & GP_EXPORT_FILL)) {
-          if (is_normalized) {
-            export_stroke_polyline(gpl_node, true);
-          }
-          else {
-            export_stroke_path(gpl_node, true);
-          }
+      BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat);
+
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+        if (gps->totpoints == 0) {
+          continue;
         }
+        gps_current_set(ob, gps);
 
-        /* Stroke. */
-        if (gp_style_is_stroke()) {
-          if (is_normalized) {
-            export_stroke_polyline(gpl_node, false);
+        if (gps->totpoints == 1) {
+          export_point(gpl_node);
+        }
+        else {
+          bool is_normalized = ((params.flag & GP_EXPORT_NORM_THICKNESS) != 0);
+
+          /* Fill. */
+          if ((gp_style_is_fill()) && (params.flag & GP_EXPORT_FILL)) {
+            if (is_normalized) {
+              export_stroke_polyline(gpl_node, true);
+            }
+            else {
+              export_stroke_path(gpl_node, true);
+            }
           }
-          else {
-            bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
-                rv3d, gpd, gpl, gps, 3, diff_mat);
 
-            gps_current_set(gps_perimeter);
+          /* Stroke. */
+          if (gp_style_is_stroke()) {
+            if (is_normalized) {
+              export_stroke_polyline(gpl_node, false);
+            }
+            else {
+              bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
+                  rv3d, gpd, gpl, gps, 3, diff_mat);
 
-            /* Reproject and sample stroke. */
-            // ED_gpencil_project_stroke_to_view(params.C, gpl, gps_perimeter);
-            BKE_gpencil_stroke_sample(gps_perimeter, 0.03f, false);
+              gps_current_set(ob, gps_perimeter);
 
-            export_stroke_path(gpl_node, false);
+              /* Reproject and sample stroke. */
+              // ED_gpencil_project_stroke_to_view(params.C, gpl, gps_perimeter);
+              BKE_gpencil_stroke_sample(gps_perimeter, 0.03f, false);
 
-            BKE_gpencil_free_stroke(gps_perimeter);
+              export_stroke_path(gpl_node, false);
+
+              BKE_gpencil_free_stroke(gps_perimeter);
+            }
           }
         }
       }
@@ -264,7 +274,8 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node)
   pugi::xml_node gps_node = gpl_node.append_child("circle");
 
   gps_node.append_attribute("class").set_value(
-      ("stylestroke" + std::to_string(gps->mat_nr + 1)).c_str());
+      ("ob" + std::to_string(ob_idx_get()) + "stylestroke" + std::to_string(gps->mat_nr + 1))
+          .c_str());
 
   bGPDspoint *pt = &gps->points[0];
   gpencil_3d_point_to_screen_space(&pt->x, screen_co);
@@ -293,8 +304,9 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
   pugi::xml_node gps_node = gpl_node.append_child("path");
 
   std::string style_type = (is_fill) ? "fill" : "stroke";
-  gps_node.append_attribute("class").set_value(
-      ("style" + style_type + std::to_string(gps->mat_nr + 1)).c_str());
+  gps_node.append_attribute("class").set_value(("ob" + std::to_string(ob_idx_get()) + "style" +
+                                                style_type + std::to_string(gps->mat_nr + 1))
+                                                   .c_str());
 
   gps_node.append_attribute("stroke-width").set_value("1.0");
 

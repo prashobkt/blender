@@ -26,6 +26,7 @@
 #include "BKE_context.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_geom.h"
+#include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
 
@@ -62,7 +63,7 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *params)
 {
   this->params.frame_start = params->frame_start;
   this->params.frame_end = params->frame_end;
-  this->params.ob = params->ob;
+  this->params.obact = params->obact;
   this->params.region = params->region;
   this->params.C = params->C;
   this->params.filename = params->filename;
@@ -73,15 +74,31 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *params)
   this->bmain = CTX_data_main(params->C);
   this->depsgraph = CTX_data_depsgraph_pointer(params->C);
   this->rv3d = (RegionView3D *)params->region->regiondata;
-  this->gpd = (bGPdata *)params->ob->data;
+  this->gpd = (bGPdata *)params->obact->data;
 
   this->winx = params->region->winx;
   this->winy = params->region->winy;
 
   /* Prepare output filename with full path. */
   set_out_filename(params->filename);
-}
 
+  /* Load list of selected objects. */
+  ViewLayer *view_layer = CTX_data_view_layer(params->C);
+  LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
+    Object *object = base->object;
+
+    if (object->type != OB_GPENCIL) {
+      continue;
+    }
+    if (((params->flag & GP_EXPORT_SELECTED_OBJECTS) == 0) && (params->obact != object)) {
+      continue;
+    }
+
+    if (base->flag & BASE_SELECTED) {
+      ob_list.push_back(object);
+    }
+  }
+}
 /**
  * Set output file input_text full path.
  * \param C: Context.
@@ -245,6 +262,16 @@ std::string GpencilExporter::to_lower_string(char *input_text)
   return text;
 }
 
+int GpencilExporter::ob_idx_get(void)
+{
+  return ob_idx_cur;
+}
+
+void GpencilExporter::ob_idx_set(int idx)
+{
+  ob_idx_cur = idx;
+}
+
 struct bGPDlayer *GpencilExporter::gpl_current_get(void)
 {
   return gpl_cur;
@@ -253,8 +280,9 @@ struct bGPDlayer *GpencilExporter::gpl_current_get(void)
 void GpencilExporter::gpl_current_set(struct bGPDlayer *gpl)
 {
   gpl_cur = gpl;
-  BKE_gpencil_parent_matrix_get(depsgraph, params.ob, gpl, diff_mat);
+  BKE_gpencil_parent_matrix_get(depsgraph, params.obact, gpl, diff_mat);
 }
+
 struct bGPDframe *GpencilExporter::gpf_current_get(void)
 {
   return gpf_cur;
@@ -269,10 +297,10 @@ struct bGPDstroke *GpencilExporter::gps_current_get(void)
   return gps_cur;
 }
 
-void GpencilExporter::gps_current_set(struct bGPDstroke *gps)
+void GpencilExporter::gps_current_set(struct Object *ob, struct bGPDstroke *gps)
 {
   gps_cur = gps;
-  gp_style = BKE_gpencil_material_settings(params.ob, gps->mat_nr + 1);
+  gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
   gp_style_current_set(gp_style);
 }
 

@@ -35,7 +35,7 @@ struct GpencilExportParams {
   bContext *C;
   ARegion *region;
   /** Grease pencil object. */
-  struct Object *ob;
+  struct Object *obact;
   /** Output filename.  */
   char *filename;
   /** Export mode.  */
@@ -55,6 +55,8 @@ typedef enum eGpencilExportParams_Flag {
   GP_EXPORT_FILL = (1 << 0),
   /* Export normalized thickness. */
   GP_EXPORT_NORM_THICKNESS = (1 << 1),
+  /* Export all selected objects. */
+  GP_EXPORT_SELECTED_OBJECTS = (1 << 2),
 } eGpencilExportParams_Flag;
 
 bool gpencil_io_export(const struct GpencilExportParams *params);
