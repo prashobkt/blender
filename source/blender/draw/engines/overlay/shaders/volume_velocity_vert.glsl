@@ -5,6 +5,7 @@ uniform sampler3D velocityZ;
 uniform float displaySize = 1.0;
 uniform float slicePosition;
 uniform int sliceAxis; /* -1 is no slice, 0 is X, 1 is Y, 2 is Z. */
+uniform bool scaleWithMagnitude = false;
 
 /* FluidDomainSettings.cell_size */
 uniform vec3 cellSize;
@@ -104,12 +105,24 @@ void main()
 
   finalColor = vec4(weight_to_color(length(velocity)), 1.0);
 
-#ifdef USE_NEEDLE
+  float vector_length = 1.0;
+
+  if (scaleWithMagnitude) {
+    vector_length = length(velocity);
+  }
+  else if (length(velocity) == 0.0) {
+    vector_length = 0.0;
+  }
+
   mat3 rot_mat = rotation_from_vector(velocity);
+
+#ifdef USE_NEEDLE
   vec3 rotated_pos = rot_mat * corners[indices[gl_VertexID % 12]];
-  pos += rotated_pos * length(velocity) * displaySize * cellSize;
+  pos += rotated_pos * vector_length * displaySize * cellSize;
 #else
-  pos += ((gl_VertexID % 2) == 1) ? velocity * displaySize * cellSize : vec3(0.0);
+  vec3 rotated_pos = rot_mat * vec3(0.0, 0.0, 1.0);
+  pos += ((gl_VertexID % 2) == 1) ? rotated_pos * vector_length * displaySize * cellSize :
+                                    vec3(0.0);
 #endif
 
   vec3 world_pos = point_object_to_world(pos);

@@ -644,24 +644,24 @@ typedef struct FluidDomainSettings {
   char draw_velocity;
   char vector_draw_type;
   char vector_draw_grid_type;
+  char vector_scale_with_magnitude;
   char use_coba;
   char coba_field; /* Simulation field used for the color mapping. */
   char interp_method;
   char gridlines_color_field; /* Simulation field used to color map onto gridlines. */
   char gridlines_cell_filter;
-  char _pad9[1]; /* Unused. */
 
   /* OpenVDB cache options. */
   int openvdb_compression;
   float clipping;
   char openvdb_data_depth;
-  char _pad10[7]; /* Unused. */
+  char _pad9[7]; /* Unused. */
 
   /* -- Deprecated / unsed options (below). -- */
 
   /* View options. */
   int viewsettings;
-  char _pad11[4]; /* Unused. */
+  char _pad10[4]; /* Unused. */
 
   /* Pointcache options. */
   /* Smoke uses only one cache from now on (index [0]), but keeping the array for now for reading
@@ -671,7 +671,7 @@ typedef struct FluidDomainSettings {
   int cache_comp;
   int cache_high_comp;
   char cache_file_format;
-  char _pad12[7]; /* Unused. */
+  char _pad11[7]; /* Unused. */
 
 } FluidDomainSettings;
 

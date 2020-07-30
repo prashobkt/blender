@@ -1449,6 +1449,7 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
     DRW_shgroup_uniform_vec3_copy(grp, "domainOriginOffset", fds->p0);
     DRW_shgroup_uniform_ivec3_copy(grp, "adaptiveCellOffset", fds->res_min);
     DRW_shgroup_uniform_int_copy(grp, "sliceAxis", slice_axis);
+    DRW_shgroup_uniform_bool_copy(grp, "scaleWithMagnitude", fds->vector_scale_with_magnitude);
     DRW_shgroup_call_procedural_lines(grp, ob, line_count);
   }
 
