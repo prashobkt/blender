@@ -1046,7 +1046,7 @@ static void outliner_draw_restrictbuts(uiBlock *block,
   if (soops->show_restrict_flags & SO_RESTRICT_SELECT) {
     restrict_offsets.select = (++restrict_column_offset) * UI_UNIT_X + V2D_SCROLL_WIDTH;
   }
-  if (soops->show_restrict_flags & SO_RESTRICT_ENABLE) {
+  if (soops->outlinevis == SO_VIEW_LAYER && soops->show_restrict_flags & SO_RESTRICT_ENABLE) {
     restrict_offsets.enable = (++restrict_column_offset) * UI_UNIT_X + V2D_SCROLL_WIDTH;
   }
 
