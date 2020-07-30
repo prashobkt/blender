@@ -79,8 +79,8 @@ enum {
   UI_ACTIVE = (1 << 2),
   UI_HAS_ICON = (1 << 3),
   UI_HIDDEN = (1 << 4),
-  UI_SELECT_DRAW = (1 << 5), /* Display selected, doesn't impact interaction. */
-  UI_FILTERED = (1 << 12),   /* Filtered by property search, displayed grayed out. */
+  UI_SELECT_DRAW = (1 << 5),            /* Display selected, doesn't impact interaction. */
+  UI_SEARCH_FILTER_MATCHES = (1 << 12), /* The button matches the search filter. */
   /* warn: rest of uiBut->flag in UI_interface.h */
 };
 

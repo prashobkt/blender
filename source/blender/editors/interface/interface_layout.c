@@ -2193,7 +2193,7 @@ void uiItemFullR(uiLayout *layout,
     else {
       uiLayout *layout_split = uiLayoutSplit(
           layout_row ? layout_row : layout, UI_ITEM_PROP_SEP_DIVIDE, true);
-      bool label_added = false; /* HANS-TODO: Replace with checking if label_but == NULL. */
+      bool label_added = false;
       layout_split->space = 0;
       uiLayout *layout_sub = uiLayoutColumn(layout_split, true);
       layout_sub->space = 0;
@@ -3271,8 +3271,7 @@ uiBut *uiItemL_respect_property_split(uiLayout *layout,
   if (layout->item.flag & UI_ITEM_PROP_SEP) {
     uiBlock *block = uiLayoutGetBlock(layout);
     uiPropertySplitWrapper split_wrapper = uiItemPropertySplitWrapperCreate(layout);
-    /* Further items added to 'layout' will automatically be added to split_wrapper.property_row
-     */
+    /* Further items added to 'layout' will automatically be added to split_wrapper.property_row */
 
     label_but = uiItemL_(split_wrapper.label_column, text, icon);
     UI_block_layout_set_current(block, split_wrapper.property_row);
@@ -5152,7 +5151,7 @@ void uiLayoutRootSetSearchOnly(uiLayout *layout, bool search_only)
  * \{ */
 
 // #define PROPERTY_SEARCH_USE_TOOLTIPS
-// #define PROPERTY_SEARCH_USE_PANEL_LABELS
+#define PROPERTY_SEARCH_USE_PANEL_LABELS
 
 static void ui_layout_free(uiLayout *layout);
 
@@ -5204,26 +5203,22 @@ static bool button_matches_search_filter(uiBut *but, char *search_filter)
  */
 static bool block_search_filter_tag_buttons(uiBlock *block)
 {
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
-    but->flag |= UI_FILTERED;
-  }
-
   bool has_result = false;
   LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     if (button_matches_search_filter(but, block->search_filter)) {
       has_result = true;
-      but->flag &= ~UI_FILTERED;
+      but->flag |= UI_SEARCH_FILTER_MATCHES;
     }
   }
 
   /* Remove filter from labels and decorators that correspond to un-filtered buttons. */
   LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
-    if (!(but->flag & UI_FILTERED)) {
+    if (but->flag & UI_SEARCH_FILTER_MATCHES) {
       if (but->label_but != NULL) {
-        but->label_but->flag &= ~UI_FILTERED;
+        but->label_but->flag |= UI_SEARCH_FILTER_MATCHES;
       }
       if (but->decorator_but != NULL) {
-        but->decorator_but->flag &= ~UI_FILTERED;
+        but->decorator_but->flag |= UI_SEARCH_FILTER_MATCHES;
       }
     }
   }
@@ -5272,8 +5267,6 @@ static void block_search(uiBlock *block)
     }
   }
 
-  SET_FLAG_FROM_TEST(
-      block->flag, has_result || UI_block_is_search_only(block), UI_BLOCK_FILTERED_EMPTY);
   if (block->panel != NULL) {
     ui_panel_set_search_filtered(block->panel, !has_result);
   }
@@ -5496,7 +5489,7 @@ static void ui_item_layout(uiItem *item)
     if (item->flag & UI_ITEM_BOX_ITEM) {
       bitem->but->drawflag |= UI_BUT_BOX_ITEM;
     }
-    if (bitem->but->flag & UI_FILTERED) {
+    if (!(bitem->but->flag & UI_SEARCH_FILTER_MATCHES)) {
       bitem->but->flag |= UI_BUT_INACTIVE;
     }
   }
