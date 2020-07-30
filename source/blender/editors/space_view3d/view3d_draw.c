@@ -36,6 +36,7 @@
 #include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_global.h"
+#include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
@@ -74,7 +75,6 @@
 
 #include "GPU_batch.h"
 #include "GPU_batch_presets.h"
-#include "GPU_draw.h"
 #include "GPU_framebuffer.h"
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -1617,7 +1617,7 @@ void view3d_main_region_draw(const bContext *C, ARegion *region)
   view3d_draw_view(C, region);
 
   DRW_cache_free_old_batches(bmain);
-  GPU_free_images_old(bmain);
+  BKE_image_free_old_gputextures(bmain);
   GPU_pass_cache_garbage_collect();
 
   /* XXX This is in order to draw UI batches with the DRW
@@ -1707,7 +1707,7 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
   {
     /* free images which can have changed on frame-change
      * warning! can be slow so only free animated images - campbell */
-    GPU_free_images_anim(G.main); /* XXX :((( */
+    BKE_image_free_anim_gputextures(G.main); /* XXX :((( */
   }
 
   GPU_matrix_push_projection();
@@ -1954,10 +1954,10 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
                            NULL);
 
   if (ibuf->rect_float) {
-    GPU_offscreen_read_pixels(ofs, GL_FLOAT, ibuf->rect_float);
+    GPU_offscreen_read_pixels(ofs, GPU_DATA_FLOAT, ibuf->rect_float);
   }
   else if (ibuf->rect) {
-    GPU_offscreen_read_pixels(ofs, GL_UNSIGNED_BYTE, ibuf->rect);
+    GPU_offscreen_read_pixels(ofs, GPU_DATA_UNSIGNED_BYTE, ibuf->rect);
   }
 
   /* unbind */

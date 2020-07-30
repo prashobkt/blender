@@ -31,6 +31,8 @@
 #include "BKE_global.h"
 #include "MEM_guardedalloc.h"
 
+#include "DNA_userdef_types.h"
+
 #include "GPU_extensions.h"
 #include "GPU_framebuffer.h"
 #include "GPU_glew.h"
@@ -104,7 +106,8 @@ static struct GPUGlobal {
 static void gpu_detect_mip_render_workaround(void)
 {
   int cube_size = 2;
-  float *source_pix = MEM_callocN(sizeof(float) * 4 * 6 * cube_size * cube_size, __func__);
+  float *source_pix = (float *)MEM_callocN(sizeof(float) * 4 * 6 * cube_size * cube_size,
+                                           __func__);
   float clear_color[4] = {1.0f, 0.5f, 0.0f, 0.0f};
 
   GPUTexture *tex = GPU_texture_create_cube(cube_size, GPU_RGBA16F, source_pix, NULL);
@@ -123,7 +126,7 @@ static void gpu_detect_mip_render_workaround(void)
   GPU_framebuffer_restore();
   GPU_framebuffer_free(fb);
 
-  float *data = GPU_texture_read(tex, GPU_DATA_FLOAT, 1);
+  float *data = (float *)GPU_texture_read(tex, GPU_DATA_FLOAT, 1);
   GG.mip_render_workaround = !equals_v4v4(clear_color, data);
 
   MEM_freeN(data);
@@ -238,6 +241,13 @@ bool GPU_crappy_amd_driver(void)
   return GG.broken_amd_driver;
 }
 
+int GPU_texture_size_with_limit(int res)
+{
+  int size = GPU_max_texture_size();
+  int reslimit = (U.glreslimit != 0) ? min_ii(U.glreslimit, size) : size;
+  return min_ii(reslimit, res);
+}
+
 void gpu_extensions_init(void)
 {
   /* during 2.8 development each platform has its own OpenGL minimum requirements
@@ -311,7 +321,7 @@ void gpu_extensions_init(void)
   if (GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_WIN, GPU_DRIVER_OFFICIAL)) {
     /* Limit this fix to older hardware with GL < 4.5. This means Broadwell GPUs are
      * covered since they only support GL 4.4 on windows.
-     * This fixes some issues with workbench antialiasing on Win + Intel GPU. (see T76273) */
+     * This fixes some issues with workbench anti-aliasing on Win + Intel GPU. (see T76273) */
     if (!GLEW_VERSION_4_5) {
       GG.texture_copy_workaround = true;
     }

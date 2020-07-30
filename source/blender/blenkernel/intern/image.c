@@ -90,7 +90,6 @@
 
 #include "RE_pipeline.h"
 
-#include "GPU_draw.h"
 #include "GPU_texture.h"
 
 #include "BLI_sys_types.h"  // for intptr_t support
@@ -393,7 +392,7 @@ void BKE_image_free_buffers_ex(Image *ima, bool do_lock)
     ima->rr = NULL;
   }
 
-  GPU_free_image(ima);
+  BKE_image_free_gputextures(ima);
 
   LISTBASE_FOREACH (ImageTile *, tile, &ima->tiles) {
     tile->ok = IMA_OK;
@@ -3351,8 +3350,7 @@ static void image_free_tile(Image *ima, ImageTile *tile)
   for (int i = 0; i < TEXTARGET_COUNT; i++) {
     /* Only two textures depends on all tiles, so if this is a secondary tile we can keep the other
      * two. */
-    if (tile != ima->tiles.first &&
-        !(ELEM(i, TEXTARGET_TEXTURE_2D_ARRAY, TEXTARGET_TEXTURE_TILE_MAPPING))) {
+    if (tile != ima->tiles.first && !(ELEM(i, TEXTARGET_2D_ARRAY, TEXTARGET_TILE_MAPPING))) {
       continue;
     }
 
@@ -3629,13 +3627,13 @@ ImageTile *BKE_image_add_tile(struct Image *ima, int tile_number, const char *la
 
   for (int eye = 0; eye < 2; eye++) {
     /* Reallocate GPU tile array. */
-    if (ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY][eye] != NULL) {
-      GPU_texture_free(ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY][eye]);
-      ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY][eye] = NULL;
+    if (ima->gputexture[TEXTARGET_2D_ARRAY][eye] != NULL) {
+      GPU_texture_free(ima->gputexture[TEXTARGET_2D_ARRAY][eye]);
+      ima->gputexture[TEXTARGET_2D_ARRAY][eye] = NULL;
     }
-    if (ima->gputexture[TEXTARGET_TEXTURE_TILE_MAPPING][eye] != NULL) {
-      GPU_texture_free(ima->gputexture[TEXTARGET_TEXTURE_TILE_MAPPING][eye]);
-      ima->gputexture[TEXTARGET_TEXTURE_TILE_MAPPING][eye] = NULL;
+    if (ima->gputexture[TEXTARGET_TILE_MAPPING][eye] != NULL) {
+      GPU_texture_free(ima->gputexture[TEXTARGET_TILE_MAPPING][eye]);
+      ima->gputexture[TEXTARGET_TILE_MAPPING][eye] = NULL;
     }
   }
 

@@ -29,6 +29,7 @@
 
 #include "GPU_attr_binding.h"
 #include "GPU_immediate.h"
+#include "GPU_matrix.h"
 #include "GPU_texture.h"
 
 #include "gpu_attr_binding_private.h"
@@ -39,10 +40,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-
-/* necessary functions from matrix API */
-extern void GPU_matrix_bind(const GPUShaderInterface *);
-extern bool GPU_matrix_dirty_get(void);
 
 typedef struct ImmediateDrawBuffer {
   GLuint vbo_id;
@@ -75,7 +72,7 @@ typedef struct {
 
   GLuint vao_id;
 
-  GLuint bound_program;
+  GPUShader *bound_program;
   const GPUShaderInterface *shader_interface;
   GPUAttrBinding attr_binding;
   uint16_t prev_enabled_attr_bits; /* <-- only affects this VAO, so we're ok */
@@ -146,48 +143,47 @@ GPUVertFormat *immVertexFormat(void)
   return &imm.vertex_format;
 }
 
-void immBindProgram(GLuint program, const GPUShaderInterface *shaderface)
+void immBindShader(GPUShader *shader)
 {
 #if TRUST_NO_ONE
-  assert(imm.bound_program == 0);
-  assert(glIsProgram(program));
+  assert(imm.bound_program == NULL);
+  assert(glIsProgram(shader->program));
 #endif
 
-  imm.bound_program = program;
-  imm.shader_interface = shaderface;
+  imm.bound_program = shader;
+  imm.shader_interface = shader->interface;
 
   if (!imm.vertex_format.packed) {
     VertexFormat_pack(&imm.vertex_format);
   }
 
-  glUseProgram(program);
-  get_attr_locations(&imm.vertex_format, &imm.attr_binding, shaderface);
-  GPU_matrix_bind(shaderface);
-  GPU_shader_set_srgb_uniform(shaderface);
+  GPU_shader_bind(shader);
+  get_attr_locations(&imm.vertex_format, &imm.attr_binding, imm.shader_interface);
+  GPU_matrix_bind(imm.shader_interface);
+  GPU_shader_set_srgb_uniform(imm.shader_interface);
 }
 
 void immBindBuiltinProgram(eGPUBuiltinShader shader_id)
 {
   GPUShader *shader = GPU_shader_get_builtin_shader(shader_id);
-  immBindProgram(shader->program, shader->interface);
+  immBindShader(shader);
 }
 
 void immUnbindProgram(void)
 {
 #if TRUST_NO_ONE
-  assert(imm.bound_program != 0);
+  assert(imm.bound_program != NULL);
 #endif
 #if PROGRAM_NO_OPTI
   glUseProgram(0);
 #endif
-  imm.bound_program = 0;
+  imm.bound_program = NULL;
 }
 
 /* XXX do not use it. Special hack to use OCIO with batch API. */
-void immGetProgram(GLuint *program, GPUShaderInterface **shaderface)
+GPUShader *immGetShader(void)
 {
-  *program = imm.bound_program;
-  *shaderface = (GPUShaderInterface *)imm.shader_interface;
+  return imm.bound_program;
 }
 
 #if TRUST_NO_ONE
@@ -281,7 +277,7 @@ void immBegin(GPUPrimType prim_type, uint vertex_len)
   }
 #endif
 
-  active_buffer->buffer_data = glMapBufferRange(
+  active_buffer->buffer_data = (GLubyte *)glMapBufferRange(
       GL_ARRAY_BUFFER,
       active_buffer->buffer_offset,
       bytes_needed,
@@ -367,17 +363,18 @@ static void immDrawSetup(void)
     const GLvoid *pointer = (const GLubyte *)0 + offset;
 
     const uint loc = read_attr_location(&imm.attr_binding, a_idx);
+    const GLenum type = convert_comp_type_to_gl(static_cast<GPUVertCompType>(a->comp_type));
 
     switch (a->fetch_mode) {
       case GPU_FETCH_FLOAT:
       case GPU_FETCH_INT_TO_FLOAT:
-        glVertexAttribPointer(loc, a->comp_len, a->gl_comp_type, GL_FALSE, stride, pointer);
+        glVertexAttribPointer(loc, a->comp_len, type, GL_FALSE, stride, pointer);
         break;
       case GPU_FETCH_INT_TO_FLOAT_UNIT:
-        glVertexAttribPointer(loc, a->comp_len, a->gl_comp_type, GL_TRUE, stride, pointer);
+        glVertexAttribPointer(loc, a->comp_len, type, GL_TRUE, stride, pointer);
         break;
       case GPU_FETCH_INT:
-        glVertexAttribIPointer(loc, a->comp_len, a->gl_comp_type, stride, pointer);
+        glVertexAttribIPointer(loc, a->comp_len, type, stride, pointer);
     }
   }
 
@@ -425,7 +422,7 @@ void immEnd(void)
       GPU_vertbuf_data_resize(imm.batch->verts[0], imm.vertex_len);
       /* TODO: resize only if vertex count is much smaller */
     }
-    GPU_batch_program_set(imm.batch, imm.bound_program, imm.shader_interface);
+    GPU_batch_set_shader(imm.batch, imm.bound_program);
     imm.batch->phase = GPU_BATCH_READY_TO_DRAW;
     imm.batch = NULL; /* don't free, batch belongs to caller */
   }
