@@ -31,6 +31,7 @@
 #  include <io.h>
 #endif
 #include "MEM_guardedalloc.h"
+#include <CLG_log.h>
 #include <string.h>
 
 #include "DNA_ID.h"
@@ -50,6 +51,8 @@
 #include "BKE_report.h"
 #include "BKE_sound.h"
 #include "BKE_volume.h"
+
+static CLG_LogRef LOG = {"bke.packed_file"};
 
 int BKE_packedfile_seek(PackedFile *pf, int offset, int whence)
 {
@@ -156,7 +159,7 @@ void BKE_packedfile_free(PackedFile *pf)
     MEM_freeN(pf);
   }
   else {
-    printf("%s: Trying to free a NULL pointer\n", __func__);
+    CLOG_STR_FATAL(&LOG, "Trying to free a NULL pointer");
   }
 }
 
@@ -497,7 +500,7 @@ char *BKE_packedfile_unpack_to_file(ReportList *reports,
         }
         break;
       default:
-        printf("%s: unknown return_value %u\n", __func__, how);
+        CLOG_FATAL(&LOG, "Unknown return_value %u", how);
         break;
     }
 
@@ -524,9 +527,8 @@ static void unpack_generate_paths(const char *name,
   if (tempname[0] == '\0') {
     /* Note: we do not have any real way to re-create extension out of data... */
     BLI_strncpy(tempname, id->name + 2, sizeof(tempname));
-    printf("%s\n", tempname);
     BLI_filename_make_safe(tempname);
-    printf("%s\n", tempname);
+    CLOG_VERBOSE(&LOG, 1, "%s", tempname);
   }
 
   if (tempdir[0] == '\0') {
@@ -714,7 +716,7 @@ int BKE_packedfile_unpack_all_libraries(Main *bmain, ReportList *reports)
       if (newname != NULL) {
         ret_value = RET_OK;
 
-        printf("Unpacked .blend library: %s\n", newname);
+        CLOG_INFO(&LOG, "Unpacked .blend library: \"%s\"", newname);
 
         BKE_packedfile_free(lib->packedfile);
         lib->packedfile = NULL;

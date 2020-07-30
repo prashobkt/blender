@@ -137,21 +137,20 @@ static int foreach_libblock_remap_callback(LibraryIDLinkCallbackData *cb_data)
     const bool skip_reference = (id_remap_data->flag & ID_REMAP_SKIP_OVERRIDE_LIBRARY) != 0;
     const bool skip_never_null = (id_remap_data->flag & ID_REMAP_SKIP_NEVER_NULL_USAGE) != 0;
 
-#ifdef DEBUG_PRINT
-    printf(
-        "In %s (lib %p): Remapping %s (%p) to %s (%p) "
-        "(is_indirect: %d, skip_indirect: %d, is_reference: %d, skip_reference: %d)\n",
-        id->name,
-        id->lib,
-        old_id->name,
-        old_id,
-        new_id ? new_id->name : "<NONE>",
-        new_id,
-        is_indirect,
-        skip_indirect,
-        is_reference,
-        skip_reference);
-#endif
+    CLOG_VERBOSE(&LOG,
+                 5,
+                 "In %s (lib %p): Remapping %s (%p) to %s (%p) "
+                 "(is_indirect: %d, skip_indirect: %d, is_reference: %d, skip_reference: %d)\n",
+                 (*id_p)->name,
+                 (*id_p)->lib,
+                 old_id->name,
+                 old_id,
+                 new_id ? new_id->name : "<NONE>",
+                 new_id,
+                 is_indirect,
+                 skip_indirect,
+                 is_reference,
+                 skip_reference);
 
     if ((id_remap_data->flag & ID_REMAP_FLAG_NEVER_NULL_USAGE) &&
         (cb_flag & IDWALK_CB_NEVER_NULL)) {
@@ -390,9 +389,7 @@ static void libblock_remap_data(
   r_id_remap_data->skipped_refcounted = 0;
 
   if (id) {
-#ifdef DEBUG_PRINT
-    printf("\tchecking id %s (%p, %p)\n", id->name, id, id->lib);
-#endif
+    CLOG_VERBOSE(&LOG, 6, "\tchecking id %s (%p, %p)", id->name, id, id->lib);
     r_id_remap_data->id_owner = id;
     libblock_remap_data_preprocess(r_id_remap_data);
     BKE_library_foreach_ID_link(
@@ -438,13 +435,12 @@ static void libblock_remap_data(
     new_id->tag |= LIB_TAG_EXTERN;
   }
 
-#ifdef DEBUG_PRINT
-  printf("%s: %d occurrences skipped (%d direct and %d indirect ones)\n",
-         __func__,
-         r_id_remap_data->skipped_direct + r_id_remap_data->skipped_indirect,
-         r_id_remap_data->skipped_direct,
-         r_id_remap_data->skipped_indirect);
-#endif
+  CLOG_VERBOSE(&LOG,
+               7,
+               "%d occurrences skipped (%d direct and %d indirect ones)",
+               r_id_remap_data->skipped_direct + r_id_remap_data->skipped_indirect,
+               r_id_remap_data->skipped_direct,
+               r_id_remap_data->skipped_indirect);
 }
 
 /**

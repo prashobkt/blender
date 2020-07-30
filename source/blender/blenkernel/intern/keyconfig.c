@@ -35,7 +35,10 @@
 #include "BKE_idprop.h"
 #include "BKE_keyconfig.h" /* own include */
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
+
+static CLG_LogRef LOG = {"bke.keyconfig"};
 
 /* -------------------------------------------------------------------- */
 /** \name Key-Config Preference (UserDef) API
@@ -80,12 +83,12 @@ wmKeyConfigPrefType_Runtime *BKE_keyconfig_pref_type_find(const char *idname, bo
     }
 
     if (!quiet) {
-      printf("search for unknown keyconfig-pref '%s'\n", idname);
+      CLOG_WARN(&LOG, "Search for unknown keyconfig-pref '%s'", idname);
     }
   }
   else {
     if (!quiet) {
-      printf("search for empty keyconfig-pref\n");
+      CLOG_STR_WARN(&LOG, "search for empty keyconfig-pref");
     }
   }
 

@@ -18,6 +18,7 @@
  * \ingroup bke
  */
 
+#include <CLG_log.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -47,6 +48,8 @@
 #include "DEG_depsgraph.h"
 
 #include "MEM_guardedalloc.h"
+
+static CLG_LogRef LOG = {"bke.workspace"};
 
 /* -------------------------------------------------------------------- */
 
@@ -302,12 +305,11 @@ WorkSpaceLayout *BKE_workspace_layout_find(const WorkSpace *workspace, const bSc
     return layout;
   }
 
-  printf(
-      "%s: Couldn't find layout in this workspace: '%s' screen: '%s'. "
-      "This should not happen!\n",
-      __func__,
-      workspace->id.name + 2,
-      screen->id.name + 2);
+  CLOG_ERROR(&LOG,
+             "Couldn't find layout in this workspace: '%s' screen: '%s'. "
+             "This should not happen!",
+             workspace->id.name + 2,
+             screen->id.name + 2);
 
   return NULL;
 }

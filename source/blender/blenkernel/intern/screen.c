@@ -25,6 +25,7 @@
 #  include "BLI_winstuff.h"
 #endif
 
+#include <CLG_log.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -56,6 +57,8 @@
 #include "BKE_node.h"
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
+
+static CLG_LogRef LOG = {"bke.screen"};
 
 static void screen_free_data(ID *id)
 {
@@ -316,8 +319,8 @@ ARegionType *BKE_regiontype_from_id_or_first(SpaceType *st, int regionid)
     }
   }
 
-  printf(
-      "Error, region type %d missing in - name:\"%s\", id:%d\n", regionid, st->name, st->spaceid);
+  CLOG_ERROR(
+      &LOG, "Region type %d missing in - name:\"%s\", id:%d", regionid, st->name, st->spaceid);
   return st->regiontypes.first;
 }
 
@@ -345,7 +348,7 @@ void BKE_spacetype_register(SpaceType *st)
   /* sanity check */
   stype = BKE_spacetype_from_id(st->spaceid);
   if (stype) {
-    printf("error: redefinition of spacetype %s\n", stype->name);
+    CLOG_ERROR(&LOG, "Redefinition of spacetype %s", stype->name);
     spacetype_free(stype);
     MEM_freeN(stype);
   }
@@ -610,7 +613,7 @@ void BKE_area_region_free(SpaceType *st, ARegion *region)
     }
 
     if (region->regiondata) {
-      printf("regiondata free error\n");
+      CLOG_ERROR(&LOG, "Regiondata free error");
     }
   }
   else if (region->type && region->type->free) {
@@ -726,7 +729,7 @@ void BKE_screen_remove_double_scrverts(bScreen *screen)
       while (v1) {
         if (v1->newv == NULL) { /* !?! */
           if (v1->vec.x == verg->vec.x && v1->vec.y == verg->vec.y) {
-            /* printf("doublevert\n"); */
+            /* CLOG_STR_WARN(&LOG, "doublevert"); */
             v1->newv = verg;
           }
         }
@@ -809,28 +812,28 @@ void BKE_screen_remove_unused_scredges(bScreen *screen)
   while (area) {
     se = BKE_screen_find_edge(screen, area->v1, area->v2);
     if (se == NULL) {
-      printf("error: area %d edge 1 doesn't exist\n", a);
+      CLOG_ERROR(&LOG, "Area %d edge 1 doesn't exist", a);
     }
     else {
       se->flag = 1;
     }
     se = BKE_screen_find_edge(screen, area->v2, area->v3);
     if (se == NULL) {
-      printf("error: area %d edge 2 doesn't exist\n", a);
+      CLOG_ERROR(&LOG, "Area %d edge 2 doesn't exist", a);
     }
     else {
       se->flag = 1;
     }
     se = BKE_screen_find_edge(screen, area->v3, area->v4);
     if (se == NULL) {
-      printf("error: area %d edge 3 doesn't exist\n", a);
+      CLOG_ERROR(&LOG, "Area %d edge 3 doesn't exist", a);
     }
     else {
       se->flag = 1;
     }
     se = BKE_screen_find_edge(screen, area->v4, area->v1);
     if (se == NULL) {
-      printf("error: area %d edge 4 doesn't exist\n", a);
+      CLOG_ERROR(&LOG, "Area %d edge 4 doesn't exist", a);
     }
     else {
       se->flag = 1;

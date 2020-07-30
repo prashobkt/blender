@@ -1711,21 +1711,21 @@ static void rigidbody_update_sim_ob(
        * - we use 'central force' since apply force requires a "relative position"
        *   which we don't have... */
       BKE_effectors_apply(effectors, NULL, effector_weights, &epoint, eff_force, NULL, NULL);
-      if (G.f & G_DEBUG) {
-        printf("\tapplying force (%f,%f,%f) to '%s'\n",
-               eff_force[0],
-               eff_force[1],
-               eff_force[2],
-               ob->id.name + 2);
-      }
+      CLOG_VERBOSE(&LOG,
+                   1,
+                   "\tapplying force (%f,%f,%f) to '%s'",
+                   eff_force[0],
+                   eff_force[1],
+                   eff_force[2],
+                   ob->id.name + 2);
       /* activate object in case it is deactivated */
       if (!is_zero_v3(eff_force)) {
         RB_body_activate(rbo->shared->physics_object);
       }
       RB_body_apply_central_force(rbo->shared->physics_object, eff_force);
     }
-    else if (G.f & G_DEBUG) {
-      printf("\tno forces to apply to '%s'\n", ob->id.name + 2);
+    else {
+      CLOG_VERBOSE(&LOG, 1, "\tno forces to apply to '%s'", ob->id.name + 2);
     }
 
     /* cleanup */

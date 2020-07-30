@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "DNA_anim_types.h"
@@ -111,6 +112,8 @@
 #include "IMB_imbuf.h"
 
 #include "bmesh.h"
+
+static CLG_LogRef LOG = {"bke.scene"};
 
 static void scene_init_data(ID *id)
 {
@@ -999,11 +1002,12 @@ Scene *BKE_scene_set_name(Main *bmain, const char *name)
   Scene *sce = (Scene *)BKE_libblock_find_name(bmain, ID_SCE, name);
   if (sce) {
     BKE_scene_set_background(bmain, sce);
-    printf("Scene switch for render: '%s' in file: '%s'\n", name, BKE_main_blendfile_path(bmain));
+    CLOG_INFO(
+        &LOG, "Scene switch for render: '%s' in file: '%s'", name, BKE_main_blendfile_path(bmain));
     return sce;
   }
 
-  printf("Can't find scene: '%s' in file: '%s'\n", name, BKE_main_blendfile_path(bmain));
+  CLOG_WARN(&LOG, "Can't find scene: '%s' in file: '%s'", name, BKE_main_blendfile_path(bmain));
   return NULL;
 }
 

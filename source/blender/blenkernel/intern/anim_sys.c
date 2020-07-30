@@ -2804,7 +2804,7 @@ void BKE_animsys_eval_driver(Depsgraph *depsgraph, ID *id, int driver_index, FCu
       /* evaluate this using values set already in other places
        * NOTE: for 'layering' option later on, we should check if we should remove old value before
        * adding new to only be done when drivers only changed */
-      // printf("\told val = %f\n", fcu->curval);
+      CLOG_VERBOSE(&LOG, 4, "\told val = %f", fcu->curval);
 
       PathResolvedRNA anim_rna;
       if (BKE_animsys_store_rna_setting(&id_ptr, fcu->rna_path, fcu->array_index, &anim_rna)) {
