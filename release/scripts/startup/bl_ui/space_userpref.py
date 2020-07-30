@@ -653,8 +653,8 @@ class USERPREF_PT_system_logging(SystemPanel, CenterAlignMixIn, Panel):
 
         layout.prop(system, "log_use_basename")
         layout.prop(system, "log_use_timestamp")
-        layout.prop(system, "log_severity")
         layout.prop(system, "verbose")
+        layout.prop(system, "log_severity")
 
         col = layout.column()
         col.active = system.log_severity == 'LOG_VERBOSE'
@@ -664,6 +664,7 @@ class USERPREF_PT_system_logging(SystemPanel, CenterAlignMixIn, Panel):
         col = layout.column()
         col.active = not system.log_use_stdout
         col.prop(system, "log_output_file")
+        layout.prop(system, "debug")
 
 # -----------------------------------------------------------------------------
 # Viewport Panels

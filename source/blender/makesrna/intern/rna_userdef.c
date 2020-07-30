@@ -18,6 +18,7 @@
  * \ingroup RNA
  */
 
+#include <BKE_global.h>
 #include <BLI_string.h>
 #include <CLG_log.h>
 #include <limits.h>
@@ -1156,6 +1157,16 @@ static void rna_clog_log_output_file_set(PointerRNA *UNUSED(ptr), const char *va
   CLG_file_output_path_set(value);
 }
 
+static int rna_debug_get(PointerRNA *UNUSED(ptr))
+{
+  return G.debug;
+}
+
+static void rna_debug_set(PointerRNA *UNUSED(ptr), int value)
+{
+  printf("%d\n", value);
+  G.debug = value;
+}
 #else
 
 #  define USERDEF_TAG_DIRTY_PROPERTY_UPDATE_ENABLE \
@@ -5693,20 +5704,21 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Legacy Compute Device Type", "For backwards compatibility only");
 #  endif
 
-  static const EnumPropertyItem clog_log_severity[] = {
-      {CLG_SEVERITY_VERBOSE, "LOG_VERBOSE", ICON_NONE, "Log severity verbose", ""},
+  static const EnumPropertyItem clog_log_severity_items[] = {
+      {CLG_SEVERITY_VERBOSE, "LOG_VERBOSE", ICON_PROPERTIES, "Log severity verbose", ""},
       {CLG_SEVERITY_INFO, "LOG_INFO", ICON_INFO, "Log severity info", ""},
-      {CLG_SEVERITY_WARN, "LOG_WARN", ALERT_ICON_WARNING, "Log severity warning", ""},
-      {CLG_SEVERITY_ERROR, "LOG_ERROR", ICON_ERROR, "Log severity error", ""},
-      {CLG_SEVERITY_FATAL, "LOG_FATAL", ICON_ERROR, "Log severity fatal", ""},
+      {CLG_SEVERITY_WARN, "LOG_WARN", ICON_ERROR, "Log severity warning", ""},
+      {CLG_SEVERITY_ERROR, "LOG_ERROR", ICON_CANCEL, "Log severity error", ""},
+      {CLG_SEVERITY_FATAL, "LOG_FATAL", ICON_X, "Log severity fatal", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
-  /* TODO (grzelns) check ranges, add descriptions */
+  /* TODO (grzelins) check ranges, add descriptions */
+  /* TODO (grzelins) add to DNA so that settings are persistent */
   prop = RNA_def_property(srna, "log_severity", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_funcs(
       prop, "rna_clog_log_severity_get", "rna_clog_log_severity_set", NULL);
-  RNA_def_property_enum_items(prop, clog_log_severity);
+  RNA_def_property_enum_items(prop, clog_log_severity_items);
   RNA_def_property_ui_text(prop, "Log Severity", "");
 
   prop = RNA_def_property(srna, "log_verbosity", PROP_INT, PROP_NONE);
@@ -5725,12 +5737,18 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   prop = RNA_def_property(srna, "log_use_basename", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(
       prop, "rna_clog_log_use_basename_get", "rna_clog_log_use_basename_set");
+  RNA_def_property_ui_text(prop, "Use Basename", "");
+
   prop = RNA_def_property(srna, "log_use_timestamp", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(
       prop, "rna_clog_log_use_timestamp_get", "rna_clog_log_use_timestamp_set");
+  RNA_def_property_ui_text(prop, "Use Timestamp", "");
+
   prop = RNA_def_property(srna, "log_use_stdout", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(
       prop, "rna_clog_log_use_stdout_get", "rna_clog_log_use_stdout_set");
+  RNA_def_property_ui_text(prop, "Use Console Output", "Use stdout instead of specified file");
+
   prop = RNA_def_property(srna, "log_output_file", PROP_STRING, PROP_NONE);
   RNA_def_property_string_funcs(prop,
                                 "rna_clog_log_output_file_get",
@@ -5738,6 +5756,55 @@ static void rna_def_userdef_system(BlenderRNA *brna)
                                 "rna_clog_log_output_file_set");
   prop = RNA_def_property(srna, "verbose", PROP_INT, PROP_NONE);
   RNA_def_property_int_funcs(prop, "rna_verbose_get", "rna_verbose_set", NULL);
+  RNA_def_property_ui_text(prop, "Verbosity Level", "Verbosity for libraries that support it");
+
+  static const EnumPropertyItem debug_items[] = {
+      {G_DEBUG, "DEBUG", ICON_NONE, "Debug", ""},
+      {G_DEBUG_FFMPEG, "DEBUG_FFMPEG", ICON_NONE, "Debug FFMPEG", ""},
+      {G_DEBUG_PYTHON, "DEBUG_PYTHON", ICON_NONE, "Debug Python", ""},
+      {G_DEBUG_HANDLERS, "DEBUG_HANDLERS", ICON_NONE, "Debug Handlers", ""},
+      {G_DEBUG_WM, "DEBUG_WM", ICON_NONE, "Debug window manager", ""},
+      {G_DEBUG_JOBS, "DEBUG_JOBS", ICON_NONE, "Debug Jobs", ""},
+      {G_DEBUG_FREESTYLE, "DEBUG_FREESTYLE", ICON_NONE, "Debug Freestyle", ""},
+      {G_DEBUG_DEPSGRAPH_BUILD, "DEBUG_DEPSGRAPH_BUILD", ICON_NONE, "Debug Depsgraph Build", ""},
+      {G_DEBUG_DEPSGRAPH_EVAL, "DEBUG_DEPSGRAPH_EVAL", ICON_NONE, "Debug Depsgraph Eval", ""},
+      {G_DEBUG_DEPSGRAPH_TAG, "DEBUG_DEPSGRAPH_TAG", ICON_NONE, "Debug Depsgraph Tag", ""},
+      {G_DEBUG_DEPSGRAPH_TIME, "DEBUG_DEPSGRAPH_TIME", ICON_NONE, "Debug Depsgraph Time", ""},
+      {G_DEBUG_DEPSGRAPH_NO_THREADS,
+       "DEBUG_DEPSGRAPH_NO_THREADS",
+       ICON_NONE,
+       "Debug Depsgraph No Threads",
+       ""},
+      {G_DEBUG_DEPSGRAPH_PRETTY,
+       "DEBUG_DEPSGRAPH_PRETTY",
+       ICON_NONE,
+       "Debug Depsgraph Pretty",
+       ""},
+      /* skipped G_DEBUG_DEPSGRAPH */
+      {G_DEBUG_SIMDATA, "DEBUG_SIMDATA", ICON_NONE, "Debug Simulation Data", ""},
+      {G_DEBUG_GPU_MEM, "DEBUG_GPU_MEM", ICON_NONE, "Debug GPU Memory", ""},
+      {G_DEBUG_GPU, "DEBUG_GPU", ICON_NONE, "Debug GPU", ""},
+      {G_DEBUG_IO, "DEBUG_IO", ICON_NONE, "Debug IO", ""},
+      {G_DEBUG_GPU_SHADERS, "DEBUG_GPU_SHADERS", ICON_NONE, "Debug GPU Shaders", ""},
+      {G_DEBUG_GPU_FORCE_WORKAROUNDS,
+       "DEBUG_GPU_FORCE_WORKAROUNDS",
+       ICON_NONE,
+       "Debug GPU Force Workarounds",
+       ""},
+      {G_DEBUG_XR, "DEBUG_XR", ICON_NONE, "Debug XR", ""},
+      {G_DEBUG_XR_TIME, "DEBUG_XR_TIME", ICON_NONE, "Debug XR Time", ""},
+      {G_DEBUG_GHOST, "DEBUG_GHOST", ICON_NONE, "Debug GHOST", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  prop = RNA_def_property(srna, "debug", PROP_ENUM, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
+  RNA_def_property_enum_funcs(prop, "rna_debug_get", "rna_debug_set", NULL);
+  RNA_def_property_enum_items(prop, debug_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Debug Flags",
+      "Boolean, for debug info (started with --debug / --debug_* matching this attribute name");
 }
 
 static void rna_def_userdef_input(BlenderRNA *brna)
