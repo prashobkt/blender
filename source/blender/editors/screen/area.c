@@ -2423,7 +2423,6 @@ static void ed_panel_draw(const bContext *C,
                                          1,
                                          0,
                                          style);
-      uiLayoutSetPropSearch(layout, false);
       panel->layout = uiLayoutRow(layout, false);
     }
     /* Regular case: Normal panel with fixed size buttons. */

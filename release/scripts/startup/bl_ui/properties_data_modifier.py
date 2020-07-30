@@ -39,7 +39,6 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
-        layout.use_property_search = False
         layout.operator_menu_enum("object.modifier_add", "type")
         layout.template_modifiers()
 

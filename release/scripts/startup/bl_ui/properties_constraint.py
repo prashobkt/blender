@@ -44,7 +44,6 @@ class OBJECT_PT_constraints(ObjectConstraintPanel):
 
     def draw(self, context):
         layout = self.layout
-        layout.use_property_search = False
 
         layout.operator_menu_enum("object.constraint_add", "type", text="Add Object Constraint")
 
@@ -59,7 +58,6 @@ class BONE_PT_constraints(BoneConstraintPanel):
 
     def draw(self, context):
         layout = self.layout
-        layout.use_property_search = False
 
         layout.operator_menu_enum("pose.constraint_add", "type", text="Add Bone Constraint")
 

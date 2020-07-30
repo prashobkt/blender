@@ -1151,16 +1151,6 @@ static void rna_UILayout_property_decorate_set(PointerRNA *ptr, bool value)
   uiLayoutSetPropDecorate(ptr->data, value);
 }
 
-static bool rna_UILayout_property_search_get(PointerRNA *ptr)
-{
-  return uiLayoutGetPropSearch(ptr->data);
-}
-
-static void rna_UILayout_property_search_set(PointerRNA *ptr, bool value)
-{
-  uiLayoutSetPropSearch(ptr->data, value);
-}
-
 #else /* RNA_RUNTIME */
 
 static void rna_def_ui_layout(BlenderRNA *brna)
@@ -1277,12 +1267,6 @@ static void rna_def_ui_layout(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_property_decorate", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(
       prop, "rna_UILayout_property_decorate_get", "rna_UILayout_property_decorate_set");
-
-  prop = RNA_def_property(srna, "use_property_search", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_funcs(
-      prop, "rna_UILayout_property_search_get", "rna_UILayout_property_search_set");
-  RNA_def_property_ui_text(
-      prop, "Use Property Search", "Whether to use the region's property search if available");
 }
 
 static void rna_def_panel(BlenderRNA *brna)

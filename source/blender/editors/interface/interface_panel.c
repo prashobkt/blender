@@ -184,18 +184,6 @@ static bool panel_active_animation_changed(ListBase *lb, Panel **pa_animation, b
       }
     }
 
-    /* Detect search filter flag changes */
-    if ((panel->runtime_flag & PNL_WAS_SEARCH_FILTERED) &&
-        !(panel->runtime_flag & PNL_SEARCH_FILTERED)) {
-      *pa_animation = panel;
-      return false;
-    }
-    if (!(panel->runtime_flag & PNL_WAS_SEARCH_FILTERED) &&
-        (panel->runtime_flag & PNL_SEARCH_FILTERED)) {
-      *pa_animation = panel;
-      return false;
-    }
-
     if ((panel->runtime_flag & PNL_ACTIVE) && !(panel->flag & PNL_CLOSED)) {
       if (panel_active_animation_changed(&panel->children, pa_animation, no_animation)) {
         return true;
@@ -816,7 +804,7 @@ void UI_panel_end(
 
   /* Compute total panel size including children. */
   LISTBASE_FOREACH (Panel *, pachild, &panel->children) {
-    if (pachild->runtime_flag & PNL_ACTIVE && !UI_panel_is_search_filtered(pachild)) {
+    if (pachild->runtime_flag & PNL_ACTIVE) {
       width = max_ii(width, pachild->sizex);
       height += get_panel_real_size_y(pachild);
     }
@@ -1384,7 +1372,7 @@ static void align_sub_panels(Panel *panel)
   int ofsy = panel->ofsy + panel->sizey - panel->blocksizey;
 
   LISTBASE_FOREACH (Panel *, pachild, &panel->children) {
-    if (pachild->runtime_flag & PNL_ACTIVE && !UI_panel_is_search_filtered(pachild)) {
+    if (pachild->runtime_flag & PNL_ACTIVE) {
       pachild->ofsx = panel->ofsx;
       pachild->ofsy = ofsy - get_panel_size_y(pachild);
       ofsy -= get_panel_real_size_y(pachild);
@@ -1465,21 +1453,17 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
   ps->panel->ofsy = -get_panel_size_y(ps->panel);
   ps->panel->ofsx += ps->panel->runtime.region_ofsx;
 
-  /* Keep track of the last visible panel separately so we don't add space for filtered panels. */
-  PanelSort *ps_last_visible = ps;
   for (a = 0; a < tot - 1; a++, ps++) {
     psnext = ps + 1;
 
     if (align == BUT_VERTICAL) {
-      bool use_box = ps_last_visible->panel->type &&
-                     ps_last_visible->panel->type->flag & PNL_DRAW_BOX;
+      bool use_box = ps->panel->type && ps->panel->type->flag & PNL_DRAW_BOX;
       bool use_box_next = psnext->panel->type && psnext->panel->type->flag & PNL_DRAW_BOX;
+      psnext->panel->ofsx = ps->panel->ofsx;
+      psnext->panel->ofsy = get_panel_real_ofsy(ps->panel) - get_panel_size_y(psnext->panel);
 
-      psnext->panel->ofsx = ps_last_visible->panel->ofsx;
-      psnext->panel->ofsy = get_panel_real_ofsy(ps_last_visible->panel) -
-                            get_panel_size_y(psnext->panel);
-
-      /* Extra Y margin for box style panels. */
+      /* Extra margin for box style panels. */
+      ps->panel->ofsx += (use_box) ? UI_PANEL_BOX_STYLE_MARGIN : 0.0f;
       if (use_box || use_box_next) {
         psnext->panel->ofsy -= UI_PANEL_BOX_STYLE_MARGIN;
       }
@@ -1489,20 +1473,10 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
       psnext->panel->ofsy = ps->panel->ofsy + get_panel_size_y(ps->panel) -
                             get_panel_size_y(psnext->panel);
     }
-
-    if (!UI_panel_is_search_filtered(psnext->panel)) {
-      ps_last_visible = psnext;
-    }
   }
-
-  /* Extra X margin for box-style panels. */
-  if (align == BUT_VERTICAL) {
-    ps = panelsort;
-    for (a = 0; a < tot; a++, ps++) {
-      if (ps->panel->type && ps->panel->type->flag & PNL_DRAW_BOX) {
-        ps->panel->ofsx += UI_PANEL_BOX_STYLE_MARGIN;
-      }
-    }
+  /* Extra margin for the last panel if it's a box-style panel. */
+  if (panelsort[tot - 1].panel->type && panelsort[tot - 1].panel->type->flag & PNL_DRAW_BOX) {
+    panelsort[tot - 1].panel->ofsx += UI_PANEL_BOX_STYLE_MARGIN;
   }
 
   /* we interpolate */
@@ -1522,7 +1496,7 @@ static bool uiAlignPanelStep(ScrArea *area, ARegion *region, const float fac, co
 
   /* set locations for tabbed and sub panels */
   LISTBASE_FOREACH (Panel *, panel, &region->panels) {
-    if ((panel->runtime_flag & PNL_ACTIVE) && !UI_panel_is_search_filtered(panel)) {
+    if (panel->runtime_flag & PNL_ACTIVE) {
       if (panel->children.first) {
         align_sub_panels(panel);
       }
@@ -1546,7 +1520,7 @@ static void ui_panels_size(ScrArea *area, ARegion *region, int *r_x, int *r_y)
 
   /* compute size taken up by panels, for setting in view2d */
   LISTBASE_FOREACH (Panel *, panel, &region->panels) {
-    if (panel->runtime_flag & PNL_ACTIVE && !(panel->runtime_flag & PNL_SEARCH_FILTERED)) {
+    if (panel->runtime_flag & PNL_ACTIVE) {
       int pa_sizex, pa_sizey;
 
       if (align == BUT_VERTICAL) {
@@ -1606,21 +1580,13 @@ static void ui_do_animate(bContext *C, Panel *panel)
   }
 }
 
-/**
- * Set all panels as inactive, so that at the end of the panel layout building process
- * we know which ones are currently used. Also keep track of whether the panel was filtered
- * by property search so we can activate animation later if that changes.
- */
 static void panel_list_clear_active(ListBase *lb)
 {
+  /* set all panels as inactive, so that at the end we know
+   * which ones were used */
   LISTBASE_FOREACH (Panel *, panel, lb) {
     if (panel->runtime_flag & PNL_ACTIVE) {
-      bool was_search_filtered = panel->runtime_flag & PNL_SEARCH_FILTERED;
       panel->runtime_flag = PNL_WAS_ACTIVE;
-
-      if (was_search_filtered) {
-        panel->runtime_flag |= PNL_WAS_SEARCH_FILTERED;
-      }
     }
     else {
       panel->runtime_flag = 0;
@@ -1676,27 +1642,23 @@ void UI_panels_end(const bContext *C, ARegion *region, int *r_x, int *r_y)
   ui_panels_size(area, region, r_x, r_y);
 }
 
-/**
- * Draw panels, selected on top, but not search filtered panels.
- */
 void UI_panels_draw(const bContext *C, ARegion *region)
 {
   if (region->alignment != RGN_ALIGN_FLOAT) {
     UI_ThemeClearColor(TH_BACK);
   }
 
-  /* Draw in reverse order, because UI blocks are added in reverse order
-   * and we need child panels to draw on top. */
+  /* Draw panels, selected on top. Also in reverse order, because
+   * UI blocks are added in reverse order and we need child panels
+   * to draw on top. */
   LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
-    if (block->active && block->panel && !(block->panel->flag & PNL_SELECT) &&
-        !UI_block_is_search_only(block) && !UI_panel_is_search_filtered(block->panel)) {
+    if (block->active && block->panel && !(block->panel->flag & PNL_SELECT)) {
       UI_block_draw(C, block);
     }
   }
 
   LISTBASE_FOREACH_BACKWARD (uiBlock *, block, &region->uiblocks) {
-    if (block->active && block->panel && (block->panel->flag & PNL_SELECT) &&
-        !UI_block_is_search_only(block) && !UI_panel_is_search_filtered(block->panel)) {
+    if (block->active && block->panel && (block->panel->flag & PNL_SELECT)) {
       UI_block_draw(C, block);
     }
   }

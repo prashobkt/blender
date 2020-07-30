@@ -145,7 +145,6 @@ enum {
    * Enabled by default, depends on 'UI_ITEM_PROP_SEP'. */
   UI_ITEM_PROP_DECORATE = 1 << 5,
   UI_ITEM_PROP_DECORATE_NO_PAD = 1 << 6,
-  UI_ITEM_USE_SEARCH_FILTER = 1 << 7,
 };
 
 typedef struct uiButtonItem {
@@ -182,8 +181,6 @@ struct uiLayout {
   char emboss;
   /** for fixed width or height to avoid UI size changes */
   float units[2];
-
-  bool property_search_layout_temp_debug;
 };
 
 typedef struct uiLayoutItemFlow {
@@ -831,8 +828,7 @@ static void ui_item_enum_expand_exec(uiLayout *layout,
    *   this doubles the icon_only parameter.
    * - we *never* draw (i.e. really use) the enum label uiname, it is just used as a mere flag!
    *
-   * Unfortunately, fixing this implies an API "soft break", so better to defer it for later...
-   * :/
+   * Unfortunately, fixing this implies an API "soft break", so better to defer it for later... :/
    * - mont29
    */
 
@@ -1994,8 +1990,8 @@ static uiBut *ui_layout_heading_label_add(uiLayout *layout,
  */
 static uiLayout *ui_item_prop_split_layout_hack(uiLayout *layout_parent, uiLayout *layout_split)
 {
-  /* Tag item as using property split layout, this is inherited to children so they can get
-   * special treatment if needed. */
+  /* Tag item as using property split layout, this is inherited to children so they can get special
+   * treatment if needed. */
   layout_parent->item.flag |= UI_ITEM_INSIDE_PROP_SEP;
 
   if (layout_parent->item.type == ITEM_LAYOUT_ROW) {
@@ -2021,9 +2017,9 @@ void uiItemFullR(uiLayout *layout,
   char namestr[UI_MAX_NAME_STR];
   const bool use_prop_sep = ((layout->item.flag & UI_ITEM_PROP_SEP) != 0);
   const bool inside_prop_sep = ((layout->item.flag & UI_ITEM_INSIDE_PROP_SEP) != 0);
-  /* Columns can define a heading to insert. If the first item added to a split layout doesn't
-   * have a label to display in the first column, the heading is inserted there. Otherwise it's
-   * inserted as a new row before the first item. */
+  /* Columns can define a heading to insert. If the first item added to a split layout doesn't have
+   * a label to display in the first column, the heading is inserted there. Otherwise it's inserted
+   * as a new row before the first item. */
   uiLayout *heading_layout = ui_layout_heading_find(layout);
   /* Although checkboxes use the split layout, they are an exception and should only place their
    * label in the second column, to not make that almost empty.
@@ -2254,12 +2250,6 @@ void uiItemFullR(uiLayout *layout,
 
       if (!label_added && heading_layout) {
         label_but = ui_layout_heading_label_add(layout_sub, heading_layout, true, false);
-        label_added = true;
-      }
-
-      /* Add an empty label button so the empty column isn't removed during property search. */
-      if (!label_added && !use_prop_sep_split_label) {
-        label_but = uiItemL_(layout_sub, "", ICON_NONE);
         label_added = true;
       }
 
@@ -4739,8 +4729,8 @@ static void ui_litem_init_from_parent(uiLayout *litem, uiLayout *layout, int ali
   litem->redalert = layout->redalert;
   litem->w = layout->w;
   litem->emboss = layout->emboss;
-  litem->item.flag = (layout->item.flag & (UI_ITEM_PROP_SEP | UI_ITEM_PROP_DECORATE |
-                                           UI_ITEM_INSIDE_PROP_SEP | UI_ITEM_USE_SEARCH_FILTER));
+  litem->item.flag = (layout->item.flag &
+                      (UI_ITEM_PROP_SEP | UI_ITEM_PROP_DECORATE | UI_ITEM_INSIDE_PROP_SEP));
 
   if (layout->child_items_layout) {
     BLI_addtail(&layout->child_items_layout->items, litem);
@@ -5082,16 +5072,6 @@ void uiLayoutSetPropDecorate(uiLayout *layout, bool is_sep)
   SET_FLAG_FROM_TEST(layout->item.flag, is_sep, UI_ITEM_PROP_DECORATE);
 }
 
-bool uiLayoutGetPropSearch(uiLayout *layout)
-{
-  return (layout->item.flag & UI_ITEM_USE_SEARCH_FILTER) != 0;
-}
-
-void uiLayoutSetPropSearch(uiLayout *layout, bool is_searchable)
-{
-  SET_FLAG_FROM_TEST(layout->item.flag, is_searchable, UI_ITEM_USE_SEARCH_FILTER);
-}
-
 bool uiLayoutGetActive(uiLayout *layout)
 {
   return layout->active;
@@ -5173,145 +5153,8 @@ void uiLayoutRootSetSearchOnly(uiLayout *layout, bool search_only)
 
 // #define PROPERTY_SEARCH_USE_TOOLTIPS
 // #define PROPERTY_SEARCH_USE_PANEL_LABELS
-#define DEBUG_LAYOUT_ROOTS
 
 static void ui_layout_free(uiLayout *layout);
-
-#ifdef DEBUG_LAYOUT_ROOTS
-
-/* clang-format off */
-static const char *but_type_string(eButType type) {
-  switch (type) {
-    case UI_BTYPE_BUT: return "But";
-    case UI_BTYPE_ROW: return "Row But";
-    case UI_BTYPE_TEXT: return "Text";
-    case UI_BTYPE_MENU: return "Menu";
-    case UI_BTYPE_BUT_MENU: return "But Menu";
-    case UI_BTYPE_NUM: return "Number";
-    case UI_BTYPE_NUM_SLIDER: return "Number Slider";
-    case UI_BTYPE_TOGGLE: return "Toggle";
-    case UI_BTYPE_TOGGLE_N: return "Toggle N";
-    case UI_BTYPE_ICON_TOGGLE: return "Icon Toggle";
-    case UI_BTYPE_ICON_TOGGLE_N: return "Icon Toggle N";
-    case UI_BTYPE_BUT_TOGGLE: return "But Toggle";
-    case UI_BTYPE_CHECKBOX: return "Checkbox";
-    case UI_BTYPE_CHECKBOX_N: return "Checkbox N";
-    case UI_BTYPE_COLOR: return "Color";
-    case UI_BTYPE_TAB: return "Tab";
-    case UI_BTYPE_POPOVER: return "Popover";
-    case UI_BTYPE_SCROLL: return "Scroll";
-    case UI_BTYPE_BLOCK: return "Block";
-    case UI_BTYPE_LABEL: return "Label";
-    case UI_BTYPE_KEY_EVENT: return "Key Event";
-    case UI_BTYPE_HSVCUBE: return "HSV Cube";
-    case UI_BTYPE_PULLDOWN: return "Pulldown";
-    case UI_BTYPE_ROUNDBOX: return "Roundbox";
-    case UI_BTYPE_COLORBAND: return "Colorband";
-    case UI_BTYPE_UNITVEC: return "Unit Vector";
-    case UI_BTYPE_CURVE: return "Curve";
-    case UI_BTYPE_CURVEPROFILE: return "Curve Profile";
-    case UI_BTYPE_LISTBOX: return "Listbox";
-    case UI_BTYPE_LISTROW: return "List Row";
-    case UI_BTYPE_HSVCIRCLE: return "HSV Circle";
-    case UI_BTYPE_TRACK_PREVIEW: return "Track Preview";
-    case UI_BTYPE_SEARCH_MENU: return "Search Menu";
-    case UI_BTYPE_EXTRA: return "Extra";
-    case UI_BTYPE_HOTKEY_EVENT: return "Hotkey Event";
-    case UI_BTYPE_IMAGE: return "Image";
-    case UI_BTYPE_HISTOGRAM: return "Histogram";
-    case UI_BTYPE_WAVEFORM: return "Waveform";
-    case UI_BTYPE_VECTORSCOPE: return "Vectorscope";
-    case UI_BTYPE_PROGRESS_BAR: return "Progress Bar";
-    case UI_BTYPE_NODE_SOCKET: return "Node Socket";
-    case UI_BTYPE_SEPR: return "Spacer";
-    case UI_BTYPE_SEPR_LINE: return "Spacer Line";
-    case UI_BTYPE_SEPR_SPACER: return "Dynamic Spacer";
-    case UI_BTYPE_GRIP: return "Grip";
-    default: return "Unkown Button Type";
-  }         
-}
-/* clang-format on */
-
-/* Keep order the same as enum above. */
-const char *item_type_names[12] = {
-    "Button",      /* ITEM_BUTTON */
-    "Row",         /* ITEM_LAYOUT_ROW */
-    "Column",      /* ITEM_LAYOUT_COLUMN */
-    "Column Flow", /* ITEM_LAYOUT_COLUMN_FLOW */
-    "Row Flow",    /* ITEM_LAYOUT_ROW_FLOW */
-    "Grid Flow",   /* ITEM_LAYOUT_GRID_FLOW */
-    "Box",         /* ITEM_LAYOUT_BOX */
-    "Absolute",    /* ITEM_LAYOUT_ABSOLUTE */
-    "Split",       /* ITEM_LAYOUT_SPLIT */
-    "Overlap",     /* ITEM_LAYOUT_OVERLAP */
-    "Radial",      /* ITEM_LAYOUT_RADIAL */
-    "Root",        /* ITEM_LAYOUT_ROOT */
-};
-
-#  define PRINT_DEFAULT "\x1B[0m"
-#  define PRINT_GREEN "\x1B[32m"
-#  define PRINT_RED "\x1B[31m"
-#  define PRINT_WHITE "\x1B[37m"
-static void debug_print_button_item(uiButtonItem *button_item)
-{
-  uiBut *but = button_item->but;
-
-  if (but == NULL) {
-    printf("NULL BUT");
-    return;
-  }
-
-  printf("%s%s%s: ", PRINT_RED, but_type_string(but->type), PRINT_DEFAULT);
-
-  if (but->str && but->str[0]) {
-    printf(but->str);
-  }
-  else if (!RNA_pointer_is_null(&but->rnapoin)) {
-    printf(RNA_property_ui_name(but->rnaprop));
-  }
-}
-
-static void debug_print_layout(uiItem *item, int depth, bool child_items_layout)
-{
-  uiItemType type = item->type;
-
-  printf("%s", PRINT_WHITE);
-  for (int i = 0; i < depth; i++) {
-    printf("| ");
-  }
-  printf("%s", PRINT_DEFAULT);
-
-  if (type == ITEM_BUTTON) {
-    uiButtonItem *button_item = (uiButtonItem *)item;
-
-    debug_print_button_item(button_item);
-    printf("\n");
-  }
-  else {
-    printf("%s%s%s: ", PRINT_GREEN, item_type_names[item->type], PRINT_DEFAULT);
-    uiLayout *layout = (uiLayout *)item;
-
-    printf("%s", PRINT_WHITE);
-    if (layout->property_search_layout_temp_debug) {
-      printf("(search layout)");
-    }
-    if (child_items_layout) {
-      printf("(child_items_layout)");
-    }
-    printf("%s", PRINT_DEFAULT);
-
-    printf("\n");
-
-    if (layout->child_items_layout != NULL) {
-
-      debug_print_layout((uiItem *)layout->child_items_layout, depth + 1, true);
-    }
-    LISTBASE_FOREACH (uiItem *, child_item, &layout->items) {
-      debug_print_layout(child_item, depth + 1, false);
-    }
-  }
-}
-#endif /* DEBUG_LAYOUT_ROOTS */
 
 static void ui_layout_free_hide_buttons(uiLayout *layout)
 {
@@ -5337,7 +5180,9 @@ static bool ui_button_search_tag(uiBut *but, char *search_filter)
       return true;
     }
   }
+
   if (but->rnaprop != NULL) {
+    /* Do the shorter checks first, in case the check returns true. */
     if (BLI_strcasestr(but->str, search_filter)) {
       return true;
     }
@@ -5360,16 +5205,17 @@ static bool ui_button_search_tag(uiBut *but, char *search_filter)
  * \note This doesn't actually remove any buttons, and buttons that were tagged might
  * not even be removed if they were in a layout with property search turned off.
  */
-static void ui_block_search_filter_tag_buttons(uiBlock *block)
+static bool ui_block_search_filter_tag_buttons(uiBlock *block)
 {
+  bool has_result = false;
   LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     /* Flag all label buttons, we don't want to re-display them. */
     if (but->type == UI_BTYPE_LABEL) {
       but->flag |= UI_FILTERED;
     }
 
-    /* Do the shorter check first, in case the check returns true. */
     if (ui_button_search_tag(but, block->search_filter)) {
+      has_result = true;
       continue;
     }
 
@@ -5378,7 +5224,7 @@ static void ui_block_search_filter_tag_buttons(uiBlock *block)
 
   /* Remove filter from labels and decorators that correspond to un-filtered buttons. */
   LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
-    if ((but->flag & UI_FILTERED) == 0) {
+    if (!(but->flag & UI_FILTERED)) {
       uiBut *label_but = but->label_but;
       uiBut *decorator_but = but->decorator_but;
       if (label_but != NULL) {
@@ -5389,137 +5235,15 @@ static void ui_block_search_filter_tag_buttons(uiBlock *block)
       }
     }
   }
+
+  return has_result;
 }
 
-/**
- * Recursive implementation for #ui_block_search_filter_clean.
- */
-static bool ui_layout_search_clean_recursive(uiLayout *layout)
-{
-  /* Recursively clean sub-layouts. */
-  bool all_children_empty = true;
-  LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
-    /* Deal with buttons after checking children. */
-    if (item->type == ITEM_BUTTON) {
-      continue;
-    }
-
-    bool empty = ui_layout_search_clean_recursive((uiLayout *)item);
-    all_children_empty &= empty;
-
-    if (empty) {
-      BLI_assert(BLI_findindex(&layout->items, item) != -1);
-      BLI_remlink(&layout->items, item);
-      MEM_freeN(item);
-    }
-  }
-
-  /* Remove all search filtered button items. */
-  bool layout_emptied = uiLayoutGetPropSearch(layout);
-  if (uiLayoutGetPropSearch(layout)) {
-    LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
-      if (item->type == ITEM_BUTTON) {
-        uiButtonItem *button_item = (uiButtonItem *)item;
-        uiBut *but = button_item->but;
-        if (but->flag & UI_FILTERED) {
-          if (!((but->type == UI_BTYPE_ROUNDBOX) && !all_children_empty)) {
-            but->flag |= UI_HIDDEN;
-            BLI_remlink(&layout->items, item);
-            MEM_freeN(item);
-          }
-        }
-        else {
-          layout_emptied = false;
-        }
-      }
-    }
-  }
-
-  return layout_emptied && all_children_empty;
-}
-
-/**
- * Remove buttons on layouts with property search set to true,
- * and remove layouts with no buttons and empty child layouts.
- */
-static bool ui_block_layout_search_clean(uiBlock *block)
-{
-  bool all_roots_empty = true;
-  LISTBASE_FOREACH_MUTABLE (uiLayoutRoot *, root, &block->layouts) {
-    /* Find exceptions to search layout. */
-    if (root->type == UI_LAYOUT_HEADER) {
-      continue;
-    }
-
-    bool empty = ui_layout_search_clean_recursive(root->layout);
-    all_roots_empty &= empty;
-
-    /* If the root is empty, make sure it is freed along with all of its sublayouts. */
-    if (empty) {
-      BLI_assert(BLI_findindex(&block->layouts, root) != -1);
-      BLI_remlink(&block->layouts, root);
-      ui_layout_free_hide_buttons(root->layout);
-      MEM_freeN(root);
-    }
-  }
-
-  return all_roots_empty;
-}
-
-static void ui_layout_search_replace_labels(uiLayout *layout)
-{
-  LISTBASE_FOREACH_MUTABLE (uiItem *, item, &layout->items) {
-    if (item->type == ITEM_BUTTON) {
-      uiButtonItem *button_item = (uiButtonItem *)item;
-      uiBut *but = button_item->but;
-      char name[MAX_NAME];
-      if (but->rnaprop) {
-        strcpy(name, RNA_property_ui_name(but->rnaprop));
-
-        /* Toggle buttons have no outside label and so their text is changed to the RNA name. */
-        if (ELEM(but->type,
-                 UI_BTYPE_CHECKBOX,
-                 UI_BTYPE_TOGGLE_N,
-                 UI_BTYPE_ICON_TOGGLE_N,
-                 UI_BTYPE_CHECKBOX_N,
-                 UI_BTYPE_LABEL)) {
-          strcpy(but->str, name);
-        }
-        else {
-          /* Search for the label or heading associated with this button and
-           * change it to the RNA name. */
-          uiBut *label_but = but->label_but;
-          if (label_but != NULL) {
-            strcpy(label_but->str, name);
-          }
-        }
-      }
-    }
-    else {
-      ui_layout_search_replace_labels((uiLayout *)item);
-    }
-  }
-}
-
-static void ui_block_replace_labels(uiBlock *block)
-{
-  LISTBASE_FOREACH (uiLayoutRoot *, root, &block->layouts) {
-    /* Don't rebuild header layouts. */
-    if (root->type == UI_LAYOUT_HEADER) {
-      continue;
-    }
-    ui_layout_search_replace_labels(root->layout);
-  }
-}
-
-/**
- * \return True if the block was emptied by property search and should be removed.
- */
-static bool ui_block_search_layout(uiBlock *block)
+static void ui_block_search_layout(uiBlock *block)
 {
   /* Only continue if the block has the search filter set. */
   if (!(block->search_filter && block->search_filter[0])) {
-    return false;
+    return;
   }
 
 #ifdef DEBUG_LAYOUT_ROOTS
@@ -5542,12 +5266,10 @@ static bool ui_block_search_layout(uiBlock *block)
 #endif
 
   /* Apply search filter. */
+  bool has_result;
   if (!panel_label_matches) {
-    ui_block_search_filter_tag_buttons(block);
+    has_result = ui_block_search_filter_tag_buttons(block);
   }
-
-  /* Remove filtered buttons and now-empty layouts. */
-  bool all_roots_empty = ui_block_layout_search_clean(block);
 
   /* Remove search only layout roots before the next step. */
   LISTBASE_FOREACH_MUTABLE (uiLayoutRoot *, root, &block->layouts) {
@@ -5558,11 +5280,6 @@ static bool ui_block_search_layout(uiBlock *block)
     }
   }
 
-  /* Replace label button strings with RNA property names. */
-  if (!all_roots_empty && !UI_block_is_search_only(block)) {
-    ui_block_replace_labels(block);
-  }
-
   /* Set empty flags. */
   if (UI_block_is_search_only(block)) {
     /* Make sure all of the block's buttons are hidden. They might not have
@@ -5571,10 +5288,11 @@ static bool ui_block_search_layout(uiBlock *block)
       but->flag |= UI_HIDDEN;
     }
   }
+
   SET_FLAG_FROM_TEST(
-      block->flag, all_roots_empty || UI_block_is_search_only(block), UI_BLOCK_FILTERED_EMPTY);
+      block->flag, has_result || UI_block_is_search_only(block), UI_BLOCK_FILTERED_EMPTY);
   if (block->panel != NULL) {
-    ui_panel_set_search_filtered(block->panel, all_roots_empty);
+    ui_panel_set_search_filtered(block->panel, has_result);
   }
 
 #ifdef DEBUG_LAYOUT_ROOTS
@@ -5585,8 +5303,6 @@ static bool ui_block_search_layout(uiBlock *block)
     }
   }
 #endif
-
-  return all_roots_empty || UI_block_is_search_only(block);
 }
 
 /** \} */
@@ -5882,7 +5598,7 @@ uiLayout *UI_block_layout(uiBlock *block,
   layout->item.type = (type == UI_LAYOUT_VERT_BAR) ? ITEM_LAYOUT_COLUMN : ITEM_LAYOUT_ROOT;
 
   /* Only used when 'UI_ITEM_PROP_SEP' is set. */
-  layout->item.flag = UI_ITEM_PROP_DECORATE | UI_ITEM_USE_SEARCH_FILTER;
+  layout->item.flag = UI_ITEM_PROP_DECORATE;
 
   layout->x = x;
   layout->y = y;
@@ -6127,9 +5843,9 @@ static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout,
       panel->layout = NULL;
     }
 
-    /* draw_header() is often used to add a checkbox to the header. If we add the label like
-     * below the label is disconnected from the checkbox, adding a weird looking gap. As
-     * workaround, let the checkbox add the label instead. */
+    /* draw_header() is often used to add a checkbox to the header. If we add the label like below
+     * the label is disconnected from the checkbox, adding a weird looking gap. As workaround, let
+     * the checkbox add the label instead. */
     if (!ui_layout_has_panel_label(row, pt)) {
       uiItemL(row, CTX_IFACE_(pt->translation_context, pt->label), ICON_NONE);
     }
