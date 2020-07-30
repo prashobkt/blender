@@ -78,7 +78,7 @@ bool GpencilExporterSVG::write(std::string actual_frame)
 
   /* Add frame to filename. */
   std::string frame_file = out_filename;
-  size_t found = frame_file.find_first_of(".", 0);
+  size_t found = frame_file.find_last_of(".", 0);
   if (found != std::string::npos) {
     frame_file.replace(found, 8, actual_frame + ".svg");
   }
