@@ -98,5 +98,8 @@ void wm_xr_session_gpu_binding_context_destroy(GHOST_ContextHandle context);
 
 void wm_xr_pose_to_viewmat(const GHOST_XrPose *pose, float r_viewmat[4][4]);
 void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata);
+void wm_xr_session_controller_transform_update(GHOST_XrPose *dst_pose,
+                                               const GHOST_XrPose *base_pose,
+                                               const GHOST_XrPose *pose);
 
 #endif

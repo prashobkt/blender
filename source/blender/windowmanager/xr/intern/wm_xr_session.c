@@ -136,6 +136,12 @@ static void wm_xr_session_base_pose_calc(const Scene *scene,
     tmp_eul[0] = M_PI_2;
     tmp_eul[1] = 0;
     eul_to_quat(r_base_pose->orientation_quat, tmp_eul);
+
+    /* TODO: copied code from ubisoft guys, temporary fix. */
+    tmp_eul[0] = M_PI_2;
+    tmp_eul[1] = 0;
+    tmp_eul[2] = 0;
+    eul_to_quat(r_base_pose->orientation_quat, tmp_eul);
   }
   else {
     copy_v3_fl(r_base_pose->position, 0.0f);
@@ -282,8 +288,29 @@ void wm_xr_session_state_update(const XrSessionSettings *settings,
   state->prev_base_pose_type = settings->base_pose_type;
   state->prev_base_pose_object = settings->base_pose_object;
   state->is_view_data_set = true;
+
   /* Assume this was already done through wm_xr_session_draw_data_update(). */
   state->force_reset_to_base_pose = false;
+}
+
+bool WM_xr_session_state_world_matrix_get(const wmXrData *xr,
+                                          float world_matrix[4][4])
+{
+  if (!WM_xr_session_is_ready(xr)) {
+    unit_m4(world_matrix);
+    return false;
+  }
+
+  float scale[3] = {xr->runtime->session_state.world_scale,
+                    xr->runtime->session_state.world_scale,
+                    xr->runtime->session_state.world_scale};
+
+  loc_quat_size_to_mat4(world_matrix,
+                        xr->runtime->session_state.world_pose.position,
+                        xr->runtime->session_state.world_pose.orientation_quat,
+                        scale);
+
+  return true;
 }
 
 wmXrSessionState *WM_xr_session_state_handle_get(const wmXrData *xr)

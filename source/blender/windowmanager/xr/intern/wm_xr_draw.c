@@ -115,6 +115,25 @@ void apply_world_transform(float viewmat[4][4], GHOST_XrPose world_pose, float s
  * This is the main viewport drawing function for VR sessions. It's assigned to Ghost-XR as a
  * callback (see GHOST_XrDrawViewFunc()) and executed for each view (read: eye).
  */
+
+void wm_xr_session_controller_transform_update(GHOST_XrPose *dst_pose,
+                                               const GHOST_XrPose *base_pose,
+                                               const GHOST_XrPose *pose)
+{
+  copy_v3_v3(dst_pose->position, base_pose->position);
+  dst_pose->position[0] = base_pose->position[0] + pose->position[0];
+  dst_pose->position[1] = base_pose->position[1] - pose->position[2];
+  dst_pose->position[2] = base_pose->position[2] + pose->position[1];
+
+  mul_qt_qtqt(dst_pose->orientation_quat, base_pose->orientation_quat, pose->orientation_quat);
+
+  float invBaseRotation[4];
+  copy_qt_qt(invBaseRotation, base_pose->orientation_quat);
+  invert_qt(invBaseRotation);
+
+  mul_qt_qtqt(dst_pose->orientation_quat, dst_pose->orientation_quat, invBaseRotation);
+}
+
 void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
 {
   wmXrDrawData *draw_data = customdata;
@@ -166,8 +185,19 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
                                   surface_data->offscreen,
                                   surface_data->viewport);
 
-  GHOST_XrPose leftPose = GHOST_XrGetSpacePose(xr_data->runtime->context, GHOST_SPACE_LEFT_HAND);
-  GHOST_XrPose rightPose = GHOST_XrGetSpacePose(xr_data->runtime->context, GHOST_SPACE_RIGHT_HAND);
+  GHOST_XrPose leftPoseStatic = GHOST_XrGetSpacePose(xr_data->runtime->context, GHOST_SPACE_LEFT_HAND);
+  GHOST_XrPose rightPoseStatic = GHOST_XrGetSpacePose(xr_data->runtime->context, GHOST_SPACE_RIGHT_HAND);
+
+  GHOST_XrPose leftPose;
+  GHOST_XrPose rightPose;
+
+  wm_xr_session_controller_transform_update(&leftPose,
+                                            &draw_data->base_pose,
+                                            &leftPoseStatic);
+
+  wm_xr_session_controller_transform_update(&rightPose,
+                                            &draw_data->base_pose,
+                                            &rightPoseStatic);
 
   /* The draw-manager uses both GPUOffscreen and GPUViewport to manage frame and texture buffers. A
    * call to GPU_viewport_draw_to_screen() is still needed to get the final result from the
