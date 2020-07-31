@@ -114,6 +114,7 @@ set(SRC
   intern/rct.c
   intern/scanfill.c
   intern/scanfill_utils.c
+  intern/session_uuid.c
   intern/smallhash.c
   intern/sort.c
   intern/sort_utils.c
@@ -250,6 +251,7 @@ set(SRC
   BLI_rect.h
   BLI_resource_collector.hh
   BLI_scanfill.h
+  BLI_session_uuid.h
   BLI_set.hh
   BLI_set_slots.hh
   BLI_smallhash.h
