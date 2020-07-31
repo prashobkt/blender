@@ -131,7 +131,7 @@ class VIEW3D_HT_tool_header(Header):
             if is_valid_context:
                 brush = context.tool_settings.gpencil_sculpt_paint.brush
                 tool = brush.gpencil_tool
-                if tool in ('SMOOTH', 'RANDOMIZE'):
+                if tool in {'SMOOTH', 'RANDOMIZE'}:
                     layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_options")
                 layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_appearance")
         elif tool_mode == 'WEIGHT_GPENCIL':
@@ -294,6 +294,11 @@ class _draw_tool_settings_context_mode:
         # direction
         if not capabilities.has_direction:
             layout.row().prop(brush, "direction", expand=True, text="")
+
+        if capabilities.has_color:
+            UnifiedPaintPanel.prop_unified_color(layout, context, brush, "color", text = "")
+            layout.prop(brush, "blend", text="", expand = False)
+
 
         return True
 
@@ -1079,9 +1084,9 @@ class VIEW3D_MT_mirror(Menu):
 
         for (space_name, space_id) in (("Global", 'GLOBAL'), ("Local", 'LOCAL')):
             for axis_index, axis_name in enumerate("XYZ"):
-                props = layout.operator("transform.mirror", text=f"{axis_name!s} {space_name!s}")
+                props = layout.operator("transform.mirror", text="%s %s" % (axis_name, space_name))
                 props.constraint_axis[axis_index] = True
-                props.orient_type = 'GLOBAL'
+                props.orient_type = space_id
 
             if space_id == 'GLOBAL':
                 layout.separator()
@@ -2171,9 +2176,9 @@ class VIEW3D_MT_add(Menu):
         layout.menu("VIEW3D_MT_surface_add", icon='OUTLINER_OB_SURFACE')
         layout.menu("VIEW3D_MT_metaball_add", text="Metaball", icon='OUTLINER_OB_META')
         layout.operator("object.text_add", text="Text", icon='OUTLINER_OB_FONT')
-        if hasattr(bpy.data, "hairs"):
+        if context.preferences.experimental.use_new_hair_type:
             layout.operator("object.hair_add", text="Hair", icon='OUTLINER_OB_HAIR')
-        if hasattr(bpy.data, "pointclouds"):
+        if context.preferences.experimental.use_new_particle_system:
             layout.operator("object.pointcloud_add", text="Point Cloud", icon='OUTLINER_OB_POINTCLOUD')
         layout.menu("VIEW3D_MT_volume_add", text="Volume", icon='OUTLINER_OB_VOLUME')
         layout.operator_menu_enum("object.gpencil_add", "type", text="Grease Pencil", icon='OUTLINER_OB_GREASEPENCIL')
@@ -2251,8 +2256,7 @@ class VIEW3D_MT_object_relations(Menu):
 
         layout.operator("object.proxy_make", text="Make Proxy...")
 
-        if bpy.app.use_override_library:
-            layout.operator("object.make_override_library", text="Make Library Override...")
+        layout.operator("object.make_override_library", text="Make Library Override...")
 
         layout.operator("object.make_dupli_face")
 
@@ -2348,6 +2352,7 @@ class VIEW3D_MT_object_animation(Menu):
         layout.separator()
 
         layout.operator("nla.bake", text="Bake Action...")
+        layout.operator("gpencil.mesh_bake", text="Bake Mesh to Grease Pencil...")
 
 
 class VIEW3D_MT_object_rigid_body(Menu):
@@ -2746,6 +2751,8 @@ class VIEW3D_MT_object_quick_effects(Menu):
         layout.operator("object.quick_explode")
         layout.operator("object.quick_smoke")
         layout.operator("object.quick_liquid")
+        if _context.preferences.experimental.use_new_particle_system:
+            layout.operator("object.quick_particles")
 
 
 class VIEW3D_MT_object_showhide(Menu):
@@ -3692,7 +3699,7 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             col.separator()
 
             col.operator("mesh.extrude_vertices_move", text="Extrude Vertices")
-            col.operator("mesh.bevel", text="Bevel Vertices").vertex_only = True
+            col.operator("mesh.bevel", text="Bevel Vertices").affect = 'VERTICES'
 
             if selected_verts_len > 1:
                 col.separator()
@@ -3741,7 +3748,7 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             col.separator()
 
             col.operator("mesh.extrude_edges_move", text="Extrude Edges")
-            col.operator("mesh.bevel", text="Bevel Edges").vertex_only = False
+            col.operator("mesh.bevel", text="Bevel Edges").affect = 'EDGES'
             if selected_edges_len >= 2:
                 col.operator("mesh.bridge_edge_loops")
             if selected_edges_len >= 1:
@@ -3871,6 +3878,8 @@ class VIEW3D_MT_edit_mesh_extrude(Menu):
         layout.operator("view3d.edit_mesh_extrude_move_shrink_fatten", text="Extrude Faces Along Normals"),
         'FACE': lambda layout:
         layout.operator("mesh.extrude_faces_move", text="Extrude Individual Faces"),
+        'MANIFOLD': lambda layout:
+        layout.operator("view3d.edit_mesh_extrude_manifold_normal", text="Extrude Manifold"),
     }
 
     @staticmethod
@@ -3881,7 +3890,7 @@ class VIEW3D_MT_edit_mesh_extrude(Menu):
 
         menu = []
         if mesh.total_face_sel:
-            menu += ['REGION', 'REGION_VERT_NORMAL', 'FACE']
+            menu += ['REGION', 'REGION_VERT_NORMAL', 'FACE', 'MANIFOLD']
         if mesh.total_edge_sel and (select_mode[0] or select_mode[1]):
             menu += ['EDGE']
         if mesh.total_vert_sel and select_mode[0]:
@@ -3913,7 +3922,7 @@ class VIEW3D_MT_edit_mesh_vertices(Menu):
         layout.operator_context = 'INVOKE_REGION_WIN'
 
         layout.operator("mesh.extrude_vertices_move", text="Extrude Vertices")
-        layout.operator("mesh.bevel", text="Bevel Vertices").vertex_only = True
+        layout.operator("mesh.bevel", text="Bevel Vertices").affect = 'VERTICES'
 
         layout.separator()
 
@@ -3998,7 +4007,7 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
         layout.operator_context = 'INVOKE_REGION_WIN'
 
         layout.operator("mesh.extrude_edges_move", text="Extrude Edges")
-        layout.operator("mesh.bevel", text="Bevel Edges").vertex_only = False
+        layout.operator("mesh.bevel", text="Bevel Edges").affect = 'EDGES'
         layout.operator("mesh.bridge_edge_loops")
         layout.operator("mesh.screw")
 
@@ -4016,6 +4025,8 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
         layout.separator()
 
         layout.operator("transform.edge_slide")
+        props = layout.operator("mesh.loopcut_slide")
+        props.TRANSFORM_OT_edge_slide.release_confirm = False
         layout.operator("mesh.offset_edge_loops_slide")
 
         layout.separator()
@@ -5620,8 +5631,8 @@ class VIEW3D_PT_object_type_visibility(Panel):
             elif attr == "pointcloud" and not hasattr(bpy.data, "pointclouds"):
                 continue
 
-            attr_v = "show_object_viewport_" f"{attr:s}"
-            attr_s = "show_object_select_" f"{attr:s}"
+            attr_v = "show_object_viewport_" + attr
+            attr_s = "show_object_select_" + attr
 
             icon_v = 'HIDE_OFF' if getattr(view, attr_v) else 'HIDE_ON'
             icon_s = 'RESTRICT_SELECT_OFF' if getattr(view, attr_s) else 'RESTRICT_SELECT_ON'
@@ -6144,7 +6155,7 @@ class VIEW3D_PT_overlay_motion_tracking(Panel):
 
     def draw_header(self, context):
         view = context.space_data
-        self.layout.prop(view, "show_reconstruction", text="")
+        self.layout.prop(view, "show_reconstruction", text=self.bl_label)
 
     def draw(self, context):
         layout = self.layout
@@ -6786,7 +6797,10 @@ class VIEW3D_PT_overlay_gpencil_options(Panel):
 
         if context.object.mode in {'PAINT_GPENCIL', 'VERTEX_GPENCIL'}:
             layout.label(text="Vertex Paint")
-            layout.prop(overlay, "gpencil_vertex_paint_opacity", text="Opacity", slider=True)
+            row = layout.row()
+            shading = VIEW3D_PT_shading.get_shading(context)
+            row.enabled = shading.type not in {'WIREFRAME', 'RENDERED'}
+            row.prop(overlay, "gpencil_vertex_paint_opacity", text="Opacity", slider=True)
 
 
 class VIEW3D_PT_quad_view(Panel):
@@ -6984,7 +6998,7 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
             col.separator()
 
             col.menu("VIEW3D_MT_mirror", text="Mirror Points")
-            col.menu("VIEW3D_MT_snap", text="Snap Points")
+            col.menu("GPENCIL_MT_snap", text="Snap Points")
 
             col.separator()
 
@@ -7328,6 +7342,12 @@ class VIEW3D_PT_sculpt_context_menu(Panel):
 
         brush = context.tool_settings.sculpt.brush
         capabilities = brush.sculpt_capabilities
+
+        if capabilities.has_color:
+            split = layout.split(factor=0.1)
+            UnifiedPaintPanel.prop_unified_color(split, context, brush, "color", text="")
+            UnifiedPaintPanel.prop_unified_color_picker(split, context, brush, "color", value_slider=True)
+            layout.prop(brush, "blend", text="")
 
         UnifiedPaintPanel.prop_unified(
             layout,

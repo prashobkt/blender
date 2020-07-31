@@ -284,23 +284,21 @@ static int node_resize_area_default(bNode *node, int x, int y)
     if (BLI_rctf_isect_pt(&totr, x, y)) {
       return NODE_RESIZE_RIGHT;
     }
-    else {
-      return 0;
-    }
-  }
-  else {
-    const float size = NODE_RESIZE_MARGIN;
-    rctf totr = node->totr;
-    int dir = 0;
 
-    if (x >= totr.xmax - size && x < totr.xmax && y >= totr.ymin && y < totr.ymax) {
-      dir |= NODE_RESIZE_RIGHT;
-    }
-    if (x >= totr.xmin && x < totr.xmin + size && y >= totr.ymin && y < totr.ymax) {
-      dir |= NODE_RESIZE_LEFT;
-    }
-    return dir;
+    return 0;
   }
+
+  const float size = NODE_RESIZE_MARGIN;
+  rctf totr = node->totr;
+  int dir = 0;
+
+  if (x >= totr.xmax - size && x < totr.xmax && y >= totr.ymin && y < totr.ymax) {
+    dir |= NODE_RESIZE_RIGHT;
+  }
+  if (x >= totr.xmin && x < totr.xmin + size && y >= totr.ymin && y < totr.ymax) {
+    dir |= NODE_RESIZE_LEFT;
+  }
+  return dir;
 }
 
 /* ****************** BUTTON CALLBACKS FOR COMMON NODES ***************** */
@@ -849,11 +847,36 @@ static void node_shader_buts_tex_environment_ex(uiLayout *layout, bContext *C, P
 static void node_shader_buts_tex_sky(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "sky_type", DEFAULT_FLAGS, "", ICON_NONE);
-  uiItemR(layout, ptr, "sun_direction", DEFAULT_FLAGS, "", ICON_NONE);
-  uiItemR(layout, ptr, "turbidity", DEFAULT_FLAGS, NULL, ICON_NONE);
 
-  if (RNA_enum_get(ptr, "sky_type") == SHD_SKY_NEW) {
+  if (RNA_enum_get(ptr, "sky_type") == SHD_SKY_PREETHAM) {
+    uiItemR(layout, ptr, "sun_direction", DEFAULT_FLAGS, "", ICON_NONE);
+    uiItemR(layout, ptr, "turbidity", DEFAULT_FLAGS, NULL, ICON_NONE);
+  }
+  if (RNA_enum_get(ptr, "sky_type") == SHD_SKY_HOSEK) {
+    uiItemR(layout, ptr, "sun_direction", DEFAULT_FLAGS, "", ICON_NONE);
+    uiItemR(layout, ptr, "turbidity", DEFAULT_FLAGS, NULL, ICON_NONE);
     uiItemR(layout, ptr, "ground_albedo", DEFAULT_FLAGS, NULL, ICON_NONE);
+  }
+  if (RNA_enum_get(ptr, "sky_type") == SHD_SKY_NISHITA) {
+    uiItemR(layout, ptr, "sun_disc", DEFAULT_FLAGS, NULL, 0);
+
+    uiLayout *col;
+    if (RNA_boolean_get(ptr, "sun_disc")) {
+      col = uiLayoutColumn(layout, true);
+      uiItemR(col, ptr, "sun_size", DEFAULT_FLAGS, NULL, ICON_NONE);
+      uiItemR(col, ptr, "sun_intensity", DEFAULT_FLAGS, NULL, ICON_NONE);
+    }
+
+    col = uiLayoutColumn(layout, true);
+    uiItemR(col, ptr, "sun_elevation", DEFAULT_FLAGS, NULL, ICON_NONE);
+    uiItemR(col, ptr, "sun_rotation", DEFAULT_FLAGS, NULL, ICON_NONE);
+
+    uiItemR(layout, ptr, "altitude", DEFAULT_FLAGS, NULL, ICON_NONE);
+
+    col = uiLayoutColumn(layout, true);
+    uiItemR(col, ptr, "air_density", DEFAULT_FLAGS, NULL, ICON_NONE);
+    uiItemR(col, ptr, "dust_density", DEFAULT_FLAGS, NULL, ICON_NONE);
+    uiItemR(col, ptr, "ozone_density", DEFAULT_FLAGS, NULL, ICON_NONE);
   }
 }
 
@@ -991,7 +1014,15 @@ static void node_shader_buts_vertex_color(uiLayout *layout, bContext *C, Pointer
   PointerRNA obptr = CTX_data_pointer_get(C, "active_object");
   if (obptr.data && RNA_enum_get(&obptr, "type") == OB_MESH) {
     PointerRNA dataptr = RNA_pointer_get(&obptr, "data");
-    uiItemPointerR(layout, ptr, "layer_name", &dataptr, "vertex_colors", "", ICON_GROUP_VCOL);
+
+    if (U.experimental.use_sculpt_vertex_colors &&
+        RNA_collection_length(&dataptr, "sculpt_vertex_colors")) {
+      uiItemPointerR(
+          layout, ptr, "layer_name", &dataptr, "sculpt_vertex_colors", "", ICON_GROUP_VCOL);
+    }
+    else {
+      uiItemPointerR(layout, ptr, "layer_name", &dataptr, "vertex_colors", "", ICON_GROUP_VCOL);
+    }
   }
   else {
     uiItemL(layout, "No mesh in active object.", ICON_ERROR);
@@ -3645,9 +3676,8 @@ void draw_nodespace_back_pix(const bContext *C,
                          y,
                          ibuf->x,
                          ibuf->y,
-                         GL_RGBA,
-                         GL_UNSIGNED_BYTE,
-                         GL_NEAREST,
+                         GPU_RGBA8,
+                         false,
                          display_buffer,
                          snode->zoom,
                          snode->zoom,
@@ -3660,12 +3690,12 @@ void draw_nodespace_back_pix(const bContext *C,
         GPU_blend_set_func_separate(
             GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
 
-        ED_draw_imbuf_ctx(C, ibuf, x, y, GL_NEAREST, snode->zoom, snode->zoom);
+        ED_draw_imbuf_ctx(C, ibuf, x, y, false, snode->zoom, snode->zoom);
 
         GPU_blend(false);
       }
       else {
-        ED_draw_imbuf_ctx(C, ibuf, x, y, GL_NEAREST, snode->zoom, snode->zoom);
+        ED_draw_imbuf_ctx(C, ibuf, x, y, false, snode->zoom, snode->zoom);
       }
 
       if (cache_handle) {
@@ -3803,7 +3833,7 @@ static bool node_link_bezier_handles(View2D *v2d,
   if (v2d && min_ffff(vec[0][0], vec[1][0], vec[2][0], vec[3][0]) > v2d->cur.xmax) {
     return 0; /* clipped */
   }
-  else if (v2d && max_ffff(vec[0][0], vec[1][0], vec[2][0], vec[3][0]) < v2d->cur.xmin) {
+  if (v2d && max_ffff(vec[0][0], vec[1][0], vec[2][0], vec[3][0]) < v2d->cur.xmin) {
     return 0; /* clipped */
   }
 

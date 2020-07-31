@@ -141,7 +141,7 @@ ModifierData *BKE_modifier_new(int type)
   md->type = type;
   md->mode = eModifierMode_Realtime | eModifierMode_Render;
   md->flag = eModifierFlag_OverrideLibrary_Local;
-  md->ui_expand_flag = 1; /* Only open the main panel at the beginning, not the subpanels. */
+  md->ui_expand_flag = 1; /* Only open the main panel at the beginning, not the sub-panels. */
 
   if (mti->flags & eModifierTypeFlag_EnableInEditmode) {
     md->mode |= eModifierMode_Editmode;
@@ -878,10 +878,7 @@ void BKE_modifier_free_temporary_data(ModifierData *md)
   if (md->type == eModifierType_Armature) {
     ArmatureModifierData *amd = (ArmatureModifierData *)md;
 
-    if (amd->prevCos) {
-      MEM_freeN(amd->prevCos);
-      amd->prevCos = NULL;
-    }
+    MEM_SAFE_FREE(amd->vert_coords_prev);
   }
 }
 

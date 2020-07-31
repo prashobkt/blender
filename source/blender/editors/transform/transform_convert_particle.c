@@ -183,7 +183,7 @@ void createTransParticleVerts(bContext *C, TransInfo *t)
         tail++;
       }
       if (is_prop_edit && head != tail) {
-        calc_distanceCurveVerts(head, tail - 1);
+        calc_distanceCurveVerts(head, tail - 1, false);
       }
     }
   }
@@ -250,7 +250,7 @@ static void flushTransParticles(TransInfo *t)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Recalc Trasform Particles Data
+/** \name Recalc Transform Particles Data
  *
  * \{ */
 

@@ -52,10 +52,14 @@ bool GPU_context_local_shaders_workaround(void);
 bool GPU_texture_copy_workaround(void);
 bool GPU_crappy_amd_driver(void);
 
+int GPU_texture_size_with_limit(int res);
+
 bool GPU_mem_stats_supported(void);
 void GPU_mem_stats_get(int *totalmem, int *freemem);
 
 void GPU_code_generate_glsl_lib(void);
+
+bool GPU_stereo_quadbuffer_support(void);
 
 #ifdef __cplusplus
 }

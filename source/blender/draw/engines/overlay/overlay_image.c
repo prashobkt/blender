@@ -61,11 +61,11 @@ void OVERLAY_image_cache_init(OVERLAY_Data *vedata)
   state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
   DRW_PASS_CREATE(psl->image_empties_ps, state | pd->clipping_state);
 
-  state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA;
+  state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA_PREMUL;
   DRW_PASS_CREATE(psl->image_empties_back_ps, state | pd->clipping_state);
   DRW_PASS_CREATE(psl->image_empties_blend_ps, state | pd->clipping_state);
 
-  state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
+  state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
   DRW_PASS_CREATE(psl->image_empties_front_ps, state);
   DRW_PASS_CREATE(psl->image_foreground_ps, state);
 }
@@ -175,7 +175,7 @@ static struct GPUTexture *image_camera_background_texture_get(CameraBGImage *bgp
       }
       width = ibuf->x;
       height = ibuf->y;
-      tex = GPU_texture_from_blender(image, iuser, ibuf, GL_TEXTURE_2D);
+      tex = BKE_image_get_gpu_texture(image, iuser, ibuf);
       BKE_image_release_ibuf(image, ibuf, lock);
       iuser->scene = NULL;
 
@@ -203,7 +203,7 @@ static struct GPUTexture *image_camera_background_texture_get(CameraBGImage *bgp
       }
 
       BKE_movieclip_user_set_frame(&bgpic->cuser, ctime);
-      tex = GPU_texture_from_movieclip(clip, &bgpic->cuser, GL_TEXTURE_2D);
+      tex = BKE_movieclip_get_gpu_texture(clip, &bgpic->cuser);
       if (tex == NULL) {
         return NULL;
       }
@@ -232,7 +232,7 @@ static void OVERLAY_image_free_movieclips_textures(OVERLAY_Data *data)
   LinkData *link;
   while ((link = BLI_pophead(&data->stl->pd->bg_movie_clips))) {
     MovieClip *clip = (MovieClip *)link->data;
-    GPU_free_texture_movieclip(clip);
+    BKE_movieclip_free_gputexture(clip);
     MEM_freeN(link);
   }
 }
@@ -342,7 +342,7 @@ void OVERLAY_image_camera_cache_populate(OVERLAY_Data *vedata, Object *ob)
       mul_m4_m4m4(mat, modelmat, mat);
       const bool is_foreground = (bgpic->flag & CAM_BGIMG_FLAG_FOREGROUND) != 0;
 
-      float color_premult_alpha[4] = {bgpic->alpha, bgpic->alpha, bgpic->alpha, bgpic->alpha};
+      float color_premult_alpha[4] = {1.0f, 1.0f, 1.0f, bgpic->alpha};
 
       DRWPass *pass = is_foreground ? psl->image_foreground_ps : psl->image_background_ps;
 
@@ -383,7 +383,7 @@ void OVERLAY_image_empty_cache_populate(OVERLAY_Data *vedata, Object *ob)
     if (ima != NULL) {
       ImageUser iuser = *ob->iuser;
       camera_background_images_stereo_setup(draw_ctx->scene, draw_ctx->v3d, ima, &iuser);
-      tex = GPU_texture_from_blender(ima, &iuser, NULL, GL_TEXTURE_2D);
+      tex = BKE_image_get_gpu_texture(ima, &iuser, NULL);
       if (tex) {
         size[0] = GPU_texture_orig_width(tex);
         size[1] = GPU_texture_orig_height(tex);
@@ -405,7 +405,7 @@ void OVERLAY_image_empty_cache_populate(OVERLAY_Data *vedata, Object *ob)
   /* Use the actual depth if we are doing depth tests to determine the distance to the object */
   char depth_mode = DRW_state_is_depth() ? OB_EMPTY_IMAGE_DEPTH_DEFAULT : ob->empty_image_depth;
   DRWPass *pass = NULL;
-  if ((ob->dtx & OB_DRAWXRAY) != 0) {
+  if ((ob->dtx & OB_DRAW_IN_FRONT) != 0) {
     /* Object In Front overrides image empty depth mode. */
     pass = psl->image_empties_front_ps;
   }

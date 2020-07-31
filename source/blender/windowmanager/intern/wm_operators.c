@@ -1269,7 +1269,7 @@ ID *WM_operator_drop_load_path(struct bContext *C, wmOperator *op, const short i
     if (is_relative_path) {
       if (exists == false) {
         if (idcode == ID_IM) {
-          BLI_path_rel(((Image *)id)->name, BKE_main_blendfile_path(bmain));
+          BLI_path_rel(((Image *)id)->filepath, BKE_main_blendfile_path(bmain));
         }
         else {
           BLI_assert(0);
@@ -2120,7 +2120,7 @@ typedef struct {
   int slow_mouse[2];
   bool slow_mode;
   Dial *dial;
-  unsigned int gltex;
+  GPUTexture *texture;
   ListBase orig_paintcursors;
   bool use_secondary_tex;
   void *cursor;
@@ -2224,11 +2224,15 @@ static void radial_control_set_tex(RadialControl *rc)
                rc->image_id_ptr.data,
                rc->use_secondary_tex,
                !ELEM(rc->subtype, PROP_NONE, PROP_PIXEL, PROP_DISTANCE)))) {
-        glGenTextures(1, &rc->gltex);
-        glBindTexture(GL_TEXTURE_2D, rc->gltex);
-        glTexImage2D(
-            GL_TEXTURE_2D, 0, GL_R8, ibuf->x, ibuf->y, 0, GL_RED, GL_FLOAT, ibuf->rect_float);
-        glBindTexture(GL_TEXTURE_2D, 0);
+
+        rc->texture = GPU_texture_create_nD(
+            ibuf->x, ibuf->y, 0, 2, ibuf->rect_float, GPU_R8, GPU_DATA_FLOAT, 0, false, NULL);
+        GPU_texture_filter_mode(rc->texture, true);
+
+        GPU_texture_bind(rc->texture, 0);
+        GPU_texture_swizzle_set(rc->texture, "111r");
+        GPU_texture_unbind(rc->texture);
+
         MEM_freeN(ibuf->rect_float);
         MEM_freeN(ibuf);
       }
@@ -2264,18 +2268,8 @@ static void radial_control_paint_tex(RadialControl *rc, float radius, float alph
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
-  if (rc->gltex) {
-
+  if (rc->texture) {
     uint texCoord = GPU_vertformat_attr_add(format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, rc->gltex);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    GLint swizzleMask[] = {GL_ZERO, GL_ZERO, GL_ZERO, GL_RED};
-    glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
 
     /* set up rotation if available */
     if (rc->rot_prop) {
@@ -2284,10 +2278,10 @@ static void radial_control_paint_tex(RadialControl *rc, float radius, float alph
       GPU_matrix_rotate_2d(RAD2DEGF(rot));
     }
 
-    immBindBuiltinProgram(GPU_SHADER_2D_IMAGE_MASK_UNIFORM_COLOR);
+    immBindBuiltinProgram(GPU_SHADER_2D_IMAGE_COLOR);
 
     immUniformColor3fvAlpha(col, alpha);
-    immUniform1i("image", 0);
+    immBindTexture("image", rc->texture);
 
     /* draw textured quad */
     immBegin(GPU_PRIM_TRI_FAN, 4);
@@ -2305,6 +2299,8 @@ static void radial_control_paint_tex(RadialControl *rc, float radius, float alph
     immVertex2f(pos, -radius, radius);
 
     immEnd();
+
+    GPU_texture_unbind(rc->texture);
 
     /* undo rotation */
     if (rc->rot_prop) {
@@ -2730,7 +2726,7 @@ static int radial_control_invoke(bContext *C, wmOperator *op, const wmEvent *eve
   rc->num_input.idx_max = 0;
   rc->num_input.val_flag[0] |= NUM_NO_NEGATIVE;
   rc->num_input.unit_sys = USER_UNIT_NONE;
-  rc->num_input.unit_type[0] = B_UNIT_LENGTH;
+  rc->num_input.unit_type[0] = RNA_SUBTYPE_UNIT_VALUE(RNA_property_unit(rc->prop));
 
   /* get subtype of property */
   rc->subtype = RNA_property_subtype(rc->prop);
@@ -2803,7 +2799,9 @@ static void radial_control_cancel(bContext *C, wmOperator *op)
    * new value is displayed in sliders/numfields */
   WM_event_add_notifier(C, NC_WINDOW, NULL);
 
-  glDeleteTextures(1, &rc->gltex);
+  if (rc->texture != NULL) {
+    GPU_texture_free(rc->texture);
+  }
 
   MEM_freeN(rc);
 }
@@ -2829,7 +2827,6 @@ static int radial_control_modal(bContext *C, wmOperator *op, const wmEvent *even
     applyNumInput(&rc->num_input, &numValue);
 
     if (rc->subtype == PROP_ANGLE) {
-      numValue = DEG2RADF(numValue);
       numValue = fmod(numValue, 2.0f * (float)M_PI);
       if (numValue < 0.0f) {
         numValue += 2.0f * (float)M_PI;
@@ -2994,7 +2991,6 @@ static int radial_control_modal(bContext *C, wmOperator *op, const wmEvent *even
       applyNumInput(&rc->num_input, &numValue);
 
       if (rc->subtype == PROP_ANGLE) {
-        numValue = DEG2RADF(numValue);
         numValue = fmod(numValue, 2.0f * (float)M_PI);
         if (numValue < 0.0f) {
           numValue += 2.0f * (float)M_PI;

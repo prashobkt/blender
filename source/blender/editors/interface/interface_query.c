@@ -90,7 +90,7 @@ bool ui_but_is_interactive(const uiBut *but, const bool labeledit)
   if (but->flag & UI_SCROLLED) {
     return false;
   }
-  if ((but->type == UI_BTYPE_TEXT) && (but->dt == UI_EMBOSS_NONE) && !labeledit) {
+  if ((but->type == UI_BTYPE_TEXT) && (but->emboss == UI_EMBOSS_NONE) && !labeledit) {
     return false;
   }
   if ((but->type == UI_BTYPE_LISTROW) && labeledit) {
@@ -107,9 +107,7 @@ bool UI_but_is_utf8(const uiBut *but)
     const int subtype = RNA_property_subtype(but->rnaprop);
     return !(ELEM(subtype, PROP_FILEPATH, PROP_DIRPATH, PROP_FILENAME, PROP_BYTESTRING));
   }
-  else {
-    return !(but->flag & UI_BUT_NO_UTF8);
-  }
+  return !(but->flag & UI_BUT_NO_UTF8);
 }
 
 #ifdef USE_UI_POPOVER_ONCE
@@ -171,9 +169,7 @@ int ui_but_icon(const uiBut *but)
   if (but->drawflag & UI_BUT_ICON_REVERSE) {
     return but->icon - but->iconadd;
   }
-  else {
-    return but->icon + but->iconadd;
-  }
+  return but->icon + but->iconadd;
 }
 
 /** \} */

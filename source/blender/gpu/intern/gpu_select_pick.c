@@ -27,7 +27,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "GPU_draw.h"
 #include "GPU_glew.h"
 #include "GPU_immediate.h"
 #include "GPU_select.h"
@@ -310,7 +309,7 @@ void gpu_select_pick_begin(uint (*buffer)[4], uint bufsize, const rcti *input, c
     gpuPushAttr(GPU_DEPTH_BUFFER_BIT | GPU_VIEWPORT_BIT);
 
     /* disable writing to the framebuffer */
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    GPU_color_mask(false, false, false, false);
 
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
@@ -320,7 +319,7 @@ void gpu_select_pick_begin(uint (*buffer)[4], uint bufsize, const rcti *input, c
     glDepthFunc(GL_LEQUAL);
 
     float viewport[4];
-    glGetFloatv(GL_VIEWPORT, viewport);
+    GPU_viewport_size_get_f(viewport);
 
     ps->src.clip_rect = *input;
     ps->src.rect_len = rect_len;
@@ -330,7 +329,7 @@ void gpu_select_pick_begin(uint (*buffer)[4], uint bufsize, const rcti *input, c
     ps->gl.clip_readpixels[2] = BLI_rcti_size_x(&ps->src.clip_rect);
     ps->gl.clip_readpixels[3] = BLI_rcti_size_y(&ps->src.clip_rect);
 
-    glViewport(UNPACK4(ps->gl.clip_readpixels));
+    GPU_viewport(UNPACK4(ps->gl.clip_readpixels));
 
     /* It's possible we don't want to clear depth buffer,
      * so existing elements are masked by current z-buffer. */
@@ -539,7 +538,7 @@ uint gpu_select_pick_end(void)
       gpu_select_pick_load_id(ps->gl.prev_id, true);
     }
     gpuPopAttr();
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    GPU_color_mask(true, true, true, true);
   }
 
   /* assign but never free directly since it may be in cache */

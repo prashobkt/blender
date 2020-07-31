@@ -37,7 +37,6 @@
 
 #include "MEM_guardedalloc.h"
 
-extern "C" {
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -56,7 +55,6 @@ extern "C" {
 #include "BLI_iterator.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
-}
 
 #include "DEG_depsgraph_query.h"
 
@@ -128,7 +126,7 @@ class BlenderFileLoader {
                     bool em1,
                     bool em2,
                     bool em3,
-                    int clip[3]);
+                    const int clip[3]);
   void addTriangle(struct LoaderState *ls,
                    float v1[3],
                    float v2[3],

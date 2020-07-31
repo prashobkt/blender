@@ -285,6 +285,11 @@ void BKE_sequence_reload_new_file(struct Main *bmain,
                                   struct Scene *scene,
                                   struct Sequence *seq,
                                   const bool lock_range);
+void BKE_sequence_movie_reload_if_needed(struct Main *bmain,
+                                         struct Scene *scene,
+                                         struct Sequence *seq,
+                                         bool *r_was_reloaded,
+                                         bool *r_can_produce_frames);
 int BKE_sequencer_evaluate_frame(struct Scene *scene, int cfra);
 int BKE_sequencer_get_shown_sequences(struct ListBase *seqbasep,
                                       int cfra,
@@ -619,6 +624,11 @@ void BKE_sequencer_color_balance_apply(struct StripColorBalance *cb,
 
 void BKE_sequencer_all_free_anim_ibufs(struct Scene *scene, int cfra);
 bool BKE_sequencer_check_scene_recursion(struct Scene *scene, struct ReportList *reports);
+bool BKE_sequencer_render_loop_check(struct Sequence *seq_main, struct Sequence *seq);
+void BKE_sequencer_flag_for_removal(struct Scene *scene,
+                                    struct ListBase *seqbase,
+                                    struct Sequence *seq);
+void BKE_sequencer_remove_flagged_sequences(struct Scene *scene, struct ListBase *seqbase);
 
 #ifdef __cplusplus
 }

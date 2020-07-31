@@ -30,11 +30,12 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
+#include "BKE_gpencil_modifier.h" /* Types for registering panels. */
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
+#include "BKE_shader_fx.h"
 
-#include "DNA_modifier_types.h"
-
+#include "ED_buttons.h"
 #include "ED_screen.h"
 #include "ED_space_api.h"
 #include "ED_view3d.h" /* To draw toolbar UI. */
@@ -48,8 +49,6 @@
 #include "RNA_enum_types.h"
 
 #include "UI_resources.h"
-
-#include "GPU_glew.h"
 
 #include "buttons_intern.h" /* own include */
 
@@ -137,6 +136,98 @@ static void buttons_main_region_init(wmWindowManager *wm, ARegion *region)
 
   keymap = WM_keymap_ensure(wm->defaultconf, "Property Editor", SPACE_PROPERTIES, 0);
   WM_event_add_keymap_handler(&region->handlers, keymap);
+}
+
+/**
+ * Fills an array with the tab context values for the properties editor. -1 signals a separator.
+ *
+ * \return The total number of items in the array returned.
+ */
+int ED_buttons_tabs_list(SpaceProperties *sbuts, int *context_tabs_array)
+{
+  int length = 0;
+  if (sbuts->pathflag & (1 << BCONTEXT_TOOL)) {
+    context_tabs_array[length] = BCONTEXT_TOOL;
+    length++;
+  }
+  if (length != 0) {
+    context_tabs_array[length] = -1;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_RENDER)) {
+    context_tabs_array[length] = BCONTEXT_RENDER;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_OUTPUT)) {
+    context_tabs_array[length] = BCONTEXT_OUTPUT;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_VIEW_LAYER)) {
+    context_tabs_array[length] = BCONTEXT_VIEW_LAYER;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_SCENE)) {
+    context_tabs_array[length] = BCONTEXT_SCENE;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_WORLD)) {
+    context_tabs_array[length] = BCONTEXT_WORLD;
+    length++;
+  }
+  if (length != 0) {
+    context_tabs_array[length] = -1;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_OBJECT)) {
+    context_tabs_array[length] = BCONTEXT_OBJECT;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_MODIFIER)) {
+    context_tabs_array[length] = BCONTEXT_MODIFIER;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_SHADERFX)) {
+    context_tabs_array[length] = BCONTEXT_SHADERFX;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_PARTICLE)) {
+    context_tabs_array[length] = BCONTEXT_PARTICLE;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_PHYSICS)) {
+    context_tabs_array[length] = BCONTEXT_PHYSICS;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_CONSTRAINT)) {
+    context_tabs_array[length] = BCONTEXT_CONSTRAINT;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_DATA)) {
+    context_tabs_array[length] = BCONTEXT_DATA;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_BONE)) {
+    context_tabs_array[length] = BCONTEXT_BONE;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_BONE_CONSTRAINT)) {
+    context_tabs_array[length] = BCONTEXT_BONE_CONSTRAINT;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_MATERIAL)) {
+    context_tabs_array[length] = BCONTEXT_MATERIAL;
+    length++;
+  }
+  if (length != 0) {
+    context_tabs_array[length] = -1;
+    length++;
+  }
+  if (sbuts->pathflag & (1 << BCONTEXT_TEXTURE)) {
+    context_tabs_array[length] = BCONTEXT_TEXTURE;
+    length++;
+  }
+
+  return length;
 }
 
 static void buttons_main_region_layout_properties(const bContext *C,
@@ -422,6 +513,9 @@ static void buttons_area_listener(wmWindow *UNUSED(win),
           buttons_area_redraw(area, BCONTEXT_CONSTRAINT);
           buttons_area_redraw(area, BCONTEXT_BONE_CONSTRAINT);
           break;
+        case ND_SHADERFX:
+          buttons_area_redraw(area, BCONTEXT_SHADERFX);
+          break;
         case ND_PARTICLE:
           if (wmn->action == NA_EDITED) {
             buttons_area_redraw(area, BCONTEXT_PARTICLE);
@@ -434,13 +528,6 @@ static void buttons_area_listener(wmWindow *UNUSED(win),
           buttons_area_redraw(area, BCONTEXT_PHYSICS);
           /* Needed to refresh context path when changing active particle system index. */
           buttons_area_redraw(area, BCONTEXT_PARTICLE);
-          break;
-        case ND_SHADING:
-        case ND_SHADING_DRAW:
-        case ND_SHADING_LINKS:
-        case ND_SHADING_PREVIEW:
-          /* currently works by redraws... if preview is set, it (re)starts job */
-          sbuts->preview = 1;
           break;
         default:
           /* Not all object RNA props have a ND_ notifier (yet) */
@@ -641,6 +728,21 @@ void ED_spacetype_buttons(void)
     const ModifierTypeInfo *mti = BKE_modifier_get_info(i);
     if (mti != NULL && mti->panelRegister != NULL) {
       mti->panelRegister(art);
+    }
+  }
+  for (int i = 0; i < NUM_GREASEPENCIL_MODIFIER_TYPES; i++) {
+    const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(i);
+    if (mti != NULL && mti->panelRegister != NULL) {
+      mti->panelRegister(art);
+    }
+  }
+  for (int i = 0; i < NUM_SHADER_FX_TYPES; i++) {
+    if (i == eShaderFxType_Light_deprecated) {
+      continue;
+    }
+    const ShaderFxTypeInfo *fxti = BKE_shaderfx_get_info(i);
+    if (fxti != NULL && fxti->panelRegister != NULL) {
+      fxti->panelRegister(art);
     }
   }
 

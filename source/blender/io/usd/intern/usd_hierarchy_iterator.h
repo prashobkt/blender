@@ -19,7 +19,7 @@
 #ifndef __USD_HIERARCHY_ITERATOR_H__
 #define __USD_HIERARCHY_ITERATOR_H__
 
-#include "abstract_hierarchy_iterator.h"
+#include "IO_abstract_hierarchy_iterator.h"
 #include "usd.h"
 #include "usd_exporter_context.h"
 
@@ -32,7 +32,13 @@ struct Depsgraph;
 struct ID;
 struct Object;
 
-namespace USD {
+namespace blender {
+namespace io {
+namespace usd {
+
+using blender::io::AbstractHierarchyIterator;
+using blender::io::AbstractHierarchyWriter;
+using blender::io::HierarchyContext;
 
 class USDHierarchyIterator : public AbstractHierarchyIterator {
  private:
@@ -60,12 +66,14 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
   virtual AbstractHierarchyWriter *create_particle_writer(
       const HierarchyContext *context) override;
 
-  virtual void delete_object_writer(AbstractHierarchyWriter *writer) override;
+  virtual void release_writer(AbstractHierarchyWriter *writer) override;
 
  private:
   USDExporterContext create_usd_export_context(const HierarchyContext *context);
 };
 
-}  // namespace USD
+}  // namespace usd
+}  // namespace io
+}  // namespace blender
 
 #endif /* __USD_HIERARCHY_ITERATOR_H__ */

@@ -39,8 +39,6 @@
 
 #include "RNA_access.h"
 
-#include "GPU_glew.h"
-
 #include "UI_interface.h"
 
 #include "IMB_colormanagement.h"
@@ -320,9 +318,7 @@ static int eyedropper_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(
 
     return OPERATOR_RUNNING_MODAL;
   }
-  else {
-    return OPERATOR_PASS_THROUGH;
-  }
+  return OPERATOR_PASS_THROUGH;
 }
 
 /* Repeat operator */
@@ -338,9 +334,7 @@ static int eyedropper_exec(bContext *C, wmOperator *op)
 
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_PASS_THROUGH;
-  }
+  return OPERATOR_PASS_THROUGH;
 }
 
 static bool eyedropper_poll(bContext *C)

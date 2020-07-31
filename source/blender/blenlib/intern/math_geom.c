@@ -630,7 +630,7 @@ float dist_squared_ray_to_seg_v3(const float ray_origin[3],
                                  float *r_depth)
 {
   float lambda, depth;
-  if (isect_ray_seg_v3(ray_origin, ray_direction, v0, v1, &lambda)) {
+  if (isect_ray_line_v3(ray_origin, ray_direction, v0, v1, &lambda)) {
     if (lambda <= 0.0f) {
       copy_v3_v3(r_point, v0);
     }
@@ -2129,11 +2129,11 @@ bool isect_ray_seg_v2(const float ray_origin[2],
   return false;
 }
 
-bool isect_ray_seg_v3(const float ray_origin[3],
-                      const float ray_direction[3],
-                      const float v0[3],
-                      const float v1[3],
-                      float *r_lambda)
+bool isect_ray_line_v3(const float ray_origin[3],
+                       const float ray_direction[3],
+                       const float v0[3],
+                       const float v1[3],
+                       float *r_lambda)
 {
   float a[3], t[3], n[3];
   sub_v3_v3v3(a, v1, v0);
@@ -3248,19 +3248,27 @@ bool isect_ray_aabb_v3_simple(const float orig[3],
   }
 }
 
-/* find closest point to p on line through (l1, l2) and return lambda,
- * where (0 <= lambda <= 1) when cp is in the line segment (l1, l2)
+float closest_to_ray_v3(float r_close[3],
+                        const float p[3],
+                        const float ray_orig[3],
+                        const float ray_dir[3])
+{
+  float h[3], lambda;
+  sub_v3_v3v3(h, p, ray_orig);
+  lambda = dot_v3v3(ray_dir, h) / dot_v3v3(ray_dir, ray_dir);
+  madd_v3_v3v3fl(r_close, ray_orig, ray_dir, lambda);
+  return lambda;
+}
+
+/**
+ * Find closest point to p on line through (l1, l2) and return lambda,
+ * where (0 <= lambda <= 1) when cp is in the line segment (l1, l2).
  */
 float closest_to_line_v3(float r_close[3], const float p[3], const float l1[3], const float l2[3])
 {
-  float h[3], u[3], lambda;
+  float u[3];
   sub_v3_v3v3(u, l2, l1);
-  sub_v3_v3v3(h, p, l1);
-  lambda = dot_v3v3(u, h) / dot_v3v3(u, u);
-  r_close[0] = l1[0] + u[0] * lambda;
-  r_close[1] = l1[1] + u[1] * lambda;
-  r_close[2] = l1[2] + u[2] * lambda;
-  return lambda;
+  return closest_to_ray_v3(r_close, p, l1, u);
 }
 
 float closest_to_line_v2(float r_close[2], const float p[2], const float l1[2], const float l2[2])
@@ -4168,8 +4176,8 @@ int interp_sparse_array(float *array, const int list_size, const float skipval)
 
 #define DIR_V2_SET(d_len, va, vb) \
   { \
-    sub_v2_v2v2((d_len)->dir, va, vb); \
-    (d_len)->len = len_v2((d_len)->dir); \
+    sub_v2db_v2fl_v2fl((d_len)->dir, va, vb); \
+    (d_len)->len = len_v2_db((d_len)->dir); \
   } \
   (void)0
 
@@ -4177,8 +4185,8 @@ struct Float3_Len {
   float dir[3], len;
 };
 
-struct Float2_Len {
-  float dir[2], len;
+struct Double2_Len {
+  double dir[2], len;
 };
 
 /* Mean value weights - smooth interpolation weights for polygons with
@@ -4201,21 +4209,30 @@ static float mean_value_half_tan_v3(const struct Float3_Len *d_curr,
   return 0.0f;
 }
 
-static float mean_value_half_tan_v2(const struct Float2_Len *d_curr,
-                                    const struct Float2_Len *d_next)
+/**
+ * Mean value weights - same as #mean_value_half_tan_v3 but for 2D vectors.
+ *
+ * \note When interpolating a 2D polygon, a point can be considered "outside"
+ * the polygon's bounds. Thus, when the point is very distant and the vectors
+ * have relatively close values, the precision problems are evident since they
+ * do not indicate a point "inside" the polygon.
+ * To resolve this, doubles are used.
+ */
+static double mean_value_half_tan_v2_db(const struct Double2_Len *d_curr,
+                                        const struct Double2_Len *d_next)
 {
-  /* different from the 3d version but still correct */
-  const float area = cross_v2v2(d_curr->dir, d_next->dir);
+  /* Different from the 3d version but still correct. */
+  const double area = cross_v2v2_db(d_curr->dir, d_next->dir);
   /* Compare against zero since 'FLT_EPSILON' can be too large, see: T73348. */
-  if (LIKELY(area != 0.0f)) {
-    const float dot = dot_v2v2(d_curr->dir, d_next->dir);
-    const float len = d_curr->len * d_next->len;
-    const float result = (len - dot) / area;
+  if (LIKELY(area != 0.0)) {
+    const double dot = dot_v2v2_db(d_curr->dir, d_next->dir);
+    const double len = d_curr->len * d_next->len;
+    const double result = (len - dot) / area;
     if (isfinite(result)) {
       return result;
     }
   }
-  return 0.0f;
+  return 0.0;
 }
 
 void interp_weights_poly_v3(float *w, float v[][3], const int n, const float co[3])
@@ -4257,7 +4274,7 @@ void interp_weights_poly_v3(float *w, float v[][3], const int n, const float co[
      * to borders of face.
      * In that case, do simple linear interpolation between the two edge vertices */
 
-    /* 'd_next.len' is infact 'd_curr.len', just avoid copy to begin with */
+    /* 'd_next.len' is in fact 'd_curr.len', just avoid copy to begin with */
     if (UNLIKELY(d_next.len < eps)) {
       ix_flag = IS_POINT_IX;
       break;
@@ -4320,11 +4337,11 @@ void interp_weights_poly_v2(float *w, float v[][2], const int n, const float co[
   const float eps_sq = eps * eps;
 
   const float *v_curr, *v_next;
-  float ht_prev, ht; /* half tangents */
+  double ht_prev, ht; /* half tangents */
   float totweight = 0.0f;
   int i_curr, i_next;
   char ix_flag = 0;
-  struct Float2_Len d_curr, d_next;
+  struct Double2_Len d_curr, d_next;
 
   /* loop over 'i_next' */
   i_curr = n - 1;
@@ -4335,14 +4352,14 @@ void interp_weights_poly_v2(float *w, float v[][2], const int n, const float co[
 
   DIR_V2_SET(&d_curr, v_curr - 2 /* v[n - 2] */, co);
   DIR_V2_SET(&d_next, v_curr /* v[n - 1] */, co);
-  ht_prev = mean_value_half_tan_v2(&d_curr, &d_next);
+  ht_prev = mean_value_half_tan_v2_db(&d_curr, &d_next);
 
   while (i_next < n) {
     /* Mark Mayer et al algorithm that is used here does not operate well if vertex is close
      * to borders of face. In that case,
      * do simple linear interpolation between the two edge vertices */
 
-    /* 'd_next.len' is infact 'd_curr.len', just avoid copy to begin with */
+    /* 'd_next.len' is in fact 'd_curr.len', just avoid copy to begin with */
     if (UNLIKELY(d_next.len < eps)) {
       ix_flag = IS_POINT_IX;
       break;
@@ -4354,8 +4371,8 @@ void interp_weights_poly_v2(float *w, float v[][2], const int n, const float co[
 
     d_curr = d_next;
     DIR_V2_SET(&d_next, v_next, co);
-    ht = mean_value_half_tan_v2(&d_curr, &d_next);
-    w[i_curr] = (ht_prev + ht) / d_curr.len;
+    ht = mean_value_half_tan_v2_db(&d_curr, &d_next);
+    w[i_curr] = (float)((ht_prev + ht) / d_curr.len);
     totweight += w[i_curr];
 
     /* step */
@@ -4869,6 +4886,37 @@ void projmat_dimensions(const float projmat[4][4],
     *r_top = (-projmat[3][1] + 1.0f) / projmat[1][1];
     *r_near = (projmat[3][2] + 1.0f) / projmat[2][2];
     *r_far = (projmat[3][2] - 1.0f) / projmat[2][2];
+  }
+}
+
+void projmat_dimensions_db(const float projmat_fl[4][4],
+                           double *r_left,
+                           double *r_right,
+                           double *r_bottom,
+                           double *r_top,
+                           double *r_near,
+                           double *r_far)
+{
+  double projmat[4][4];
+  copy_m4d_m4(projmat, projmat_fl);
+
+  bool is_persp = projmat[3][3] == 0.0f;
+
+  if (is_persp) {
+    *r_left = (projmat[2][0] - 1.0) / projmat[0][0];
+    *r_right = (projmat[2][0] + 1.0) / projmat[0][0];
+    *r_bottom = (projmat[2][1] - 1.0) / projmat[1][1];
+    *r_top = (projmat[2][1] + 1.0) / projmat[1][1];
+    *r_near = projmat[3][2] / (projmat[2][2] - 1.0);
+    *r_far = projmat[3][2] / (projmat[2][2] + 1.0);
+  }
+  else {
+    *r_left = (-projmat[3][0] - 1.0) / projmat[0][0];
+    *r_right = (-projmat[3][0] + 1.0) / projmat[0][0];
+    *r_bottom = (-projmat[3][1] - 1.0) / projmat[1][1];
+    *r_top = (-projmat[3][1] + 1.0) / projmat[1][1];
+    *r_near = (projmat[3][2] + 1.0) / projmat[2][2];
+    *r_far = (projmat[3][2] - 1.0) / projmat[2][2];
   }
 }
 

@@ -40,6 +40,10 @@ struct wmKeyConfig;
 
 #include "DNA_listBase.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* -------------------------------------------------------------------- */
 /* Enum Typedef's */
 
@@ -371,7 +375,7 @@ typedef struct wmGizmoType {
   /** Activate a gizmo state when the user clicks on it. */
   wmGizmoFnInvoke invoke;
 
-  /** Called when gizmo tweaking is done - used to free data and reset property when cancelling. */
+  /** Called when gizmo tweaking is done - used to free data and reset property when canceling. */
   wmGizmoFnExit exit;
 
   wmGizmoFnCursorGet cursor_get;
@@ -505,5 +509,9 @@ typedef enum eWM_GizmoFlagMapDrawStep {
   WM_GIZMOMAP_DRAWSTEP_3D,
 } eWM_GizmoFlagMapDrawStep;
 #define WM_GIZMOMAP_DRAWSTEP_MAX 2
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __WM_GIZMO_TYPES_H__ */

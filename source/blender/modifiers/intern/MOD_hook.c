@@ -40,11 +40,14 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
+#include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
+
+#include "BLO_read_write.h"
 
 #include "RNA_access.h"
 
@@ -392,6 +395,11 @@ static void deformVertsEM(struct ModifierData *md,
   Mesh *mesh_src = MOD_deform_mesh_eval_get(
       ctx->object, editData, mesh, NULL, numVerts, false, false);
 
+  /* TODO(Campbell): use edit-mode data only (remove this line). */
+  if (mesh_src != NULL) {
+    BKE_mesh_wrapper_ensure_mdata(mesh_src);
+  }
+
   deformVerts_do(hmd, ctx, ctx->object, mesh_src, vertexCos, numVerts);
 
   if (!ELEM(mesh_src, NULL, mesh)) {
@@ -468,6 +476,29 @@ static void panelRegister(ARegionType *region_type)
       region_type, "falloff", "Falloff", NULL, falloff_panel_draw, panel_type);
 }
 
+static void blendWrite(BlendWriter *writer, const ModifierData *md)
+{
+  const HookModifierData *hmd = (const HookModifierData *)md;
+
+  if (hmd->curfalloff) {
+    BKE_curvemapping_blend_write(writer, hmd->curfalloff);
+  }
+
+  BLO_write_int32_array(writer, hmd->totindex, hmd->indexar);
+}
+
+static void blendRead(BlendDataReader *reader, ModifierData *md)
+{
+  HookModifierData *hmd = (HookModifierData *)md;
+
+  BLO_read_data_address(reader, &hmd->curfalloff);
+  if (hmd->curfalloff) {
+    BKE_curvemapping_blend_read(reader, hmd->curfalloff);
+  }
+
+  BLO_read_int32_array(reader, hmd->totindex, &hmd->indexar);
+}
+
 ModifierTypeInfo modifierType_Hook = {
     /* name */ "Hook",
     /* structName */ "HookModifierData",
@@ -498,4 +529,6 @@ ModifierTypeInfo modifierType_Hook = {
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,
     /* panelRegister */ panelRegister,
+    /* blendWrite */ blendWrite,
+    /* blendRead */ blendRead,
 };

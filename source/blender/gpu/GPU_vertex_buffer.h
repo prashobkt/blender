@@ -59,10 +59,10 @@ typedef struct GPUVertBuf {
   /** 0 indicates not yet allocated. */
   uint32_t vbo_id;
   /** Usage hint for GL optimisation. */
-  uint usage : 2;
+  GPUUsageType usage;
   /** Data has been touched and need to be reuploaded to GPU. */
-  uint dirty : 1;
-  unsigned char *data; /* NULL indicates data in VRAM (unmapped) */
+  bool dirty;
+  uchar *data; /* NULL indicates data in VRAM (unmapped) */
 } GPUVertBuf;
 
 GPUVertBuf *GPU_vertbuf_create(GPUUsageType);
@@ -79,6 +79,8 @@ void GPU_vertbuf_init_with_format_ex(GPUVertBuf *, const GPUVertFormat *, GPUUsa
 
 #define GPU_vertbuf_init_with_format(verts, format) \
   GPU_vertbuf_init_with_format_ex(verts, format, GPU_USAGE_STATIC)
+
+GPUVertBuf *GPU_vertbuf_duplicate(GPUVertBuf *verts);
 
 uint GPU_vertbuf_size_get(const GPUVertBuf *);
 void GPU_vertbuf_data_alloc(GPUVertBuf *, uint v_len);

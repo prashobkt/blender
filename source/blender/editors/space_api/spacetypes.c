@@ -44,7 +44,6 @@
 #include "ED_gizmo_library.h"
 #include "ED_gpencil.h"
 #include "ED_lattice.h"
-#include "ED_logic.h"
 #include "ED_markers.h"
 #include "ED_mask.h"
 #include "ED_mball.h"
@@ -159,6 +158,7 @@ void ED_spacemacros_init(void)
    * We need to have them go after python operators too */
   ED_operatormacros_armature();
   ED_operatormacros_mesh();
+  ED_operatormacros_uvedit();
   ED_operatormacros_metaball();
   ED_operatormacros_node();
   ED_operatormacros_object();

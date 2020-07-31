@@ -100,7 +100,8 @@
 #include "intern/node/deg_node.h"
 #include "intern/node/deg_node_id.h"
 
-namespace DEG {
+namespace blender {
+namespace deg {
 
 #define DEBUG_PRINT \
   if (G.debug & G_DEBUG_DEPSGRAPH_EVAL) \
@@ -119,6 +120,7 @@ union NestedIDHackTempStorage {
   Scene scene;
   Tex tex;
   World world;
+  Simulation simulation;
 };
 
 /* Set nested owned ID pointers to nullptr. */
@@ -136,6 +138,7 @@ void nested_id_hack_discard_pointers(ID *id_cow)
     SPECIAL_CASE(ID_MA, Material, nodetree)
     SPECIAL_CASE(ID_TE, Tex, nodetree)
     SPECIAL_CASE(ID_WO, World, nodetree)
+    SPECIAL_CASE(ID_SIM, Simulation, nodetree)
 
     SPECIAL_CASE(ID_CU, Curve, key)
     SPECIAL_CASE(ID_LT, Lattice, key)
@@ -184,6 +187,7 @@ const ID *nested_id_hack_get_discarded_pointers(NestedIDHackTempStorage *storage
     SPECIAL_CASE(ID_MA, Material, nodetree, material)
     SPECIAL_CASE(ID_TE, Tex, nodetree, tex)
     SPECIAL_CASE(ID_WO, World, nodetree, world)
+    SPECIAL_CASE(ID_SIM, Simulation, nodetree, simulation)
 
     SPECIAL_CASE(ID_CU, Curve, key, curve)
     SPECIAL_CASE(ID_LT, Lattice, key, lattice)
@@ -223,6 +227,7 @@ void nested_id_hack_restore_pointers(const ID *old_id, ID *new_id)
     SPECIAL_CASE(ID_SCE, Scene, nodetree)
     SPECIAL_CASE(ID_TE, Tex, nodetree)
     SPECIAL_CASE(ID_WO, World, nodetree)
+    SPECIAL_CASE(ID_SIM, Simulation, nodetree)
 
     SPECIAL_CASE(ID_CU, Curve, key)
     SPECIAL_CASE(ID_LT, Lattice, key)
@@ -260,6 +265,7 @@ void ntree_hack_remap_pointers(const Depsgraph *depsgraph, ID *id_cow)
     SPECIAL_CASE(ID_SCE, Scene, nodetree, bNodeTree)
     SPECIAL_CASE(ID_TE, Tex, nodetree, bNodeTree)
     SPECIAL_CASE(ID_WO, World, nodetree, bNodeTree)
+    SPECIAL_CASE(ID_SIM, Simulation, nodetree, bNodeTree)
 
     SPECIAL_CASE(ID_CU, Curve, key, Key)
     SPECIAL_CASE(ID_LT, Lattice, key, Key)
@@ -495,7 +501,7 @@ void update_scene_orig_pointers(const Scene *scene_orig, Scene *scene_cow)
 }
 
 /* Check whether given ID is expanded or still a shallow copy. */
-BLI_INLINE bool check_datablock_expanded(const ID *id_cow)
+inline bool check_datablock_expanded(const ID *id_cow)
 {
   return (id_cow->name[0] != '\0');
 }
@@ -710,13 +716,6 @@ void update_modifiers_orig_pointers(const Object *object_orig, Object *object_co
       &object_orig->modifiers, &object_cow->modifiers, &ModifierData::orig_modifier_data);
 }
 
-void update_simulation_states_orig_pointers(const Simulation *simulation_orig,
-                                            Simulation *simulation_cow)
-{
-  update_list_orig_pointers(
-      &simulation_orig->states, &simulation_cow->states, &SimulationState::orig_state);
-}
-
 void update_nla_strips_orig_pointers(const ListBase *strips_orig, ListBase *strips_cow)
 {
   NlaStrip *strip_orig = reinterpret_cast<NlaStrip *>(strips_orig->first);
@@ -814,12 +813,6 @@ void update_id_after_copy(const Depsgraph *depsgraph,
       scene_cow->eevee.light_cache_data = scene_orig->eevee.light_cache_data;
       scene_setup_view_layers_after_remap(depsgraph, id_node, reinterpret_cast<Scene *>(id_cow));
       update_scene_orig_pointers(scene_orig, scene_cow);
-      break;
-    }
-    case ID_SIM: {
-      Simulation *simulation_cow = (Simulation *)id_cow;
-      const Simulation *simulation_orig = (const Simulation *)id_orig;
-      update_simulation_states_orig_pointers(simulation_orig, simulation_cow);
       break;
     }
     default:
@@ -945,7 +938,7 @@ ID *deg_expand_copy_on_write_datablock(const Depsgraph *depsgraph,
                                        DepsgraphNodeBuilder *node_builder,
                                        bool create_placeholders)
 {
-  DEG::IDNode *id_node = depsgraph->find_id_node(id_orig);
+  IDNode *id_node = depsgraph->find_id_node(id_orig);
   BLI_assert(id_node != nullptr);
   return deg_expand_copy_on_write_datablock(depsgraph, id_node, node_builder, create_placeholders);
 }
@@ -969,7 +962,7 @@ ID *deg_update_copy_on_write_datablock(const Depsgraph *depsgraph, const IDNode 
 /* NOTE: Depsgraph is supposed to have ID node already. */
 ID *deg_update_copy_on_write_datablock(const Depsgraph *depsgraph, ID *id_orig)
 {
-  DEG::IDNode *id_node = depsgraph->find_id_node(id_orig);
+  IDNode *id_node = depsgraph->find_id_node(id_orig);
   BLI_assert(id_node != nullptr);
   return deg_update_copy_on_write_datablock(depsgraph, id_node);
 }
@@ -1089,7 +1082,7 @@ void deg_free_copy_on_write_datablock(ID *id_cow)
 
 void deg_evaluate_copy_on_write(struct ::Depsgraph *graph, const IDNode *id_node)
 {
-  const DEG::Depsgraph *depsgraph = reinterpret_cast<const DEG::Depsgraph *>(graph);
+  const Depsgraph *depsgraph = reinterpret_cast<const Depsgraph *>(graph);
   DEG_debug_print_eval(graph, __func__, id_node->id_orig->name, id_node->id_cow);
   if (id_node->id_orig == &depsgraph->scene->id) {
     /* NOTE: This is handled by eval_ctx setup routines, which
@@ -1137,4 +1130,5 @@ bool deg_copy_on_write_is_needed(const ID_Type id_type)
   return ID_TYPE_IS_COW(id_type);
 }
 
-}  // namespace DEG
+}  // namespace deg
+}  // namespace blender

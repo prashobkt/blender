@@ -27,6 +27,7 @@ set(INC
   ../bmesh
   ../depsgraph
   ../draw
+  ../functions
   ../gpencil_modifiers
   ../gpu
   ../ikplugin
@@ -35,7 +36,7 @@ set(INC
   ../makesrna
   ../modifiers
   ../nodes
-  ../physics
+  ../simulation
   ../shader_fx
   ../render/extern/include
   ../../../intern/ghost
@@ -74,6 +75,7 @@ set(SRC
   intern/anim_visualization.c
   intern/appdir.c
   intern/armature.c
+  intern/armature_deform.c
   intern/armature_update.c
   intern/autoexec.c
   intern/blender.c
@@ -98,13 +100,14 @@ set(SRC
   intern/context.c
   intern/crazyspace.c
   intern/curve.c
+  intern/curve_bevel.c
   intern/curve_decimate.c
+  intern/curve_deform.c
   intern/curveprofile.c
   intern/customdata.c
   intern/customdata_file.c
   intern/data_transfer.c
   intern/deform.c
-  intern/derived_node_tree.cc
   intern/displist.c
   intern/displist_tangent.c
   intern/dynamicpaint.c
@@ -132,12 +135,14 @@ set(SRC
   intern/idtype.c
   intern/image.c
   intern/image_gen.c
+  intern/image_gpu.c
   intern/image_save.c
   intern/ipo.c
   intern/kelvinlet.c
   intern/key.c
   intern/keyconfig.c
   intern/lattice.c
+  intern/lattice_deform.c
   intern/layer.c
   intern/layer_utils.c
   intern/lib_id.c
@@ -184,7 +189,6 @@ set(SRC
   intern/multires_unsubdivide.c
   intern/nla.c
   intern/node.c
-  intern/node_tree_ref.cc
   intern/object.c
   intern/object_deform.c
   intern/object_dupli.c
@@ -293,7 +297,6 @@ set(SRC
   BKE_customdata_file.h
   BKE_data_transfer.h
   BKE_deform.h
-  BKE_derived_node_tree.hh
   BKE_displist.h
   BKE_displist_tangent.h
   BKE_duplilist.h
@@ -319,6 +322,7 @@ set(SRC
   BKE_idprop.h
   BKE_idtype.h
   BKE_image.h
+  BKE_image_save.h
   BKE_ipo.h
   BKE_kelvinlet.h
   BKE_key.h
@@ -353,7 +357,6 @@ set(SRC
   BKE_multires.h
   BKE_nla.h
   BKE_node.h
-  BKE_node_tree_ref.hh
   BKE_object.h
   BKE_object_deform.h
   BKE_object_facemap.h
@@ -362,6 +365,7 @@ set(SRC
   BKE_packedFile.h
   BKE_paint.h
   BKE_particle.h
+  BKE_persistent_data_handle.hh
   BKE_pbvh.h
   BKE_pointcache.h
   BKE_pointcloud.h
@@ -370,6 +374,7 @@ set(SRC
   BKE_scene.h
   BKE_screen.h
   BKE_sequencer.h
+  BKE_sequencer_offscreen.h
   BKE_shader_fx.h
   BKE_shrinkwrap.h
   BKE_simulation.h
@@ -408,6 +413,7 @@ set(SRC
   intern/multires_inline.h
   intern/multires_reshape.h
   intern/multires_unsubdivide.h
+  intern/ocean_intern.h
   intern/pbvh_intern.h
   intern/subdiv_converter.h
   intern/subdiv_inline.h
@@ -421,6 +427,7 @@ set(LIB
   bf_bmesh
   bf_depsgraph
   bf_draw
+  bf_functions
   bf_gpencil_modifiers
   bf_gpu
   bf_ikplugin
@@ -433,7 +440,7 @@ set(LIB
   bf_intern_opensubdiv  # Uses stub when disabled.
   bf_modifiers
   bf_nodes
-  bf_physics
+  bf_simulation
   bf_rna
   bf_shader_fx
 )
@@ -691,3 +698,16 @@ blender_add_lib(bf_blenkernel "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
 # Needed so we can use dna_type_offsets.h for defaults initialization.
 add_dependencies(bf_blenkernel bf_dna)
+
+
+if(WITH_GTESTS)
+  set(TEST_SRC
+    intern/armature_test.cc
+    intern/fcurve_test.cc
+  )
+  set(TEST_INC
+    ../editors/include
+  )
+  include(GTestTesting)
+  blender_add_test_lib(bf_blenkernel_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB}")
+endif()

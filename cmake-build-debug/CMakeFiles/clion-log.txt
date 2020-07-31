@@ -1,0 +1,32 @@
+"C:\Program Files\JetBrains\CLion 2020.1.1\bin\cmake\win\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - NMake Makefiles" E:\code\blender-git\blender
+-- The C compiler identification is MSVC 19.25.28614.0
+-- The CXX compiler identification is MSVC 19.25.28614.0
+-- Check for working C compiler: C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.25.28610/bin/Hostx86/x86/cl.exe
+-- Check for working C compiler: C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.25.28610/bin/Hostx86/x86/cl.exe -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Check for working CXX compiler: C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.25.28610/bin/Hostx86/x86/cl.exe
+-- Check for working CXX compiler: C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.25.28610/bin/Hostx86/x86/cl.exe -- works
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test SUPPORT_SSE_BUILD
+-- Performing Test SUPPORT_SSE_BUILD - Success
+-- SSE Support: detected.
+-- Performing Test SUPPORT_SSE2_BUILD
+-- Performing Test SUPPORT_SSE2_BUILD - Success
+-- SSE2 Support: detected.
+-- Found Git: C:/Program Files/Git/cmd/git.exe (found version "2.26.0.windows.1") 
+CMake Error at build_files/cmake/platform/platform_win32.cmake:219 (message):
+  32 bit compiler detected, blender no longer provides pre-build libraries
+  for 32 bit windows, please set the LIBDIR cmake variable to your own
+  library folder
+Call Stack (most recent call first):
+  CMakeLists.txt:832 (include)
+
+
+-- Configuring incomplete, errors occurred!
+See also "E:/code/blender-git/blender/cmake-build-debug/CMakeFiles/CMakeOutput.log".

@@ -269,7 +269,8 @@ void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob)
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   struct GPUBatch *geom = NULL;
 
-  bool do_in_front = (ob->dtx & OB_DRAWXRAY) != 0;
+  bool draw_as_solid = (ob->dt > OB_WIRE);
+  bool do_in_front = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
   bool do_occlude_wire = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_OCCLUDE_WIRE) != 0;
   bool do_show_mesh_analysis = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_STATVIS) != 0;
   bool fnormals_do = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_FACE_NORMALS) != 0;
@@ -283,7 +284,7 @@ void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob)
     }
   }
 
-  if (do_occlude_wire || do_in_front) {
+  if (do_occlude_wire || (do_in_front && draw_as_solid)) {
     geom = DRW_cache_mesh_surface_get(ob);
     DRW_shgroup_call_no_cull(pd->edit_mesh_depth_grp[do_in_front], geom, ob);
   }
@@ -311,7 +312,7 @@ void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob)
     overlay_edit_mesh_add_ob_to_pass(pd, ob, do_in_front);
   }
 
-  pd->edit_mesh.ghost_ob += (ob->dtx & OB_DRAWXRAY) ? 1 : 0;
+  pd->edit_mesh.ghost_ob += (ob->dtx & OB_DRAW_IN_FRONT) ? 1 : 0;
   pd->edit_mesh.edit_ob += 1;
 
   if (DRW_state_show_text() && (pd->edit_mesh.flag & OVERLAY_EDIT_TEXT)) {

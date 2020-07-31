@@ -186,7 +186,7 @@ static DupliObject *make_dupli(const DupliContext *ctx, Object *ob, float mat[4]
   dob->random_id = BLI_hash_string(dob->ob->id.name + 2);
 
   if (dob->persistent_id[0] != INT_MAX) {
-    for (i = 0; i < MAX_DUPLI_RECUR * 2; i++) {
+    for (i = 0; i < MAX_DUPLI_RECUR; i++) {
       dob->random_id = BLI_hash_int_2d(dob->random_id, (unsigned int)dob->persistent_id[i]);
     }
   }
@@ -523,7 +523,7 @@ static void make_duplis_font(const DupliContext *ctx)
   /* Safety check even if it might fail badly when called for original object. */
   const bool is_eval_curve = DEG_is_evaluated_id(&cu->id);
 
-  /* advance matching BLI_strncpy_wchar_from_utf8 */
+  /* Advance matching BLI_str_utf8_as_utf32. */
   for (a = 0; a < text_len; a++, ct++) {
 
     /* XXX That G.main is *really* ugly, but not sure what to do here...
@@ -1053,7 +1053,7 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
   }
 
   if (psys->lattice_deform_data) {
-    end_latt_deform(psys->lattice_deform_data);
+    BKE_lattice_deform_data_destroy(psys->lattice_deform_data);
     psys->lattice_deform_data = NULL;
   }
 }
