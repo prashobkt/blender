@@ -20,6 +20,7 @@
 
 #include "BLI_sys_types.h"  // for intptr_t support
 #include "MEM_guardedalloc.h"
+#include <CLG_log.h>
 
 #include "BLI_math.h"
 #include "BLI_task.h"
@@ -1303,9 +1304,10 @@ void ccgSubSurf__sync_legacy(CCGSubSurf *ss)
   MEM_freeN(effectedE);
   MEM_freeN(effectedV);
 
-#ifdef DUMP_RESULT_GRIDS
-  ccgSubSurf__dumpCoords(ss);
-#endif
+  if (CLOG_CHECK_VERBOSITY(BKE_LOG_SUBSURF_DUMP_COORDS, 2)) {
+    CLOG_VERBOSE(BKE_LOG_SUBSURF_DUMP_COORDS, 2, "Dump subsufr %p", ss);
+    ccgSubSurf__dumpCoords(ss);
+  }
 }
 
 /* ** Public API exposed to other areas which depends on old CCG code. ** */

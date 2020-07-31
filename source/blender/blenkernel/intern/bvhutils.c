@@ -654,7 +654,7 @@ BVHTree *bvhtree_from_editmesh_verts_ex(BVHTreeFromEditMesh *data,
           epsilon, tree_type, axis, em, verts_mask, verts_num_active);
 
       /* Save on cache for later use */
-      /* printf("BVHTree built and saved on cache\n"); */
+      CLOG_VERBOSE(&LOG, 1, "BVHTree built and saved on cache");
       bvhcache_insert(*bvh_cache_p, tree, bvh_cache_type);
       data->cached = true;
     }
@@ -717,7 +717,7 @@ BVHTree *bvhtree_from_mesh_verts_ex(BVHTreeFromMesh *data,
 
     if (bvh_cache_p) {
       /* Save on cache for later use */
-      /* printf("BVHTree built and saved on cache\n"); */
+      CLOG_VERBOSE(&LOG, 1, "BVHTree built and saved on cache");
       BVHCache *bvh_cache = *bvh_cache_p;
       bvhcache_insert(bvh_cache, tree, bvh_cache_type);
       in_cache = true;
@@ -866,7 +866,7 @@ BVHTree *bvhtree_from_editmesh_edges_ex(BVHTreeFromEditMesh *data,
           epsilon, tree_type, axis, em, edges_mask, edges_num_active);
 
       /* Save on cache for later use */
-      /* printf("BVHTree built and saved on cache\n"); */
+      /* CLOG_STR_VERBOSE(&LOG, 1, "BVHTree built and saved on cache"); */
       bvhcache_insert(bvh_cache, tree, bvh_cache_type);
       data->cached = true;
     }
@@ -933,7 +933,7 @@ BVHTree *bvhtree_from_mesh_edges_ex(BVHTreeFromMesh *data,
     if (bvh_cache_p) {
       BVHCache *bvh_cache = *bvh_cache_p;
       /* Save on cache for later use */
-      /* printf("BVHTree built and saved on cache\n"); */
+      /* CLOG_STR_VERBOSE(&LOG, 1, "BVHTree built and saved on cache"); */
       bvhcache_insert(bvh_cache, tree, bvh_cache_type);
       in_cache = true;
     }
@@ -977,7 +977,7 @@ static BVHTree *bvhtree_from_mesh_faces_create_tree(float epsilon,
     }
 
     /* Create a bvh-tree of the given target */
-    /* printf("%s: building BVH, total=%d\n", __func__, numFaces); */
+    CLOG_VERBOSE(&LOG, 1, "building BVH, total=%d", faces_num);
     tree = BLI_bvhtree_new(faces_num_active, epsilon, tree_type, axis);
     if (tree) {
       if (vert && face) {
@@ -1064,7 +1064,7 @@ BVHTree *bvhtree_from_mesh_faces_ex(BVHTreeFromMesh *data,
 
     if (bvh_cache_p) {
       /* Save on cache for later use */
-      /* printf("BVHTree built and saved on cache\n"); */
+      /* CLOG_STR_VERBOSE(&LOG, 1, "BVHTree built and saved on cache"); */
       BVHCache *bvh_cache = *bvh_cache_p;
       bvhcache_insert(bvh_cache, tree, bvh_cache_type);
       in_cache = true;
@@ -1107,7 +1107,7 @@ static BVHTree *bvhtree_from_editmesh_looptri_create_tree(float epsilon,
     }
 
     /* Create a bvh-tree of the given target */
-    /* printf("%s: building BVH, total=%d\n", __func__, numFaces); */
+    CLOG_VERBOSE(&LOG, 1, "building BVH, total=%d", looptri_num);
     tree = BLI_bvhtree_new(looptri_num_active, epsilon, tree_type, axis);
     if (tree) {
       const struct BMLoop *(*looptris)[3] = (void *)em->looptris;
@@ -1159,7 +1159,7 @@ static BVHTree *bvhtree_from_mesh_looptri_create_tree(float epsilon,
 
   if (looptri_num_active) {
     /* Create a bvh-tree of the given target */
-    /* printf("%s: building BVH, total=%d\n", __func__, numFaces); */
+    CLOG_VERBOSE(&LOG, 1, "building BVH, total=%d", looptri_num);
     tree = BLI_bvhtree_new(looptri_num_active, epsilon, tree_type, axis);
     if (tree) {
       if (vert && looptri) {
@@ -1239,7 +1239,7 @@ BVHTree *bvhtree_from_editmesh_looptri_ex(BVHTreeFromEditMesh *data,
           epsilon, tree_type, axis, em, looptri_mask, looptri_num_active);
 
       /* Save on cache for later use */
-      /* printf("BVHTree built and saved on cache\n"); */
+      /* CLOG_STR_VERBOSE(&LOG, 1, "BVHTree built and saved on cache"); */
       bvhcache_insert(bvh_cache, tree, bvh_cache_type);
     }
     bvhcache_unlock(bvh_cache, lock_started);

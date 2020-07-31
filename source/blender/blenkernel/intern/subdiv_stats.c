@@ -22,10 +22,13 @@
  */
 
 #include "BKE_subdiv.h"
+#include "CLG_log.h"
 
 #include <stdio.h>
 
 #include "PIL_time.h"
+
+static CLG_LogRef LOG = {"bke.subdiv.stats"};
 
 void BKE_subdiv_stats_init(SubdivStats *stats)
 {
@@ -59,11 +62,11 @@ void BKE_subdiv_stats_print(const SubdivStats *stats)
 #define STATS_PRINT_TIME(stats, value, description) \
   do { \
     if ((stats)->value > 0.0) { \
-      printf("  %s: %f (sec)\n", description, (stats)->value); \
+      CLOG_VERBOSE(&LOG, 1, "  %s: %f (sec)", description, (stats)->value); \
     } \
   } while (false)
 
-  printf("Subdivision surface statistics:\n");
+  CLOG_STR_VERBOSE(&LOG, 1, "Subdivision surface statistics:");
 
   STATS_PRINT_TIME(stats, topology_refiner_creation_time, "Topology refiner creation time");
   STATS_PRINT_TIME(stats, subdiv_to_mesh_time, "Subdivision to mesh time");

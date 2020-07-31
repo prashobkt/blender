@@ -21,6 +21,7 @@
  */
 
 #include "MEM_guardedalloc.h"
+#include <CLG_log.h>
 
 /* all types are needed here, in order to do memory operations */
 #include "DNA_ID.h"
@@ -49,7 +50,7 @@
 #endif
 
 /* Not used currently. */
-// static CLG_LogRef LOG = {.identifier = "bke.lib_id_delete"};
+static CLG_LogRef LOG = {.identifier = "bke.lib_id_delete"};
 
 void BKE_libblock_free_data(ID *id, const bool do_id_user)
 {
@@ -347,9 +348,7 @@ static void id_delete(Main *bmain, const bool do_tagged_deletion)
       id_next = id->next;
       if (id->tag & tag) {
         if (id->us != 0) {
-#ifdef DEBUG_PRINT
-          printf("%s: deleting %s (%d)\n", __func__, id->name, id->us);
-#endif
+          CLOG_VERBOSE(&LOG, 2, "deleting %s (%d)", id->name, id->us);
           BLI_assert(id->us == 0);
         }
         BKE_id_free_ex(bmain, id, free_flag, !do_tagged_deletion);

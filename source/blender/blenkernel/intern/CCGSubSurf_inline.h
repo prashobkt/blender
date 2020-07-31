@@ -21,6 +21,9 @@
 #ifndef __CCGSUBSURF_INLINE_H__
 #define __CCGSUBSURF_INLINE_H__
 
+/* defined in CCGSubSurf_util.c */
+extern struct CLG_LogRef *BKE_LOG_SUBSURF_DUMP_COORDS;
+
 BLI_INLINE int ccg_gridsize(int level)
 {
   BLI_assert(level > 0);

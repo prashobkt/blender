@@ -281,9 +281,7 @@ void ccgSubSurf_converter_free(struct OpenSubdiv_Converter *converter);
 
 /* * CCGSubSurf_util.c * */
 
-#ifdef DUMP_RESULT_GRIDS
 void ccgSubSurf__dumpCoords(CCGSubSurf *ss);
-#endif
 
 #include "CCGSubSurf_inline.h"
 

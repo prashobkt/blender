@@ -18,6 +18,7 @@
  * \ingroup bke
  */
 
+#include <CLG_log.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -221,7 +222,8 @@ CCGAllocatorIFC *ccg_getStandardAllocatorIFC(void)
  * Catmull-Clark Gridding Subdivision Surface.
  */
 
-#ifdef DUMP_RESULT_GRIDS
+CLG_LOGREF_DECLARE_GLOBAL(BKE_LOG_SUBSURF_DUMP_COORDS, "bke.subsurf.dump.coords");
+
 void ccgSubSurf__dumpCoords(CCGSubSurf *ss)
 {
   int vertDataSize = ss->meshIFC.vertDataSize;
@@ -234,7 +236,13 @@ void ccgSubSurf__dumpCoords(CCGSubSurf *ss)
     CCGVert *v = (CCGVert *)ss->vMap->buckets[i];
     for (; v; v = v->next, index++) {
       float *co = VERT_getCo(v, subdivLevels);
-      printf("vertex index=%d, co=(%f, %f, %f)\n", index, co[0], co[1], co[2]);
+      CLOG_VERBOSE(BKE_LOG_SUBSURF_DUMP_COORDS,
+                   3,
+                   "vertex index=%d, co=(%f, %f, %f)",
+                   index,
+                   co[0],
+                   co[1],
+                   co[2]);
     }
   }
 
@@ -243,13 +251,32 @@ void ccgSubSurf__dumpCoords(CCGSubSurf *ss)
     for (; e; e = e->next, index++) {
       int x;
       float *co = VERT_getCo(e->v0, subdivLevels);
-      printf("edge index=%d, start_co=(%f, %f, %f)\n", index, co[0], co[1], co[2]);
+      CLOG_VERBOSE(BKE_LOG_SUBSURF_DUMP_COORDS,
+                   1,
+                   "edge index=%d, start_co=(%f, %f, %f)",
+                   index,
+                   co[0],
+                   co[1],
+                   co[2]);
       for (x = 0; x < edgeSize; x++) {
-        float *co = EDGE_getCo(e, subdivLevels, x);
-        printf("edge index=%d, seg=%d, co=(%f, %f, %f)\n", index, x, co[0], co[1], co[2]);
+        float *_co = EDGE_getCo(e, subdivLevels, x);
+        CLOG_VERBOSE(BKE_LOG_SUBSURF_DUMP_COORDS,
+                     4,
+                     "edge index=%d, seg=%d, co=(%f, %f, %f)",
+                     index,
+                     x,
+                     _co[0],
+                     _co[1],
+                     _co[2]);
       }
       co = VERT_getCo(e->v1, subdivLevels);
-      printf("edge index=%d, end_co=(%f, %f, %f)\n", index, co[0], co[1], co[2]);
+      CLOG_VERBOSE(BKE_LOG_SUBSURF_DUMP_COORDS,
+                   4,
+                   "edge index=%d, end_co=(%f, %f, %f)",
+                   index,
+                   co[0],
+                   co[1],
+                   co[2]);
     }
   }
 
@@ -259,7 +286,14 @@ void ccgSubSurf__dumpCoords(CCGSubSurf *ss)
       for (S = 0; S < f->numVerts; S++) {
         CCGVert *v = FACE_getVerts(f)[S];
         float *co = VERT_getCo(v, subdivLevels);
-        printf("face index=%d, vertex=%d, coord=(%f, %f, %f)\n", index, S, co[0], co[1], co[2]);
+        CLOG_VERBOSE(BKE_LOG_SUBSURF_DUMP_COORDS,
+                     5,
+                     "face index=%d, vertex=%d, coord=(%f, %f, %f)",
+                     index,
+                     S,
+                     co[0],
+                     co[1],
+                     co[2]);
       }
     }
   }
@@ -271,15 +305,17 @@ void ccgSubSurf__dumpCoords(CCGSubSurf *ss)
         CCGEdge *e = FACE_getEdges(f)[S];
         float *co1 = VERT_getCo(e->v0, subdivLevels);
         float *co2 = VERT_getCo(e->v1, subdivLevels);
-        printf("face index=%d, edge=%d, coord1=(%f, %f, %f), coord2=(%f, %f, %f)\n",
-               index,
-               S,
-               co1[0],
-               co1[1],
-               co1[2],
-               co2[0],
-               co2[1],
-               co2[2]);
+        CLOG_VERBOSE(BKE_LOG_SUBSURF_DUMP_COORDS,
+                     5,
+                     "face index=%d, edge=%d, coord1=(%f, %f, %f), coord2=(%f, %f, %f)",
+                     index,
+                     S,
+                     co1[0],
+                     co1[1],
+                     co1[2],
+                     co2[0],
+                     co2[1],
+                     co2[2]);
       }
     }
   }
@@ -292,28 +328,31 @@ void ccgSubSurf__dumpCoords(CCGSubSurf *ss)
         for (x = 0; x < gridSize; x++) {
           for (y = 0; y < gridSize; y++) {
             float *co = FACE_getIFCo(f, subdivLevels, S, x, y);
-            printf("face index=%d. corner=%d, x=%d, y=%d, coord=(%f, %f, %f)\n",
-                   index,
-                   S,
-                   x,
-                   y,
-                   co[0],
-                   co[1],
-                   co[2]);
+            CLOG_VERBOSE(BKE_LOG_SUBSURF_DUMP_COORDS,
+                         6,
+                         "face index=%d. corner=%d, x=%d, y=%d, coord=(%f, %f, %f)",
+                         index,
+                         S,
+                         x,
+                         y,
+                         co[0],
+                         co[1],
+                         co[2]);
           }
         }
         for (x = 0; x < gridSize; x++) {
           float *co = FACE_getIECo(f, subdivLevels, S, x);
-          printf("face index=%d. corner=%d, ie_index=%d, coord=(%f, %f, %f)\n",
-                 index,
-                 S,
-                 x,
-                 co[0],
-                 co[1],
-                 co[2]);
+          CLOG_VERBOSE(BKE_LOG_SUBSURF_DUMP_COORDS,
+                       6,
+                       "face index=%d. corner=%d, ie_index=%d, coord=(%f, %f, %f)",
+                       index,
+                       S,
+                       x,
+                       co[0],
+                       co[1],
+                       co[2]);
         }
       }
     }
   }
 }
-#endif /* DUMP_RESULT_GRIDS */
