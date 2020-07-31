@@ -58,7 +58,6 @@
 #include "DEG_depsgraph.h"
 
 #include "ED_armature.h"
-#include "ED_buttons.h"
 #include "ED_image.h"
 #include "ED_lineart.h"
 #include "ED_mesh.h"
