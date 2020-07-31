@@ -20,6 +20,8 @@
 
 #include <stdio.h>
 
+#include "WM_api.h"
+
 #include "../gpencil_io_exporter.h"
 #include "gpencil_io_svg.h"
 
@@ -27,6 +29,8 @@ using blender::io::gpencil::GpencilExporterSVG;
 
 bool gpencil_io_export(const GpencilExportParams *params)
 {
+  WM_cursor_wait(1);
+
   bool result = false;
   switch (params->mode) {
     case GP_EXPORT_TO_SVG: {
@@ -37,6 +41,8 @@ bool gpencil_io_export(const GpencilExportParams *params)
     default:
       break;
   }
+
+  WM_cursor_wait(0);
 
   return result;
 }
