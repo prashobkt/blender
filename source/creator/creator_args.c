@@ -764,15 +764,15 @@ static int arg_handle_background_mode_set(int UNUSED(argc),
 
 static const char arg_handle_log_severity_set_doc[] =
     "<level>\n"
-    "\tSet the logging severity level defaults to 1 (INFO),\n"
-    "\tAvailable: 0 (VERBOSE), 1 (INFO), 2 (WARN), 3 (ERROR), 4 (FATAL)";
+    "\tSet the logging severity level,\n"
+    "\tAvailable: 0 (DEBUG, only debug builds), 1 (VERBOSE), 2 (INFO), 3 (WARN), 4 (ERROR), 5 (FATAL)";
 static int arg_handle_log_severity_set(int argc, const char **argv, void *UNUSED(data))
 {
   const char *arg_id = "--log-severity";
   if (argc > 1) {
     const char *err_msg = NULL;
-    int severity_level = CLG_SEVERITY_INFO;
-    if (!parse_int_clamp(argv[1], NULL, 0, 4, &severity_level, &err_msg)) {
+    int severity_level = CLG_SEVERITY_WARN;
+    if (!parse_int_clamp(argv[1], NULL, 0, 5, &severity_level, &err_msg)) {
       printf("\nError: %s '%s %s'.\n", err_msg, arg_id, argv[1]);
     }
     else {

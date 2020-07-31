@@ -256,6 +256,7 @@ static void clg_color_table_init(bool use_color)
 }
 
 static const char *clg_severity_str[CLG_SEVERITY_LEN] = {
+    [CLG_SEVERITY_DEBUG] = "DEBUG",
     [CLG_SEVERITY_VERBOSE] = "VERBOSE",
     [CLG_SEVERITY_INFO] = "INFO",
     [CLG_SEVERITY_WARN] = "WARN",
@@ -280,6 +281,9 @@ static enum eCLogColor clg_severity_to_color(enum CLG_Severity severity)
   assert((unsigned int)severity < CLG_SEVERITY_LEN);
   enum eCLogColor color = COLOR_DEFAULT;
   switch (severity) {
+    case CLG_SEVERITY_DEBUG:
+      color = COLOR_DEFAULT;
+      break;
     case CLG_SEVERITY_VERBOSE:
       color = COLOR_DEFAULT;
       break;
@@ -501,7 +505,7 @@ void CLG_log_str(CLG_LogType *lg,
   }
 
   write_severity(&cstr, severity, lg->ctx->use_color);
-  if (severity == CLG_SEVERITY_VERBOSE) {
+  if (severity <= CLG_SEVERITY_VERBOSE) {
     char verbosity_str[8];
     sprintf(verbosity_str, ":%u", verbosity);
     clg_str_append(&cstr, verbosity_str);
@@ -567,7 +571,7 @@ void CLG_logf(CLG_LogType *lg,
   }
 
   write_severity(&cstr, severity, lg->ctx->use_color);
-  if (severity == CLG_SEVERITY_VERBOSE) {
+  if (severity <= CLG_SEVERITY_VERBOSE) {
     char verbosity_str[8];
     sprintf(verbosity_str, ":%u", verbosity);
     clg_str_append(&cstr, verbosity_str);
