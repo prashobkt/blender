@@ -34,64 +34,6 @@
 
 #  include "WM_api.h"
 
-static bool rna_XrSessionState_is_running(bContext *C)
-{
-#  ifdef WITH_XR_OPENXR
-  const wmWindowManager *wm = CTX_wm_manager(C);
-  return WM_xr_session_exists(&wm->xr);
-#  else
-  UNUSED_VARS(C);
-  return false;
-#  endif
-}
-
-static void rna_XrSessionState_reset_to_base_pose(bContext *C)
-{
-#  ifdef WITH_XR_OPENXR
-  wmWindowManager *wm = CTX_wm_manager(C);
-  WM_xr_session_base_pose_reset(&wm->xr);
-#  else
-  UNUSED_VARS(C);
-#  endif
-}
-
-#  ifdef WITH_XR_OPENXR
-static wmXrData *rna_XrSessionState_wm_xr_data_get(PointerRNA *ptr)
-{
-  /* Callers could also get XrSessionState pointer through ptr->data, but prefer if we just
-   * consistently pass wmXrData pointers to the WM_xr_xxx() API. */
-
-  BLI_assert(ptr->type == &RNA_XrSessionState);
-
-  wmWindowManager *wm = (wmWindowManager *)ptr->owner_id;
-  BLI_assert(wm && (GS(wm->id.name) == ID_WM));
-
-  return &wm->xr;
-}
-#  endif
-
-static void rna_XrSessionState_viewer_pose_location_get(PointerRNA *ptr, float *r_values)
-{
-#  ifdef WITH_XR_OPENXR
-  const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
-  WM_xr_session_state_viewer_pose_location_get(xr, r_values);
-#  else
-  UNUSED_VARS(ptr);
-  zero_v3(r_values);
-#  endif
-}
-
-static void rna_XrSessionState_viewer_pose_rotation_get(PointerRNA *ptr, float *r_values)
-{
-#  ifdef WITH_XR_OPENXR
-  const wmXrData *xr = rna_XrSessionState_wm_xr_data_get(ptr);
-  WM_xr_session_state_viewer_pose_rotation_get(xr, r_values);
-#  else
-  UNUSED_VARS(ptr);
-  unit_qt(r_values);
-#  endif
-}
-
 #else /* RNA_RUNTIME */
 
 static void rna_def_xr_action_set(BlenderRNA *brna)
