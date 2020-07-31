@@ -1135,7 +1135,7 @@ void wm_window_make_drawable(wmWindowManager *wm, wmWindow *win)
     //      win->lmbut = 0; /* keeps hanging when mousepressed while other window opened */
     wm_window_clear_drawable(wm);
 
-    CLOG_INFO(WM_LOG_EVENTS, "Set drawable %d", win->winid);
+    CLOG_VERBOSE(WM_LOG_EVENTS, 1, "Set drawable %d", win->winid);
 
     wm_window_set_drawable(wm, win, true);
 
