@@ -41,8 +41,8 @@
 
 typedef struct LineartStaticMemPoolNode {
   Link item;
-  int size;
-  int used_byte;
+  size_t size;
+  size_t used_byte;
   /* User memory starts here */
 } LineartStaticMemPoolNode;
 
