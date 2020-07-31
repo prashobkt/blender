@@ -1112,8 +1112,8 @@ static void rna_clog_log_filter_get(PointerRNA *ptr, char *value)
 
   char *dummy_buff = MEM_callocN(255, __func__);
   int written = CLG_type_filter_get(dummy_buff, 255);
-  // memset(value, 0, 256);
-  // memcpy(value, dummy_buff, written + 1);
+  memset(value, 0, 256);
+  memcpy(userdef->log_filter, dummy_buff, written + 1);
 
   /* TODO (grzelins) how to init Userdef with command line value? */
   BLI_strncpy(value, userdef->log_filter, 255);
