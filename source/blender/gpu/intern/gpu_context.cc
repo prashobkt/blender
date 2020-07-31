@@ -35,8 +35,10 @@
 #include "GPU_framebuffer.h"
 
 #include "gpu_batch_private.h"
-#include "gpu_context_private.h"
+#include "gpu_context_private.hh"
 #include "gpu_matrix_private.h"
+
+#include "gl_context.hh"
 
 #include <mutex>
 #include <pthread.h>
@@ -44,128 +46,35 @@
 #include <unordered_set>
 #include <vector>
 
-#if TRUST_NO_ONE
-#  if 0
-extern "C" {
-extern int BLI_thread_is_main(void); /* Blender-specific function */
-}
-
-static bool thread_is_main()
-{
-  /* "main" here means the GL context's thread */
-  return BLI_thread_is_main();
-}
-#  endif
-#endif
-
-static std::vector<GLuint> orphaned_buffer_ids;
-static std::vector<GLuint> orphaned_texture_ids;
-
-static std::mutex orphans_mutex;
-
-struct GPUContext {
-  GLuint default_vao;
-  GLuint default_framebuffer;
-  GPUFrameBuffer *current_fbo;
-  std::unordered_set<GPUBatch *> batches; /* Batches that have VAOs from this context */
-#ifdef DEBUG
-  std::unordered_set<GPUFrameBuffer *>
-      framebuffers; /* Framebuffers that have FBO from this context */
-#endif
-  struct GPUMatrixState *matrix_state;
-  std::vector<GLuint> orphaned_vertarray_ids;
-  std::vector<GLuint> orphaned_framebuffer_ids;
-  std::mutex orphans_mutex; /* todo: try spinlock instead */
-#if TRUST_NO_ONE
-  pthread_t thread; /* Thread on which this context is active. */
-  bool thread_is_used;
-#endif
-
-  GPUContext()
-  {
-#if TRUST_NO_ONE
-    thread_is_used = false;
-#endif
-    current_fbo = 0;
-  }
-};
+// TODO
+// using namespace blender::gpu;
 
 static thread_local GPUContext *active_ctx = NULL;
 
-static void orphans_add(GPUContext *ctx, std::vector<GLuint> *orphan_list, GLuint id)
+GPUContext::GPUContext()
 {
-  std::mutex *mutex = (ctx) ? &ctx->orphans_mutex : &orphans_mutex;
-
-  mutex->lock();
-  orphan_list->emplace_back(id);
-  mutex->unlock();
+  thread_ = pthread_self();
+  matrix_state = GPU_matrix_state_create();
 }
 
-static void orphans_clear(GPUContext *ctx)
+GPUContext *GPU_context_create(GLuint)
 {
-  /* need at least an active context */
-  BLI_assert(ctx);
-
-  /* context has been activated by another thread! */
-  BLI_assert(pthread_equal(pthread_self(), ctx->thread));
-
-  ctx->orphans_mutex.lock();
-  if (!ctx->orphaned_vertarray_ids.empty()) {
-    uint orphan_len = (uint)ctx->orphaned_vertarray_ids.size();
-    glDeleteVertexArrays(orphan_len, ctx->orphaned_vertarray_ids.data());
-    ctx->orphaned_vertarray_ids.clear();
-  }
-  if (!ctx->orphaned_framebuffer_ids.empty()) {
-    uint orphan_len = (uint)ctx->orphaned_framebuffer_ids.size();
-    glDeleteFramebuffers(orphan_len, ctx->orphaned_framebuffer_ids.data());
-    ctx->orphaned_framebuffer_ids.clear();
-  }
-
-  ctx->orphans_mutex.unlock();
-
-  orphans_mutex.lock();
-  if (!orphaned_buffer_ids.empty()) {
-    uint orphan_len = (uint)orphaned_buffer_ids.size();
-    glDeleteBuffers(orphan_len, orphaned_buffer_ids.data());
-    orphaned_buffer_ids.clear();
-  }
-  if (!orphaned_texture_ids.empty()) {
-    uint orphan_len = (uint)orphaned_texture_ids.size();
-    glDeleteTextures(orphan_len, orphaned_texture_ids.data());
-    orphaned_texture_ids.clear();
-  }
-  orphans_mutex.unlock();
-}
-
-GPUContext *GPU_context_create(GLuint default_framebuffer)
-{
-  /* BLI_assert(thread_is_main()); */
-  GPUContext *ctx = new GPUContext;
-  glGenVertexArrays(1, &ctx->default_vao);
-  ctx->default_framebuffer = default_framebuffer;
-  ctx->matrix_state = GPU_matrix_state_create();
+  GPUContext *ctx = new GLContext();
   GPU_context_active_set(ctx);
   return ctx;
+}
+
+bool GPUContext::is_active_on_thread(void)
+{
+  return (this == active_ctx) && pthread_equal(pthread_self(), thread_);
 }
 
 /* to be called after GPU_context_active_set(ctx_to_destroy) */
 void GPU_context_discard(GPUContext *ctx)
 {
   /* Make sure no other thread has locked it. */
-  BLI_assert(ctx == active_ctx);
-  BLI_assert(pthread_equal(pthread_self(), ctx->thread));
-  BLI_assert(ctx->orphaned_vertarray_ids.empty());
-#ifdef DEBUG
-  /* For now don't allow GPUFrameBuffers to be reuse in another ctx. */
-  BLI_assert(ctx->framebuffers.empty());
-#endif
-  /* delete remaining vaos */
-  while (!ctx->batches.empty()) {
-    /* this removes the array entry */
-    GPU_batch_vao_cache_clear(*ctx->batches.begin());
-  }
-  GPU_matrix_state_discard(ctx->matrix_state);
-  glDeleteVertexArrays(1, &ctx->default_vao);
+  BLI_assert(ctx->is_active_on_thread());
+
   delete ctx;
   active_ctx = NULL;
 }
@@ -173,22 +82,20 @@ void GPU_context_discard(GPUContext *ctx)
 /* ctx can be NULL */
 void GPU_context_active_set(GPUContext *ctx)
 {
-#if TRUST_NO_ONE
   if (active_ctx) {
-    active_ctx->thread_is_used = false;
+    active_ctx->deactivate();
   }
-  /* Make sure no other context is already bound to this thread. */
   if (ctx) {
-    /* Make sure no other thread has locked it. */
-    assert(ctx->thread_is_used == false);
-    ctx->thread = pthread_self();
-    ctx->thread_is_used = true;
-  }
-#endif
-  if (ctx) {
-    orphans_clear(ctx);
+    ctx->activate();
   }
   active_ctx = ctx;
+}
+
+GPUContext *GPU_ctx(void)
+{
+  /* Context has been activated by another thread! */
+  BLI_assert(active_ctx->is_active_on_thread());
+  return active_ctx;
 }
 
 GPUContext *GPU_context_active_get(void)
@@ -196,152 +103,48 @@ GPUContext *GPU_context_active_get(void)
   return active_ctx;
 }
 
-GLuint GPU_vao_default(void)
-{
-  BLI_assert(active_ctx); /* need at least an active context */
-  BLI_assert(pthread_equal(
-      pthread_self(), active_ctx->thread)); /* context has been activated by another thread! */
-  return active_ctx->default_vao;
-}
-
-GLuint GPU_framebuffer_default(void)
-{
-  BLI_assert(active_ctx); /* need at least an active context */
-  BLI_assert(pthread_equal(
-      pthread_self(), active_ctx->thread)); /* context has been activated by another thread! */
-  return active_ctx->default_framebuffer;
-}
-
 GLuint GPU_vao_alloc(void)
 {
-  GLuint new_vao_id = 0;
-  orphans_clear(active_ctx);
-  glGenVertexArrays(1, &new_vao_id);
-  return new_vao_id;
+  return active_ctx->vao_alloc();
 }
 
 GLuint GPU_fbo_alloc(void)
 {
-  GLuint new_fbo_id = 0;
-  orphans_clear(active_ctx);
-  glGenFramebuffers(1, &new_fbo_id);
-  return new_fbo_id;
+  return active_ctx->fbo_alloc();
 }
 
 GLuint GPU_buf_alloc(void)
 {
-  GLuint new_buffer_id = 0;
-  orphans_clear(active_ctx);
-  glGenBuffers(1, &new_buffer_id);
-  return new_buffer_id;
+  return active_ctx->buf_alloc();
 }
 
 GLuint GPU_tex_alloc(void)
 {
-  GLuint new_texture_id = 0;
-  orphans_clear(active_ctx);
-  glGenTextures(1, &new_texture_id);
-  return new_texture_id;
+  return active_ctx->tex_alloc();
 }
 
 void GPU_vao_free(GLuint vao_id, GPUContext *ctx)
 {
   BLI_assert(ctx);
-  if (ctx == active_ctx) {
-    glDeleteVertexArrays(1, &vao_id);
-  }
-  else {
-    orphans_add(ctx, &ctx->orphaned_vertarray_ids, vao_id);
-  }
+  ctx->vao_free(vao_id);
 }
 
 void GPU_fbo_free(GLuint fbo_id, GPUContext *ctx)
 {
   BLI_assert(ctx);
-  if (ctx == active_ctx) {
-    glDeleteFramebuffers(1, &fbo_id);
-  }
-  else {
-    orphans_add(ctx, &ctx->orphaned_framebuffer_ids, fbo_id);
-  }
+  ctx->fbo_free(fbo_id);
 }
 
 void GPU_buf_free(GLuint buf_id)
 {
-  if (active_ctx) {
-    glDeleteBuffers(1, &buf_id);
-  }
-  else {
-    orphans_add(NULL, &orphaned_buffer_ids, buf_id);
-  }
+  /* FIXME active_ctx can be NULL */
+  BLI_assert(active_ctx);
+  active_ctx->buf_free(buf_id);
 }
 
 void GPU_tex_free(GLuint tex_id)
 {
-  if (active_ctx) {
-    glDeleteTextures(1, &tex_id);
-  }
-  else {
-    orphans_add(NULL, &orphaned_texture_ids, tex_id);
-  }
-}
-
-/* GPUBatch & GPUFrameBuffer contains respectively VAO & FBO indices
- * which are not shared across contexts. So we need to keep track of
- * ownership. */
-
-void gpu_context_add_batch(GPUContext *ctx, GPUBatch *batch)
-{
-  BLI_assert(ctx);
-  ctx->orphans_mutex.lock();
-  ctx->batches.emplace(batch);
-  ctx->orphans_mutex.unlock();
-}
-
-void gpu_context_remove_batch(GPUContext *ctx, GPUBatch *batch)
-{
-  BLI_assert(ctx);
-  ctx->orphans_mutex.lock();
-  ctx->batches.erase(batch);
-  ctx->orphans_mutex.unlock();
-}
-
-void gpu_context_add_framebuffer(GPUContext *ctx, GPUFrameBuffer *fb)
-{
-#ifdef DEBUG
-  BLI_assert(ctx);
-  ctx->orphans_mutex.lock();
-  ctx->framebuffers.emplace(fb);
-  ctx->orphans_mutex.unlock();
-#else
-  UNUSED_VARS(ctx, fb);
-#endif
-}
-
-void gpu_context_remove_framebuffer(GPUContext *ctx, GPUFrameBuffer *fb)
-{
-#ifdef DEBUG
-  BLI_assert(ctx);
-  ctx->orphans_mutex.lock();
-  ctx->framebuffers.erase(fb);
-  ctx->orphans_mutex.unlock();
-#else
-  UNUSED_VARS(ctx, fb);
-#endif
-}
-
-void gpu_context_active_framebuffer_set(GPUContext *ctx, GPUFrameBuffer *fb)
-{
-  ctx->current_fbo = fb;
-}
-
-GPUFrameBuffer *gpu_context_active_framebuffer_get(GPUContext *ctx)
-{
-  return ctx->current_fbo;
-}
-
-struct GPUMatrixState *gpu_context_active_matrix_state_get()
-{
+  /* FIXME active_ctx can be NULL */
   BLI_assert(active_ctx);
-  return active_ctx->matrix_state;
+  active_ctx->tex_free(tex_id);
 }

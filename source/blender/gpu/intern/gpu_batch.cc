@@ -34,7 +34,7 @@
 #include "GPU_shader.h"
 
 #include "gpu_batch_private.h"
-#include "gpu_context_private.h"
+#include "gpu_context_private.hh"
 #include "gpu_primitive_private.h"
 #include "gpu_shader_private.h"
 #include "gpu_vertex_format_private.h"
@@ -81,7 +81,7 @@ void GPU_batch_vao_cache_clear(GPUBatch *batch)
     batch->static_vaos.vao_ids[i] = 0;
     batch->static_vaos.interfaces[i] = NULL;
   }
-  gpu_context_remove_batch(batch->context, batch);
+  batch->context->batch_remove(batch);
   batch->context = NULL;
 }
 
@@ -294,7 +294,7 @@ static GLuint batch_vao_get(GPUBatch *batch)
    * Until then it can only be drawn with this context. */
   if (batch->context == NULL) {
     batch->context = GPU_context_active_get();
-    gpu_context_add_batch(batch->context, batch);
+    batch->context->batch_add(batch);
   }
 #if TRUST_NO_ONE
   else {
@@ -634,16 +634,6 @@ void GPU_batch_uniform_mat4(GPUBatch *batch, const char *name, const float data[
   glUniformMatrix4fv(uniform->location, 1, GL_FALSE, (const float *)data);
 }
 
-static void *elem_offset(const GPUIndexBuf *el, int v_first)
-{
-#if GPU_TRACK_INDEX_RANGE
-  if (el->index_type == GPU_INDEX_U16) {
-    return (GLushort *)0 + v_first + el->index_start;
-  }
-#endif
-  return (GLuint *)0 + v_first + el->index_start;
-}
-
 /* Use when drawing with GPU_batch_draw_advanced */
 void GPU_batch_bind(GPUBatch *batch)
 {
@@ -704,90 +694,13 @@ void GPU_batch_draw_advanced(GPUBatch *batch, int v_first, int v_count, int i_fi
     return;
   }
 
-  /* Verify there is enough data do draw. */
-  /* TODO(fclem) Nice to have but this is invalid when using procedural draw-calls.
-   * The right assert would be to check if there is an enabled attribute from each VBO
-   * and check their length. */
-  // BLI_assert(i_first + i_count <= (batch->inst ? batch->inst->vertex_len : INT_MAX));
-  // BLI_assert(v_first + v_count <=
-  //            (batch->elem ? batch->elem->index_len : batch->verts[0]->vertex_len));
-
-#ifdef __APPLE__
-  GLuint vao = 0;
-#endif
-
-  if (!GPU_arb_base_instance_is_supported()) {
-    if (i_first > 0) {
-#ifdef __APPLE__
-      /**
-       * There seems to be a nasty bug when drawing using the same VAO reconfiguring. (see T71147)
-       * We just use a throwaway VAO for that. Note that this is likely to degrade performance.
-       **/
-      glGenVertexArrays(1, &vao);
-      glBindVertexArray(vao);
-#else
-      /* If using offset drawing with instancing, we must
-       * use the default VAO and redo bindings. */
-      glBindVertexArray(GPU_vao_default());
-#endif
-      batch_update_program_bindings(batch, i_first);
-    }
-    else {
-      /* Previous call could have bind the default vao
-       * see above. */
-      glBindVertexArray(batch->vao_id);
-    }
-  }
-
-  if (batch->elem) {
-    const GPUIndexBuf *el = batch->elem;
-    GLenum index_type = INDEX_TYPE(el);
-    GLint base_index = BASE_INDEX(el);
-    void *v_first_ofs = elem_offset(el, v_first);
-
-    if (GPU_arb_base_instance_is_supported()) {
-      glDrawElementsInstancedBaseVertexBaseInstance(
-          batch->gl_prim_type, v_count, index_type, v_first_ofs, i_count, base_index, i_first);
-    }
-    else {
-      glDrawElementsInstancedBaseVertex(
-          batch->gl_prim_type, v_count, index_type, v_first_ofs, i_count, base_index);
-    }
-  }
-  else {
-#ifdef __APPLE__
-    glDisable(GL_PRIMITIVE_RESTART);
-#endif
-    if (GPU_arb_base_instance_is_supported()) {
-      glDrawArraysInstancedBaseInstance(batch->gl_prim_type, v_first, v_count, i_count, i_first);
-    }
-    else {
-      glDrawArraysInstanced(batch->gl_prim_type, v_first, v_count, i_count);
-    }
-#ifdef __APPLE__
-    glEnable(GL_PRIMITIVE_RESTART);
-#endif
-  }
-
-#ifdef __APPLE__
-  if (vao != 0) {
-    glDeleteVertexArrays(1, &vao);
-  }
-#endif
+  GPU_ctx()->draw_batch(batch, v_first, v_count, i_first, i_count);
 }
 
 /* just draw some vertices and let shader place them where we want. */
 void GPU_draw_primitive(GPUPrimType prim_type, int v_count)
 {
-  /* we cannot draw without vao ... annoying ... */
-  glBindVertexArray(GPU_vao_default());
-
-  GLenum type = convert_prim_type_to_gl(prim_type);
-  glDrawArrays(type, 0, v_count);
-
-  /* Performance hog if you are drawing with the same vao multiple time.
-   * Only activate for debugging.*/
-  // glBindVertexArray(0);
+  GPU_ctx()->draw_primitive(prim_type, v_count);
 }
 
 /* -------------------------------------------------------------------- */

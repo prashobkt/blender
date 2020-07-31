@@ -33,7 +33,7 @@
 #include "GPU_shader.h"
 #include "GPU_texture.h"
 
-#include "gpu_context_private.h"
+#include "gpu_context_private.hh"
 #include "gpu_private.h"
 
 typedef enum {
@@ -188,10 +188,10 @@ GPUFrameBuffer *GPU_framebuffer_active_get(void)
 {
   GPUContext *ctx = GPU_context_active_get();
   if (ctx) {
-    return gpu_context_active_framebuffer_get(ctx);
+    return ctx->current_fbo;
   }
   else {
-    return 0;
+    return NULL;
   }
 }
 
@@ -199,7 +199,7 @@ static void gpu_framebuffer_current_set(GPUFrameBuffer *fb)
 {
   GPUContext *ctx = GPU_context_active_get();
   if (ctx) {
-    gpu_context_active_framebuffer_set(ctx, fb);
+    ctx->current_fbo = fb;
   }
 }
 
@@ -216,7 +216,7 @@ static void gpu_framebuffer_init(GPUFrameBuffer *fb)
 {
   fb->object = GPU_fbo_alloc();
   fb->ctx = GPU_context_active_get();
-  gpu_context_add_framebuffer(fb->ctx, fb);
+  fb->ctx->framebuffer_add(fb);
 }
 
 void GPU_framebuffer_free(GPUFrameBuffer *fb)
@@ -231,7 +231,7 @@ void GPU_framebuffer_free(GPUFrameBuffer *fb)
   if (fb->object != 0) {
     /* This restores the framebuffer if it was bound */
     GPU_fbo_free(fb->object, fb->ctx);
-    gpu_context_remove_framebuffer(fb->ctx, fb);
+    fb->ctx->framebuffer_remove(fb);
   }
 
   if (GPU_framebuffer_active_get() == fb) {
@@ -560,7 +560,7 @@ void GPU_framebuffer_bind(GPUFrameBuffer *fb)
 void GPU_framebuffer_restore(void)
 {
   if (GPU_framebuffer_active_get() != NULL) {
-    glBindFramebuffer(GL_FRAMEBUFFER, GPU_framebuffer_default());
+    glBindFramebuffer(GL_FRAMEBUFFER, GPU_ctx()->default_framebuffer_get());
     gpu_framebuffer_current_set(NULL);
     glDisable(GL_FRAMEBUFFER_SRGB);
     GPU_shader_set_framebuffer_srgb_target(false);
@@ -796,7 +796,7 @@ void GPU_framebuffer_blit(GPUFrameBuffer *fb_read,
     gpu_framebuffer_current_set(prev_fb);
   }
   else {
-    glBindFramebuffer(GL_FRAMEBUFFER, GPU_framebuffer_default());
+    glBindFramebuffer(GL_FRAMEBUFFER, GPU_ctx()->default_framebuffer_get());
     gpu_framebuffer_current_set(NULL);
   }
 }
@@ -1037,7 +1037,7 @@ void GPU_offscreen_draw_to_screen(GPUOffScreen *ofs, int x, int y)
     gpu_print_framebuffer_error(status, NULL);
   }
 
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, GPU_framebuffer_default());
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, GPU_ctx()->default_framebuffer_get());
 }
 
 void GPU_offscreen_read_pixels(GPUOffScreen *ofs, eGPUDataFormat type, void *pixels)

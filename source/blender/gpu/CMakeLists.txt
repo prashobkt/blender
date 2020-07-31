@@ -28,6 +28,7 @@ endif()
 
 set(INC
   .
+  ./opengl
   ../blenkernel
   ../blenlib
   ../bmesh
@@ -85,6 +86,12 @@ set(SRC
   intern/gpu_vertex_format.cc
   intern/gpu_viewport.c
 
+  # opengl/ogl_context.cc
+  opengl/gl_context.hh
+
+  # vulkan/vk_context.cc
+  # vulkan/vk_context.hh
+
   GPU_attr_binding.h
   GPU_batch.h
   GPU_batch_presets.h
@@ -118,7 +125,7 @@ set(SRC
   intern/gpu_attr_binding_private.h
   intern/gpu_batch_private.h
   intern/gpu_codegen.h
-  intern/gpu_context_private.h
+  intern/gpu_context_private.hh
   intern/gpu_material_library.h
   intern/gpu_matrix_private.h
   intern/gpu_node_graph.h

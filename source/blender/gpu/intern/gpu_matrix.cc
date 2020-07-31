@@ -23,7 +23,7 @@
 
 #include "GPU_shader_interface.h"
 
-#include "gpu_context_private.h"
+#include "gpu_context_private.hh"
 #include "gpu_matrix_private.h"
 
 #define SUPPRESS_GENERIC_MATRIX_API
@@ -61,10 +61,10 @@ typedef struct GPUMatrixState {
    */
 } GPUMatrixState;
 
-#define ModelViewStack gpu_context_active_matrix_state_get()->model_view_stack
+#define ModelViewStack GPU_ctx()->matrix_state->model_view_stack
 #define ModelView ModelViewStack.stack[ModelViewStack.top]
 
-#define ProjectionStack gpu_context_active_matrix_state_get()->projection_stack
+#define ProjectionStack GPU_ctx()->matrix_state->projection_stack
 #define Projection ProjectionStack.stack[ProjectionStack.top]
 
 GPUMatrixState *GPU_matrix_state_create(void)
@@ -95,13 +95,13 @@ void GPU_matrix_state_discard(GPUMatrixState *state)
 
 static void gpu_matrix_state_active_set_dirty(bool value)
 {
-  GPUMatrixState *state = gpu_context_active_matrix_state_get();
+  GPUMatrixState *state = GPU_ctx()->matrix_state;
   state->dirty = value;
 }
 
 void GPU_matrix_reset(void)
 {
-  GPUMatrixState *state = gpu_context_active_matrix_state_get();
+  GPUMatrixState *state = GPU_ctx()->matrix_state;
   state->model_view_stack.top = 0;
   state->projection_stack.top = 0;
   unit_m4(ModelView);
@@ -693,7 +693,7 @@ void GPU_matrix_bind(const GPUShaderInterface *shaderface)
 
 bool GPU_matrix_dirty_get(void)
 {
-  GPUMatrixState *state = gpu_context_active_matrix_state_get();
+  GPUMatrixState *state = GPU_ctx()->matrix_state;
   return state->dirty;
 }
 
@@ -706,13 +706,13 @@ BLI_STATIC_ASSERT(GPU_PY_MATRIX_STACK_LEN + 1 == MATRIX_STACK_DEPTH, "define mis
 
 int GPU_matrix_stack_level_get_model_view(void)
 {
-  GPUMatrixState *state = gpu_context_active_matrix_state_get();
+  GPUMatrixState *state = GPU_ctx()->matrix_state;
   return (int)state->model_view_stack.top;
 }
 
 int GPU_matrix_stack_level_get_projection(void)
 {
-  GPUMatrixState *state = gpu_context_active_matrix_state_get();
+  GPUMatrixState *state = GPU_ctx()->matrix_state;
   return (int)state->projection_stack.top;
 }
 
