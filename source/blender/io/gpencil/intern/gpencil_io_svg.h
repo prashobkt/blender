@@ -61,6 +61,8 @@ class GpencilExporterSVG : public GpencilExporter {
   void export_stroke_path(pugi::xml_node gpl_node, const bool is_fill);
 
   void export_stroke_polyline(pugi::xml_node gpl_node, const bool is_fill);
+
+  void color_string_set(pugi::xml_node gps_node, const bool is_fill);
 };
 
 }  // namespace gpencil
