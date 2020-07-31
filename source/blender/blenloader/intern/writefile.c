@@ -149,6 +149,7 @@
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
 #include "BLI_mempool.h"
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"  // MEM_freeN
 
 #include "BKE_action.h"
@@ -200,6 +201,8 @@
 
 /** Use if we want to store how many bytes have been written to the file. */
 // #define USE_WRITE_DATA_LEN
+
+static CLG_LogRef LOG = {"blenloader.writefile"};
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Write Wrapper's (Abstracts Compression)
@@ -628,7 +631,7 @@ static void writelist_id(WriteData *wd, int filecode, const char *structname, co
 
     const int struct_nr = DNA_struct_find_nr(wd->sdna, structname);
     if (struct_nr == -1) {
-      printf("error: can't find SDNA code <%s>\n", structname);
+      CLOG_ERROR(&LOG, "Can't find SDNA code <%s>", structname);
       return;
     }
 
@@ -2137,10 +2140,7 @@ static void write_customdata(BlendWriter *writer,
         BLO_write_struct_array_by_name(writer, structname, datasize, layer->data);
       }
       else if (!BLO_write_is_undo(writer)) { /* Do not warn on undo. */
-        printf("%s error: layer '%s':%d - can't be written to file\n",
-               __func__,
-               structname,
-               layer->type);
+        CLOG_ERROR(&LOG, "Layer '%s':%d - can't be written to file", structname, layer->type);
       }
     }
   }
@@ -2817,11 +2817,11 @@ static void write_region(BlendWriter *writer, ARegion *region, int spacetype)
           }
         }
         else {
-          printf("regiondata write missing!\n");
+          CLOG_STR_ERROR(&LOG, "regiondata write missing!");
         }
         break;
       default:
-        printf("regiondata write missing!\n");
+        CLOG_STR_ERROR(&LOG, "regiondata write missing!");
     }
   }
 }
@@ -3916,7 +3916,7 @@ static void write_libraries(WriteData *wd, Main *main)
         writestruct(wd, DATA, PackedFile, 1, pf);
         writedata(wd, DATA, pf->size, pf->data);
         if (wd->use_memfile == false) {
-          printf("write packed .blend: %s\n", main->curlib->filepath);
+          CLOG_INFO(&LOG, "write packed .blend: %s", main->curlib->filepath);
         }
       }
 
@@ -3927,12 +3927,11 @@ static void write_libraries(WriteData *wd, Main *main)
               ((id->tag & LIB_TAG_EXTERN) ||
                ((id->tag & LIB_TAG_INDIRECT) && (id->flag & LIB_INDIRECT_WEAK_LINK)))) {
             if (!BKE_idtype_idcode_is_linkable(GS(id->name))) {
-              printf(
-                  "ERROR: write file: data-block '%s' from lib '%s' is not linkable "
-                  "but is flagged as directly linked",
-                  id->name,
-                  main->curlib->filepath_abs);
-              BLI_assert(0);
+              CLOG_FATAL(&LOG,
+                         "Write file: data-block '%s' from lib '%s' is not linkable "
+                         "but is flagged as directly linked",
+                         id->name,
+                         main->curlib->filepath_abs);
             }
             writestruct(wd, ID_LINK_PLACEHOLDER, ID, 1, id);
           }
@@ -4518,7 +4517,7 @@ void BLO_write_struct_array_by_name(BlendWriter *writer,
 {
   int struct_id = BLO_get_struct_id_by_name(writer, struct_name);
   if (UNLIKELY(struct_id == -1)) {
-    printf("error: can't find SDNA code <%s>\n", struct_name);
+    CLOG_ERROR(&LOG, "Can't find SDNA code <%s>", struct_name);
     return;
   }
   BLO_write_struct_array_by_id(writer, struct_id, array_size, data_ptr);
@@ -4560,7 +4559,7 @@ void BLO_write_struct_list_by_name(BlendWriter *writer, const char *struct_name,
 {
   int struct_id = BLO_get_struct_id_by_name(writer, struct_name);
   if (UNLIKELY(struct_id == -1)) {
-    printf("error: can't find SDNA code <%s>\n", struct_name);
+    CLOG_ERROR(&LOG, "Can't find SDNA code <%s>", struct_name);
     return;
   }
   BLO_write_struct_list_by_id(writer, struct_id, list);
