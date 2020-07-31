@@ -110,14 +110,19 @@ bUserMenu **ED_screen_user_menus_find_menu(const bContext *C, uint *r_len, bUser
 bUserMenu **ED_screen_user_menus_find(const bContext *C, uint *r_len, int id)
 {
   bUserMenusGroup *umg = ED_screen_user_menus_group_find(id);
+  if (!umg)
+    return NULL;
   return ED_screen_user_menus_find_menu(C, r_len, umg);
 }
 
-bUserMenu *ED_screen_user_menu_ensure(bContext *C)
+bUserMenu *ED_screen_user_menu_ensure(bContext *C, int id)
 {
+  bUserMenusGroup *umg = ED_screen_user_menus_group_find(id);
+  if (!umg)
+    return NULL;
   SpaceLink *sl = CTX_wm_space_data(C);
   const char *context = screen_menu_context_string(C, sl);
-  return BKE_blender_user_menu_ensure(&U.user_menus, sl->spacetype, context);
+  return BKE_blender_user_menu_ensure(&umg->menus, sl->spacetype, context);
 }
 
 /** \} */

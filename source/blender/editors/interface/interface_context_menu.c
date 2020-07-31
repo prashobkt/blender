@@ -451,7 +451,7 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
 static void popup_user_menu_add_or_replace_func(bContext *C, void *arg1, void *UNUSED(arg2))
 {
   uiBut *but = arg1;
-  bUserMenu *um = ED_screen_user_menu_ensure(C);
+  bUserMenu *um = ED_screen_user_menu_ensure(C, 0);
   U.runtime.is_dirty = true;
   ui_but_user_menu_add(C, but, um);
 }

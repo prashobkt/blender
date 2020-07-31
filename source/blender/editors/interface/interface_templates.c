@@ -7402,3 +7402,83 @@ void uiTemplateFileSelectPath(uiLayout *layout, bContext *C, FileSelectParams *p
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Keymap Template
+ * \{ */
+
+static void template_user_menu_item_properties(uiLayout *layout,
+                                               const char *title,
+                                               PointerRNA *ptr)
+{
+  uiLayout *flow, *box, *row;
+
+  uiItemS(layout);
+
+  if (title) {
+    uiItemL(layout, title, ICON_NONE);
+  }
+
+  flow = uiLayoutColumnFlow(layout, 2, false);
+
+  int i = 0;
+  RNA_STRUCT_BEGIN_SKIP_RNA_TYPE (ptr, prop) {
+    const bool is_set = RNA_property_is_set(ptr, prop);
+    uiBut *but;
+
+    // recurse for nested properties
+    if (RNA_property_type(prop) == PROP_POINTER) {
+      PointerRNA propptr = RNA_property_pointer_get(ptr, prop);
+
+      if (propptr.data && RNA_struct_is_a(propptr.type, &RNA_OperatorProperties)) {
+        const char *name = RNA_property_ui_name(prop);
+        template_user_menu_item_properties(layout, name, &propptr);
+        continue;
+      }
+    }
+
+    box = uiLayoutBox(flow);
+    uiLayoutSetActive(box, is_set);
+    row = uiLayoutRow(box, false);
+
+    // property value
+    uiItemFullR(row, ptr, prop, -1, 0, 0, NULL, ICON_NONE);
+
+    if (is_set) {
+      // unset operator
+      uiBlock *block = uiLayoutGetBlock(row);
+      UI_block_emboss_set(block, UI_EMBOSS_NONE);
+      but = uiDefIconButO(block,
+                          UI_BTYPE_BUT,
+                          "UI_OT_unset_property_button",
+                          WM_OP_EXEC_DEFAULT,
+                          ICON_X,
+                          0,
+                          0,
+                          UI_UNIT_X,
+                          UI_UNIT_Y,
+                          NULL);
+      but->rnapoin = *ptr;
+      but->rnaprop = prop;
+      UI_block_emboss_set(block, UI_EMBOSS);
+    }
+    if (i >= 6)
+      break;
+    i++;
+  }
+  RNA_STRUCT_END;
+}
+
+void uiTemplateUserMenuItemProperties(uiLayout *layout, PointerRNA *ptr)
+{
+  PointerRNA propptr = RNA_pointer_get(ptr, "prop");
+
+  if (propptr.data) {
+    uiBut *but = uiLayoutGetBlock(layout)->buttons.last;
+
+    WM_operator_properties_sanitize(&propptr, false);
+    template_user_menu_item_properties(layout, NULL, &propptr);
+  }
+}
+
+/** \} */

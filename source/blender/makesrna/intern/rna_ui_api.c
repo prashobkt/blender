@@ -1639,6 +1639,12 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_property_ui_text(parm, "Item", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   api_ui_item_common_text(func);
+
+  /* User menu template */
+  func = RNA_def_function(
+      srna, "template_user_menu_item_properties", "uiTemplateUserMenuItemProperties");
+  parm = RNA_def_pointer(func, "item", "um_item_op", "", "");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
 }
 
 #endif

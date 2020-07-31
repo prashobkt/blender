@@ -383,7 +383,7 @@ struct bUserMenu **ED_screen_user_menus_find_menu(const struct bContext *C,
                                                   uint *r_len,
                                                   struct bUserMenusGroup *umg);
 struct bUserMenu **ED_screen_user_menus_find(const struct bContext *C, uint *r_len, int id);
-struct bUserMenu *ED_screen_user_menu_ensure(struct bContext *C);
+struct bUserMenu *ED_screen_user_menu_ensure(struct bContext *C, int id);
 
 struct bUserMenuItem_Op *ED_screen_user_menu_item_find_operator(struct ListBase *lb,
                                                                 const struct wmOperatorType *ot,

@@ -2121,6 +2121,7 @@ void uiTemplateCacheFile(uiLayout *layout,
                          const struct bContext *C,
                          struct PointerRNA *ptr,
                          const char *propname);
+void uiTemplateUserMenuItemProperties(uiLayout *layout, PointerRNA *ptr);
 
 /* Default UIList class name, keep in sync with its declaration in bl_ui/__init__.py */
 #define UI_UL_DEFAULT_CLASS_NAME "UI_UL_list"

@@ -1494,15 +1494,10 @@ static void rna_UserDef_usermenus_item_op_set(PointerRNA *ptr, const char *value
   if (origin_ot == ot || ot == NULL)
     return;
 
-  struct PointerRNA *opptr = MEM_callocN(sizeof(PointerRNA), "uiButOpPtr");
-  WM_operator_properties_create_ptr(opptr, ot);
-  WM_operator_properties_default(opptr, false);
-
-  IDProperty *properties = opptr->data;
-  umi_op->prop = properties;
-
   BLI_strncpy(umi_op->op_idname, value, FILE_MAX);
-  free(opptr);
+  umi_op->prop = NULL;
+  WM_operator_properties_alloc(&(umi_op->ptr), &(umi_op->prop), umi_op->op_idname);
+  WM_operator_properties_sanitize(umi_op->ptr, 1);
 }
 
 static void rna_UserDef_usermenu_draw(UserDef *UNUSED(userdef),

@@ -147,17 +147,18 @@ def draw_item_editor(context, row):
         if (current.type == "OPERATOR"):
             umi_op = current.get_operator()
             col.prop(umi_op, "operator")
+            box = col.box()
+            box.template_user_menu_item_properties(umi_op)
         if (current.type == "MENU"):
             umi_pm = current.get_menu()
             col.prop(umi_pm, "id_name", text="ID name")
     else:
         col.label(text="No item selected.")
 
-def draw_user_menu_preference_expanded(context, layout):
+def draw_user_menu_preference_expanded(context, layout, kmi):
     prefs = context.preferences
     um = prefs.user_menus
     umg = um.active_group
-    kmi = umg.keymap
 
     layout.prop(kmi, "idname", text="")
     layout.prop(kmi.properties, "index", text="")
@@ -174,11 +175,13 @@ def draw_user_menu_preference(context, layout):
 
     row.prop(um, "expanded", text="", emboss=False)
 
-    row.prop(umg, "name")
-    pie_text = "List"
-    if umg.is_pie:
-        pie_text = "Pie"
-    row.prop(umg, "is_pie", text=pie_text, toggle=True)
+    qf = um.menus[0]
+    if umg != qf:
+        row.prop(umg, "name")
+        pie_text = "List"
+        if umg.is_pie:
+            pie_text = "Pie"
+        row.prop(umg, "is_pie", text=pie_text, toggle=True)
 
     row.prop(kmi, "map_type", text="")
     map_type = kmi.map_type
@@ -199,7 +202,7 @@ def draw_user_menu_preference(context, layout):
 
     if um.expanded:
         box = col.box()
-        draw_user_menu_preference_expanded(context=context, layout=box)
+        draw_user_menu_preference_expanded(context=context, layout=box, kmi=kmi)
 
 
 def menu_id(context, umg):
