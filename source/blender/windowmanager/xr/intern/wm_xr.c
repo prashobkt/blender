@@ -105,6 +105,12 @@ bool wm_xr_init(wmWindowManager *wm)
     if (!wm->xr.runtime) {
       wm->xr.runtime = wm_xr_runtime_data_create();
       wm->xr.runtime->context = context;
+
+      unit_qt(wm->xr.runtime->session_state.world_pose.orientation_quat);
+      wm->xr.runtime->session_state.world_pose.position[0] = 0.f;
+      wm->xr.runtime->session_state.world_pose.position[1] = 0.f;
+      wm->xr.runtime->session_state.world_pose.position[2] = 0.f;
+      wm->xr.runtime->session_state.world_scale = 1.f;
     }
   }
   BLI_assert(wm->xr.runtime && wm->xr.runtime->context);

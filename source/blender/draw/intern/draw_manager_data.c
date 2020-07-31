@@ -1544,6 +1544,8 @@ static void draw_frustum_bound_sphere_calc(const BoundBox *bbox,
 
     /* just use median point */
     mid_v3_v3v3(bsphere->center, farpoint, nearpoint);
+
+    mul_m4_v3(viewinv, farpoint);
     bsphere->radius = len_v3v3(bsphere->center, farpoint);
   }
   else if (projmat[2][0] == 0.0f && projmat[2][1] == 0.0f) {
