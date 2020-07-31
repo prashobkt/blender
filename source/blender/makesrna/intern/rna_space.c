@@ -6005,6 +6005,12 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Space Info", "Info space data");
 
   /* reporting display */
+  prop = RNA_def_property(srna, "show_report_debug", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", INFO_RPT_DEBUG);
+  RNA_def_property_ui_text(prop, "Show Debug", "Display debug reporting info");
+  RNA_def_property_ui_icon(prop, ICON_SYSTEM, 0);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+
   prop = RNA_def_property(srna, "show_report_info", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", INFO_RPT_INFO);
   RNA_def_property_ui_text(prop, "Show Info", "Display general information");

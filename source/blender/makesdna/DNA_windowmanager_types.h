@@ -59,7 +59,7 @@ struct wmTimer;
 
 /* keep in sync with 'rna_enum_wm_report_items' in rna_wm.c */
 typedef enum ReportType {
-  /* RPT_DEBUG = (1 << 0), // unused, replaced with logs */
+  RPT_DEBUG = (1 << 0),
   RPT_INFO = (1 << 1),
   RPT_OPERATOR = (1 << 2),
   RPT_PROPERTY = (1 << 3),
@@ -70,7 +70,7 @@ typedef enum ReportType {
   RPT_ERROR_OUT_OF_MEMORY = (1 << 8),
 } ReportType;
 
-//#define RPT_DEBUG_ALL (RPT_DEBUG) // unused
+#define RPT_DEBUG_ALL (RPT_DEBUG)
 #define RPT_INFO_ALL (RPT_INFO)
 #define RPT_OPERATOR_ALL (RPT_OPERATOR)
 #define RPT_PROPERTY_ALL (RPT_PROPERTY)

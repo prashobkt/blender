@@ -500,6 +500,7 @@ const EnumPropertyItem rna_enum_operator_property_tags[] = {
 
 /* flag/enum */
 const EnumPropertyItem rna_enum_wm_report_items[] = {
+    {RPT_DEBUG, "DEBUG", 0, "Debug", ""},
     {RPT_INFO, "INFO", 0, "Info", ""},
     {RPT_OPERATOR, "OPERATOR", 0, "Operator", ""},
     {RPT_PROPERTY, "PROPERTY", 0, "Property", ""},

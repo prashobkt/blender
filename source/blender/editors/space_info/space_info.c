@@ -64,7 +64,7 @@ static SpaceLink *info_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scen
   sinfo = MEM_callocN(sizeof(SpaceInfo), "initinfo");
   sinfo->spacetype = SPACE_INFO;
 
-  sinfo->report_mask_exclude = 0;
+  sinfo->report_mask_exclude = RPT_DEBUG_ALL;
 
   /* header */
   region = MEM_callocN(sizeof(ARegion), "header for info");

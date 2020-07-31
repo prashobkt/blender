@@ -43,6 +43,8 @@ static CLG_LogRef LOG = {"bke.report"};
 const char *BKE_report_type_str(ReportType type)
 {
   switch (type) {
+    case RPT_DEBUG:
+      return TIP_("Debug");
     case RPT_INFO:
       return TIP_("Info");
     case RPT_OPERATOR:
@@ -67,6 +69,8 @@ const char *BKE_report_type_str(ReportType type)
 static enum CLG_Severity report_type_to_severity(ReportType type)
 {
   switch (type) {
+    case RPT_DEBUG:
+      return CLG_SEVERITY_VERBOSE;
     case RPT_INFO:
       return CLG_SEVERITY_INFO;
     case RPT_OPERATOR:

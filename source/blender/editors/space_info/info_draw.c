@@ -109,6 +109,11 @@ static enum eTextViewContext_LineFlag report_line_draw_data(TextViewContext *tvc
     icon_bg_id = TH_INFO_INFO;
     *r_icon = ICON_INFO;
   }
+  else if (report->type & RPT_DEBUG_ALL) {
+    icon_fg_id = TH_INFO_DEBUG_TEXT;
+    icon_bg_id = TH_INFO_DEBUG;
+    *r_icon = ICON_SYSTEM;
+  }
   else if (report->type & RPT_PROPERTY) {
     icon_fg_id = TH_INFO_PROPERTY_TEXT;
     icon_bg_id = TH_INFO_PROPERTY;

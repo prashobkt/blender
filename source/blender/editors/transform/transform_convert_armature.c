@@ -844,8 +844,7 @@ void createTransPose(TransInfo *t)
     }
 
     if (td != (tc->data + tc->data_len)) {
-      // todo convert to log
-//      BKE_report(t->reports, RPT_DEBUG, "Bone selection count error");
+      BKE_report(t->reports, RPT_DEBUG, "Bone selection count error");
     }
   }
 
