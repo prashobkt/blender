@@ -255,17 +255,16 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
     gps_node.append_attribute("fill-opacity").set_value(fill_color[3] * gpl->opacity);
 
     interp_v3_v3v3(col, fill_color, gpl->tintcolor, gpl->tintcolor[3]);
-    linearrgb_to_srgb_v3_v3(col, col);
-    stroke_hex = rgb_to_hex(col);
   }
   else {
     gps_node.append_attribute("fill-opacity")
         .set_value(stroke_color[3] * stroke_average_opacity() * gpl->opacity);
 
     interp_v3_v3v3(col, stroke_color, gpl->tintcolor, gpl->tintcolor[3]);
-    linearrgb_to_srgb_v3_v3(col, col);
-    stroke_hex = rgb_to_hex(col);
   }
+  linearrgb_to_srgb_v3_v3(col, col);
+  stroke_hex = rgb_to_hex(col);
+
   gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
   gps_node.append_attribute("stroke").set_value("none");
 
