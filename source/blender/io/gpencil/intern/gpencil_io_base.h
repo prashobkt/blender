@@ -81,11 +81,11 @@ class GpencilExporter {
   struct MaterialGPencilStyle *gp_style_current_get(void);
   bool gp_style_is_stroke(void);
   bool gp_style_is_fill(void);
+  float stroke_average_opacity(void);
 
   void gpl_current_set(struct bGPDlayer *gpl);
   void gpf_current_set(struct bGPDframe *gpf);
   void gps_current_set(struct Object *ob, struct bGPDstroke *gps, const bool set_colors);
-  void gp_style_current_set(MaterialGPencilStyle *gp_style);
 
  private:
   struct bGPDlayer *gpl_cur;
@@ -94,6 +94,7 @@ class GpencilExporter {
   struct MaterialGPencilStyle *gp_style;
   bool is_stroke;
   bool is_fill;
+  float avg_opacity;
 
   void set_out_filename(char *filename);
 };

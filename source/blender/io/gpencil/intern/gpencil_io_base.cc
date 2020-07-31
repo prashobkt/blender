@@ -294,34 +294,32 @@ void GpencilExporter::gps_current_set(struct Object *ob,
   gps_cur = gps;
   if (set_colors) {
     gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
-    gp_style_current_set(gp_style);
+
+    is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
+                 (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
+    is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
+               (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
 
     /* Stroke color. */
     copy_v4_v4(stroke_color, gp_style->stroke_rgba);
+    avg_opacity = 0;
     /* Get average vertex color and apply. */
     float avg_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
     for (int i = 0; i < gps->totpoints; i++) {
       bGPDspoint *pt = &gps->points[i];
       add_v4_v4(avg_color, pt->vert_color);
+      avg_opacity += pt->strength;
     }
 
     mul_v4_v4fl(avg_color, avg_color, 1.0f / (float)gps->totpoints);
     interp_v3_v3v3(stroke_color, stroke_color, avg_color, avg_color[3]);
+    avg_opacity /= (float)gps->totpoints;
 
     /* Fill color. */
     copy_v4_v4(fill_color, gp_style->fill_rgba);
     /* Apply vertex color for fill. */
     interp_v3_v3v3(fill_color, fill_color, gps->vert_color_fill, gps->vert_color_fill[3]);
   }
-}
-
-void GpencilExporter::gp_style_current_set(MaterialGPencilStyle *igp_style)
-{
-  gp_style = igp_style;
-  is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
-               (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
-  is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
-             (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
 }
 
 struct MaterialGPencilStyle *GpencilExporter::gp_style_current_get(void)
@@ -337,6 +335,11 @@ bool GpencilExporter::gp_style_is_stroke(void)
 bool GpencilExporter::gp_style_is_fill(void)
 {
   return is_fill;
+}
+
+float GpencilExporter::stroke_average_opacity(void)
+{
+  return avg_opacity;
 }
 
 }  // namespace gpencil
