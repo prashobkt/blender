@@ -213,9 +213,16 @@ void GpencilExporterSVG::export_layers(void)
         if (gps->totpoints == 0) {
           continue;
         }
-        gps_current_set(ob, gps);
+        /* Duplicate the stroke to apply any layer thickness change. */
+        bGPDstroke *gps_duplicate = BKE_gpencil_stroke_duplicate(gps, true);
 
-        if (gps->totpoints == 1) {
+        gps_current_set(ob, gps_duplicate);
+
+        /* Apply layer thickness change. */
+        gps_duplicate->thickness += gpl->line_change;
+        CLAMP_MIN(gps_duplicate->thickness, 1.0f);
+
+        if (gps_duplicate->totpoints == 1) {
           export_point(gpl_node);
         }
         else {
@@ -238,12 +245,11 @@ void GpencilExporterSVG::export_layers(void)
             }
             else {
               bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
-                  rv3d, gpd, gpl, gps, 3, diff_mat);
+                  rv3d, gpd, gpl, gps_duplicate, 3, diff_mat);
 
               gps_current_set(ob, gps_perimeter);
 
-              /* Reproject and sample stroke. */
-              // ED_gpencil_project_stroke_to_view(params.C, gpl, gps_perimeter);
+              /* Sample stroke. */
               BKE_gpencil_stroke_sample(gps_perimeter, 0.03f, false);
 
               export_stroke_path(gpl_node, false);
@@ -252,6 +258,8 @@ void GpencilExporterSVG::export_layers(void)
             }
           }
         }
+
+        BKE_gpencil_free_stroke(gps_duplicate);
       }
     }
   }
