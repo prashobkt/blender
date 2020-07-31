@@ -5745,11 +5745,11 @@ static void rna_def_userdef_system(BlenderRNA *brna)
 #  endif
 
   static const EnumPropertyItem clog_log_severity_items[] = {
-      {CLG_SEVERITY_VERBOSE, "LOG_VERBOSE", ICON_PROPERTIES, "Log severity verbose", ""},
-      {CLG_SEVERITY_INFO, "LOG_INFO", ICON_INFO, "Log severity info", ""},
-      {CLG_SEVERITY_WARN, "LOG_WARN", ICON_ERROR, "Log severity warning", ""},
-      {CLG_SEVERITY_ERROR, "LOG_ERROR", ICON_CANCEL, "Log severity error", ""},
-      {CLG_SEVERITY_FATAL, "LOG_FATAL", ICON_X, "Log severity fatal", ""},
+      {CLG_SEVERITY_VERBOSE, "LOG_VERBOSE", ICON_PROPERTIES, "Verbose", ""},
+      {CLG_SEVERITY_INFO, "LOG_INFO", ICON_INFO, "Info", ""},
+      {CLG_SEVERITY_WARN, "LOG_WARN", ICON_ERROR, "Warning", ""},
+      {CLG_SEVERITY_ERROR, "LOG_ERROR", ICON_CANCEL, "Error", ""},
+      {CLG_SEVERITY_FATAL, "LOG_FATAL", ICON_X, "Fatal", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
