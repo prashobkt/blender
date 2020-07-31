@@ -674,6 +674,10 @@ typedef struct GHOST_XrDrawViewInfo {
 
   /** Set if the buffer should be submitted with a srgb transfer applied. */
   char expects_srgb_buffer;
+
+  GHOST_XrPose world_pose;
+  float world_scale;
+
 } GHOST_XrDrawViewInfo;
 
 typedef struct GHOST_XrError {

@@ -131,7 +131,6 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
 
   wm_xr_session_draw_data_update(session_state, settings, draw_view, draw_data);
   wm_xr_draw_matrices_create(
-      wm_xr_session_state_update(settings, draw_data, draw_view, session_state);
       draw_data, draw_view, settings, session_state->world_scale, viewmat, winmat);
 
   apply_world_transform(viewmat, session_state->world_pose, session_state->world_scale);

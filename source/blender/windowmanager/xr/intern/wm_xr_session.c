@@ -245,7 +245,8 @@ void wm_xr_session_draw_data_update(const wmXrSessionState *state,
 void wm_xr_session_state_update(const XrSessionSettings *settings,
                                 const wmXrDrawData *draw_data,
                                 const GHOST_XrDrawViewInfo *draw_view,
-                                wmXrSessionState *state)
+                                wmXrSessionState *state,
+                                float viewmat[4][4])
 {
   GHOST_XrPose viewer_pose;
   const bool use_position_tracking = settings->flag & XR_SESSION_USE_POSITION_TRACKING;
@@ -267,7 +268,10 @@ void wm_xr_session_state_update(const XrSessionSettings *settings,
 
   copy_v3_v3(state->viewer_pose.position, viewer_pose.position);
   copy_qt_qt(state->viewer_pose.orientation_quat, viewer_pose.orientation_quat);
-  wm_xr_pose_to_viewmat(&viewer_pose, state->viewer_viewmat);
+
+  /* Viewmat transform. */
+  memcpy(state->viewer_viewmat, viewmat, 16 * sizeof(float));
+
   /* No idea why, but multiplying by two seems to make it match the VR view more. */
   state->focal_len = 2.0f *
                      fov_to_focallength(draw_view->fov.angle_right - draw_view->fov.angle_left,

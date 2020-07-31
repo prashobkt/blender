@@ -40,6 +40,8 @@
 #include "wm_surface.h"
 #include "wm_xr_intern.h"
 
+#include "BLI_math_rotation.h"
+
 typedef struct {
   wmWindowManager *wm;
 } wmXrErrorHandlerData;
