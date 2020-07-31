@@ -274,10 +274,12 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
     linearrgb_to_srgb_v3_v3(col, col);
     stroke_hex = rgb_to_hex(col);
   }
-  gps_node.append_attribute("stroke").set_value(stroke_hex.c_str());
   gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
 
-  gps_node.append_attribute("stroke-width").set_value("1.0");
+  if (gp_style_is_stroke()) {
+    gps_node.append_attribute("stroke").set_value(stroke_hex.c_str());
+    gps_node.append_attribute("stroke-width").set_value("1.0");
+  }
 
   std::string txt = "M";
   for (int i = 0; i < gps->totpoints; i++) {
@@ -334,8 +336,9 @@ void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const b
 
   color_string_set(gps_node, is_fill);
 
-  float thickness = is_fill ? 1.0f : radius;
-  gps_node.append_attribute("stroke-width").set_value(thickness);
+  if (gp_style_is_stroke() && !is_fill) {
+    gps_node.append_attribute("stroke-width").set_value(radius);
+  }
 
   std::string txt;
   for (int i = 0; i < gps->totpoints; i++) {
@@ -366,12 +369,15 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is
     std::string stroke_hex = rgb_to_hex(col);
     gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
     gps_node.append_attribute("stroke").set_value("none");
+    gps_node.append_attribute("fill-opacity").set_value(fill_color[3] * gpl->opacity);
   }
   else {
     interp_v3_v3v3(col, stroke_color, gpl->tintcolor, gpl->tintcolor[3]);
     linearrgb_to_srgb_v3_v3(col, col);
     std::string stroke_hex = rgb_to_hex(col);
     gps_node.append_attribute("stroke").set_value(stroke_hex.c_str());
+    gps_node.append_attribute("stroke-opacity")
+        .set_value(stroke_color[3] * stroke_average_opacity() * gpl->opacity);
 
     if (gps->totpoints > 1) {
       gps_node.append_attribute("fill").set_value("none");
@@ -379,11 +385,9 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is
     }
     else {
       gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
+      gps_node.append_attribute("fill-opacity").set_value(fill_color[3] * gpl->opacity);
     }
   }
-  gps_node.append_attribute("stroke-opacity")
-      .set_value(stroke_color[3] * stroke_average_opacity() * gpl->opacity);
-  gps_node.append_attribute("fill-opacity").set_value(fill_color[3] * gpl->opacity);
 }
 
 }  // namespace gpencil
