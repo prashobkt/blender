@@ -521,11 +521,13 @@ class QuickLiquid(Operator):
         # change domain type, will also allocate and show particle system for FLIP
         obj.modifiers[-1].domain_settings.domain_type = 'LIQUID'
 
+        liquid_domain = obj.modifiers[-2]
+
         # set color mapping field to show phi grid for liquid
-        obj.modifiers[-2].domain_settings.coba_field = 'PHI'
+        liquid_domain.domain_settings.coba_field = 'PHI'
 
         # set display thickness to a lower value for more detailed display of phi grids
-        obj.modifiers[-2].domain_settings.display_thickness = 0.02
+        liquid_domain.domain_settings.display_thickness = 0.02
 
         # make the domain smooth so it renders nicely
         bpy.ops.object.shade_smooth()

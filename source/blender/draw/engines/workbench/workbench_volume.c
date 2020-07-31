@@ -94,14 +94,15 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
   }
 
   const bool use_slice = (fds->axis_slice_method == AXIS_SLICE_SINGLE);
-  const InterpType cubic_interp = (InterpType)fds->interp_method;
-  const bool show_phi = (fds->coba_field == FLUID_DOMAIN_FIELD_PHI ||
-                         fds->coba_field == FLUID_DOMAIN_FIELD_PHI_IN ||
-                         fds->coba_field == FLUID_DOMAIN_FIELD_PHI_OUT ||
-                         fds->coba_field == FLUID_DOMAIN_FIELD_PHI_OBSTACLE);
+  const WORKBENCH_VolumeInterpType interp_type = (WORKBENCH_VolumeInterpType)fds->interp_method;
+  const bool show_phi = ELEM(fds->coba_field,
+                             FLUID_DOMAIN_FIELD_PHI,
+                             FLUID_DOMAIN_FIELD_PHI_IN,
+                             FLUID_DOMAIN_FIELD_PHI_OUT,
+                             FLUID_DOMAIN_FIELD_PHI_OBSTACLE);
   const bool show_flags = (fds->coba_field == FLUID_DOMAIN_FIELD_FLAGS);
   const bool show_pressure = (fds->coba_field == FLUID_DOMAIN_FIELD_PRESSURE);
-  GPUShader *sh = workbench_shader_volume_get(use_slice, fds->use_coba, cubic_interp, true);
+  GPUShader *sh = workbench_shader_volume_get(use_slice, fds->use_coba, interp_type, true);
 
   if (use_slice) {
     float invviewmat[4][4];
@@ -217,10 +218,11 @@ static void workbench_volume_object_cache_populate(WORKBENCH_Data *vedata,
 
   wpd->volumes_do = true;
   const bool use_slice = (volume->display.axis_slice_method == AXIS_SLICE_SINGLE);
-  const InterpType interpolation_method = (InterpType)volume->display.interpolation_method;
+  const WORKBENCH_VolumeInterpType interp_type = (WORKBENCH_VolumeInterpType)
+                                                     volume->display.interpolation_method;
 
   /* Create shader. */
-  GPUShader *sh = workbench_shader_volume_get(use_slice, false, interpolation_method, false);
+  GPUShader *sh = workbench_shader_volume_get(use_slice, false, interp_type, false);
 
   /* Compute color. */
   float color[3];

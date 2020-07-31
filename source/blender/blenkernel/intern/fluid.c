@@ -4636,7 +4636,7 @@ void BKE_fluid_effector_type_set(Object *UNUSED(object), FluidEffectorSettings *
   settings->type = type;
 }
 
-void BKE_fluid_coba_field_check(FluidDomainSettings *settings)
+void BKE_fluid_coba_field_sanitize(FluidDomainSettings *settings)
 {
   /* Based on the domain type, the coba field is defaulted accordingly if the selected field
    * is unsupported. */
@@ -4960,7 +4960,7 @@ void BKE_fluid_modifier_create_type_data(struct FluidModifierData *fmd)
     /* display options */
     fmd->domain->axis_slice_method = AXIS_SLICE_SINGLE;
     fmd->domain->slice_axis = 0;
-    fmd->domain->interp_method = VOLUME_INTERP_RAW;
+    fmd->domain->interp_method = VOLUME_INTERP_CLOSEST;
     fmd->domain->draw_velocity = false;
     fmd->domain->slice_per_voxel = 5.0f;
     fmd->domain->slice_depth = 0.5f;
@@ -5229,10 +5229,7 @@ void BKE_fluid_modifier_copy(const struct FluidModifierData *fmd,
     tfds->gridlines_color_field = fds->gridlines_color_field;
     tfds->gridlines_lower_bound = fds->gridlines_lower_bound;
     tfds->gridlines_upper_bound = fds->gridlines_upper_bound;
-    tfds->gridlines_range_color[0] = fds->gridlines_range_color[0];
-    tfds->gridlines_range_color[1] = fds->gridlines_range_color[1];
-    tfds->gridlines_range_color[2] = fds->gridlines_range_color[2];
-    tfds->gridlines_range_color[3] = fds->gridlines_range_color[3];
+    copy_v4_v4(tfds->gridlines_range_color, fds->gridlines_range_color);
     tfds->gridlines_cell_filter = fds->gridlines_cell_filter;
 
     /* -- Deprecated / unsed options (below)-- */

@@ -133,13 +133,13 @@ static void swizzle_texture_channel_single(GPUTexture *tex)
   GPU_texture_unbind(tex);
 }
 
-static GPUTexture *create_field_texture(FluidDomainSettings *fds, bool singlePrecision)
+static GPUTexture *create_field_texture(FluidDomainSettings *fds, bool single_precision)
 {
   void *field = NULL;
   eGPUDataFormat data_format = GPU_DATA_FLOAT;
   eGPUTextureFormat texture_format = GPU_R8;
 
-  if (singlePrecision) {
+  if (single_precision) {
     texture_format = GPU_R32F;
   }
 
@@ -386,12 +386,13 @@ void GPU_create_smoke_coba_field(FluidModifierData *fmd)
     if (!fds->tex_field) {
       fds->tex_field = create_field_texture(fds, false);
     }
-    if (!fds->tex_coba && !(fds->coba_field == FLUID_DOMAIN_FIELD_PHI ||
-                            fds->coba_field == FLUID_DOMAIN_FIELD_PHI_IN ||
-                            fds->coba_field == FLUID_DOMAIN_FIELD_PHI_OUT ||
-                            fds->coba_field == FLUID_DOMAIN_FIELD_PHI_OBSTACLE ||
-                            fds->coba_field == FLUID_DOMAIN_FIELD_FLAGS ||
-                            fds->coba_field == FLUID_DOMAIN_FIELD_PRESSURE)) {
+    if (!fds->tex_coba && !ELEM(fds->coba_field,
+                                FLUID_DOMAIN_FIELD_PHI,
+                                FLUID_DOMAIN_FIELD_PHI_IN,
+                                FLUID_DOMAIN_FIELD_PHI_OUT,
+                                FLUID_DOMAIN_FIELD_PHI_OBSTACLE,
+                                FLUID_DOMAIN_FIELD_FLAGS,
+                                FLUID_DOMAIN_FIELD_PRESSURE)) {
       fds->tex_coba = create_transfer_function(TFUNC_COLOR_RAMP, fds->coba);
     }
   }

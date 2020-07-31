@@ -1388,8 +1388,8 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
 
   /* Show gridlines only for slices without interpolation */
   const bool show_gridlines = (fds->show_gridlines &&
-                               (fds->axis_slice_method == AXIS_SLICE_SINGLE) &&
-                               (fds->interp_method == VOLUME_INTERP_RAW ||
+                               fds->axis_slice_method == AXIS_SLICE_SINGLE &&
+                               (fds->interp_method == VOLUME_INTERP_CLOSEST ||
                                 fds->coba_field == FLUID_DOMAIN_FIELD_FLAGS));
 
   const bool color_with_flags = (fds->gridlines_color_field == FLUID_GRIDLINE_COLOR_TYPE_FLAGS);

@@ -670,7 +670,7 @@ static void rna_Fluid_domaintype_set(struct PointerRNA *ptr, int value)
   FluidDomainSettings *settings = (FluidDomainSettings *)ptr->data;
   Object *ob = (Object *)ptr->owner_id;
   BKE_fluid_domain_type_set(ob, settings, value);
-  BKE_fluid_coba_field_check(settings);
+  BKE_fluid_coba_field_sanitize(settings);
 }
 
 static char *rna_FluidDomainSettings_path(PointerRNA *ptr)
@@ -1324,7 +1324,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
        0,
        "Cubic",
        "Smoothed high quality interpolation, but slower"},
-      {VOLUME_INTERP_RAW, "RAW", 0, "Raw", "No interpolation"},
+      {VOLUME_INTERP_CLOSEST, "CLOSEST", 0, "Closest", "No interpolation"},
       {0, NULL, 0, NULL, NULL},
   };
 

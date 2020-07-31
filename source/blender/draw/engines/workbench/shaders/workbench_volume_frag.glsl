@@ -101,19 +101,45 @@ vec4 sample_tricubic(sampler3D ima, vec3 co)
   return color;
 }
 
-vec4 sample_raw(sampler3D ima, vec3 co)
+vec4 sample_closest(sampler3D ima, vec3 co)
 {
   vec3 texture_size = vec3(textureSize(ima, 0).xyz);
   vec3 texel_center = co - mod(co, 1.0 / texture_size) + 0.5 / texture_size;
   return texture(ima, texel_center);
 }
 
+vec4 flag_to_color(uint flag)
+{
+  /* Color mapping for flags */
+  vec4 color = vec4(0.0, 0.0, 0.0, 0.06);
+  /* Cell types: 1 is Fluid, 2 is Obstacle, 4 is Empty, 8 is Inflow, 16 is Outflow */
+  if (bool(flag & uint(1))) {
+    color.rgb += vec3(0.0, 0.0, 0.75); /* blue */
+  }
+  if (bool(flag & uint(2))) {
+    color.rgb += vec3(0.2, 0.2, 0.2); /* dark gray */
+  }
+  if (bool(flag & uint(4))) {
+    color.rgb += vec3(0.25, 0.0, 0.2); /* dark purple */
+  }
+  if (bool(flag & uint(8))) {
+    color.rgb += vec3(0.0, 0.5, 0.0); /* dark green */
+  }
+  if (bool(flag & uint(16))) {
+    color.rgb += vec3(0.9, 0.3, 0.0); /* orange */
+  }
+  if (color.rgb == vec3(0.0)) {
+    color.rgb += vec3(0.5, 0.0, 0.0); /* medium red */
+  }
+  return color;
+}
+
 #ifdef USE_TRICUBIC
 #  define sample_volume_texture sample_tricubic
 #elif defined(USE_TRILINEAR)
 #  define sample_volume_texture sample_trilinear
-#elif defined(USE_RAW)
-#  define sample_volume_texture sample_raw
+#elif defined(USE_CLOSEST)
+#  define sample_volume_texture sample_closest
 #endif
 
 void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
@@ -137,26 +163,7 @@ void volume_properties(vec3 ls_pos, out vec3 scattering, out float extinction)
   else if (showFlags) {
     /* Color mapping for flags */
     uint flag = texture(flagTexture, co).r;
-    tval = vec4(0.0, 0.0, 0.0, 0.06);
-    /* Cell types: 1 is Fluid, 2 is Obstacle, 4 is Empty, 8 is Inflow, 16 is Outflow */
-    if (bool(flag & uint(1))) {
-      tval.rgb += vec3(0.0, 0.0, 0.75); /* blue */
-    }
-    if (bool(flag & uint(2))) {
-      tval.rgb += vec3(0.2, 0.2, 0.2); /* dark gray */
-    }
-    if (bool(flag & uint(4))) {
-      tval.rgb += vec3(0.25, 0.0, 0.2); /* dark purple */
-    }
-    if (bool(flag & uint(8))) {
-      tval.rgb += vec3(0.0, 0.5, 0.0); /* dark green */
-    }
-    if (bool(flag & uint(16))) {
-      tval.rgb += vec3(0.9, 0.3, 0.0); /* orange */
-    }
-    if (tval.rgb == vec3(0.0)) {
-      tval.rgb += vec3(0.5, 0.0, 0.0); /* medium red */
-    }
+    tval = flag_to_color(flag);
   }
   else if (showPressure) {
     /* Color mapping for pressure */

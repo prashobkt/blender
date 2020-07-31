@@ -1265,15 +1265,18 @@ class PHYSICS_PT_viewport_display(PhysicButtonsPanel, Panel):
         col = flow.column(align=False)
         col.prop(domain, "display_thickness")
 
-        if (not (domain.use_color_ramp and domain.coba_field == "FLAGS")):
-            col.prop(domain, "display_interpolation")
+        sub = col.column()
+        sub.prop(domain, "display_interpolation")
+
+        if domain.use_color_ramp and domain.coba_field == "FLAGS":
+            sub.enabled = False
 
         col.prop(domain, "axis_slice_method")
 
         if not do_full_slicing:
             col.prop(domain, "slice_axis")
             col.prop(domain, "slice_depth")
-            if domain.display_interpolation == "RAW" or domain.coba_field == "FLAGS":
+            if domain.display_interpolation == "CLOSEST" or domain.coba_field == "FLAGS":
                 col.prop(domain, "show_gridlines", text="Show Gridlines")
 
         col = col.column()
@@ -1304,12 +1307,12 @@ class PHYSICS_PT_viewport_display_color(PhysicButtonsPanel, Panel):
         col.active = domain.use_color_ramp
         col.prop(domain, "coba_field")
 
-        if (not domain.coba_field == "FLAGS"):
+        if not domain.coba_field == "FLAGS":
             col.prop(domain, "coba_field_scale")
 
         col.use_property_split = False
 
-        if (not (domain.coba_field[:3] == "PHI" or domain.coba_field == "FLAGS" or domain.coba_field == "PRESSURE")):
+        if not (domain.coba_field[:3] == "PHI" or domain.coba_field == "FLAGS" or domain.coba_field == "PRESSURE"):
             col = col.column()
             col.template_color_ramp(domain, "color_ramp", expand=True)
 
@@ -1339,7 +1342,7 @@ class PHYSICS_PT_viewport_display_debug(PhysicButtonsPanel, Panel):
         col.active = domain.show_velocity
         col.prop(domain, "vector_display_type", text="Display As")
         col.prop(domain, "vector_grid_type", text="Grid Type")
-        if ((not domain.use_guide) and domain.vector_grid_type == 'GUIDE_VELOCITY'):
+        if not domain.use_guide and domain.vector_grid_type == 'GUIDE_VELOCITY':
             note = layout.split()
             note.label(icon='INFO', text="Enable Guides first! Defaulting to Fluid Velocity.")
         col.prop(domain, "vector_scale_with_magnitude")
@@ -1352,7 +1355,7 @@ class PHYSICS_PT_viewport_display_advanced(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return (PhysicButtonsPanel.poll_fluid_domain(context) and context.fluid.domain_settings.show_gridlines)
+        return PhysicButtonsPanel.poll_fluid_domain(context) and context.fluid.domain_settings.show_gridlines
 
     def draw(self, context):
         layout = self.layout
@@ -1363,16 +1366,16 @@ class PHYSICS_PT_viewport_display_advanced(PhysicButtonsPanel, Panel):
         col = layout.column()
         col.prop(domain, "gridlines_color_field", text="Color Gridlines")
 
-        if (domain.gridlines_color_field == 'RANGE'):
-            if (domain.use_color_ramp and domain.coba_field != "FLAGS"):
+        if domain.gridlines_color_field == 'RANGE':
+            if domain.use_color_ramp and domain.coba_field != "FLAGS":
                 col.prop(domain, "gridlines_lower_bound")
                 col.prop(domain, "gridlines_upper_bound")
                 col.prop(domain, "gridlines_range_color")
                 col.prop(domain, "gridlines_cell_filter")
             else:
                 note = layout.split()
-                if (not domain.use_color_ramp):
-                    note.label(icon='INFO', text="Enable Color Mapping to use range highlighting!")
+                if not domain.use_color_ramp:
+                    note.label(icon='INFO', text="Enable Grid Display to use range highlighting!")
                 else:
                     note.label(icon='INFO', text="Range highlighting for flags is not available!")
 

@@ -24,6 +24,8 @@ uniform int cellFilter;
 
 flat out vec4 finalColor;
 
+/* Corners for cell outlines. 0.45 is arbitrary. Any value below 0.5 can be used to avoid
+ * overlapping of the outlines. */
 const vec3 corners[4] = vec3[4](vec3(-0.45, 0.45, 0.0),
                                 vec3(0.45, 0.45, 0.0),
                                 vec3(0.45, -0.45, 0.0),
@@ -97,7 +99,7 @@ void main()
   uint flag = texelFetch(flagTexture, cell_co + ivec3(cell_offset), 0).r;
 #endif
 
-#ifdef SHOW_FLAGS 
+#ifdef SHOW_FLAGS
   finalColor = flag_to_color(flag);
 #endif
 
