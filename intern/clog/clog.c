@@ -819,9 +819,10 @@ static CLogContext *CLG_ctx_init(void)
   pthread_mutex_init(&ctx->types_lock, NULL);
 #endif
   ctx->use_color = true;
-  ctx->default_type.severity_level = CLG_SEVERITY_INFO;
+  ctx->default_type.severity_level = CLG_SEVERITY_WARN;
   ctx->default_type.verbosity_level = 0;
   ctx->use_stdout = true;
+  CLG_ctx_type_filter_include(ctx, "*", strlen("*"));
   CLG_ctx_output_update(ctx);
 
   return ctx;
