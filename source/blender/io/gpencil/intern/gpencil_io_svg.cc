@@ -155,7 +155,7 @@ void GpencilExporterSVG::export_layers(void)
         /* Duplicate the stroke to apply any layer thickness change. */
         bGPDstroke *gps_duplicate = BKE_gpencil_stroke_duplicate(gps, true);
 
-        gps_current_set(ob, gps_duplicate);
+        gps_current_set(ob, gps_duplicate, true);
 
         /* Apply layer thickness change. */
         gps_duplicate->thickness += gpl->line_change;
@@ -186,7 +186,7 @@ void GpencilExporterSVG::export_layers(void)
               bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
                   rv3d, gpd, gpl, gps_duplicate, 3, diff_mat);
 
-              gps_current_set(ob, gps_perimeter);
+              gps_current_set(ob, gps_perimeter, false);
 
               /* Sample stroke. */
               BKE_gpencil_stroke_sample(gps_perimeter, 0.03f, false);
@@ -243,25 +243,24 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
 {
   bGPDlayer *gpl = gpl_current_get();
   bGPDstroke *gps = gps_current_get();
-  MaterialGPencilStyle *gp_style = gp_style_current_get();
 
   pugi::xml_node gps_node = gpl_node.append_child("path");
 
   float col[3];
   std::string stroke_hex;
   if (is_fill) {
-    gps_node.append_attribute("stroke-opacity").set_value(gp_style->fill_rgba[3] * gpl->opacity);
-    gps_node.append_attribute("fill-opacity").set_value(gp_style->fill_rgba[3] * gpl->opacity);
+    gps_node.append_attribute("stroke-opacity").set_value(fill_color[3] * gpl->opacity);
+    gps_node.append_attribute("fill-opacity").set_value(fill_color[3] * gpl->opacity);
 
-    interp_v3_v3v3(col, gp_style->fill_rgba, gpl->tintcolor, gpl->tintcolor[3]);
+    interp_v3_v3v3(col, fill_color, gpl->tintcolor, gpl->tintcolor[3]);
     linearrgb_to_srgb_v3_v3(col, col);
     stroke_hex = rgb_to_hex(col);
   }
   else {
-    gps_node.append_attribute("stroke-opacity").set_value(gp_style->stroke_rgba[3] * gpl->opacity);
-    gps_node.append_attribute("fill-opacity").set_value(gp_style->stroke_rgba[3] * gpl->opacity);
+    gps_node.append_attribute("stroke-opacity").set_value(stroke_color[3] * gpl->opacity);
+    gps_node.append_attribute("fill-opacity").set_value(stroke_color[3] * gpl->opacity);
 
-    interp_v3_v3v3(col, gp_style->stroke_rgba, gpl->tintcolor, gpl->tintcolor[3]);
+    interp_v3_v3v3(col, stroke_color, gpl->tintcolor, gpl->tintcolor[3]);
     linearrgb_to_srgb_v3_v3(col, col);
     stroke_hex = rgb_to_hex(col);
   }
@@ -346,21 +345,20 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is
 {
   bGPDlayer *gpl = gpl_current_get();
   bGPDstroke *gps = gps_current_get();
-  MaterialGPencilStyle *gp_style = gp_style_current_get();
 
   const bool round_cap = (gps->caps[0] == GP_STROKE_CAP_ROUND ||
                           gps->caps[1] == GP_STROKE_CAP_ROUND);
 
   float col[3];
   if (is_fill) {
-    interp_v3_v3v3(col, gp_style->fill_rgba, gpl->tintcolor, gpl->tintcolor[3]);
+    interp_v3_v3v3(col, fill_color, gpl->tintcolor, gpl->tintcolor[3]);
     linearrgb_to_srgb_v3_v3(col, col);
     std::string stroke_hex = rgb_to_hex(col);
     gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
     gps_node.append_attribute("stroke").set_value("none");
   }
   else {
-    interp_v3_v3v3(col, gp_style->stroke_rgba, gpl->tintcolor, gpl->tintcolor[3]);
+    interp_v3_v3v3(col, stroke_color, gpl->tintcolor, gpl->tintcolor[3]);
     linearrgb_to_srgb_v3_v3(col, col);
     std::string stroke_hex = rgb_to_hex(col);
     gps_node.append_attribute("stroke").set_value(stroke_hex.c_str());
@@ -373,8 +371,8 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is
       gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
     }
   }
-  gps_node.append_attribute("stroke-opacity").set_value(gp_style->stroke_rgba[3] * gpl->opacity);
-  gps_node.append_attribute("fill-opacity").set_value(gp_style->fill_rgba[3] * gpl->opacity);
+  gps_node.append_attribute("stroke-opacity").set_value(stroke_color[3] * gpl->opacity);
+  gps_node.append_attribute("fill-opacity").set_value(fill_color[3] * gpl->opacity);
 }
 
 }  // namespace gpencil

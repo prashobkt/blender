@@ -73,6 +73,8 @@ class GpencilExporter {
   struct RegionView3D *rv3d;
   int winx, winy;
 
+  float stroke_color[4], fill_color[4];
+
   struct bGPDlayer *gpl_current_get(void);
   struct bGPDframe *gpf_current_get(void);
   struct bGPDstroke *gps_current_get(void);
@@ -82,7 +84,7 @@ class GpencilExporter {
 
   void gpl_current_set(struct bGPDlayer *gpl);
   void gpf_current_set(struct bGPDframe *gpf);
-  void gps_current_set(struct Object *ob, struct bGPDstroke *gps);
+  void gps_current_set(struct Object *ob, struct bGPDstroke *gps, const bool set_colors);
   void gp_style_current_set(MaterialGPencilStyle *gp_style);
 
  private:
