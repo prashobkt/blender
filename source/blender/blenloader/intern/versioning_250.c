@@ -1859,7 +1859,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
             SpaceInfo *sinfo = (SpaceInfo *)sl;
             ARegion *region;
 
-            sinfo->report_mask_exclude = RPT_DEBUG_ALL;
+            sinfo->rpt_mask = RPT_MASK_DEFAULT;
 
             for (region = area->regionbase.first; region; region = region->next) {
               if (region->regiontype == RGN_TYPE_WINDOW) {

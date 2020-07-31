@@ -500,15 +500,16 @@ const EnumPropertyItem rna_enum_operator_property_tags[] = {
 
 /* flag/enum */
 const EnumPropertyItem rna_enum_wm_report_items[] = {
-    {RPT_DEBUG, "DEBUG", 0, "Debug", ""},
-    {RPT_INFO, "INFO", 0, "Info", ""},
-    {RPT_OPERATOR, "OPERATOR", 0, "Operator", ""},
-    {RPT_PROPERTY, "PROPERTY", 0, "Property", ""},
-    {RPT_WARNING, "WARNING", 0, "Warning", ""},
-    {RPT_ERROR, "ERROR", 0, "Error", ""},
-    {RPT_ERROR_INVALID_INPUT, "ERROR_INVALID_INPUT", 0, "Invalid Input", ""},
-    {RPT_ERROR_INVALID_CONTEXT, "ERROR_INVALID_CONTEXT", 0, "Invalid Context", ""},
-    {RPT_ERROR_OUT_OF_MEMORY, "ERROR_OUT_OF_MEMORY", 0, "Out of Memory", ""},
+    {RPT_DEBUG, "DEBUG", ICON_SYSTEM, "Debug", ""},
+    {RPT_INFO, "INFO", ICON_INFO, "Info", ""},
+    {RPT_OPERATOR, "OPERATOR", ICON_CHECKMARK, "Operator", ""},
+    {RPT_OPERATOR_UNREGISTERED, "OPERATOR_UNREGISTERED", ICON_CHECKMARK, "Operator Verbose", ""},
+    {RPT_PROPERTY, "PROPERTY", ICON_PROPERTIES, "Property", ""},
+    {RPT_WARNING, "WARNING", ICON_ERROR, "Warning", ""},
+    {RPT_ERROR, "ERROR", ICON_CANCEL, "Error", ""},
+    {RPT_ERROR_INVALID_INPUT, "ERROR_INVALID_INPUT", ICON_CANCEL, "Error Invalid Input", ""},
+    {RPT_ERROR_INVALID_CONTEXT, "ERROR_INVALID_CONTEXT", ICON_CANCEL, "Error Invalid Context", ""},
+    {RPT_ERROR_OUT_OF_MEMORY, "ERROR_OUT_OF_MEMORY", ICON_CANCEL, "Error Out of Memory", ""},
     {0, NULL, 0, NULL, NULL},
 };
 

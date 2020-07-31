@@ -88,28 +88,7 @@ static void reports_select_all(ReportList *reports,
 
 int info_report_mask(const SpaceInfo *sinfo)
 {
-  int report_mask = 0;
-
-  if (!(sinfo->report_mask_exclude & INFO_RPT_DEBUG)) {
-    report_mask |= RPT_DEBUG_ALL;
-  }
-  if (!(sinfo->report_mask_exclude & INFO_RPT_INFO)) {
-    report_mask |= RPT_INFO_ALL;
-  }
-  if (!(sinfo->report_mask_exclude & INFO_RPT_OP)) {
-    report_mask |= RPT_OPERATOR_ALL;
-  }
-  if (!(sinfo->report_mask_exclude & INFO_RPT_WARN)) {
-    report_mask |= RPT_WARNING_ALL;
-  }
-  if (!(sinfo->report_mask_exclude & INFO_RPT_ERR)) {
-    report_mask |= RPT_ERROR_ALL;
-  }
-  if (!(sinfo->report_mask_exclude & INFO_RPT_PROP)) {
-    report_mask |= RPT_PROPERTY_ALL;
-  }
-
-  return report_mask;
+  return sinfo->rpt_mask;
 }
 
 // TODO, get this working again!
