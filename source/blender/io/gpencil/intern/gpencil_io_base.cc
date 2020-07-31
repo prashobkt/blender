@@ -262,16 +262,6 @@ std::string GpencilExporter::to_lower_string(char *input_text)
   return text;
 }
 
-int GpencilExporter::ob_idx_get(void)
-{
-  return ob_idx_cur;
-}
-
-void GpencilExporter::ob_idx_set(int idx)
-{
-  ob_idx_cur = idx;
-}
-
 struct bGPDlayer *GpencilExporter::gpl_current_get(void)
 {
   return gpl_cur;

@@ -54,7 +54,6 @@ class GpencilExporterSVG : public GpencilExporter {
 
   void create_document_header(void);
   void export_layers(void);
-  void export_style_list(void);
 
   void export_point(pugi::xml_node gpl_node);
 

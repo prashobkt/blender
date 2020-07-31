@@ -79,13 +79,11 @@ class GpencilExporter {
   struct MaterialGPencilStyle *gp_style_current_get(void);
   bool gp_style_is_stroke(void);
   bool gp_style_is_fill(void);
-  int ob_idx_get(void);
 
   void gpl_current_set(struct bGPDlayer *gpl);
   void gpf_current_set(struct bGPDframe *gpf);
   void gps_current_set(struct Object *ob, struct bGPDstroke *gps);
   void gp_style_current_set(MaterialGPencilStyle *gp_style);
-  void ob_idx_set(int idx);
 
  private:
   struct bGPDlayer *gpl_cur;
@@ -94,7 +92,6 @@ class GpencilExporter {
   struct MaterialGPencilStyle *gp_style;
   bool is_stroke;
   bool is_fill;
-  int ob_idx_cur;
 
   void set_out_filename(char *filename);
 };

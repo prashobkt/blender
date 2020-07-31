@@ -75,7 +75,6 @@ bool GpencilExporterSVG::write(std::string actual_frame)
 {
   create_document_header();
 
-  export_style_list();
   export_layers();
 
   /* Add frame to filename. */
@@ -117,73 +116,13 @@ void GpencilExporterSVG::create_document_header(void)
   main_node.append_attribute("viewBox").set_value(viewbox.c_str());
 }
 
-/**
- * Create Styles (materials) list.
- */
-void GpencilExporterSVG::export_style_list(void)
-{
-  main_node.append_child(pugi::node_comment).set_value("List of materials");
-  pugi::xml_node style_node = main_node.append_child("style");
-  style_node.append_attribute("type").set_value("text/css");
-  std::string txt;
-
-  int ob_idx = 1;
-  std::list<Object *>::iterator it;
-  for (it = ob_list.begin(); it != ob_list.end(); ++it) {
-    Object *ob = (Object *)*it;
-    int mat_len = max_ii(1, ob->totcol);
-
-    float col[3];
-
-    for (int i = 0; i < mat_len; i++) {
-      MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, i + 1);
-      gp_style_current_set(gp_style);
-
-      int id = i + 1;
-
-      if (gp_style_is_stroke()) {
-        char out[128];
-        linearrgb_to_srgb_v3_v3(col, gp_style->stroke_rgba);
-        std::string stroke_hex = rgb_to_hex(col);
-        sprintf(out,
-                "\n\t.ob%dstylestroke%d{stroke: %s; fill: %s;}",
-                ob_idx,
-                id,
-                stroke_hex.c_str(),
-                stroke_hex.c_str());
-        txt.append(out);
-      }
-
-      if (gp_style_is_fill()) {
-        char out[128];
-        linearrgb_to_srgb_v3_v3(col, gp_style->fill_rgba);
-        std::string stroke_hex = rgb_to_hex(col);
-        sprintf(out,
-                "\n\t.ob%dstylefill%d{stroke: %s; fill: %s; fill-opacity: %f}",
-                ob_idx,
-                id,
-                stroke_hex.c_str(),
-                stroke_hex.c_str(),
-                gp_style->fill_rgba[3]);
-        txt.append(out);
-      }
-    }
-    ob_idx++;
-  }
-  txt.append("\n\t");
-  style_node.text().set(txt.c_str());
-}
-
 /* Main layer loop. */
 void GpencilExporterSVG::export_layers(void)
 {
-  int ob_idx = 0;
   std::list<Object *>::iterator it;
   for (it = ob_list.begin(); it != ob_list.end(); ++it) {
     Object *ob = (Object *)*it;
 
-    ob_idx++;
-    ob_idx_set(ob_idx);
     /* Use evaluated version to get strokes with modifiers. */
     Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
     bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
@@ -273,26 +212,14 @@ void GpencilExporterSVG::export_layers(void)
  */
 void GpencilExporterSVG::export_point(pugi::xml_node gpl_node)
 {
-  bGPDlayer *gpl = gpl_current_get();
   bGPDstroke *gps = gps_current_get();
-  MaterialGPencilStyle *gp_style = gp_style_current_get();
 
   BLI_assert(gps->totpoints == 1);
   float screen_co[2];
 
   pugi::xml_node gps_node = gpl_node.append_child("circle");
 
-  if (gpl_current_get()->tintcolor[3] == 0.0f) {
-    gps_node.append_attribute("class").set_value(
-        ("ob" + std::to_string(ob_idx_get()) + "stylestroke" + std::to_string(gps->mat_nr + 1))
-            .c_str());
-
-    gps_node.append_attribute("stroke-opacity").set_value(gp_style->stroke_rgba[3] * gpl->opacity);
-    gps_node.append_attribute("fill-opacity").set_value(gp_style->stroke_rgba[3] * gpl->opacity);
-  }
-  else {
-    color_string_set(gps_node, false);
-  }
+  color_string_set(gps_node, false);
 
   bGPDspoint *pt = &gps->points[0];
   gpencil_3d_point_to_screen_space(&pt->x, screen_co);
@@ -320,36 +247,26 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
 
   pugi::xml_node gps_node = gpl_node.append_child("path");
 
-  std::string style_type = (is_fill) ? "fill" : "stroke";
-  /* If the layer doesn't tint, can use the class. */
-  if (gpl_current_get()->tintcolor[3] == 0.0f) {
-    gps_node.append_attribute("class").set_value(("ob" + std::to_string(ob_idx_get()) + "style" +
-                                                  style_type + std::to_string(gps->mat_nr + 1))
-                                                     .c_str());
+  float col[3];
+  std::string stroke_hex;
+  if (is_fill) {
+    gps_node.append_attribute("stroke-opacity").set_value(gp_style->fill_rgba[3] * gpl->opacity);
+    gps_node.append_attribute("fill-opacity").set_value(gp_style->fill_rgba[3] * gpl->opacity);
+
+    interp_v3_v3v3(col, gp_style->fill_rgba, gpl->tintcolor, gpl->tintcolor[3]);
+    linearrgb_to_srgb_v3_v3(col, col);
+    stroke_hex = rgb_to_hex(col);
   }
   else {
-    float col[3];
-    std::string stroke_hex;
-    if (is_fill) {
-      gps_node.append_attribute("stroke-opacity").set_value(gp_style->fill_rgba[3] * gpl->opacity);
-      gps_node.append_attribute("fill-opacity").set_value(gp_style->fill_rgba[3] * gpl->opacity);
+    gps_node.append_attribute("stroke-opacity").set_value(gp_style->stroke_rgba[3] * gpl->opacity);
+    gps_node.append_attribute("fill-opacity").set_value(gp_style->stroke_rgba[3] * gpl->opacity);
 
-      interp_v3_v3v3(col, gp_style->fill_rgba, gpl->tintcolor, gpl->tintcolor[3]);
-      linearrgb_to_srgb_v3_v3(col, col);
-      stroke_hex = rgb_to_hex(col);
-    }
-    else {
-      gps_node.append_attribute("stroke-opacity")
-          .set_value(gp_style->stroke_rgba[3] * gpl->opacity);
-      gps_node.append_attribute("fill-opacity").set_value(gp_style->stroke_rgba[3] * gpl->opacity);
-
-      interp_v3_v3v3(col, gp_style->stroke_rgba, gpl->tintcolor, gpl->tintcolor[3]);
-      linearrgb_to_srgb_v3_v3(col, col);
-      stroke_hex = rgb_to_hex(col);
-    }
-    gps_node.append_attribute("stroke").set_value(stroke_hex.c_str());
-    gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
+    interp_v3_v3v3(col, gp_style->stroke_rgba, gpl->tintcolor, gpl->tintcolor[3]);
+    linearrgb_to_srgb_v3_v3(col, col);
+    stroke_hex = rgb_to_hex(col);
   }
+  gps_node.append_attribute("stroke").set_value(stroke_hex.c_str());
+  gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
 
   gps_node.append_attribute("stroke-width").set_value("1.0");
 
