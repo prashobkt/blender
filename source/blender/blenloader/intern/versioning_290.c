@@ -23,6 +23,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
+#include <BKE_report.h>
 
 #include "DNA_brush_types.h"
 #include "DNA_constraint_types.h"
@@ -45,7 +46,7 @@
 /* Make preferences read-only, use versioning_userdef.c. */
 #define U (*((const UserDef *)&U))
 
-void do_versions_after_linking_290(Main *bmain, ReportList *UNUSED(reports))
+void do_versions_after_linking_290(Main *bmain, ReportList *reports)
 {
   if (!MAIN_VERSION_ATLEAST(bmain, 290, 1)) {
     /* Patch old grease pencil modifiers material filter. */
@@ -198,10 +199,11 @@ void do_versions_after_linking_290(Main *bmain, ReportList *UNUSED(reports))
   {
     LISTBASE_FOREACH (Collection *, collection, &bmain->collections) {
       if (BKE_collection_cycles_fix(bmain, collection)) {
-        printf(
-            "WARNING: Cycle detected in collection '%s', fixed as best as possible.\n"
-            "You may have to reconstruct your View Layers...\n",
-            collection->id.name);
+        BKE_reportf(reports,
+                    RPT_WARNING,
+                    "WARNING: Cycle detected in collection '%s', fixed as best as possible.\n"
+                    "You may have to reconstruct your View Layers...",
+                    collection->id.name);
       }
     }
     /* Keep this block, even when empty. */
