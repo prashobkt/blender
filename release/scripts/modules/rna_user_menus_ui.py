@@ -37,7 +37,7 @@ def _indented_layout(layout, level):
     col = split.column()
     return col
 
-def get_keymap(context, index):
+def get_keymap(context, index, ensure):
     prefs = context.preferences
     um = prefs.user_menus
 
@@ -49,11 +49,12 @@ def get_keymap(context, index):
             if kmi.idname == "wm.call_user_menu":
                 if kmi.properties.index == index:
                     return kmi
-    km = context.window_manager.keyconfigs.user.keymaps['Window']
-    kmi = km.keymap_items.new("wm.call_user_menu",'NONE', 'ANY', shift=False, ctrl=False, alt=False)
-    kmi.properties.index = index
-    kmi.active = True
-    return kmi
+    if ensure:
+        km = context.window_manager.keyconfigs.user.keymaps['Window']
+        kmi = km.keymap_items.new("wm.call_user_menu",'NONE', 'ANY', shift=False, ctrl=False, alt=False)
+        kmi.properties.index = index
+        kmi.active = True
+        return kmi
 
 def draw_button(context, box, item, index):
     prefs = context.preferences
@@ -155,23 +156,49 @@ def draw_item_editor(context, row):
     else:
         col.label(text="No item selected.")
 
-def draw_user_menu_preference_expanded(context, layout, kmi):
+def draw_user_menu_preference_expanded(context, layout, kmi, map_type):
     prefs = context.preferences
     um = prefs.user_menus
-    umg = um.active_group
 
-    layout.prop(kmi, "idname", text="")
-    layout.prop(kmi.properties, "index", text="")
+    box = layout.box()
+    sub = box.row()
 
+    if kmi:
+        if map_type not in {'TEXTINPUT', 'TIMER'}:
+            sub = box.column()
+            subrow = sub.row(align=True)
+
+            if map_type == 'KEYBOARD':
+                subrow.prop(kmi, "type", text="", event=True)
+                subrow.prop(kmi, "value", text="")
+                subrow_repeat = subrow.row(align=True)
+                subrow_repeat.active = kmi.value in {'ANY', 'PRESS'}
+                subrow_repeat.prop(kmi, "repeat", text="Repeat")
+            elif map_type in {'MOUSE', 'NDOF'}:
+                subrow.prop(kmi, "type", text="")
+                subrow.prop(kmi, "value", text="")
+
+            subrow = sub.row()
+            subrow.scale_x = 0.75
+            subrow.prop(kmi, "any", toggle=True)
+            subrow.prop(kmi, "shift", toggle=True)
+            subrow.prop(kmi, "ctrl", toggle=True)
+            subrow.prop(kmi, "alt", toggle=True)
+            subrow.prop(kmi, "oskey", text="Cmd", toggle=True)
+            subrow.prop(kmi, "key_modifier", text="", event=True)
+    else:
+        sub.label(text="No key set")
 
 def draw_user_menu_preference(context, layout):
     prefs = context.preferences
     um = prefs.user_menus
     umg = um.active_group
-    kmi = get_keymap(context, -1)
+    kmi = get_keymap(context, -1, False)
+    map_type = None
 
     col = _indented_layout(layout, 0)
-    row = col.row()
+    box = col.box()
+    row = box.row()
 
     row.prop(um, "expanded", text="", emboss=False)
 
@@ -182,27 +209,26 @@ def draw_user_menu_preference(context, layout):
         if umg.is_pie:
             pie_text = "Pie"
         row.prop(umg, "is_pie", text=pie_text, toggle=True)
-
-    row.prop(kmi, "map_type", text="")
-    map_type = kmi.map_type
-    if map_type == 'KEYBOARD':
-        row.prop(kmi, "type", text="", full_event=True)
-    elif map_type == 'MOUSE':
-        row.prop(kmi, "type", text="", full_event=True)
-    elif map_type == 'NDOF':
-        row.prop(kmi, "type", text="", full_event=True)
-    elif map_type == 'TWEAK':
-        subrow = row.row()
-        subrow.prop(kmi, "type", text="")
-        subrow.prop(kmi, "value", text="")
-    elif map_type == 'TIMER':
-        row.prop(kmi, "type", text="")
-    else:
-        row.label()
+    if kmi:
+        row.prop(kmi, "map_type", text="")
+        map_type = kmi.map_type
+        if map_type == 'KEYBOARD':
+            row.prop(kmi, "type", text="", full_event=True)
+        elif map_type == 'MOUSE':
+            row.prop(kmi, "type", text="", full_event=True)
+        elif map_type == 'NDOF':
+            row.prop(kmi, "type", text="", full_event=True)
+        elif map_type == 'TWEAK':
+            subrow = row.row()
+            subrow.prop(kmi, "type", text="")
+            subrow.prop(kmi, "value", text="")
+        elif map_type == 'TIMER':
+            row.prop(kmi, "type", text="")
+        else:
+            row.label()
 
     if um.expanded:
-        box = col.box()
-        draw_user_menu_preference_expanded(context=context, layout=box, kmi=kmi)
+        draw_user_menu_preference_expanded(context=context, layout=box, kmi=kmi, map_type=map_type)
 
 
 def menu_id(context, umg):

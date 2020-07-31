@@ -7462,7 +7462,7 @@ static void template_user_menu_item_properties(uiLayout *layout,
       but->rnaprop = prop;
       UI_block_emboss_set(block, UI_EMBOSS);
     }
-    if (i >= 6)
+    if (i > 5)
       break;
     i++;
   }

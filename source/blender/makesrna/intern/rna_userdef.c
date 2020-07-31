@@ -1488,15 +1488,25 @@ static void rna_UserDef_usermenus_pie_set(PointerRNA *ptr, int value)
 static void rna_UserDef_usermenus_item_op_set(PointerRNA *ptr, const char *value)
 {
   bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)ptr->data;
+  char idname_bl[OP_MAX_TYPENAME];
 
   wmOperatorType *origin_ot = WM_operatortype_find(umi_op->op_idname, true);
   wmOperatorType *ot = WM_operatortype_find(value, false);
   if (origin_ot == ot || ot == NULL)
     return;
 
-  BLI_strncpy(umi_op->op_idname, value, FILE_MAX);
+  WM_operator_bl_idname(idname_bl, value);
+  WM_operator_py_idname(umi_op->op_idname, value);
+
+  if (LIKELY(umi_op->ptr)) {
+    WM_operator_properties_free(umi_op->ptr);
+    MEM_freeN(umi_op->ptr);
+
+    umi_op->ptr = NULL;
+  }
   umi_op->prop = NULL;
-  WM_operator_properties_alloc(&(umi_op->ptr), &(umi_op->prop), umi_op->op_idname);
+
+  WM_operator_properties_alloc(&(umi_op->ptr), &(umi_op->prop), idname_bl);
   WM_operator_properties_sanitize(umi_op->ptr, 1);
 }
 
