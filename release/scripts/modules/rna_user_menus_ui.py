@@ -153,6 +153,10 @@ def draw_item_editor(context, row):
         if (current.type == "MENU"):
             umi_pm = current.get_menu()
             col.prop(umi_pm, "id_name", text="ID name")
+        if (current.type == "PROPERTY"):
+            umi_prop = current.get_property()
+            col.prop(umi_prop, "id_name")
+            col.prop(umi_prop, "context")
     else:
         col.label(text="No item selected.")
 

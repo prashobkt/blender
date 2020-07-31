@@ -6460,7 +6460,7 @@ static void rna_def_userdef_usermenus_items_subtypes(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "um_item_prop", NULL);
   RNA_def_struct_sdna(srna, "bUserMenuItem_Prop");
   RNA_def_struct_ui_text(
-      srna, "User Menu preperty item", "an item of the user menus that can store a property");
+      srna, "User Menu property item", "an item of the user menus that can store a property");
 
   prop = RNA_def_property(srna, "item", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "item");
@@ -6469,7 +6469,12 @@ static void rna_def_userdef_usermenus_items_subtypes(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "id_name", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "prop_id");
-  RNA_def_property_ui_text(prop, "id name", "the preperty id name");
+  RNA_def_property_ui_text(prop, "id name", "the property id name");
+  RNA_def_struct_name_property(srna, prop);
+
+  prop = RNA_def_property(srna, "context", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "context_data_path");
+  RNA_def_property_ui_text(prop, "context", "the context data path of the property");
   RNA_def_struct_name_property(srna, prop);
 
   /* sub menu item */
