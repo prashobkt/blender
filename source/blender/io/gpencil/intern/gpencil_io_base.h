@@ -45,7 +45,7 @@ namespace gpencil {
 class GpencilExporter {
 
  public:
-  GpencilExporter(const struct GpencilExportParams *params);
+  GpencilExporter(const struct GpencilExportParams *iparams);
   virtual bool write(std::string actual_frame) = 0;
 
   /* Geometry functions. */

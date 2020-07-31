@@ -43,7 +43,7 @@ namespace gpencil {
 class GpencilExporterSVG : public GpencilExporter {
 
  public:
-  GpencilExporterSVG(const struct GpencilExportParams *params);
+  GpencilExporterSVG(const struct GpencilExportParams *iparams);
   bool write(std::string actual_frame);
 
  private:

@@ -59,38 +59,38 @@ namespace io {
 namespace gpencil {
 
 /* Constructor. */
-GpencilExporter::GpencilExporter(const struct GpencilExportParams *params)
+GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
 {
-  this->params.frame_start = params->frame_start;
-  this->params.frame_end = params->frame_end;
-  this->params.obact = params->obact;
-  this->params.region = params->region;
-  this->params.C = params->C;
-  this->params.filename = params->filename;
-  this->params.mode = params->mode;
-  this->params.flag = params->flag;
+  params.frame_start = iparams->frame_start;
+  params.frame_end = iparams->frame_end;
+  params.obact = iparams->obact;
+  params.region = iparams->region;
+  params.C = iparams->C;
+  params.filename = iparams->filename;
+  params.mode = iparams->mode;
+  params.flag = iparams->flag;
 
   /* Easy access data. */
-  this->bmain = CTX_data_main(params->C);
-  this->depsgraph = CTX_data_depsgraph_pointer(params->C);
-  this->rv3d = (RegionView3D *)params->region->regiondata;
-  this->gpd = (bGPdata *)params->obact->data;
+  bmain = CTX_data_main(params.C);
+  depsgraph = CTX_data_depsgraph_pointer(params.C);
+  rv3d = (RegionView3D *)params.region->regiondata;
+  gpd = (bGPdata *)params.obact->data;
 
-  this->winx = params->region->winx;
-  this->winy = params->region->winy;
+  winx = params.region->winx;
+  winy = params.region->winy;
 
   /* Prepare output filename with full path. */
-  set_out_filename(params->filename);
+  set_out_filename(params.filename);
 
   /* Load list of selected objects. */
-  ViewLayer *view_layer = CTX_data_view_layer(params->C);
+  ViewLayer *view_layer = CTX_data_view_layer(params.C);
   LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
     Object *object = base->object;
 
     if (object->type != OB_GPENCIL) {
       continue;
     }
-    if (((params->flag & GP_EXPORT_SELECTED_OBJECTS) == 0) && (params->obact != object)) {
+    if (((params.flag & GP_EXPORT_SELECTED_OBJECTS) == 0) && (params.obact != object)) {
       continue;
     }
 
@@ -304,9 +304,9 @@ void GpencilExporter::gps_current_set(struct Object *ob, struct bGPDstroke *gps)
   gp_style_current_set(gp_style);
 }
 
-void GpencilExporter::gp_style_current_set(MaterialGPencilStyle *gp_style)
+void GpencilExporter::gp_style_current_set(MaterialGPencilStyle *igp_style)
 {
-  this->gp_style = gp_style;
+  gp_style = igp_style;
   is_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) &&
                (gp_style->stroke_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
   is_fill = ((gp_style->flag & GP_MATERIAL_FILL_SHOW) &&

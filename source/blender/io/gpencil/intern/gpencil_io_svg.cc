@@ -63,11 +63,11 @@ namespace io {
 namespace gpencil {
 
 /* Constructor. */
-GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *params)
-    : GpencilExporter(params)
+GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *iparams)
+    : GpencilExporter(iparams)
 {
-  this->invert_axis[0] = false;
-  this->invert_axis[1] = true;
+  invert_axis[0] = false;
+  invert_axis[1] = true;
 }
 
 /* Main write method for SVG format. */
