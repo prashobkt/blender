@@ -29,23 +29,23 @@ from modules.mesh_test import ModifierTest, FluidSpec
 
 def main():
     test = [
-        #
-        ["FluidLiquid", "test", "exp",
-         [FluidSpec('fluid_liquid', 'FLUID', 'DOMAIN', {'domain_type': 'LIQUID', 'use_mesh': True, 'cache_type': 'ALL',
-                                               'cache_frame_end': 20}, 20)]],
+
+        ["DynamicPaint", "test", "exp",
+         [FluidSpec('dynamic_paint', 'DYNAMIC_PAINT', 'CANVAS', {'surface_type': 'WAVE', 'frame_end': 50}, 50)]],
+
     ]
-    fluid_test = ModifierTest(test)
+    dynamic_paint_test = ModifierTest(test)
 
     command = list(sys.argv)
     for i, cmd in enumerate(command):
         if cmd == "--run-all-tests":
-            fluid_test.apply_modifiers = True
-            fluid_test.run_all_tests()
+            dynamic_paint_test.apply_modifiers = True
+            dynamic_paint_test.run_all_tests()
             break
         elif cmd == "--run-test":
-            fluid_test.apply_modifiers = False
+            dynamic_paint_test.apply_modifiers = False
             name = str(command[i + 1])
-            fluid_test.run_test(name)
+            dynamic_paint_test.run_test(name)
             break
 
 
