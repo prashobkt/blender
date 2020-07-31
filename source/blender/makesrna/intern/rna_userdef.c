@@ -1121,6 +1121,11 @@ static void rna_clog_log_filter_get(PointerRNA *ptr, char *value)
   MEM_freeN(dummy_buff);
 }
 
+static int rna_clog_filter_length(PointerRNA *UNUSED(ptr))
+{
+  return 255;  // length of userdef->log_filter
+}
+
 static void rna_clog_log_filter_set(PointerRNA *ptr, const char *value)
 {
   UserDef *userdef = (UserDef *)ptr->data;
@@ -5745,6 +5750,7 @@ static void rna_def_userdef_system(BlenderRNA *brna)
 #  endif
 
   static const EnumPropertyItem clog_log_severity_items[] = {
+      {CLG_SEVERITY_DEBUG, "LOG_DEBUG", ICON_SYSTEM, "Debug", "Only available in debug builds"},
       {CLG_SEVERITY_VERBOSE, "LOG_VERBOSE", ICON_PROPERTIES, "Verbose", ""},
       {CLG_SEVERITY_INFO, "LOG_INFO", ICON_INFO, "Info", ""},
       {CLG_SEVERITY_WARN, "LOG_WARN", ICON_ERROR, "Warning", ""},
@@ -5764,12 +5770,14 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   prop = RNA_def_property(srna, "log_verbosity", PROP_INT, PROP_NONE);
   RNA_def_property_int_funcs(
       prop, "rna_clog_log_verbosity_get", "rna_clog_log_verbosity_set", NULL);
-  RNA_def_property_ui_text(prop, "Log Verbosity", "Log level, when severity is set to verbose");
+  RNA_def_property_ui_text(
+      prop, "Log Verbosity", "Log level, when severity is set to verbose or debug");
 
   prop = RNA_def_property(srna, "log_filter", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "log_filter");
   //  RNA_def_property_update(prop, 0, "rna_Userdef_log_filter_update");
-  RNA_def_property_string_funcs(prop, "rna_clog_log_filter_get", NULL, "rna_clog_log_filter_set");
+  RNA_def_property_string_funcs(
+      prop, "rna_clog_log_filter_get", "rna_clog_filter_length", "rna_clog_log_filter_set");
   RNA_def_property_ui_text(prop, "Log Filter", "Enable loggers based on this glob fliter");
 
   prop = RNA_def_property(srna, "log_use_basename", PROP_BOOLEAN, PROP_NONE);
