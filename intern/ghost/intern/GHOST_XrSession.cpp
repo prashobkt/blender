@@ -22,8 +22,11 @@
 #include <cassert>
 #include <chrono>
 #include <cstdio>
+#include <inttypes.h>
+#include <iterator>
 #include <list>
 #include <sstream>
+#include <tuple>
 
 #include "GHOST_C-api.h"
 
@@ -34,6 +37,37 @@
 #include "GHOST_Xr_intern.h"
 
 #include "GHOST_XrSession.h"
+
+struct GHOST_XrActionCreateInfo {
+  std::string name;
+  std::string localizedName;
+  XrActionType actionType;
+};
+
+struct GHOST_XrSubactionInfo {
+  std::string path;
+  std::string name;
+};
+
+struct GHOST_XrSubactionsCreateInfo {
+  std::string parentName;
+  std::string localizedParentName;
+  XrActionType actionType;
+  std::vector<GHOST_XrSubactionInfo> subactions;
+};
+
+struct OpenXRActionData {
+  /* Has the lifecycle of the session gone past attaching action sets? */
+  bool attached;
+
+  GHOST_XrActionSetMap actionSetMap;
+  GHOST_XrInteractionMap interactionMap;
+
+  XrSpace handSpaces[2];
+  XrPosef handPoses[2];
+
+  XrPosef viewPose;
+};
 
 struct OpenXRSessionData {
   XrSystemId system_id = XR_NULL_SYSTEM_ID;
@@ -46,12 +80,332 @@ struct OpenXRSessionData {
   XrSpace view_space;
   std::vector<XrView> views;
   std::vector<GHOST_XrSwapchain> swapchains;
+
+  OpenXRActionData actionData;
 };
+
+GHOST_XrAction::GHOST_XrAction(XrSession xrSession,
+                               XrInstance xrInstance,
+                               XrAction handle,
+                               XrPath subpath)
+    : xrSession(xrSession), xrInstance(xrInstance), handle(handle), subPath(subpath)
+{
+}
+
+GHOST_XrActionSet::~GHOST_XrActionSet()
+{
+  xrDestroyActionSet(handle);
+}
+
+XrPath stringToPath(XrInstance xrInstance, const std::string &path)
+{
+  XrPath xrPath;
+  CHECK_XR(xrStringToPath(xrInstance, path.c_str(), &xrPath), "Failed to convert string to path.");
+  return xrPath;
+}
+
+void GHOST_XrSession::suggestBinding(XrAction handle,
+                                     const std::string &profile,
+                                     const std::string &binding)
+{
+  assert(!m_oxr->actionData.attached);
+
+  XrPath profilePath = stringToPath(m_context->getInstance(), profile);
+  XrPath bindingPath = stringToPath(m_context->getInstance(), binding);
+
+  m_oxr->actionData.interactionMap[profilePath].push_back(
+      XrActionSuggestedBinding{handle, bindingPath});
+}
+
+/* Once action sets are attached, action sets and bindings are necessarily immutable. */
+/* Loading additional actions requires recreating the session. */
+void GHOST_XrSession::bindAndAttachActions()
+{
+  OpenXRActionData &actionData = m_oxr->actionData;
+  assert(!actionData.attached);
+
+  GHOST_XrActionSetMap &actionSetMap = actionData.actionSetMap;
+  GHOST_XrInteractionMap &interactionMap = actionData.interactionMap;
+
+  for (GHOST_XrInteractionMap::iterator it = interactionMap.begin(); it != interactionMap.end();
+       it++) {
+    XrInteractionProfileSuggestedBinding suggestedBindings = {
+        XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+    suggestedBindings.interactionProfile = it->first;
+    suggestedBindings.countSuggestedBindings = it->second.size();
+    suggestedBindings.suggestedBindings = it->second.data();
+
+    CHECK_XR(xrSuggestInteractionProfileBindings(m_context->getInstance(), &suggestedBindings),
+             "Failed to suggest profile bindings.");
+  }
+
+  /* Push all action sets in the action set hashmap to a vector. */
+  std::vector<XrActionSet> actionSets;
+  for (GHOST_XrActionSetMap::iterator it = actionSetMap.begin(); it != actionSetMap.end(); it++) {
+    actionSets.push_back(it->second.handle);
+  }
+
+  /* Attach the aforementioned action sets to the XrSession. */
+  XrSessionActionSetsAttachInfo attachInfo = {XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
+  attachInfo.countActionSets = actionSets.size();
+  attachInfo.actionSets = actionSets.data();
+
+  CHECK_XR(xrAttachSessionActionSets(m_oxr->session, &attachInfo), "Failed to attach action sets.");
+
+  actionData.attached = true;
+}
+
+GHOST_XrAction &GHOST_XrActionSet::createAction(GHOST_XrActionCreateInfo info)
+{
+  XrActionCreateInfo actionInfo = {XR_TYPE_ACTION_CREATE_INFO};
+  actionInfo.actionType = info.actionType;
+
+  strncpy(actionInfo.actionName, info.name.c_str(), XR_MAX_ACTION_NAME_SIZE);
+  strncpy(actionInfo.localizedActionName,
+          info.localizedName.c_str(),
+          XR_MAX_LOCALIZED_ACTION_NAME_SIZE);
+
+  XrAction action;
+  CHECK_XR(xrCreateAction(handle, &actionInfo, &action), "Action creation failed.");
+
+  actionMap.emplace(std::piecewise_construct,
+                    std::forward_as_tuple(info.name),
+                    std::forward_as_tuple(xrSession, xrInstance, action, XR_NULL_PATH));
+
+  return actionMap.at(info.name);
+}
+
+GHOST_XrAction &GHOST_XrActionSet::createSubactions(GHOST_XrSubactionsCreateInfo info)
+{
+  XrActionCreateInfo actionInfo = {XR_TYPE_ACTION_CREATE_INFO};
+  actionInfo.actionType = info.actionType;
+  actionInfo.countSubactionPaths = info.subactions.size();
+
+  strncpy(actionInfo.actionName, info.parentName.c_str(), XR_MAX_ACTION_NAME_SIZE);
+  strncpy(actionInfo.localizedActionName,
+          info.localizedParentName.c_str(),
+          XR_MAX_LOCALIZED_ACTION_NAME_SIZE);
+
+  /* Create a vector of XrPath handles out of the subaction path strings */
+  std::vector<XrPath> subactionPaths;
+  for (int i = 0; i < info.subactions.size(); i++) {
+    XrPath path = stringToPath(xrInstance, info.subactions[i].path.c_str());
+    subactionPaths.push_back(path);
+  }
+
+  actionInfo.subactionPaths = subactionPaths.data();
+
+  XrAction action;
+  CHECK_XR(xrCreateAction(handle, &actionInfo, &action), "Subactions creation failed.");
+
+  /* Create the parent action GHOST_XrAction (same handle, no subpath). */
+  actionMap.emplace(std::piecewise_construct,
+                    std::forward_as_tuple(info.parentName),
+                    std::forward_as_tuple(xrSession, xrInstance, action, XR_NULL_PATH));
+
+  /* Create a GHOST_XrAction object for each subaction path (duplicate XrAction handle). */
+  for (int i = 0; i < info.subactions.size(); i++) {
+    actionMap.emplace(std::piecewise_construct,
+                      std::forward_as_tuple(info.subactions[i].name),
+                      std::forward_as_tuple(xrSession, xrInstance, action, subactionPaths[i]));
+  }
+
+  return actionMap.at(info.parentName);
+}
+
+GHOST_XrActionSet::GHOST_XrActionSet(XrSession xrSession,
+                                     XrInstance xrInstance,
+                                     XrActionSet handle)
+    : xrSession(xrSession), xrInstance(xrInstance), handle(handle)
+{
+}
+
+GHOST_XrActionSet &GHOST_XrSession::createActionSet(const std::string &name,
+                                                    const std::string &localizedName)
+{
+  XrInstance xrInstance = m_context->getInstance();
+  XrSession xrSession = m_oxr->session;
+
+  XrActionSetCreateInfo actionSetInfo = {XR_TYPE_ACTION_SET_CREATE_INFO};
+  actionSetInfo.priority = 0;
+
+  strncpy(actionSetInfo.actionSetName, name.c_str(), XR_MAX_ACTION_SET_NAME_SIZE);
+  strncpy(actionSetInfo.localizedActionSetName,
+          localizedName.c_str(),
+          XR_MAX_LOCALIZED_ACTION_SET_NAME_SIZE);
+
+  XrActionSet set;
+
+  CHECK_XR(xrCreateActionSet(xrInstance, &actionSetInfo, &set), "Action set creation failed.");
+
+  GHOST_XrActionSetMap &setMap = m_oxr->actionData.actionSetMap;
+
+  setMap.emplace(std::piecewise_construct,
+                 std::forward_as_tuple(name),
+                 std::forward_as_tuple(xrSession, xrInstance, set));
+
+  return setMap.at(name);
+}
+
+// void GHOST_XrSession::applyVibration(const std::string &setID,
+//                                     const std::string &actionID,
+//                                     int64_t duration,
+//                                     float amplitude,
+//                                     float frequency)
+//{
+//  GHOST_XrAction action = get_action(setID, actionID);
+//
+//  XrHapticVibration vibration = {0};
+//  vibration.type = XR_TYPE_HAPTIC_VIBRATION;
+//  vibration.amplitude = amplitude;
+//  vibration.duration = duration;
+//  vibration.frequency = frequency;
+//
+//  if (action.subpath != XR_NULL_PATH) {
+//    CHECK_XR(xrApplyHapticFeedback(
+//                 action.handle, 1, &action.subpath, (const XrHapticBaseHeader *)&vibration),
+//             "Application of haptic feedback failed.");
+//  }
+//
+//  else {
+//    CHECK_XR(xrApplyHapticFeedback(action.handle, 0, NULL, (const XrHapticBaseHeader
+//    *)&vibration),
+//             "Application of haptic feedback failed.");
+//  }
+//}
+
+GHOST_XrActionSet &GHOST_XrSession::getActionSet(const std::string &setID)
+{
+  return m_oxr->actionData.actionSetMap.at(setID);
+}
+
+GHOST_XrAction &GHOST_XrActionSet::getAction(const std::string &actionID)
+{
+  return actionMap.at(actionID);
+}
+
+bool GHOST_XrAction::isPoseActive()
+{
+  XrActionStatePose state;
+
+  XrActionStateGetInfo getActionStateInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+  getActionStateInfo.action = handle;
+  getActionStateInfo.subactionPath = subPath;
+  CHECK_XR(xrGetActionStatePose(xrSession, &getActionStateInfo, &state),
+           "Failed to read action state.");
+
+  return state.isActive;
+}
+
+GHOST_XrActionStateBoolean GHOST_XrAction::getActionStateBoolean()
+{
+  XrActionStateBoolean state;
+
+  XrActionStateGetInfo getActionStateInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+  getActionStateInfo.action = handle;
+  getActionStateInfo.subactionPath = subPath;
+  CHECK_XR(xrGetActionStateBoolean(xrSession, &getActionStateInfo, &state),
+           "Failed to read action state.");
+
+  return GHOST_XrActionStateBoolean{(bool)state.currentState,
+                                    state.lastChangeTime,
+                                    (bool)state.changedSinceLastSync,
+                                    (bool)state.isActive};
+}
+
+GHOST_XrActionStateFloat GHOST_XrAction::getActionStateFloat()
+{
+  XrActionStateFloat state;
+
+  XrActionStateGetInfo getActionStateInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+  getActionStateInfo.action = handle;
+  getActionStateInfo.subactionPath = subPath;
+  CHECK_XR(xrGetActionStateFloat(xrSession, &getActionStateInfo, &state),
+           "Failed to read action state.");
+
+  return GHOST_XrActionStateFloat{state.currentState,
+                                  state.lastChangeTime,
+                                  (bool)state.changedSinceLastSync,
+                                  (bool)state.isActive};
+}
+
+GHOST_XrActionStateVector2f GHOST_XrAction::getActionStateVector2f()
+{
+  XrActionStateVector2f state;
+
+  XrActionStateGetInfo getActionStateInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+  getActionStateInfo.action = handle;
+  getActionStateInfo.subactionPath = subPath;
+  CHECK_XR(xrGetActionStateVector2f(xrSession, &getActionStateInfo, &state),
+           "Failed to read action state.");
+
+  return GHOST_XrActionStateVector2f{state.currentState.x,
+                                     state.currentState.y,
+                                     state.lastChangeTime,
+                                     (bool)state.changedSinceLastSync,
+                                     (bool)state.isActive};
+}
+
+XrSpace GHOST_XrSession::createSpace(GHOST_XrAction &action, XrPosef poseInSpace)
+{
+  XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
+
+  actionSpaceInfo.action = action.handle;
+  actionSpaceInfo.subactionPath = action.subPath;
+  actionSpaceInfo.poseInActionSpace = poseInSpace;
+
+  XrSpace xrSpace;
+
+  CHECK_XR(xrCreateActionSpace(m_oxr->session, &actionSpaceInfo, &xrSpace),
+           "Creation of action space failed.");
+
+  return xrSpace;
+}
+void GHOST_XrSession::initXrActionsDefault()
+{
+  /* Create default action set. */
+  GHOST_XrActionSet &set = createActionSet("default_action_set", "Default Action Set");
+
+  /* Create hand poses. */
+  std::vector<GHOST_XrSubactionInfo> subactions;
+  subactions.push_back(GHOST_XrSubactionInfo{"/user/hand/left", "hand_pose_left"});
+  subactions.push_back(GHOST_XrSubactionInfo{"/user/hand/right", "hand_pose_right"});
+  GHOST_XrSubactionsCreateInfo createInfo = {
+      "hand_pose", "Hand Pose", XR_ACTION_TYPE_POSE_INPUT, subactions};
+
+  GHOST_XrAction &pose_action = set.createSubactions(createInfo);
+
+  suggestBinding(pose_action.handle,
+                 "/interaction_profiles/oculus/touch_controller",
+                 "/user/hand/left/input/grip/pose");
+
+  suggestBinding(pose_action.handle,
+                 "/interaction_profiles/oculus/touch_controller",
+                 "/user/hand/right/input/grip/pose");
+
+  /* Create hand spaces. */
+  XrPosef poseInSpace = {};
+  poseInSpace.orientation.w = 1.f;
+
+  m_oxr->actionData.handSpaces[0] = createSpace(set.getAction("hand_pose_left"), poseInSpace);
+  m_oxr->actionData.handSpaces[1] = createSpace(set.getAction("hand_pose_right"), poseInSpace);
+
+  /* Create haptic actions. */
+  //  subactions.clear();
+  //  subactions.push_back(Ghost_XrSubactionInfo{"/user/hand/left", "haptic_left"});
+  //  subactions.push_back(Ghost_XrSubactionInfo{"/user/hand/right", "haptic_right"});
+  //  GHOST_XrSubactionsCreateInfo createInfo = {
+  //      "haptic_action", "Haptic Action", XR_OUTPUT_ACTION_TYPE_VIBRATION, subactions};
+  //  createAction("default_action_set", &createInfo);
+
+  /* TODO: Figure out when this can be done (e.g. so python addons can suggest bindings */
+  bindAndAttachActions();
+}
 
 struct GHOST_XrDrawInfo {
   XrFrameState frame_state;
 
-  /** Time at frame start to benchmark frame render durations. */
+  /* Time at frame start to benchmark frame render durations. */
   std::chrono::high_resolution_clock::time_point frame_begin_time;
   /* Time previous frames took for rendering (in ms). */
   std::list<double> last_frame_times;
@@ -119,28 +473,6 @@ static void create_reference_spaces(OpenXRSessionData *oxr, const GHOST_XrPose *
   create_info.poseInReferenceSpace.orientation.w = 1.0f;
 
   create_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
-#if 0
-/* TODO
- *
- * Proper reference space set up is not supported yet. We simply hand OpenXR
- * the global space as reference space and apply its pose onto the active
- * camera matrix to get a basic viewing experience going. If there's no active
- * camera with stick to the world origin.
- *
- * Once we have proper reference space set up (i.e. a way to define origin, up-
- * direction and an initial view rotation perpendicular to the up-direction),
- * we can hand OpenXR a proper reference pose/space.
- */
-  create_info.poseInReferenceSpace.position.x = base_pose->position[0];
-  create_info.poseInReferenceSpace.position.y = base_pose->position[1];
-  create_info.poseInReferenceSpace.position.z = base_pose->position[2];
-  create_info.poseInReferenceSpace.orientation.x = base_pose->orientation_quat[1];
-  create_info.poseInReferenceSpace.orientation.y = base_pose->orientation_quat[2];
-  create_info.poseInReferenceSpace.orientation.z = base_pose->orientation_quat[3];
-  create_info.poseInReferenceSpace.orientation.w = base_pose->orientation_quat[0];
-#else
-  (void)base_pose;
-#endif
 
   CHECK_XR(xrCreateReferenceSpace(oxr->session, &create_info, &oxr->reference_space),
            "Failed to create reference space.");
@@ -196,6 +528,8 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
 
   prepareDrawing();
   create_reference_spaces(m_oxr.get(), &begin_info->base_pose);
+
+  initXrActionsDefault();
 }
 
 void GHOST_XrSession::requestEnd()
@@ -275,13 +609,73 @@ void GHOST_XrSession::prepareDrawing()
   m_draw_info = std::unique_ptr<GHOST_XrDrawInfo>(new GHOST_XrDrawInfo());
 }
 
+XrPosef GHOST_XrSession::locateSpace(GHOST_XrSpace space, GHOST_XrTime time)
+{
+  XrSpace xrSpace;
+
+  switch (space) {
+    case GHOST_SPACE_VIEW:
+      xrSpace = m_oxr->view_space;
+      break;
+    case GHOST_SPACE_LEFT_HAND:
+      xrSpace = m_oxr->actionData.handSpaces[0];
+      break;
+    case GHOST_SPACE_RIGHT_HAND:
+      xrSpace = m_oxr->actionData.handSpaces[1];
+      break;
+    default:
+      throw GHOST_XrException("Invalid GHOST_XrSpace passed to locateSpace.");
+  }
+
+  XrSpaceLocation spaceLocation = {XR_TYPE_SPACE_LOCATION};
+  CHECK_XR(xrLocateSpace(xrSpace, m_oxr->reference_space, time, &spaceLocation),
+           "Failed to locate space.");
+  return spaceLocation.pose;
+}
+
+static void copy_openxr_pose_to_ghost_pose(const XrPosef &oxr_pose, GHOST_XrPose &r_ghost_pose)
+{
+  /* Set and convert to Blender coodinate space. */
+  r_ghost_pose.position[0] = oxr_pose.position.x;
+  r_ghost_pose.position[1] = oxr_pose.position.y;
+  r_ghost_pose.position[2] = oxr_pose.position.z;
+  r_ghost_pose.orientation_quat[0] = oxr_pose.orientation.w;
+  r_ghost_pose.orientation_quat[1] = oxr_pose.orientation.x;
+  r_ghost_pose.orientation_quat[2] = oxr_pose.orientation.y;
+  r_ghost_pose.orientation_quat[3] = oxr_pose.orientation.z;
+}
+
+GHOST_XrPose GHOST_XrSession::getSpacePose(GHOST_XrSpace space)
+{
+  XrPosef xrPose;
+
+  switch (space) {
+    case GHOST_SPACE_VIEW:
+      xrPose = m_oxr->actionData.viewPose;
+      break;
+    case GHOST_SPACE_LEFT_HAND:
+      xrPose = m_oxr->actionData.handPoses[0];
+      break;
+    case GHOST_SPACE_RIGHT_HAND:
+      xrPose = m_oxr->actionData.handPoses[1];
+      break;
+    default:
+      throw GHOST_XrException("Invalid GHOST_XrSpace passed to getSpacePose.");
+      break;
+  }
+
+  GHOST_XrPose ghostPose;
+  copy_openxr_pose_to_ghost_pose(xrPose, ghostPose);
+
+  return ghostPose;
+}
+
 void GHOST_XrSession::beginFrameDrawing()
 {
   XrFrameWaitInfo wait_info = {XR_TYPE_FRAME_WAIT_INFO};
   XrFrameBeginInfo begin_info = {XR_TYPE_FRAME_BEGIN_INFO};
   XrFrameState frame_state = {XR_TYPE_FRAME_STATE};
 
-  /* TODO Blocking call. Drawing should run on a separate thread to avoid interferences. */
   CHECK_XR(xrWaitFrame(m_oxr->session, &wait_info, &frame_state),
            "Failed to synchronize frame rates between Blender and the device.");
 
@@ -293,6 +687,32 @@ void GHOST_XrSession::beginFrameDrawing()
   if (m_context->isDebugTimeMode()) {
     m_draw_info->frame_begin_time = std::chrono::high_resolution_clock::now();
   }
+
+  //TODO: MOVE ELSEWHERE (SYNCING ACTIONS)
+  GHOST_XrActionSetMap &actionSetMap = m_oxr->actionData.actionSetMap;
+
+  std::vector<XrActiveActionSet> activeSets;
+
+  for (GHOST_XrActionSetMap::iterator it = actionSetMap.begin(); it != actionSetMap.end(); it++) {
+    XrActiveActionSet activeActionSet{it->second.handle, XR_NULL_PATH};
+    activeSets.push_back(activeActionSet);
+  }
+
+  XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
+  syncInfo.countActiveActionSets = activeSets.size();
+  syncInfo.activeActionSets = activeSets.data();
+
+  CHECK_XR(xrSyncActions(m_oxr->session, &syncInfo), "Failed to sync actions.");
+
+  // TODO: Temporary controller state query, should go elsewhere
+  updateActions(frame_state.predictedDisplayTime);
+}
+
+void GHOST_XrSession::updateActions(XrTime displayTime)
+{
+  m_oxr->actionData.viewPose = locateSpace(GHOST_SPACE_VIEW, displayTime);
+  m_oxr->actionData.handPoses[0] = locateSpace(GHOST_SPACE_LEFT_HAND, displayTime);
+  m_oxr->actionData.handPoses[1] = locateSpace(GHOST_SPACE_RIGHT_HAND, displayTime);
 }
 
 static void print_debug_timings(GHOST_XrDrawInfo *draw_info)
@@ -350,18 +770,6 @@ void GHOST_XrSession::draw(void *draw_customdata)
   }
 
   endFrameDrawing(&layers);
-}
-
-static void copy_openxr_pose_to_ghost_pose(const XrPosef &oxr_pose, GHOST_XrPose &r_ghost_pose)
-{
-  /* Set and convert to Blender coodinate space. */
-  r_ghost_pose.position[0] = oxr_pose.position.x;
-  r_ghost_pose.position[1] = oxr_pose.position.y;
-  r_ghost_pose.position[2] = oxr_pose.position.z;
-  r_ghost_pose.orientation_quat[0] = oxr_pose.orientation.w;
-  r_ghost_pose.orientation_quat[1] = oxr_pose.orientation.x;
-  r_ghost_pose.orientation_quat[2] = oxr_pose.orientation.y;
-  r_ghost_pose.orientation_quat[3] = oxr_pose.orientation.z;
 }
 
 static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawViewInfo &r_info)

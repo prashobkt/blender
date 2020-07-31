@@ -80,6 +80,8 @@ class GHOST_XrContext : public GHOST_IXrContext {
   void setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn) override;
   bool needsUpsideDownDrawing() const override;
 
+  GHOST_XrPose getSpacePose(GHOST_XrSpace space) const override;
+
   void handleSessionStateChange(const XrEventDataSessionStateChanged *lifecycle);
 
   GHOST_TXrOpenXRRuntimeID getOpenXRRuntimeID() const;

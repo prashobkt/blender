@@ -967,4 +967,12 @@ int GHOST_XrSessionNeedsUpsideDownDrawing(const GHOST_XrContextHandle xr_context
   return 0; /* Only reached if exception is thrown. */
 }
 
+GHOST_XrPose GHOST_XrGetSpacePose(const GHOST_XrContextHandle xr_contexthandle, GHOST_XrSpace space)
+{
+  GHOST_IXrContext *xr_context = (GHOST_IXrContext *)xr_contexthandle;
+  GHOST_XR_CAPI_CALL_RET(xr_context->getSpacePose(space), xr_context);
+
+  return GHOST_XrPose{};
+}
+
 #endif

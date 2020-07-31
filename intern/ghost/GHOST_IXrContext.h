@@ -39,6 +39,8 @@ class GHOST_IXrContext {
   virtual void setDrawViewFunc(GHOST_XrDrawViewFn draw_view_fn) = 0;
 
   virtual bool needsUpsideDownDrawing() const = 0;
+
+  virtual GHOST_XrPose getSpacePose(GHOST_XrSpace space) const = 0;
 };
 
 #endif  // __GHOST_IXRCONTEXT_H__
