@@ -1059,6 +1059,7 @@ int GHOST_XrSessionIsRunning(const GHOST_XrContextHandle xr_context);
  */
 int GHOST_XrSessionNeedsUpsideDownDrawing(const GHOST_XrContextHandle xr_context);
 
+GHOST_XrPose GHOST_XrGetSpacePose(const GHOST_XrContextHandle xr_contexthandle, GHOST_XrSpace space);
 /* events */
 /**
  * Invoke handling of all OpenXR events for \a xr_context. Should be called on every main-loop

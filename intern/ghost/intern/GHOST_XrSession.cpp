@@ -22,6 +22,7 @@
 #include <cassert>
 #include <chrono>
 #include <cstdio>
+#include <inttypes.h>
 #include <iterator>
 #include <list>
 #include <sstream>
@@ -146,8 +147,10 @@ void GHOST_XrSession::bindAndAttachActions()
 
   /* Attach the aforementioned action sets to the XrSession. */
   XrSessionActionSetsAttachInfo attachInfo = {XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
-  attachInfo.countActionSets = actionData.actionSetMap.size();
+  attachInfo.countActionSets = actionSets.size();
   attachInfo.actionSets = actionSets.data();
+
+  CHECK_XR(xrAttachSessionActionSets(m_oxr->session, &attachInfo), "Failed to attach action sets.");
 
   actionData.attached = true;
 }
@@ -370,12 +373,13 @@ void GHOST_XrSession::initXrActionsDefault()
   GHOST_XrSubactionsCreateInfo createInfo = {
       "hand_pose", "Hand Pose", XR_ACTION_TYPE_POSE_INPUT, subactions};
 
-  GHOST_XrAction &parent_action = set.createSubactions(createInfo);
+  GHOST_XrAction &pose_action = set.createSubactions(createInfo);
 
-  suggestBinding(parent_action.handle,
+  suggestBinding(pose_action.handle,
                  "/interaction_profiles/oculus/touch_controller",
                  "/user/hand/left/input/grip/pose");
-  suggestBinding(parent_action.handle,
+
+  suggestBinding(pose_action.handle,
                  "/interaction_profiles/oculus/touch_controller",
                  "/user/hand/right/input/grip/pose");
 
@@ -469,28 +473,6 @@ static void create_reference_spaces(OpenXRSessionData *oxr, const GHOST_XrPose *
   create_info.poseInReferenceSpace.orientation.w = 1.0f;
 
   create_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
-#if 0
-/* TODO
- *
- * Proper reference space set up is not supported yet. We simply hand OpenXR
- * the global space as reference space and apply its pose onto the active
- * camera matrix to get a basic viewing experience going. If there's no active
- * camera with stick to the world origin.
- *
- * Once we have proper reference space set up (i.e. a way to define origin, up-
- * direction and an initial view rotation perpendicular to the up-direction),
- * we can hand OpenXR a proper reference pose/space.
- */
-  create_info.poseInReferenceSpace.position.x = base_pose->position[0];
-  create_info.poseInReferenceSpace.position.y = base_pose->position[1];
-  create_info.poseInReferenceSpace.position.z = base_pose->position[2];
-  create_info.poseInReferenceSpace.orientation.x = base_pose->orientation_quat[1];
-  create_info.poseInReferenceSpace.orientation.y = base_pose->orientation_quat[2];
-  create_info.poseInReferenceSpace.orientation.z = base_pose->orientation_quat[3];
-  create_info.poseInReferenceSpace.orientation.w = base_pose->orientation_quat[0];
-#else
-  (void)base_pose;
-#endif
 
   CHECK_XR(xrCreateReferenceSpace(oxr->session, &create_info, &oxr->reference_space),
            "Failed to create reference space.");
@@ -634,15 +616,18 @@ XrPosef GHOST_XrSession::locateSpace(GHOST_XrSpace space, GHOST_XrTime time)
   switch (space) {
     case GHOST_SPACE_VIEW:
       xrSpace = m_oxr->view_space;
+      break;
     case GHOST_SPACE_LEFT_HAND:
       xrSpace = m_oxr->actionData.handSpaces[0];
+      break;
     case GHOST_SPACE_RIGHT_HAND:
       xrSpace = m_oxr->actionData.handSpaces[1];
+      break;
     default:
       throw GHOST_XrException("Invalid GHOST_XrSpace passed to locateSpace.");
   }
 
-  XrSpaceLocation spaceLocation;
+  XrSpaceLocation spaceLocation = {XR_TYPE_SPACE_LOCATION};
   CHECK_XR(xrLocateSpace(xrSpace, m_oxr->reference_space, time, &spaceLocation),
            "Failed to locate space.");
   return spaceLocation.pose;
@@ -667,12 +652,16 @@ GHOST_XrPose GHOST_XrSession::getSpacePose(GHOST_XrSpace space)
   switch (space) {
     case GHOST_SPACE_VIEW:
       xrPose = m_oxr->actionData.viewPose;
+      break;
     case GHOST_SPACE_LEFT_HAND:
       xrPose = m_oxr->actionData.handPoses[0];
+      break;
     case GHOST_SPACE_RIGHT_HAND:
       xrPose = m_oxr->actionData.handPoses[1];
+      break;
     default:
-      throw GHOST_XrException("Invalid GHOST_XrSpace passed to locateSpace.");
+      throw GHOST_XrException("Invalid GHOST_XrSpace passed to getSpacePose.");
+      break;
   }
 
   GHOST_XrPose ghostPose;
@@ -687,7 +676,6 @@ void GHOST_XrSession::beginFrameDrawing()
   XrFrameBeginInfo begin_info = {XR_TYPE_FRAME_BEGIN_INFO};
   XrFrameState frame_state = {XR_TYPE_FRAME_STATE};
 
-  /* TODO Blocking call. Drawing should run on a separate thread to avoid interferences. */
   CHECK_XR(xrWaitFrame(m_oxr->session, &wait_info, &frame_state),
            "Failed to synchronize frame rates between Blender and the device.");
 
@@ -700,15 +688,31 @@ void GHOST_XrSession::beginFrameDrawing()
     m_draw_info->frame_begin_time = std::chrono::high_resolution_clock::now();
   }
 
+  //TODO: MOVE ELSEWHERE (SYNCING ACTIONS)
+  GHOST_XrActionSetMap &actionSetMap = m_oxr->actionData.actionSetMap;
+
+  std::vector<XrActiveActionSet> activeSets;
+
+  for (GHOST_XrActionSetMap::iterator it = actionSetMap.begin(); it != actionSetMap.end(); it++) {
+    XrActiveActionSet activeActionSet{it->second.handle, XR_NULL_PATH};
+    activeSets.push_back(activeActionSet);
+  }
+
+  XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
+  syncInfo.countActiveActionSets = activeSets.size();
+  syncInfo.activeActionSets = activeSets.data();
+
+  CHECK_XR(xrSyncActions(m_oxr->session, &syncInfo), "Failed to sync actions.");
+
   // TODO: Temporary controller state query, should go elsewhere
   updateActions(frame_state.predictedDisplayTime);
 }
 
 void GHOST_XrSession::updateActions(XrTime displayTime)
 {
+  m_oxr->actionData.viewPose = locateSpace(GHOST_SPACE_VIEW, displayTime);
   m_oxr->actionData.handPoses[0] = locateSpace(GHOST_SPACE_LEFT_HAND, displayTime);
   m_oxr->actionData.handPoses[1] = locateSpace(GHOST_SPACE_RIGHT_HAND, displayTime);
-  m_oxr->actionData.viewPose = locateSpace(GHOST_SPACE_VIEW, displayTime);
 }
 
 static void print_debug_timings(GHOST_XrDrawInfo *draw_info)

@@ -30,6 +30,9 @@
 
 #include "GHOST_C-api.h"
 
+#include "GPU_immediate.h"
+#include "GPU_immediate_util.h"
+#include "GPU_matrix.h"
 #include "GPU_viewport.h"
 
 #include "WM_api.h"
@@ -148,6 +151,9 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
                                   surface_data->offscreen,
                                   surface_data->viewport);
 
+  GHOST_XrPose leftPose = GHOST_XrGetSpacePose(xr_data->runtime->context, GHOST_SPACE_LEFT_HAND);
+  GHOST_XrPose rightPose = GHOST_XrGetSpacePose(xr_data->runtime->context, GHOST_SPACE_RIGHT_HAND);
+
   /* The draw-manager uses both GPUOffscreen and GPUViewport to manage frame and texture buffers. A
    * call to GPU_viewport_draw_to_screen() is still needed to get the final result from the
    * viewport buffers composited together and potentially color managed for display on screen.
@@ -157,6 +163,42 @@ void wm_xr_draw_view(const GHOST_XrDrawViewInfo *draw_view, void *customdata)
    * to be submitted to the OpenXR swap-chain. So do not un-bind the off-screen yet! */
 
   GPU_offscreen_bind(surface_data->offscreen, false);
-
   wm_xr_draw_viewport_buffers_to_active_framebuffer(xr_data->runtime, surface_data, draw_view);
+
+  GPU_matrix_push_projection();
+  GPU_matrix_push();
+  GPU_matrix_projection_set(winmat);
+  GPU_matrix_set(viewmat);
+
+  GPU_blend(true);
+
+  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  immUniformColor4fv((const float[4]){1, 1, 1, 0.5f});
+
+  immBegin(GPU_PRIM_LINES, 2);
+
+  immVertex3f(pos, leftPose.position[0], leftPose.position[1], leftPose.position[2]);
+  immVertex3f(pos,
+              leftPose.position[0] + 5.0f,
+              leftPose.position[1] + 5.0f,
+              leftPose.position[2] + 5.0f);
+
+  immEnd();
+
+  immBegin(GPU_PRIM_LINES, 2);
+
+  immVertex3f(pos, rightPose.position[0], rightPose.position[1], rightPose.position[2]);
+  immVertex3f(pos,
+              rightPose.position[0] + 5.0f,
+              rightPose.position[1] + 5.0f,
+              rightPose.position[2] + 5.0f);
+
+  immEnd();
+  
+  immUnbindProgram();
+  GPU_blend(false);
+
+  GPU_matrix_pop();
+  GPU_matrix_pop_projection();
 }
