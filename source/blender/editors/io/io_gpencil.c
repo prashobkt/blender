@@ -316,7 +316,7 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
   ot->check = wm_gpencil_export_check;
 
   WM_operator_properties_filesel(ot,
-                                 FILE_TYPE_FOLDER | FILE_TYPE_OBJECT_IO,
+                                 FILE_TYPE_ARCHIVE | FILE_TYPE_OBJECT_IO,
                                  FILE_BLENDER,
                                  FILE_SAVE,
                                  WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
