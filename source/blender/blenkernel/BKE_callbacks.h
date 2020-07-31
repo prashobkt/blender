@@ -38,6 +38,7 @@ struct PointerRNA;
  *   For handling jobs (which may in turn cause other handlers to be called).
  */
 typedef enum {
+  BKE_CB_EVT_XR_SESSION_PRE,
   BKE_CB_EVT_FRAME_CHANGE_PRE,
   BKE_CB_EVT_FRAME_CHANGE_POST,
   BKE_CB_EVT_RENDER_PRE,
