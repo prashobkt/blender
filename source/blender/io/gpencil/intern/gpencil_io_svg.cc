@@ -165,7 +165,8 @@ void GpencilExporterSVG::export_layers(void)
           export_point(gpl_node);
         }
         else {
-          bool is_normalized = ((params.flag & GP_EXPORT_NORM_THICKNESS) != 0);
+          bool is_normalized = ((params.flag & GP_EXPORT_NORM_THICKNESS) != 0) ||
+                               is_stroke_thickness_constant(gps);
 
           /* Fill. */
           if ((gp_style_is_fill()) && (params.flag & GP_EXPORT_FILL)) {
