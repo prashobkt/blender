@@ -77,11 +77,7 @@
 
 #include "atomic_ops.h"
 
-//#define DEBUG_TIME
-
-#ifdef DEBUG_TIME
-#  include "PIL_time_utildefines.h"
-#endif
+#include "PIL_time_utildefines.h"
 
 static CLG_LogRef LOG = {.identifier = "bke.lib_id"};
 
@@ -1836,16 +1832,12 @@ void BKE_library_make_local(Main *bmain,
 
   GSet *done_ids = BLI_gset_ptr_new(__func__);
 
-#ifdef DEBUG_TIME
-  TIMEIT_START(make_local);
-#endif
+  CLOG_DEBUG_TIMEIT_START(&LOG, 0, make_local);
 
   BKE_main_relations_create(bmain, 0);
 
-#ifdef DEBUG_TIME
-  printf("Pre-compute current ID relations: Done.\n");
-  TIMEIT_VALUE_PRINT(make_local);
-#endif
+  CLOG_DEBUG(&LOG, 0, "Pre-compute current ID relations: Done.");
+  CLOG_DEBUG_TIMEIT_VALUE_PRINT(&LOG, 0, make_local);
 
   /* Step 1: Detect data-blocks to make local. */
   for (int a = set_listbasepointers(bmain, lbarray); a--;) {
@@ -1900,10 +1892,8 @@ void BKE_library_make_local(Main *bmain,
     }
   }
 
-#ifdef DEBUG_TIME
-  printf("Step 1: Detect data-blocks to make local: Done.\n");
-  TIMEIT_VALUE_PRINT(make_local);
-#endif
+  CLOG_DEBUG(&LOG, 0, "Step 1: Detect data-blocks to make local: Done.");
+  CLOG_DEBUG_TIMEIT_VALUE_PRINT(&LOG, 0, make_local);
 
   /* Step 2: Check which data-blocks we can directly make local
    * (because they are only used by already, or future, local data),
@@ -1919,10 +1909,8 @@ void BKE_library_make_local(Main *bmain,
   /* Next step will most likely add new IDs, better to get rid of this mapping now. */
   BKE_main_relations_free(bmain);
 
-#ifdef DEBUG_TIME
-  printf("Step 2: Check which data-blocks we can directly make local: Done.\n");
-  TIMEIT_VALUE_PRINT(make_local);
-#endif
+  CLOG_DEBUG(&LOG, 0, "Step 2: Check which data-blocks we can directly make local: Done.");
+  CLOG_DEBUG_TIMEIT_VALUE_PRINT(&LOG, 0, make_local);
 
   /* Step 3: Make IDs local, either directly (quick and simple), or using generic process,
    * which involves more complex checks and might instead
@@ -1973,10 +1961,8 @@ void BKE_library_make_local(Main *bmain,
     }
   }
 
-#ifdef DEBUG_TIME
-  printf("Step 3: Make IDs local: Done.\n");
-  TIMEIT_VALUE_PRINT(make_local);
-#endif
+  CLOG_DEBUG(&LOG, 0, "Step 3: Make IDs local: Done.");
+  CLOG_DEBUG_TIMEIT_VALUE_PRINT(&LOG, 0, make_local);
 
   /* At this point, we are done with directly made local IDs.
    * Now we have to handle duplicated ones, since their
@@ -2010,10 +1996,8 @@ void BKE_library_make_local(Main *bmain,
     }
   }
 
-#ifdef DEBUG_TIME
-  printf("Step 4: Remap local usages of old (linked) ID to new (local) ID: Done.\n");
-  TIMEIT_VALUE_PRINT(make_local);
-#endif
+  CLOG_DEBUG(&LOG, 0, "Step 4: Remap local usages of old (linked) ID to new (local) ID: Done.");
+  CLOG_DEBUG_TIMEIT_VALUE_PRINT(&LOG, 0, make_local);
 
   /* Step 5: proxy 'remapping' hack. */
   for (LinkNode *it = copied_ids; it; it = it->next) {
@@ -2066,10 +2050,8 @@ void BKE_library_make_local(Main *bmain,
     }
   }
 
-#ifdef DEBUG_TIME
-  printf("Step 5: Proxy 'remapping' hack: Done.\n");
-  TIMEIT_VALUE_PRINT(make_local);
-#endif
+  CLOG_DEBUG(&LOG, 0, "Step 5: Proxy 'remapping' hack: Done.");
+  CLOG_DEBUG_TIMEIT_VALUE_PRINT(&LOG, 0, make_local);
 
   /* This is probably more of a hack than something we should do here, but...
    * Issue is, the whole copying + remapping done in complex cases above may leave pose-channels
@@ -2085,18 +2067,14 @@ void BKE_library_make_local(Main *bmain,
     }
   }
 
-#ifdef DEBUG_TIME
-  printf("Hack: Forcefully rebuild armature object poses: Done.\n");
-  TIMEIT_VALUE_PRINT(make_local);
-#endif
+  CLOG_DEBUG(&LOG, 0, "Hack: Forcefully rebuild armature object poses: Done.");
+  CLOG_DEBUG_TIMEIT_VALUE_PRINT(&LOG, 0, make_local);
 
   BKE_main_id_clear_newpoins(bmain);
   BLI_memarena_free(linklist_mem);
 
-#ifdef DEBUG_TIME
-  printf("Cleanup and finish: Done.\n");
-  TIMEIT_END(make_local);
-#endif
+  CLOG_DEBUG(&LOG, 0, "Cleanup and finish: Done.");
+  CLOG_DEBUG_TIMEIT_END(&LOG, 0, make_local);
 }
 
 /**

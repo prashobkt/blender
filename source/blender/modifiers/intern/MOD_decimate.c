@@ -32,6 +32,7 @@
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "BKE_context.h"
@@ -49,15 +50,13 @@
 #include "bmesh.h"
 #include "bmesh_tools.h"
 
-// #define USE_TIMEIT
-
-#ifdef USE_TIMEIT
-#  include "PIL_time.h"
-#  include "PIL_time_utildefines.h"
-#endif
+#include "PIL_time.h"
+#include "PIL_time_utildefines.h"
 
 #include "MOD_ui_common.h"
 #include "MOD_util.h"
+
+static CLG_LogRef LOG = {"mod.decimate"};
 
 static void initData(ModifierData *md)
 {
@@ -108,9 +107,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   bool calc_face_normal;
   float *vweights = NULL;
 
-#ifdef USE_TIMEIT
-  TIMEIT_START(decim);
-#endif
+  CLOG_DEBUG_TIMEIT_START(&LOG, 1, decim);
 
   /* set up front so we dont show invalid info in the UI */
   updateFaceCount(ctx, dmd, mesh->totpoly);
@@ -217,9 +214,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   BM_mesh_free(bm);
 
-#ifdef USE_TIMEIT
-  TIMEIT_END(decim);
-#endif
+  CLOG_DEBUG_TIMEIT_END(&LOG, 1, decim);
 
   result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
 
