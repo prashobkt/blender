@@ -853,19 +853,20 @@ static void wm_operator_reports(bContext *C, wmOperator *op, int retval, bool ca
   }
 
   if (retval & OPERATOR_FINISHED) {
+    CLOG_STR_INFO_N(WM_LOG_OPERATORS, WM_operator_pystring(C, op, false, true));
+
     if (caller_owns_reports == false) {
       CLOG_STR_VERBOSE_N(WM_LOG_OPERATORS, 1, BKE_reports_sprintfN(op->reports, 0));
     }
 
-    char *buf = WM_operator_pystring(C, op, false, true);
     if (op->type->flag & OPTYPE_REGISTER) {
-      /* Report the python string representation of the operator */
-      BKE_report_format(CTX_wm_reports(C), RPT_OPERATOR, RPT_PYTHON, buf);
+      if (G.background == 0) { /* ends up printing these in the terminal, gets annoying */
+        /* Report the python string representation of the operator */
+        char *buf = WM_operator_pystring(C, op, false, true);
+        BKE_report_format(CTX_wm_reports(C), RPT_OPERATOR, RPT_PYTHON, buf);
+        MEM_freeN(buf);
+      }
     }
-    else {
-      BKE_report_format(CTX_wm_reports(C), RPT_OPERATOR_UNREGISTERED, RPT_PYTHON, buf);
-    }
-    MEM_freeN(buf);
   }
 
   /* Refresh Info Editor with reports immediately, even if op returned OPERATOR_CANCELLED. */
