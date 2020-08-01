@@ -62,6 +62,8 @@ typedef enum eGpencilExportParams_Flag {
   GP_EXPORT_SELECTED_OBJECTS = (1 << 2),
   /* Clip camera area. */
   GP_EXPORT_CLIP_CAMERA = (1 << 3),
+  /* Gray Scale. */
+  GP_EXPORT_GRAY_SCALE = (1 << 4),
 } eGpencilExportParams_Flag;
 
 bool gpencil_io_export(const struct GpencilExportParams *params);

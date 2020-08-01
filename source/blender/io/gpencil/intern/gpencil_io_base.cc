@@ -297,6 +297,17 @@ std::string GpencilExporter::rgb_to_hex(float color[3])
 }
 
 /**
+ * Convert a color to gray scale.
+ */
+void GpencilExporter::rgb_to_grayscale(float color[3])
+{
+  float grayscale = ((0.3f * color[0]) + (0.59f * color[1]) + (0.11f * color[2]));
+  color[0] = grayscale;
+  color[1] = grayscale;
+  color[2] = grayscale;
+}
+
+/**
  * Convert a full string to lowercase
  * \param input_text: Input input_text
  * \return Lower case string

@@ -290,6 +290,10 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
 
     interp_v3_v3v3(col, stroke_color_, gpl->tintcolor, gpl->tintcolor[3]);
   }
+  if ((params_.flag & GP_EXPORT_GRAY_SCALE) != 0) {
+    rgb_to_grayscale(col);
+  }
+
   linearrgb_to_srgb_v3_v3(col, col);
   stroke_hex = rgb_to_hex(col);
 
@@ -380,6 +384,9 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is
   float col[3];
   if (is_fill) {
     interp_v3_v3v3(col, fill_color_, gpl->tintcolor, gpl->tintcolor[3]);
+    if ((params_.flag & GP_EXPORT_GRAY_SCALE) != 0) {
+      rgb_to_grayscale(col);
+    }
     linearrgb_to_srgb_v3_v3(col, col);
     std::string stroke_hex = rgb_to_hex(col);
     gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
@@ -388,6 +395,9 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is
   }
   else {
     interp_v3_v3v3(col, stroke_color_, gpl->tintcolor, gpl->tintcolor[3]);
+    if ((params_.flag & GP_EXPORT_GRAY_SCALE) != 0) {
+      rgb_to_grayscale(col);
+    }
     linearrgb_to_srgb_v3_v3(col, col);
     std::string stroke_hex = rgb_to_hex(col);
     gps_node.append_attribute("stroke").set_value(stroke_hex.c_str());

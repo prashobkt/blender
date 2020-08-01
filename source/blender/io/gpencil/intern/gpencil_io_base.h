@@ -54,6 +54,7 @@ class GpencilExporter {
   float stroke_point_radius_get(struct bGPDstroke *gps);
 
   std::string rgb_to_hex(float color[3]);
+  void rgb_to_grayscale(float color[3]);
   std::string to_lower_string(char *input_text);
 
  protected:

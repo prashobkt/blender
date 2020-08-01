@@ -170,6 +170,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   const bool use_norm_thickness = RNA_boolean_get(op->ptr, "use_normalized_thickness");
   const bool use_selected_objects = RNA_boolean_get(op->ptr, "use_selected_objects");
   const bool use_clip_camera = RNA_boolean_get(op->ptr, "use_clip_camera");
+  const bool use_gray_scale = RNA_boolean_get(op->ptr, "use_gray_scale");
 
   /* Set flags. */
   int flag = 0;
@@ -177,7 +178,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   SET_FLAG_FROM_TEST(flag, use_norm_thickness, GP_EXPORT_NORM_THICKNESS);
   SET_FLAG_FROM_TEST(flag, use_selected_objects, GP_EXPORT_SELECTED_OBJECTS);
   SET_FLAG_FROM_TEST(flag, use_clip_camera, GP_EXPORT_CLIP_CAMERA);
-
+  SET_FLAG_FROM_TEST(flag, use_gray_scale, GP_EXPORT_GRAY_SCALE);
   struct GpencilExportParams params = {
       .C = C,
       .region = region,
@@ -269,6 +270,7 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
   sub = uiLayoutColumn(col, true);
   uiItemR(sub, imfptr, "use_fill", 0, NULL, ICON_NONE);
   uiItemR(sub, imfptr, "use_normalized_thickness", 0, NULL, ICON_NONE);
+  uiItemR(sub, imfptr, "use_gray_scale", 0, NULL, ICON_NONE);
   uiItemR(sub, imfptr, "use_clip_camera", 0, NULL, ICON_NONE);
   uiItemR(sub, imfptr, "stroke_sample", 0, NULL, ICON_NONE);
 }
@@ -387,6 +389,11 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
                   false,
                   "Clip Camera",
                   "Clip drawings to camera size when export in camera view");
+  RNA_def_boolean(ot->srna,
+                  "use_gray_scale",
+                  false,
+                  "Gray Scale",
+                  "Export in gray scale instead of full color");
   RNA_def_float(ot->srna,
                 "stroke_sample",
                 0.03f,
