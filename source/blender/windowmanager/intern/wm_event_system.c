@@ -860,12 +860,10 @@ static void wm_operator_reports(bContext *C, wmOperator *op, int retval, bool ca
     }
 
     if (op->type->flag & OPTYPE_REGISTER) {
-      if (G.background == 0) { /* ends up printing these in the terminal, gets annoying */
-        /* Report the python string representation of the operator */
-        char *buf = WM_operator_pystring(C, op, false, true);
-        BKE_report_format(CTX_wm_reports(C), RPT_OPERATOR, RPT_PYTHON, buf);
-        MEM_freeN(buf);
-      }
+      /* Report the python string representation of the operator */
+      char *buf = WM_operator_pystring(C, op, false, true);
+      BKE_report_format(CTX_wm_reports(C), RPT_OPERATOR, RPT_PYTHON, buf);
+      MEM_freeN(buf);
     }
   }
 
