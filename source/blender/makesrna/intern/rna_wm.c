@@ -503,7 +503,6 @@ const EnumPropertyItem rna_enum_wm_report_items[] = {
     {RPT_DEBUG, "DEBUG", ICON_SYSTEM, "Debug", ""},
     {RPT_INFO, "INFO", ICON_INFO, "Info", ""},
     {RPT_OPERATOR, "OPERATOR", ICON_CHECKMARK, "Operator", ""},
-    {RPT_OPERATOR_UNREGISTERED, "OPERATOR_UNREGISTERED", ICON_CHECKMARK, "Operator Verbose", ""},
     {RPT_PROPERTY, "PROPERTY", ICON_PROPERTIES, "Property", ""},
     {RPT_WARNING, "WARNING", ICON_ERROR, "Warning", ""},
     {RPT_ERROR, "ERROR", ICON_CANCEL, "Error", ""},
