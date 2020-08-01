@@ -220,7 +220,7 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
       switch (severity) { \
         case CLG_SEVERITY_DEBUG: \
         case CLG_SEVERITY_VERBOSE: \
-          if (verbose_level < _lg_ty->verbosity_level) { \
+          if (verbose_level > _lg_ty->verbosity_level) { \
             break; \
           } \
           __attribute__((fallthrough)); \
@@ -243,7 +243,7 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
       switch (severity) { \
         case CLG_SEVERITY_DEBUG: \
         case CLG_SEVERITY_VERBOSE: \
-          if (verbose_level < _lg_ty->verbosity_level) { \
+          if (verbose_level > _lg_ty->verbosity_level) { \
             break; \
           } \
           __attribute__((fallthrough)); \
@@ -262,7 +262,7 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
       switch (severity) { \
         case CLG_SEVERITY_DEBUG: \
         case CLG_SEVERITY_VERBOSE: \
-          if (verbose_level < _lg_ty->verbosity_level) { \
+          if (verbose_level > _lg_ty->verbosity_level) { \
             break; \
           } \
           __attribute__((fallthrough)); \
@@ -294,10 +294,10 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #define CLOG_FATAL(clg_ref, ...) CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_FATAL, 0, __VA_ARGS__)
 
 #ifdef DEBUG
-#  define CLOG_STR_DEBUG(clg_ref, level, ...) \
-    CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_DEBUG, level, __VA_ARGS__)
+#  define CLOG_STR_DEBUG(clg_ref, level, str) \
+    CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_DEBUG, level, str)
 #else
-#  define CLOG_STR_DEBUG(clg_ref, level, ...) \
+#  define CLOG_STR_DEBUG(clg_ref, level, str) \
     do { \
     } while (false)
 #endif  // DEBUG
@@ -310,10 +310,10 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 
 /* Allocated string which is immediately freed. */
 #ifdef DEBUG
-#  define CLOG_STR_DEBUG_N(clg_ref, level, ...) \
-    CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_DEBUG, level, __VA_ARGS__)
+#  define CLOG_STR_DEBUG_N(clg_ref, level, str) \
+    CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_DEBUG, level, str)
 #else
-#  define CLOG_STR_DEBUG_N(clg_ref, level, ...) \
+#  define CLOG_STR_DEBUG_N(clg_ref, level, str) \
     do { \
     } while (false)
 #endif  // DEBUG
