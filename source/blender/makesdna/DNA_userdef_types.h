@@ -892,7 +892,15 @@ typedef struct UserDef {
 
   UserDef_Experimental experimental;
 
+  /* keep roughly in sync with CLogContext */
   char log_filter[256];
+  int log_severity;
+  int log_verbosity;
+  char use_basename;
+  char use_timestamp;
+  char use_console_output;
+  char _pad[5];
+  char output_file_path[256];
 
   /** Runtime data (keep last). */
   UserDef_Runtime runtime;
