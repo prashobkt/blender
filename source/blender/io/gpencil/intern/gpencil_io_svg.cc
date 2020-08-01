@@ -18,7 +18,6 @@
  * \ingroup bgpencil
  */
 #include <iostream>
-#include <iterator>
 #include <list>
 #include <string>
 
@@ -58,9 +57,7 @@
 
 #include "pugixml.hpp"
 
-namespace blender {
-namespace io {
-namespace gpencil {
+namespace blender ::io ::gpencil {
 
 /* Constructor. */
 GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *iparams)
@@ -119,11 +116,10 @@ void GpencilExporterSVG::create_document_header(void)
 /* Main layer loop. */
 void GpencilExporterSVG::export_layers(void)
 {
-  std::list<Object *>::iterator it;
-  for (it = ob_list.begin(); it != ob_list.end(); ++it) {
-    Object *ob = (Object *)*it;
+  for (ObjectZ &obz : ob_list) {
+    Object *ob = obz.ob;
     pugi::xml_node ob_node = main_node.append_child("g");
-    ob_node.append_attribute("id").set_value(ob->id.name + 2);
+    ob_node.append_attribute("zdepth").set_value(ob->id.name + 2);
 
     /* Use evaluated version to get strokes with modifiers. */
     Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
@@ -140,7 +136,7 @@ void GpencilExporterSVG::export_layers(void)
       txt.append(gpl->info);
       main_node.append_child(pugi::node_comment).set_value(txt.c_str());
       pugi::xml_node gpl_node = ob_node.append_child("g");
-      gpl_node.append_attribute("id").set_value(gpl->info);
+      gpl_node.append_attribute("zdepth").set_value(gpl->info);
 
       bGPDframe *gpf = gpl->actframe;
       if (gpf == NULL) {
@@ -167,11 +163,11 @@ void GpencilExporterSVG::export_layers(void)
           export_point(gpl_node);
         }
         else {
-          bool is_normalized = ((params.flag & GP_EXPORT_NORM_THICKNESS) != 0) ||
+          bool is_normalized = ((params_.flag & GP_EXPORT_NORM_THICKNESS) != 0) ||
                                is_stroke_thickness_constant(gps);
 
           /* Fill. */
-          if ((gp_style_is_fill()) && (params.flag & GP_EXPORT_FILL)) {
+          if ((gp_style_is_fill()) && (params_.flag & GP_EXPORT_FILL)) {
             if (is_normalized) {
               export_stroke_polyline(gpl_node, true);
             }
@@ -377,6 +373,4 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is
   }
 }
 
-}  // namespace gpencil
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::gpencil

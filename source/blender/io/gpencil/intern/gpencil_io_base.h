@@ -38,9 +38,7 @@ struct bGPDframe;
 struct bGPDstroke;
 struct MaterialGPencilStyle;
 
-namespace blender {
-namespace io {
-namespace gpencil {
+namespace blender::io::gpencil {
 
 class GpencilExporter {
 
@@ -61,10 +59,18 @@ class GpencilExporter {
  protected:
   bool invert_axis[2];
   float diff_mat[4][4];
-  GpencilExportParams params;
+  GpencilExportParams params_;
   char out_filename[FILE_MAX];
 
-  std::list<Object *> ob_list;
+  struct ObjectZ {
+    float zdepth;
+    struct Object *ob;
+    // ObjectZ(int izdepth, Object *iob) : zdepth(izdepth), ob(iob)
+    //{
+    //}
+  };
+
+  std::list<ObjectZ> ob_list;
 
   /* Data for easy access. */
   struct Depsgraph *depsgraph;
@@ -99,6 +105,4 @@ class GpencilExporter {
   void set_out_filename(char *filename);
 };
 
-}  // namespace gpencil
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::gpencil

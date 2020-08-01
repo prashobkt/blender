@@ -19,7 +19,6 @@
  */
 #include <algorithm>
 #include <cctype>
-
 #include <iostream>
 #include <string>
 
@@ -54,51 +53,61 @@
 
 #include "pugixml.hpp"
 
-namespace blender {
-namespace io {
-namespace gpencil {
+namespace blender::io::gpencil {
 
 /* Constructor. */
 GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
 {
-  params.frame_start = iparams->frame_start;
-  params.frame_end = iparams->frame_end;
-  params.obact = iparams->obact;
-  params.region = iparams->region;
-  params.C = iparams->C;
-  params.filename = iparams->filename;
-  params.mode = iparams->mode;
-  params.flag = iparams->flag;
+  params_.frame_start = iparams->frame_start;
+  params_.frame_end = iparams->frame_end;
+  params_.obact = iparams->obact;
+  params_.region = iparams->region;
+  params_.C = iparams->C;
+  params_.filename = iparams->filename;
+  params_.mode = iparams->mode;
+  params_.flag = iparams->flag;
 
   /* Easy access data. */
-  bmain = CTX_data_main(params.C);
-  depsgraph = CTX_data_depsgraph_pointer(params.C);
-  rv3d = (RegionView3D *)params.region->regiondata;
-  gpd = (bGPdata *)params.obact->data;
+  bmain = CTX_data_main(params_.C);
+  depsgraph = CTX_data_depsgraph_pointer(params_.C);
+  rv3d = (RegionView3D *)params_.region->regiondata;
+  gpd = (bGPdata *)params_.obact->data;
 
-  winx = params.region->winx;
-  winy = params.region->winy;
+  winx = params_.region->winx;
+  winy = params_.region->winy;
 
   /* Prepare output filename with full path. */
-  set_out_filename(params.filename);
+  set_out_filename(params_.filename);
 
   /* Load list of selected objects. */
-  ViewLayer *view_layer = CTX_data_view_layer(params.C);
+  float camera_z_axis[3];
+  copy_v3_v3(camera_z_axis, rv3d->viewinv[2]);
+
+  ViewLayer *view_layer = CTX_data_view_layer(params_.C);
   LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
     Object *object = base->object;
 
     if (object->type != OB_GPENCIL) {
       continue;
     }
-    if (((params.flag & GP_EXPORT_SELECTED_OBJECTS) == 0) && (params.obact != object)) {
+    if (((params_.flag & GP_EXPORT_SELECTED_OBJECTS) == 0) && (params_.obact != object)) {
       continue;
     }
 
     if (base->flag & BASE_SELECTED) {
-      ob_list.push_back(object);
+      /* Save zdepth from view to sort from back to front. */
+      float camera_z = dot_v3v3(camera_z_axis, object->obmat[3]);
+      ObjectZ obz = {camera_z, object};
+      // obz.zdepth = camera_z;
+      // obz.ob = object;
+      ob_list.push_back(obz);
     }
   }
+
+  /* Sort list of objects from point of view. */
+  ob_list.sort([](const ObjectZ &obz1, const ObjectZ &obz2) { return obz1.zdepth < obz2.zdepth; });
 }
+
 /**
  * Set output file input_text full path.
  * \param C: Context.
@@ -122,7 +131,7 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(const float co[3], float 
   mul_v3_m4v3(parent_co, diff_mat, co);
   float screen_co[2];
   eV3DProjTest test = (eV3DProjTest)(V3D_PROJ_RET_OK);
-  if (ED_view3d_project_float_global(params.region, parent_co, screen_co, test) ==
+  if (ED_view3d_project_float_global(params_.region, parent_co, screen_co, test) ==
       V3D_PROJ_RET_OK) {
     if (!ELEM(V2D_IS_CLIPPED, screen_co[0], screen_co[1])) {
       copy_v2_v2(r_co, screen_co);
@@ -270,7 +279,7 @@ struct bGPDlayer *GpencilExporter::gpl_current_get(void)
 void GpencilExporter::gpl_current_set(struct bGPDlayer *gpl)
 {
   gpl_cur = gpl;
-  BKE_gpencil_parent_matrix_get(depsgraph, params.obact, gpl, diff_mat);
+  BKE_gpencil_parent_matrix_get(depsgraph, params_.obact, gpl, diff_mat);
 }
 
 struct bGPDframe *GpencilExporter::gpf_current_get(void)
@@ -342,6 +351,4 @@ float GpencilExporter::stroke_average_opacity(void)
   return avg_opacity;
 }
 
-}  // namespace gpencil
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::gpencil

@@ -36,9 +36,7 @@ struct MaterialGPencilStyle;
 
 #define SVG_EXPORTER_VERSION " Generator: Blender, SVG Export for Grease Pencil v1.0 "
 
-namespace blender {
-namespace io {
-namespace gpencil {
+namespace blender::io::gpencil {
 
 class GpencilExporterSVG : public GpencilExporter {
 
@@ -64,6 +62,4 @@ class GpencilExporterSVG : public GpencilExporter {
   void color_string_set(pugi::xml_node gps_node, const bool is_fill);
 };
 
-}  // namespace gpencil
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::gpencil
