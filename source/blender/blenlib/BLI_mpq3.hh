@@ -232,7 +232,8 @@ struct mpq3 {
 
   static mpq_class distance_squared(const mpq3 &a, const mpq3 &b)
   {
-    return mpq3::dot(a, b);
+    mpq3 diff(a.x - b.x, a.y - b.y, a.z - b.z);
+    return mpq3::dot(diff, diff);
   }
 
   static mpq3 interpolate(const mpq3 &a, const mpq3 &b, mpq_class t)

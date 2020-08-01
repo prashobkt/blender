@@ -17,7 +17,7 @@
 
 namespace blender::meshintersect {
 
-constexpr bool DO_OBJ = false;
+constexpr bool DO_OBJ = true;
 
 /* Build and hold a Mesh from a string spec. Also hold and own resources used by Mesh. */
 class MeshBuilder {
@@ -293,6 +293,38 @@ TEST(boolean_trimesh, TetTetCoplanarTrimesh)
   EXPECT_EQ(out.face_size(), 6);
   if (DO_OBJ) {
     write_obj_mesh(out, "tettet_coplanar_tm");
+  }
+}
+
+TEST(boolean_trimesh, TetInsideTetTrimesh)
+{
+  const char *spec = R"(8 8
+  0 0 0
+  2 0 0
+  1 2 0
+  1 1 2
+  -1 -3/4 -1/2
+  3 -3/4 -1/2
+  1 13/4 -1/2
+  1 5/4 7/2
+  0 2 1
+  0 1 3
+  1 2 3
+  2 0 3
+  4 6 5
+  4 5 7
+  5 6 7
+  6 4 7
+  )";
+
+  MeshBuilder mb(spec);
+  Mesh out = boolean_trimesh(
+      mb.mesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
+  out.populate_vert();
+  EXPECT_EQ(out.vert_size(), 4);
+  EXPECT_EQ(out.face_size(), 4);
+  if (DO_OBJ) {
+    write_obj_mesh(out, "tetinsidetet_tm");
   }
 }
 

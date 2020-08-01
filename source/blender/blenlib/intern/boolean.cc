@@ -161,7 +161,7 @@ TriMeshTopology::TriMeshTopology(const Mesh &tm)
 {
   const int dbg_level = 0;
   if (dbg_level > 0) {
-    std::cout << "TriMeshTopology construction\n";
+    std::cout << "TRIMESHTOPOLOGY CONSTRUCTION\n";
   }
   /* If everything were manifold, F+V-E=2 and E=3F/2.
    * So an likely overestimate, allowing for non-manifoldness, is E=2F and V=F.
@@ -255,6 +255,7 @@ class Patch {
 
   int cell_above{NO_INDEX};
   int cell_below{NO_INDEX};
+  int component{NO_INDEX};
 };
 
 static std::ostream &operator<<(std::ostream &os, const Patch &patch)
@@ -364,6 +365,7 @@ static bool apply_bool_op(int bool_optype, const Array<int> &winding);
 class Cell {
   Vector<int> patches_;
   Array<int> winding_;
+  int merged_to_{NO_INDEX};
   bool winding_assigned_{false};
   /* flag_ will be true when this cell should be in the output volume. */
   bool flag_{false};
@@ -377,6 +379,11 @@ class Cell {
   void add_patch(int p)
   {
     patches_.append(p);
+  }
+
+  void add_patch_non_duplicates(int p)
+  {
+    patches_.append_non_duplicates(p);
   }
 
   const Vector<int> &patches() const
@@ -421,6 +428,16 @@ class Cell {
   bool zero_volume() const
   {
     return zero_volume_;
+  }
+
+  int merged_to() const
+  {
+    return merged_to_;
+  }
+
+  void set_merged_to(int c)
+  {
+    merged_to_ = c;
   }
 
   /* Call this when it is possible that this Cell has zero volume,
@@ -527,6 +544,30 @@ class CellsInfo {
     }
   }
 };
+
+static void merge_cells(int merge_to, int merge_from, CellsInfo &cinfo, PatchesInfo &pinfo)
+{
+  Cell &merge_from_cell = cinfo.cell(merge_from);
+  Cell &merge_to_cell = cinfo.cell(merge_to);
+  int final_merge_to = merge_to;
+  while (merge_to_cell.merged_to() != NO_INDEX) {
+    final_merge_to = merge_to_cell.merged_to();
+    merge_to_cell = cinfo.cell(final_merge_to);
+  }
+  for (int p : pinfo.index_range()) {
+    Patch &patch = pinfo.patch(p);
+    if (patch.cell_above == merge_from) {
+      patch.cell_above = final_merge_to;
+    }
+    if (patch.cell_below == merge_from) {
+      patch.cell_below = final_merge_to;
+    }
+  }
+  for (int cell_p : merge_from_cell.patches()) {
+    merge_to_cell.add_patch_non_duplicates(cell_p);
+  }
+  merge_from_cell.set_merged_to(final_merge_to);
+}
 
 /* Partition the triangles of tm into Patches. */
 static PatchesInfo find_patches(const Mesh &tm, const TriMeshTopology &tmtopo)
@@ -885,7 +926,7 @@ static void find_cells_from_edge(const Mesh &tm,
 {
   const int dbg_level = 0;
   if (dbg_level > 0) {
-    std::cout << "find_cells_from_edge " << e << "\n";
+    std::cout << "FIND_CELLS_FROM_EDGE " << e << "\n";
   }
   const Vector<int> *edge_tris = tmtopo.edge_tris(e);
   BLI_assert(edge_tris != nullptr);
@@ -961,8 +1002,7 @@ static void find_cells_from_edge(const Mesh &tm,
     }
     else {
       if (*r_follow_cell != *rnext_prev_cell) {
-        std::cout << "IMPLEMENT ME: MERGE CELLS\n";
-        // BLI_assert(false);
+        merge_cells(*r_follow_cell, *rnext_prev_cell, cinfo, pinfo);
       }
     }
   }
@@ -992,6 +1032,27 @@ static CellsInfo find_cells(const Mesh &tm, const TriMeshTopology &tmtopo, Patch
       }
     }
   }
+  /* Some patches may have no cells at this point. These are either:
+   * (a) a closed manifold patch only incident on itself (sphere, torus, klein bottle, etc.).
+   * (b) an open manifold patch only incident on itself (has non-manifold boundaries).
+   * Make above and below cells for these patches. This will create a disconnected patch-cell
+   * bipartite graph, which will have to be fixed later.
+   */
+  for (int p : pinfo.index_range()) {
+    Patch &patch = pinfo.patch(p);
+    if (patch.cell_above == NO_INDEX) {
+      int c = cinfo.add_cell();
+      patch.cell_above = c;
+      Cell &cell = cinfo.cell(c);
+      cell.add_patch(p);
+    }
+    if (patch.cell_below == NO_INDEX) {
+      int c = cinfo.add_cell();
+      patch.cell_below = c;
+      Cell &cell = cinfo.cell(c);
+      cell.add_patch(p);
+    }
+  }
   if (dbg_level > 0) {
     std::cout << "\nFIND_CELLS found " << cinfo.tot_cell() << " cells\nCells\n";
     for (int i : cinfo.index_range()) {
@@ -1005,41 +1066,55 @@ static CellsInfo find_cells(const Mesh &tm, const TriMeshTopology &tmtopo, Patch
   return cinfo;
 }
 
-static bool patch_cell_graph_connected(const CellsInfo &cinfo, const PatchesInfo &pinfo)
+/* Find the connected patch components (connects are via intermediate cells), and put
+ * component numbers in each patch.
+ * Return a Vector of components - each a Vector of the patch ids in the component.
+ */
+static Vector<Vector<int>> find_patch_components(const CellsInfo &cinfo, PatchesInfo &pinfo)
 {
-  if (cinfo.tot_cell() == 0 || pinfo.tot_patch() == 0) {
-    return false;
+  constexpr int dbg_level = 0;
+  if (dbg_level > 0) {
+    std::cout << "FIND_PATCH_COMPONENTS\n";
   }
-  Array<bool> cell_reachable(cinfo.tot_cell(), false);
-  Array<bool> patch_reachable(pinfo.tot_patch(), false);
-  Stack<int> stack; /* Patch indexes to visit. */
-  stack.push(0);
-  while (!stack.is_empty()) {
-    int p = stack.pop();
-    if (patch_reachable[p]) {
+  if (pinfo.tot_patch() == 0) {
+    return Vector<Vector<int>>();
+  }
+  int current_component = 0;
+  Stack<int> stack; /* Patch indices to visit. */
+  Vector<Vector<int>> ans;
+  for (int pstart : pinfo.index_range()) {
+    Patch &patch_pstart = pinfo.patch(pstart);
+    if (patch_pstart.component != NO_INDEX) {
       continue;
     }
-    patch_reachable[p] = true;
-    const Patch &patch = pinfo.patch(p);
-    for (int c : {patch.cell_above, patch.cell_below}) {
-      if (cell_reachable[c]) {
-        continue;
-      }
-      cell_reachable[c] = true;
-      for (int p : cinfo.cell(c).patches()) {
-        if (!patch_reachable[p]) {
-          stack.push(p);
+    ans.append(Vector<int>());
+    ans[current_component].append(pstart);
+    stack.push(pstart);
+    patch_pstart.component = current_component;
+    while (!stack.is_empty()) {
+      int p = stack.pop();
+      Patch &patch = pinfo.patch(p);
+      BLI_assert(patch.component == current_component);
+      for (int c : {patch.cell_above, patch.cell_below}) {
+        for (int pn : cinfo.cell(c).patches()) {
+          Patch &patch_neighbor = pinfo.patch(pn);
+          if (patch_neighbor.component == NO_INDEX) {
+            patch_neighbor.component = current_component;
+            stack.push(pn);
+            ans[current_component].append(pn);
+          }
         }
       }
     }
+    ++current_component;
   }
-  if (std::any_of(cell_reachable.begin(), cell_reachable.end(), std::logical_not<>())) {
-    return false;
+  if (dbg_level > 0) {
+    std::cout << "found " << ans.size() << " components\n";
+    for (int comp : ans.index_range()) {
+      std::cout << comp << ": " << ans[comp] << "\n";
+    }
   }
-  if (std::any_of(patch_reachable.begin(), patch_reachable.end(), std::logical_not<>())) {
-    return false;
-  }
-  return true;
+  return ans;
 }
 
 /* Do all patches have cell_above and cell_below set?
@@ -1049,6 +1124,9 @@ static bool patch_cell_graph_ok(const CellsInfo &cinfo, const PatchesInfo &pinfo
 {
   for (int c : cinfo.index_range()) {
     const Cell &cell = cinfo.cell(c);
+    if (cell.merged_to() != NO_INDEX) {
+      continue;
+    }
     if (cell.patches().size() == 0) {
       std::cout << "Patch/Cell graph disconnected at Cell " << c << " with no patches\n";
       return false;
@@ -1072,20 +1150,83 @@ static bool patch_cell_graph_ok(const CellsInfo &cinfo, const PatchesInfo &pinfo
       return false;
     }
   }
-  if (!patch_cell_graph_connected(cinfo, pinfo)) {
-    std::cout << "Patch/Cell graph not connected\n";
-    return false;
-  }
   return true;
+}
+
+/* Find which of the cells around edge e contains point p.
+ * Do this by inserting a dummy triangle containing v and sorting the
+ * triangles around the edge to find out where in the sort order
+ * the dummy triangle lies, then finding which cell is between
+ * the two triangles on either side of the dummy.
+ */
+static int find_cell_for_point_near_edge(mpq3 p,
+                                         const Edge &e,
+                                         const Mesh &tm,
+                                         const TriMeshTopology &tmtopo,
+                                         const PatchesInfo &pinfo,
+                                         MArena *arena)
+{
+  constexpr int dbg_level = 0;
+  if (dbg_level > 0) {
+    std::cout << "FIND_CELL_FOR_POINT_NEAR_EDGE, p=" << p << " e=" << e << "\n";
+  }
+  const Vector<int> *etris = tmtopo.edge_tris(e);
+  Vertp dummy_vert = arena->add_or_find_vert(p, NO_INDEX);
+  Facep dummy_tri = arena->add_face({e.v0(), e.v1(), dummy_vert},
+                                    NO_INDEX,
+                                    {NO_INDEX, NO_INDEX, NO_INDEX},
+                                    {false, false, false});
+  Array<int> edge_tris(etris->size() + 1);
+  std::copy(etris->begin(), etris->end(), edge_tris.begin());
+  edge_tris[edge_tris.size() - 1] = EXTRA_TRI_INDEX;
+  Array<int> sorted_tris = sort_tris_around_edge(
+      tm, tmtopo, e, edge_tris, edge_tris[0], dummy_tri);
+  if (dbg_level > 0) {
+    std::cout << "sorted tris = " << sorted_tris << "\n";
+  }
+  int *p_sorted_dummy = std::find(sorted_tris.begin(), sorted_tris.end(), EXTRA_TRI_INDEX);
+  BLI_assert(p_sorted_dummy != sorted_tris.end());
+  int dummy_index = p_sorted_dummy - sorted_tris.begin();
+  int prev_tri = (dummy_index == 0) ? sorted_tris[sorted_tris.size() - 1] :
+                                      sorted_tris[dummy_index - 1];
+  int next_tri = (dummy_index == static_cast<int>(sorted_tris.size() - 1)) ?
+                     sorted_tris[0] :
+                     sorted_tris[dummy_index + 1];
+  if (dbg_level > 0) {
+    std::cout << "prev tri to dummy = " << prev_tri << ";  next tri to dummy = " << next_tri
+              << "\n";
+  }
+  const Patch &prev_patch = pinfo.patch(pinfo.tri_patch(prev_tri));
+  if (dbg_level > 0) {
+    std::cout << "prev_patch = " << prev_patch << "\n";
+  }
+  bool prev_flipped;
+  find_flap_vert(*tm.face(prev_tri), e, &prev_flipped);
+  int c = prev_flipped ? prev_patch.cell_below : prev_patch.cell_above;
+  if (dbg_level > 0) {
+    std::cout << "find_cell_for_point_near_edge returns " << c << "\n";
+  }
+  return c;
 }
 
 /*
  * Find the ambient cell -- that is, the cell that is outside
  * all other cells.
+ * If component_patches != nullptr, restrict consideration to patches
+ * in that vector.
+ *
+ * The method is to find an edge known to be on the convex hull
+ * of the mesh, then insert a dummy triangle that has that edge
+ * and a point known to be outside the whole mesh. Then sorting
+ * the triangles around the edge will reveal where the dummy triangle
+ * fits in that sorting order, and hence, the two adjacent patches
+ * to the dummy triangle - thus revealing the cell that the point
+ * known to be outside the whole mesh is in.
  */
 static int find_ambient_cell(const Mesh &tm,
+                             const Vector<int> *component_patches,
                              const TriMeshTopology &tmtopo,
-                             const PatchesInfo pinfo,
+                             const PatchesInfo &pinfo,
                              MArena *arena)
 {
   int dbg_level = 0;
@@ -1094,14 +1235,38 @@ static int find_ambient_cell(const Mesh &tm,
   }
   /* First find a vertex with the maximum x value. */
   /* Prefer not to populate the verts in the Mesh just for this. */
-  Vertp v_extreme = (*tm.face(0))[0];
-  mpq_class extreme_x = v_extreme->co_exact.x;
-  for (Facep f : tm.faces()) {
-    for (Vertp v : *f) {
-      const mpq_class &x = v->co_exact.x;
-      if (x > extreme_x) {
-        v_extreme = v;
-        extreme_x = x;
+  Vertp v_extreme;
+  mpq_class extreme_x;
+  if (component_patches == nullptr) {
+    v_extreme = (*tm.face(0))[0];
+    extreme_x = v_extreme->co_exact.x;
+    for (Facep f : tm.faces()) {
+      for (Vertp v : *f) {
+        const mpq_class &x = v->co_exact.x;
+        if (x > extreme_x) {
+          v_extreme = v;
+          extreme_x = x;
+        }
+      }
+    }
+  }
+  else {
+    if (dbg_level > 0) {
+      std::cout << "restrict to patches " << *component_patches << "\n";
+    }
+    int p0 = (*component_patches)[0];
+    v_extreme = (*tm.face(pinfo.patch(p0).tri(0)))[0];
+    extreme_x = v_extreme->co_exact.x;
+    for (int p : *component_patches) {
+      for (int t : pinfo.patch(p).tris()) {
+        Facep f = tm.face(t);
+        for (Vertp v : *f) {
+          const mpq_class &x = v->co_exact.x;
+          if (x > extreme_x) {
+            v_extreme = v;
+            extreme_x = x;
+          }
+        }
       }
     }
   }
@@ -1138,42 +1303,387 @@ static int find_ambient_cell(const Mesh &tm,
    * cell. */
   mpq3 p_in_ambient = v_extreme->co_exact;
   p_in_ambient.x += 1;
-  const Vector<int> *ehull_edge_tris = tmtopo.edge_tris(ehull);
-  Vertp dummy_vert = arena->add_or_find_vert(p_in_ambient, NO_INDEX);
-  Facep dummy_tri = arena->add_face({ehull.v0(), ehull.v1(), dummy_vert},
-                                    NO_INDEX,
-                                    {NO_INDEX, NO_INDEX, NO_INDEX},
-                                    {false, false, false});
-  Array<int> edge_tris(ehull_edge_tris->size() + 1);
-  std::copy(ehull_edge_tris->begin(), ehull_edge_tris->end(), edge_tris.begin());
-  edge_tris[edge_tris.size() - 1] = EXTRA_TRI_INDEX;
-  Array<int> sorted_tris = sort_tris_around_edge(
-      tm, tmtopo, ehull, edge_tris, edge_tris[0], dummy_tri);
+  int c_ambient = find_cell_for_point_near_edge(p_in_ambient, ehull, tm, tmtopo, pinfo, arena);
   if (dbg_level > 0) {
-    std::cout << "sorted tris = " << sorted_tris << "\n";
+    std::cout << "FIND_AMBIENT_CELL returns " << c_ambient << "\n";
   }
-  int *p_sorted_dummy = std::find(sorted_tris.begin(), sorted_tris.end(), EXTRA_TRI_INDEX);
-  BLI_assert(p_sorted_dummy != sorted_tris.end());
-  int dummy_index = p_sorted_dummy - sorted_tris.begin();
-  int prev_tri = (dummy_index == 0) ? sorted_tris[sorted_tris.size() - 1] :
-                                      sorted_tris[dummy_index - 1];
-  int next_tri = (dummy_index == static_cast<int>(sorted_tris.size() - 1)) ?
-                     sorted_tris[0] :
-                     sorted_tris[dummy_index + 1];
+  return c_ambient;
+}
+
+/* Find the cell that contains v. Consider the cells adjacent to triangle t.
+ * The close_edge and close_vert values are what were returned by
+ * closest_on_tri_to_point when determining that v was close to t.
+ * They will indicate whether the point of closest approach to t is to
+ * an edge of t, a vertex of t, or somewhere inside t.
+ *
+ * The algorithm is similar to the one for find_ambient_cell, except that
+ * instead of an arbitrary point known to be outside the whole mesh, we
+ * have a particular point (v) and we just want to determine the patches
+ * that that point is between in sorting-around-an-edge order.
+ */
+static int find_containing_cell(Vertp v,
+                                int t,
+                                int close_edge,
+                                int close_vert,
+                                const CellsInfo &cinfo,
+                                const PatchesInfo &pinfo,
+                                const Mesh &tm,
+                                const TriMeshTopology &tmtopo,
+                                MArena *arena)
+{
+  constexpr int dbg_level = 0;
   if (dbg_level > 0) {
-    std::cout << "prev tri to dummy = " << prev_tri << ";  next tri to dummy = " << next_tri
-              << "\n";
+    std::cout << "FIND_CONTAINING_CELL v=" << v << ", t=" << t << "\n";
   }
-  const Patch &prev_patch = pinfo.patch(pinfo.tri_patch(prev_tri));
-  const Patch &next_patch = pinfo.patch(pinfo.tri_patch(next_tri));
+  const Face &tri = *tm.face(t);
+  int sort_edge_index;
+  if (close_edge != -1) {
+    sort_edge_index = close_edge;
+  }
+  else if (close_vert != -1) {
+    /* TODO: supposed to find a convex edge here! As in find_ambient_cell. */
+    sort_edge_index = close_vert;
+  }
+  else {
+    /* TODO: supposed to find a convex edge here! */
+    sort_edge_index = 0;
+  }
+  Vertp v0 = tri[sort_edge_index];
+  Vertp v1 = tri[(sort_edge_index + 1) % 3];
+  const Vector<Edge> &edges = tmtopo.vert_edges(v0);
   if (dbg_level > 0) {
-    std::cout << "prev_patch = " << prev_patch << ", next_patch = " << next_patch << "\n";
+    std::cout << "look for edge containing " << v0 << " and " << v1 << "\n";
+    std::cout << "  in edges: ";
+    for (Edge e : edges) {
+      std::cout << e << " ";
+    }
+    std::cout << "\n";
   }
-  BLI_assert(prev_patch.cell_above == next_patch.cell_above);
+  Edge etest;
+  for (Edge e : edges) {
+    if ((e.v0() == v0 && e.v1() == v1) || (e.v0() == v1 && e.v1() == v0)) {
+      etest = e;
+      break;
+    }
+  }
+  BLI_assert(etest.v0() != nullptr);
   if (dbg_level > 0) {
-    std::cout << "FIND_AMBIENT_CELL returns " << prev_patch.cell_above << "\n";
+    std::cout << "etest = " << etest << "\n";
   }
-  return prev_patch.cell_above;
+  int c = find_cell_for_point_near_edge(v->co_exact, etest, tm, tmtopo, pinfo, arena);
+  if (dbg_level > 0) {
+    std::cout << "find_containing_cell returns " << c << "\n";
+  }
+  return c;
+}
+
+/* Find the closest point in triangle (a, b, c) to point p.
+ * Return the distance squared to that point.
+ * Also, if the closest point in the triangle is on a vertex,
+ * return 0, 1, or 2 for a, b, c in *r_vert; else -1.
+ * If the closest point is on an edge, return 0, 1, or 2
+ * for edges ab, bc, or ca in *r_edge; else -1.
+ * (Adapted from closest_on_tri_to_point_v3()).
+ */
+mpq_class closest_on_tri_to_point(
+    const mpq3 &p, const mpq3 &a, const mpq3 &b, const mpq3 &c, int *r_edge, int *r_vert)
+{
+  constexpr int dbg_level = 0;
+  if (dbg_level > 0) {
+    std::cout << "CLOSEST_ON_TRI_TO_POINT p = " << p << "\n";
+    std::cout << " a = " << a << ", b = " << b << ", c = " << c << "\n";
+  }
+  /* Check if p in vertex region outside a. */
+  mpq3 ab = b - a;
+  mpq3 ac = c - a;
+  mpq3 ap = p - a;
+  mpq_class d1 = mpq3::dot(ab, ap);
+  mpq_class d2 = mpq3::dot(ac, ap);
+  if (d1 <= 0 && d2 <= 0) {
+    /* Barycentric coordinates (1,0,0). */
+    *r_edge = -1;
+    *r_vert = 0;
+    if (dbg_level > 0) {
+      std::cout << "  answer = a\n";
+    }
+    return mpq3::distance_squared(p, a);
+  }
+  /* Check if p in vertex region outside b. */
+  mpq3 bp = p - b;
+  mpq_class d3 = mpq3::dot(ab, bp);
+  mpq_class d4 = mpq3::dot(ac, bp);
+  if (d3 >= 0 && d4 <= d3) {
+    /* Barycentric coordinates (0,1,0). */
+    *r_edge = -1;
+    *r_vert = 1;
+    if (dbg_level > 0) {
+      std::cout << "  answer = b\n";
+    }
+    return mpq3::distance_squared(p, b);
+  }
+  /* Check if p in region of ab. */
+  mpq_class vc = d1 * d4 - d3 * d2;
+  if (vc <= 0 && d1 >= 0 && d3 <= 0) {
+    mpq_class v = d1 / (d1 - d3);
+    /* Barycentric coordinates (1-v,v,0). */
+    mpq3 r = a + v * ab;
+    *r_vert = -1;
+    *r_edge = 0;
+    if (dbg_level > 0) {
+      std::cout << "  answer = on ab at " << r << "\n";
+    }
+    return mpq3::distance_squared(p, r);
+  }
+  /* Check if p in vertex region outside c. */
+  mpq3 cp = p - c;
+  mpq_class d5 = mpq3::dot(ab, cp);
+  mpq_class d6 = mpq3::dot(ac, cp);
+  if (d6 >= 0 && d5 <= d6) {
+    /* Barycentric coordinates (0,0,1). */
+    *r_edge = -1;
+    *r_vert = 2;
+    if (dbg_level > 0) {
+      std::cout << "  answer = c\n";
+    }
+    return mpq3::distance_squared(p, c);
+  }
+  /* Check if p in edge region of ac. */
+  mpq_class vb = d5 * d2 - d1 * d6;
+  if (vb <= 0 && d2 >= 0 && d6 <= 0) {
+    mpq_class w = d2 / (d2 - d6);
+    /* Barycentric coordinates (1-w,0,w). */
+    mpq3 r = a + w * ac;
+    *r_vert = -1;
+    *r_edge = 2;
+    if (dbg_level > 0) {
+      std::cout << "  answer = on ac at " << r << "\n";
+    }
+    return mpq3::distance_squared(p, r);
+  }
+  /* Check if p in edge region of bc. */
+  mpq_class va = d3 * d6 - d5 * d4;
+  if (va <= 0 && (d4 - d3) >= 0 && (d5 - d6) >= 0) {
+    mpq_class w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+    /* Barycentric coordinates (0,1-w,w). */
+    mpq3 r = c - b;
+    r = w * r;
+    r = r + b;
+    *r_vert = -1;
+    *r_edge = 1;
+    if (dbg_level > 0) {
+      std::cout << "  answer = on bc at " << r << "\n";
+    }
+    return mpq3::distance_squared(p, r);
+  }
+  /* p inside face region. Compute barycentric coordinates (u,v,w). */
+  mpq_class denom = 1 / (va + vb + vc);
+  mpq_class v = vb * denom;
+  mpq_class w = vc * denom;
+  ac = w * ac;
+  mpq3 r = a + v * ab;
+  r = r + ac;
+  *r_vert = -1;
+  *r_edge = -1;
+  if (dbg_level > 0) {
+    std::cout << "  answer = inside at " << r << "\n";
+  }
+  return mpq3::distance_squared(p, r);
+}
+
+struct ComponentContainer {
+  int containing_component{NO_INDEX};
+  int nearest_cell{NO_INDEX};
+  mpq_class dist_to_cell;
+
+  ComponentContainer(int cc, int cell, mpq_class d)
+      : containing_component(cc), nearest_cell(cell), dist_to_cell(d)
+  {
+  }
+};
+
+/* Find out all the components, not equal to comp, that contain a point
+ * in comp in a non-ambient cell of those components.
+ * In other words, find the components that comp is nested inside
+ * (maybe not directly nested, which is why there can be more than one).
+ */
+static Vector<ComponentContainer> find_component_containers(int comp,
+                                                            const Vector<Vector<int>> &components,
+                                                            const Array<int> &ambient_cell,
+                                                            const Mesh &tm,
+                                                            const CellsInfo &cinfo,
+                                                            const PatchesInfo &pinfo,
+                                                            const TriMeshTopology &tmtopo,
+                                                            MArena *arena)
+{
+  constexpr int dbg_level = 0;
+  if (dbg_level > 0) {
+    std::cout << "FIND_COMPONENT_CONTAINERS for comp " << comp << "\n";
+  }
+  Vector<ComponentContainer> ans;
+  int test_p = components[comp][0];
+  int test_t = pinfo.patch(test_p).tri(0);
+  Vertp test_v = tm.face(test_t)[0].vert[0];
+  if (dbg_level > 0) {
+    std::cout << "test vertex in comp: " << test_v << "\n";
+  }
+  for (int comp_other : components.index_range()) {
+    if (comp == comp_other) {
+      continue;
+    }
+    if (dbg_level > 0) {
+      std::cout << "comp_other = " << comp_other << "\n";
+    }
+    for (int p : components[comp_other]) {
+      const Patch &patch = pinfo.patch(p);
+      int nearest_tri = NO_INDEX;
+      int nearest_tri_close_vert = -1;
+      int nearest_tri_close_edge = -1;
+      mpq_class nearest_tri_dist_squared;
+      for (int t : patch.tris()) {
+        const Face tri = *tm.face(t);
+        if (dbg_level > 1) {
+          std::cout << "tri " << t << " = " << &tri << "\n";
+        }
+        int close_vert;
+        int close_edge;
+        mpq_class d2 = closest_on_tri_to_point(test_v->co_exact,
+                                               tri[0]->co_exact,
+                                               tri[1]->co_exact,
+                                               tri[2]->co_exact,
+                                               &close_edge,
+                                               &close_vert);
+        if (dbg_level > 1) {
+          std::cout << "  close_edge=" << close_edge << " close_vert=" << close_vert
+                    << "  dsquared=" << d2.get_d() << "\n";
+        }
+        if (nearest_tri == NO_INDEX || d2 < nearest_tri_dist_squared) {
+          nearest_tri = t;
+          nearest_tri_close_edge = close_edge;
+          nearest_tri_close_vert = close_vert;
+          nearest_tri_dist_squared = d2;
+        }
+      }
+      if (dbg_level > 0) {
+        std::cout << "closest tri to comp=" << comp << " in comp_other=" << comp_other << " is t"
+                  << nearest_tri << "\n";
+      }
+      int containing_cell = find_containing_cell(test_v,
+                                                 nearest_tri,
+                                                 nearest_tri_close_edge,
+                                                 nearest_tri_close_vert,
+                                                 cinfo,
+                                                 pinfo,
+                                                 tm,
+                                                 tmtopo,
+                                                 arena);
+      if (containing_cell != ambient_cell[comp_other]) {
+        ans.append(ComponentContainer(comp_other, containing_cell, nearest_tri_dist_squared));
+      }
+    }
+  }
+  return ans;
+}
+
+/* The cells and patches are supposed to form a bipartite graph.
+ * The graph may be disconnected (if parts of meshes are nested or side-by-side
+ * without intersection with other each other).
+ * Connect the bipartite graph. This involves discovering the connected components
+ * of the patches, then the nesting structure of those components.
+ */
+static void finish_patch_cell_graph(const Mesh &tm,
+                                    CellsInfo &cinfo,
+                                    PatchesInfo &pinfo,
+                                    const TriMeshTopology &tmtopo,
+                                    MArena *arena)
+{
+  constexpr int dbg_level = 0;
+  if (dbg_level > 0) {
+    std::cout << "FINISH_PATCH_CELL_GRAPH\n";
+  }
+  Vector<Vector<int>> components = find_patch_components(cinfo, pinfo);
+  if (components.size() <= 1) {
+    if (dbg_level > 0) {
+      std::cout << "one component so finish_patch_cell_graph does no work\n";
+    }
+    return;
+  }
+  if (dbg_level > 0) {
+    std::cout << "components:\n";
+    for (int comp : components.index_range()) {
+      std::cout << comp << ": " << components[comp] << "\n";
+    }
+  }
+  Array<int> ambient_cell(components.size());
+  for (int comp : components.index_range()) {
+    ambient_cell[comp] = find_ambient_cell(tm, &components[comp], tmtopo, pinfo, arena);
+  }
+  if (dbg_level > 0) {
+    std::cout << "ambient cells:\n";
+    for (int comp : ambient_cell.index_range()) {
+      std::cout << comp << ": " << ambient_cell[comp] << "\n";
+    }
+  }
+  int tot_components = components.size();
+  Array<Vector<ComponentContainer>> comp_cont(tot_components);
+  for (int comp : components.index_range()) {
+    comp_cont[comp] = find_component_containers(
+        comp, components, ambient_cell, tm, cinfo, pinfo, tmtopo, arena);
+  }
+  if (dbg_level > 0) {
+    std::cout << "component containers:\n";
+    for (int comp : comp_cont.index_range()) {
+      std::cout << comp << ": ";
+      for (const ComponentContainer &cc : comp_cont[comp]) {
+        std::cout << "[containing_comp=" << cc.containing_component
+                  << ", nearest_cell=" << cc.nearest_cell << ", d2=" << cc.dist_to_cell << "] ";
+      }
+      std::cout << "\n";
+    }
+  }
+  Vector<int> outer_components;
+  for (int comp : comp_cont.index_range()) {
+    if (comp_cont[comp].size() == 0) {
+      outer_components.append(comp);
+    }
+    else {
+      ComponentContainer &closest = comp_cont[comp][0];
+      for (int i = 1; i < comp_cont[comp].size(); ++i) {
+        if (comp_cont[comp][i].dist_to_cell < closest.dist_to_cell) {
+          closest = comp_cont[comp][i];
+        }
+      }
+      int comp_ambient = ambient_cell[comp];
+      int cont_cell = closest.nearest_cell;
+      if (dbg_level > 0) {
+        std::cout << "merge comp " << comp << "'s ambient cell=" << comp_ambient << " to cell "
+                  << cont_cell << "\n";
+      }
+      merge_cells(cont_cell, comp_ambient, cinfo, pinfo);
+    }
+  }
+  if (outer_components.size() > 1) {
+    int merged_ambient = ambient_cell[outer_components[0]];
+    for (int i = 1; i < outer_components.size(); ++i) {
+      if (dbg_level > 0) {
+        std::cout << "merge comp " << outer_components[i]
+                  << "'s ambient cell=" << ambient_cell[outer_components[i]] << " to cell "
+                  << merged_ambient << "\n";
+      }
+      merge_cells(merged_ambient, outer_components[i], cinfo, pinfo);
+    }
+  }
+  if (dbg_level > 0) {
+    std::cout << "after FINISH_PATCH_CELL_GRAPH\nCells\n";
+    for (int i : cinfo.index_range()) {
+      if (cinfo.cell(i).merged_to() == NO_INDEX) {
+        std::cout << i << ": " << cinfo.cell(i) << "\n";
+      }
+    }
+    std::cout << "Patches\n";
+    for (int i : pinfo.index_range()) {
+      std::cout << i << ": " << pinfo.patch(i) << "\n";
+    }
+  }
 }
 
 /* Starting with ambient cell c_ambient, with all zeros for winding numbers,
@@ -2218,10 +2728,7 @@ Mesh boolean_trimesh(Mesh &tm_in,
   TriMeshTopology tm_si_topo(tm_si);
   PatchesInfo pinfo = find_patches(tm_si, tm_si_topo);
   CellsInfo cinfo = find_cells(tm_si, tm_si_topo, pinfo);
-  if (!patch_cell_graph_connected(cinfo, pinfo)) {
-    std::cout << "Implement me! disconnected patch/cell graph\n";
-    return Mesh(tm_in);
-  }
+  finish_patch_cell_graph(tm_si, cinfo, pinfo, tm_si_topo, arena);
   bool pc_ok = patch_cell_graph_ok(cinfo, pinfo);
   if (!pc_ok) {
     /* TODO: if bad input can lead to this, diagnose the problem. */
@@ -2229,7 +2736,7 @@ Mesh boolean_trimesh(Mesh &tm_in,
     return Mesh(tm_in);
   }
   cinfo.init_windings(nshapes);
-  int c_ambient = find_ambient_cell(tm_si, tm_si_topo, pinfo, arena);
+  int c_ambient = find_ambient_cell(tm_si, nullptr, tm_si_topo, pinfo, arena);
   if (c_ambient == NO_INDEX) {
     /* TODO: find a way to propagate this error to user properly. */
     std::cout << "Could not find an ambient cell; input not valid?\n";
