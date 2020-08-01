@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "DNA_anim_types.h"
@@ -92,6 +93,7 @@
 #endif  // WITH_FLUID
 
 static ThreadRWMutex psys_bvhtree_rwlock = BLI_RWLOCK_INITIALIZER;
+static CLG_LogRef LOG = {"bke.particle_system"};
 
 /************************************************/
 /*          Reacting to system events           */
@@ -3101,7 +3103,7 @@ static void collision_fail(ParticleData *pa, ParticleCollision *col)
   copy_v3_v3(pa->state.vel, col->pce.vel);
   mul_v3_fl(pa->state.vel, col->inv_timestep);
 
-  /* printf("max iterations\n"); */
+  CLOG_DEBUG(&LOG, 2, "max iterations");
 }
 
 /* Particle - Mesh collision detection and response
@@ -4321,10 +4323,10 @@ static void particles_fluid_step(ParticleSimulationData *sim,
                        "particles_fluid_step::error - unknown particle system type\n");
           return;
         }
-#  if 0
+
         /* Debugging: Print type of particle system and current particles. */
-        printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
-#  endif
+        CLOG_DEBUG(
+            &LOG, 2, "system type is %d and particle type is %d", part->type, flagActivePart);
 
         /* Type of particle must match current particle system type
          * (only important for snd particles). */
@@ -4340,10 +4342,11 @@ static void particles_fluid_step(ParticleSimulationData *sim,
         if ((flagActivePart & PARTICLE_TYPE_TRACER) && !particles_has_tracer(part->type)) {
           continue;
         }
-#  if 0
+
         /* Debugging: Print type of particle system and current particles. */
-        printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
-#  endif
+        CLOG_DEBUG(
+            &LOG, 1, "system type is %d and particle type is %d", part->type, flagActivePart);
+
         /* Particle system has allocated 'tottypepart' particles - so break early before exceeded.
          */
         if (activeParts >= tottypepart) {
@@ -4399,20 +4402,28 @@ static void particles_fluid_step(ParticleSimulationData *sim,
           sub_v3_v3(tmp, tmp2);
           mul_v3_v3(tmp, ob->scale);
           add_v3_v3(pa->state.co, tmp);
-#  if 0
+
           /* Debugging: Print particle coordinates. */
-          printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n",
-          pa->state.co[0], pa->state.co[1], pa->state.co[2]);
-#  endif
+          CLOG_DEBUG(&LOG,
+                     2,
+                     "pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f",
+                     pa->state.co[0],
+                     pa->state.co[1],
+                     pa->state.co[2]);
+
           /* Set particle velocity. */
           float velParticle[3] = {velX, velY, velZ};
           copy_v3_v3(pa->state.vel, velParticle);
           mul_v3_fl(pa->state.vel, fds->dx);
-#  if 0
+
           /* Debugging: Print particle velocity. */
-          printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n",
-          pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
-#  endif
+          CLOG_DEBUG(&LOG,
+                     2,
+                     "pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f",
+                     pa->state.vel[0],
+                     pa->state.vel[1],
+                     pa->state.vel[2]);
+
           /* Set default angular velocity and particle rotation. */
           zero_v3(pa->state.ave);
           unit_qt(pa->state.rot);
@@ -4426,10 +4437,8 @@ static void particles_fluid_step(ParticleSimulationData *sim,
           pa++;
         }
       }
-#  if 0
       /* Debugging: Print number of active particles. */
-      printf("active parts: %d\n", activeParts);
-#  endif
+      CLOG_DEBUG(&LOG, 1, "active parts: %d", activeParts);
       totpart = psys->totpart = part->totpart = activeParts;
 
       BLI_rng_free(sim->rng);

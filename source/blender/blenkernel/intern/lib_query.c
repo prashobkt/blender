@@ -21,6 +21,7 @@
  * \ingroup bke
  */
 
+#include <CLG_log.h>
 #include <stdlib.h>
 
 #include "DNA_anim_types.h"
@@ -37,6 +38,8 @@
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
+
+static CLG_LogRef LOG = {"bke.lib_query"};
 
 /* status */
 enum {
@@ -459,18 +462,17 @@ static int foreach_libblock_id_users_callback(LibraryIDLinkCallbackData *cb_data
     }
 
     if (*id_p == iter->id) {
-#if 0
-      printf(
-          "%s uses %s (refcounted: %d, userone: %d, used_one: %d, used_one_active: %d, "
-          "indirect_usage: %d)\n",
-          iter->curr_id->name,
-          iter->id->name,
-          (cb_flag & IDWALK_USER) ? 1 : 0,
-          (cb_flag & IDWALK_USER_ONE) ? 1 : 0,
-          (iter->id->tag & LIB_TAG_EXTRAUSER) ? 1 : 0,
-          (iter->id->tag & LIB_TAG_EXTRAUSER_SET) ? 1 : 0,
-          (cb_flag & IDWALK_INDIRECT_USAGE) ? 1 : 0);
-#endif
+      CLOG_DEBUG(&LOG,
+                 1,
+                 "%s uses %s (refcounted: %d, userone: %d, used_one: %d, used_one_active: %d, "
+                 "indirect_usage: %d)",
+                 iter->curr_id->name,
+                 iter->id->name,
+                 (cb_flag & IDWALK_CB_USER) ? 1 : 0,
+                 (cb_flag & IDWALK_CB_USER_ONE) ? 1 : 0,
+                 (iter->id->tag & LIB_TAG_EXTRAUSER) ? 1 : 0,
+                 (iter->id->tag & LIB_TAG_EXTRAUSER_SET) ? 1 : 0,
+                 (cb_flag & IDWALK_CB_INDIRECT_USAGE) ? 1 : 0);
       if (cb_flag & IDWALK_CB_INDIRECT_USAGE) {
         iter->count_indirect++;
       }

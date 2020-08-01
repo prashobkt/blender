@@ -96,7 +96,6 @@
 static void BKE_fluid_modifier_reset_ex(struct FluidModifierData *fmd, bool need_lock);
 
 #ifdef WITH_FLUID
-// #define DEBUG_PRINT
 
 static CLG_LogRef LOG = {"bke.fluid"};
 
@@ -920,10 +919,13 @@ static void sample_effector(FluidEffectorSettings *fes,
         velocity_map[index * 3] += hit_vel[0];
         velocity_map[index * 3 + 1] += hit_vel[1];
         velocity_map[index * 3 + 2] += hit_vel[2];
-#  ifdef DEBUG_PRINT
         /* Debugging: Print object velocities. */
-        printf("adding effector object vel: [%f, %f, %f]\n", hit_vel[0], hit_vel[1], hit_vel[2]);
-#  endif
+        CLOG_DEBUG(&LOG,
+                   1,
+                   "adding effector object vel: [%f, %f, %f]",
+                   hit_vel[0],
+                   hit_vel[1],
+                   hit_vel[2]);
       }
     }
   }
@@ -1256,17 +1258,17 @@ static void compute_obstaclesemission(Scene *scene,
         }
         /* Sanity check: subframe portion must be between 0 and 1. */
         CLAMP(scene->r.subframe, 0.0f, 1.0f);
-#  ifdef DEBUG_PRINT
+
         /* Debugging: Print subframe information. */
-        printf(
+        CLOG_DEBUG(
+            &LOG,
+            1,
             "effector: frame (is first: %d): %d // scene current frame: %d // scene current "
-            "subframe: "
-            "%f\n",
+            "subframe: %f",
             is_first_frame,
             frame,
             scene->r.cfra,
             scene->r.subframe);
-#  endif
         /* Update frame time, this is considering current subframe fraction
          * BLI_mutex_lock() called in manta_step(), so safe to update subframe here
          * TODO (sebbas): Using BKE_scene_frame_get(scene) instead of new DEG_get_ctime(depsgraph)
@@ -1977,10 +1979,9 @@ static void sample_mesh(FluidFlowSettings *ffs,
         velocity_map[index * 3] += hit_vel[0] * ffs->vel_multi;
         velocity_map[index * 3 + 1] += hit_vel[1] * ffs->vel_multi;
         velocity_map[index * 3 + 2] += hit_vel[2] * ffs->vel_multi;
-#  ifdef DEBUG_PRINT
         /* Debugging: Print flow object velocities. */
-        printf("adding flow object vel: [%f, %f, %f]\n", hit_vel[0], hit_vel[1], hit_vel[2]);
-#  endif
+        CLOG_DEBUG(
+            &LOG, 1, "adding flow object vel: [%f, %f, %f]", hit_vel[0], hit_vel[1], hit_vel[2]);
       }
       velocity_map[index * 3] += ffs->vel_coord[0];
       velocity_map[index * 3 + 1] += ffs->vel_coord[1];
@@ -2798,16 +2799,16 @@ static void compute_flowsemission(Scene *scene,
 
         /* Sanity check: subframe portion must be between 0 and 1. */
         CLAMP(scene->r.subframe, 0.0f, 1.0f);
-#  ifdef DEBUG_PRINT
         /* Debugging: Print subframe information. */
-        printf(
+        CLOG_DEBUG(
+            &LOG,
+            1,
             "flow: frame (is first: %d): %d // scene current frame: %d // scene current subframe: "
-            "%f\n",
+            "%f",
             is_first_frame,
             frame,
             scene->r.cfra,
             scene->r.subframe);
-#  endif
         /* Update frame time, this is considering current subframe fraction
          * BLI_mutex_lock() called in manta_step(), so safe to update subframe here
          * TODO (sebbas): Using BKE_scene_frame_get(scene) instead of new DEG_get_ctime(depsgraph)
@@ -2834,7 +2835,7 @@ static void compute_flowsemission(Scene *scene,
           }
         }
         else {
-          printf("Error: unknown flow emission source\n");
+          CLOG_ERROR(&LOG, "Unknown flow emission source");
         }
 
         /* If this we emitted with temp emission map in this loop (subframe emission), we combine
@@ -2847,14 +2848,14 @@ static void compute_flowsemission(Scene *scene,
       }
     }
   }
-#  ifdef DEBUG_PRINT
   /* Debugging: Print time information. */
-  printf("flow: frame: %d // time per frame: %f // frame length: %f // dt: %f\n",
-         frame,
-         time_per_frame,
-         frame_length,
-         dt);
-#  endif
+  CLOG_DEBUG(&LOG,
+             2,
+             "flow: frame: %d // time per frame: %f // frame length: %f // dt: %f",
+             frame,
+             time_per_frame,
+             frame_length,
+             dt);
 }
 
 static void update_flowsfluids(struct Depsgraph *depsgraph,
@@ -3255,10 +3256,9 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *fds, Mesh *orgmesh, Obj
   num_normals = manta_liquid_get_num_normals(fds->fluid);
   num_faces = manta_liquid_get_num_triangles(fds->fluid);
 
-#  ifdef DEBUG_PRINT
   /* Debugging: Print number of vertices, normals, and faces. */
-  printf("num_verts: %d, num_normals: %d, num_faces: %d\n", num_verts, num_normals, num_faces);
-#  endif
+  CLOG_DEBUG(
+      &LOG, 1, "num_verts: %d, num_normals: %d, num_faces: %d", num_verts, num_normals, num_faces);
 
   if (!num_verts || !num_faces) {
     return NULL;
@@ -3332,13 +3332,13 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *fds, Mesh *orgmesh, Obj
     mul_v3_v3(mverts->co, co_scale);
     add_v3_v3(mverts->co, co_offset);
 
-#  ifdef DEBUG_PRINT
     /* Debugging: Print coordinates of vertices. */
-    printf("mverts->co[0]: %f, mverts->co[1]: %f, mverts->co[2]: %f\n",
-           mverts->co[0],
-           mverts->co[1],
-           mverts->co[2]);
-#  endif
+    CLOG_DEBUG(&LOG,
+               1,
+               "mverts->co[0]: %f, mverts->co[1]: %f, mverts->co[2]: %f",
+               mverts->co[0],
+               mverts->co[1],
+               mverts->co[2]);
 
     /* Normals (data is normalized cube around domain origin). */
     no[0] = manta_liquid_get_normal_x_at(fds->fluid, i);
@@ -3346,25 +3346,23 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *fds, Mesh *orgmesh, Obj
     no[2] = manta_liquid_get_normal_z_at(fds->fluid, i);
 
     normal_float_to_short_v3(no_s, no);
-#  ifdef DEBUG_PRINT
     /* Debugging: Print coordinates of normals. */
-    printf("no_s[0]: %d, no_s[1]: %d, no_s[2]: %d\n", no_s[0], no_s[1], no_s[2]);
-#  endif
+    CLOG_DEBUG(&LOG, 1, "no_s[0]: %d, no_s[1]: %d, no_s[2]: %d", no_s[0], no_s[1], no_s[2]);
 
     if (use_speedvectors) {
       velarray[i].vel[0] = manta_liquid_get_vertvel_x_at(fds->fluid, i) * (fds->dx / time_mult);
       velarray[i].vel[1] = manta_liquid_get_vertvel_y_at(fds->fluid, i) * (fds->dx / time_mult);
       velarray[i].vel[2] = manta_liquid_get_vertvel_z_at(fds->fluid, i) * (fds->dx / time_mult);
-#  ifdef DEBUG_PRINT
       /* Debugging: Print velocities of vertices. */
-      printf("velarray[%d].vel[0]: %f, velarray[%d].vel[1]: %f, velarray[%d].vel[2]: %f\n",
-             i,
-             velarray[i].vel[0],
-             i,
-             velarray[i].vel[1],
-             i,
-             velarray[i].vel[2]);
-#  endif
+      CLOG_DEBUG(&LOG,
+                 1,
+                 "velarray[%d].vel[0]: %f, velarray[%d].vel[1]: %f, velarray[%d].vel[2]: %f",
+                 i,
+                 velarray[i].vel[0],
+                 i,
+                 velarray[i].vel[1],
+                 i,
+                 velarray[i].vel[2]);
     }
   }
 
@@ -3380,13 +3378,13 @@ static Mesh *create_liquid_geometry(FluidDomainSettings *fds, Mesh *orgmesh, Obj
     mloops[0].v = manta_liquid_get_triangle_x_at(fds->fluid, i);
     mloops[1].v = manta_liquid_get_triangle_y_at(fds->fluid, i);
     mloops[2].v = manta_liquid_get_triangle_z_at(fds->fluid, i);
-#  ifdef DEBUG_PRINT
     /* Debugging: Print mesh faces. */
-    printf("mloops[0].v: %d, mloops[1].v: %d, mloops[2].v: %d\n",
-           mloops[0].v,
-           mloops[1].v,
-           mloops[2].v);
-#  endif
+    CLOG_DEBUG(&LOG,
+               1,
+               "mloops[0].v: %ud, mloops[1].v: %ud, mloops[2].v: %ud",
+               mloops[0].v,
+               mloops[1].v,
+               mloops[2].v);
   }
 
   BKE_mesh_ensure_normals(me);
