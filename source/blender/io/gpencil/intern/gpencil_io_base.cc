@@ -124,16 +124,31 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
     }
 
     if (base->flag & BASE_SELECTED) {
-      /* Save zdepth from view to sort from back to front. */
-      float camera_z = dot_v3v3(camera_z_axis, object->obmat[3]);
-      ObjectZ obz = {camera_z, object};
-      ob_list_.push_back(obz);
+      /* Save z-depth from view to sort from back to front. */
+      if (is_camera) {
+        float camera_z = dot_v3v3(camera_z_axis, object->obmat[3]);
+        ObjectZ obz = {camera_z, object};
+        ob_list_.push_back(obz);
+      }
+      else {
+        float zdepth = 0;
+        if (rv3d) {
+          if (rv3d->is_persp) {
+            zdepth = ED_view3d_calc_zfac(rv3d, object->obmat[3], NULL);
+          }
+          else {
+            zdepth = -dot_v3v3(rv3d->viewinv[2], object->obmat[3]);
+          }
+          ObjectZ obz = {zdepth * -1.0f, object};
+          ob_list_.push_back(obz);
+        }
+      }
     }
-  }
 
-  /* Sort list of objects from point of view. */
-  ob_list_.sort(
-      [](const ObjectZ &obz1, const ObjectZ &obz2) { return obz1.zdepth < obz2.zdepth; });
+    /* Sort list of objects from point of view. */
+    ob_list_.sort(
+        [](const ObjectZ &obz1, const ObjectZ &obz2) { return obz1.zdepth < obz2.zdepth; });
+  }
 }
 
 /**
