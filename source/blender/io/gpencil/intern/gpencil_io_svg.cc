@@ -123,7 +123,7 @@ void GpencilExporterSVG::create_document_header(void)
   std::string viewbox = "0 0 " + width + " " + height;
   main_node.append_attribute("viewBox").set_value(viewbox.c_str());
 
-  /* Camera border. */
+  /* Camera clipping. */
   if (is_camera_mode() && ((params_.flag & GP_EXPORT_CLIP_CAMERA) != 0)) {
     pugi::xml_node clip_node = main_node.append_child("clipPath");
     clip_node.append_attribute("id").set_value("clip-path");

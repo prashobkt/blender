@@ -127,8 +127,6 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
       /* Save zdepth from view to sort from back to front. */
       float camera_z = dot_v3v3(camera_z_axis, object->obmat[3]);
       ObjectZ obz = {camera_z, object};
-      // obz.zdepth = camera_z;
-      // obz.ob = object;
       ob_list_.push_back(obz);
     }
   }
