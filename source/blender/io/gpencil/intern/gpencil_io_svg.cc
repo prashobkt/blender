@@ -119,7 +119,7 @@ void GpencilExporterSVG::export_layers(void)
   for (ObjectZ &obz : ob_list_) {
     Object *ob = obz.ob;
     pugi::xml_node ob_node = main_node.append_child("g");
-    ob_node.append_attribute("zdepth").set_value(ob->id.name + 2);
+    ob_node.append_attribute("id").set_value(ob->id.name + 2);
 
     /* Use evaluated version to get strokes with modifiers. */
     Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
@@ -136,7 +136,7 @@ void GpencilExporterSVG::export_layers(void)
       txt.append(gpl->info);
       main_node.append_child(pugi::node_comment).set_value(txt.c_str());
       pugi::xml_node gpl_node = ob_node.append_child("g");
-      gpl_node.append_attribute("zdepth").set_value(gpl->info);
+      gpl_node.append_attribute("id").set_value(gpl->info);
 
       bGPDframe *gpf = gpl->actframe;
       if (gpf == NULL) {
