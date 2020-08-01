@@ -123,20 +123,19 @@ void GpencilExporterSVG::create_document_header(void)
   std::string viewbox = "0 0 " + width + " " + height;
   main_node.append_attribute("viewBox").set_value(viewbox.c_str());
 
-#if 0 /* TODO: Do we need camera border? */
   /* Camera border. */
-  if (is_camera_mode()) {
-    pugi::xml_node cam_node = main_node.append_child("rect");
-    cam_node.append_attribute("stroke").set_value("#FF0000");
-    cam_node.append_attribute("stroke-width").set_value("10");
-    cam_node.append_attribute("stroke-opacity").set_value("0.5");
-    cam_node.append_attribute("fill").set_value("none");
-    cam_node.append_attribute("x").set_value(0);
-    cam_node.append_attribute("width").set_value((camera_rect_.xmax - camera_rect_.xmin) * camera_ratio_);
-    cam_node.append_attribute("y").set_value(0);
-    cam_node.append_attribute("height").set_value((camera_rect_.ymax - camera_rect_.ymin) * camera_ratio_);
-    }
-#endif
+  if (is_camera_mode() && ((params_.flag & GP_EXPORT_CLIP_CAMERA) != 0)) {
+    pugi::xml_node clip_node = main_node.append_child("clipPath");
+    clip_node.append_attribute("id").set_value("clip-path");
+    pugi::xml_node rect_node = clip_node.append_child("rect");
+    rect_node.append_attribute("x").set_value(0);
+    rect_node.append_attribute("width").set_value((camera_rect_.xmax - camera_rect_.xmin) *
+                                                  camera_ratio_);
+    rect_node.append_attribute("y").set_value(0);
+    rect_node.append_attribute("height").set_value((camera_rect_.ymax - camera_rect_.ymin) *
+                                                   camera_ratio_);
+    rect_node.append_attribute("fill").set_value("none");
+  }
 }
 
 /* Main layer loop. */
@@ -146,6 +145,11 @@ void GpencilExporterSVG::export_layers(void)
     Object *ob = obz.ob;
     pugi::xml_node ob_node = main_node.append_child("g");
     ob_node.append_attribute("id").set_value(ob->id.name + 2);
+
+    /* Clip area. */
+    if (is_camera_mode() && ((params_.flag & GP_EXPORT_CLIP_CAMERA) != 0)) {
+      ob_node.append_attribute("clip-path").set_value("url(#clip-path)");
+    }
 
     /* Use evaluated version to get strokes with modifiers. */
     Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);

@@ -169,12 +169,14 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
   const bool use_norm_thickness = RNA_boolean_get(op->ptr, "use_normalized_thickness");
   const bool use_selected_objects = RNA_boolean_get(op->ptr, "use_selected_objects");
+  const bool use_clip_camera = RNA_boolean_get(op->ptr, "use_clip_camera");
 
   /* Set flags. */
   int flag = 0;
   SET_FLAG_FROM_TEST(flag, use_fill, GP_EXPORT_FILL);
   SET_FLAG_FROM_TEST(flag, use_norm_thickness, GP_EXPORT_NORM_THICKNESS);
   SET_FLAG_FROM_TEST(flag, use_selected_objects, GP_EXPORT_SELECTED_OBJECTS);
+  SET_FLAG_FROM_TEST(flag, use_clip_camera, GP_EXPORT_CLIP_CAMERA);
 
   struct GpencilExportParams params = {
       .C = C,
@@ -266,6 +268,7 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
   sub = uiLayoutColumn(col, true);
   uiItemR(sub, imfptr, "use_fill", 0, NULL, ICON_NONE);
   uiItemR(sub, imfptr, "use_normalized_thickness", 0, NULL, ICON_NONE);
+  uiItemR(sub, imfptr, "use_clip_camera", 0, NULL, ICON_NONE);
 }
 
 static void wm_gpencil_export_draw(bContext *C, wmOperator *op)
@@ -377,6 +380,11 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
                   true,
                   "All Selected Objects",
                   "Export all selected objects, unselect for export active object only");
+  RNA_def_boolean(ot->srna,
+                  "use_clip_camera",
+                  false,
+                  "Clip Camera",
+                  "Clip drawings to camera size when export in camera view");
 
   /* This dummy prop is used to check whether we need to init the start and
    * end frame values to that of the scene's, otherwise they are reset at
