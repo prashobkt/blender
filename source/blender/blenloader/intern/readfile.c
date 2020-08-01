@@ -301,9 +301,7 @@ void blo_reportf_wrap(ReportList *reports, ReportType type, const char *format, 
 
   BKE_report(reports, type, fixed_buf);
 
-  if (G.background == 0) {
-    CLOG_VERBOSE(&BLENLOADER_LOG_READFILE, 1, "%s: %s", BKE_report_type_str(type), fixed_buf);
-  }
+  CLOG_VERBOSE(&BLENLOADER_LOG_READFILE, 1, "%s: %s", BKE_report_type_str(type), fixed_buf);
 }
 
 /* for reporting linking messages */
