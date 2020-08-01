@@ -106,16 +106,26 @@ void GpencilExporterSVG::create_document_header(void)
   main_node.append_attribute("x").set_value("0px");
   main_node.append_attribute("y").set_value("0px");
 
-  if (is_camera_mode()) {
-    std::string width = std::to_string(render_x_) + "px";
-    std::string height = std::to_string(render_y_) + "px";
-    main_node.append_attribute("width").set_value(width.c_str());
-    main_node.append_attribute("height").set_value(height.c_str());
-    std::string viewbox = "0 0 " + std::to_string(render_x_) + " " + std::to_string(render_y_);
-    main_node.append_attribute("viewBox").set_value(viewbox.c_str());
+  std::string width;
+  std::string height;
 
-    /* Camera border. */
+  if (is_camera_mode()) {
+    width = std::to_string(render_x_);
+    height = std::to_string(render_y_);
+  }
+  else {
+    width = std::to_string(winx_);
+    height = std::to_string(winy_);
+  }
+
+  main_node.append_attribute("width").set_value((width + "px").c_str());
+  main_node.append_attribute("height").set_value((height + "px").c_str());
+  std::string viewbox = "0 0 " + width + " " + height;
+  main_node.append_attribute("viewBox").set_value(viewbox.c_str());
+
 #if 0 /* TODO: Do we need camera border? */
+  /* Camera border. */
+  if (is_camera_mode()) {
     pugi::xml_node cam_node = main_node.append_child("rect");
     cam_node.append_attribute("stroke").set_value("#FF0000");
     cam_node.append_attribute("stroke-width").set_value("10");
@@ -125,16 +135,8 @@ void GpencilExporterSVG::create_document_header(void)
     cam_node.append_attribute("width").set_value((camera_rect_.xmax - camera_rect_.xmin) * camera_ratio_);
     cam_node.append_attribute("y").set_value(0);
     cam_node.append_attribute("height").set_value((camera_rect_.ymax - camera_rect_.ymin) * camera_ratio_);
+    }
 #endif
-  }
-  else {
-    std::string width = std::to_string(winx_) + "px";
-    std::string height = std::to_string(winy_) + "px";
-    main_node.append_attribute("width").set_value(width.c_str());
-    main_node.append_attribute("height").set_value(height.c_str());
-    std::string viewbox = "0 0 " + std::to_string(winx_) + " " + std::to_string(winy_);
-    main_node.append_attribute("viewBox").set_value(viewbox.c_str());
-  }
 }
 
 /* Main layer loop. */
