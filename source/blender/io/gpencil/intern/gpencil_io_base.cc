@@ -67,6 +67,7 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   params_.filename = iparams->filename;
   params_.mode = iparams->mode;
   params_.flag = iparams->flag;
+  params_.stroke_sample = iparams->stroke_sample;
 
   /* Easy access data. */
   bmain = CTX_data_main(params_.C);

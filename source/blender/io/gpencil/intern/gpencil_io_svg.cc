@@ -218,7 +218,9 @@ void GpencilExporterSVG::export_layers(void)
               gps_current_set(ob, gps_perimeter, false);
 
               /* Sample stroke. */
-              BKE_gpencil_stroke_sample(gps_perimeter, 0.03f, false);
+              if (params_.stroke_sample > 0.0f) {
+                BKE_gpencil_stroke_sample(gps_perimeter, params_.stroke_sample, false);
+              }
 
               export_stroke_path(gpl_node, false);
 

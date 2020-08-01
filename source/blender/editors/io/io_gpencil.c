@@ -188,6 +188,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
       .frame_start = RNA_int_get(op->ptr, "start"),
       .frame_end = RNA_int_get(op->ptr, "end"),
       .flag = flag,
+      .stroke_sample = RNA_float_get(op->ptr, "stroke_sample"),
   };
   /* Take some defaults from the scene, if not specified explicitly. */
   Scene *scene = CTX_data_scene(C);
@@ -269,6 +270,7 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemR(sub, imfptr, "use_fill", 0, NULL, ICON_NONE);
   uiItemR(sub, imfptr, "use_normalized_thickness", 0, NULL, ICON_NONE);
   uiItemR(sub, imfptr, "use_clip_camera", 0, NULL, ICON_NONE);
+  uiItemR(sub, imfptr, "stroke_sample", 0, NULL, ICON_NONE);
 }
 
 static void wm_gpencil_export_draw(bContext *C, wmOperator *op)
@@ -385,6 +387,15 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
                   false,
                   "Clip Camera",
                   "Clip drawings to camera size when export in camera view");
+  RNA_def_float(ot->srna,
+                "stroke_sample",
+                0.03f,
+                0.0f,
+                100.0f,
+                "Sampling",
+                "Precision of sampling stroke, set to zero to disable",
+                0.0f,
+                100.0f);
 
   /* This dummy prop is used to check whether we need to init the start and
    * end frame values to that of the scene's, otherwise they are reset at

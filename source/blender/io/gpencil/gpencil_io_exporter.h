@@ -49,6 +49,8 @@ struct GpencilExportParams {
   char frame[5];
   /** Flags. */
   int flag;
+  /** Stroke sampling. */
+  float stroke_sample;
 };
 
 typedef enum eGpencilExportParams_Flag {
