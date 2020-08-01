@@ -75,7 +75,12 @@ class GpencilExporter {
   struct bGPdata *gpd;
   struct Main *bmain;
   struct RegionView3D *rv3d;
-  int winx, winy;
+
+  int winx_, winy_;
+  int render_x_, render_y_;
+  float camera_ratio_;
+  float offset_[2];
+  rctf camera_rect_;
 
   float stroke_color_[4], fill_color_[4];
 
@@ -86,6 +91,7 @@ class GpencilExporter {
   bool gp_style_is_stroke(void);
   bool gp_style_is_fill(void);
   float stroke_average_opacity(void);
+  bool is_camera_mode(void);
 
   void gpl_current_set(struct bGPDlayer *gpl);
   void gpf_current_set(struct bGPDframe *gpf);
@@ -99,6 +105,7 @@ class GpencilExporter {
   bool is_stroke;
   bool is_fill;
   float avg_opacity;
+  bool is_camera;
 
   void set_out_filename(char *filename);
 };

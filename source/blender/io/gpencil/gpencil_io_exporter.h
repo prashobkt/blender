@@ -34,6 +34,7 @@ typedef enum eGpencilExport_Modes {
 struct GpencilExportParams {
   bContext *C;
   ARegion *region;
+  View3D *v3d;
   /** Grease pencil object. */
   struct Object *obact;
   /** Output filename.  */

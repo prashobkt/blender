@@ -62,6 +62,7 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   params_.frame_end = iparams->frame_end;
   params_.obact = iparams->obact;
   params_.region = iparams->region;
+  params_.v3d = iparams->v3d;
   params_.C = iparams->C;
   params_.filename = iparams->filename;
   params_.mode = iparams->mode;
@@ -73,8 +74,35 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   rv3d = (RegionView3D *)params_.region->regiondata;
   gpd = (bGPdata *)params_.obact->data;
 
-  winx = params_.region->winx;
-  winy = params_.region->winy;
+  Scene *scene = CTX_data_scene(params_.C);
+  render_x_ = (scene->r.xsch * scene->r.size) / 100;
+  render_y_ = (scene->r.ysch * scene->r.size) / 100;
+
+  /* Camera rectangle. */
+  if (rv3d->persp == RV3D_CAMOB) {
+    ED_view3d_calc_camera_border(CTX_data_scene(params_.C),
+                                 depsgraph,
+                                 params_.region,
+                                 params_.v3d,
+                                 rv3d,
+                                 &camera_rect_,
+                                 true);
+    is_camera = true;
+    camera_ratio_ = render_x_ / (camera_rect_.xmax - camera_rect_.xmin);
+    offset_[0] = camera_rect_.xmin;
+    offset_[1] = camera_rect_.ymin;
+  }
+  else {
+    is_camera = false;
+    render_x_ = params_.region->winx;
+    render_y_ = params_.region->winy;
+    camera_ratio_ = 1.0f;
+    offset_[0] = 0.0f;
+    offset_[1] = 0.0f;
+  }
+
+  winx_ = params_.region->winx;
+  winy_ = params_.region->winy;
 
   /* Prepare output filename with full path. */
   set_out_filename(params_.filename);
@@ -138,12 +166,15 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(const float co[3], float 
       copy_v2_v2(r_co, screen_co);
       /* Invert X axis. */
       if (invert_axis_[0]) {
-        r_co[0] = winx - r_co[0];
+        r_co[0] = winx_ - r_co[0];
       }
       /* Invert Y axis. */
       if (invert_axis_[1]) {
-        r_co[1] = winy - r_co[1];
+        r_co[1] = winy_ - r_co[1];
       }
+      /* Apply offset and scale. */
+      sub_v2_v2(r_co, offset_);
+      mul_v2_fl(r_co, camera_ratio_);
 
       return true;
     }
@@ -153,11 +184,11 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(const float co[3], float 
 
   /* Invert X axis. */
   if (invert_axis_[0]) {
-    r_co[0] = winx - r_co[0];
+    r_co[0] = winx_ - r_co[0];
   }
   /* Invert Y axis. */
   if (invert_axis_[1]) {
-    r_co[1] = winy - r_co[1];
+    r_co[1] = winy_ - r_co[1];
   }
 
   return false;
@@ -352,4 +383,8 @@ float GpencilExporter::stroke_average_opacity(void)
   return avg_opacity;
 }
 
+bool GpencilExporter::is_camera_mode(void)
+{
+  return is_camera;
+}
 }  // namespace blender::io::gpencil

@@ -102,9 +102,27 @@ static ARegion *get_invoke_region(bContext *C)
   if (area == NULL) {
     return NULL;
   }
+
   ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
 
   return region;
+}
+
+static View3D *get_invoke_view3d(bContext *C)
+{
+  bScreen *screen = CTX_wm_screen(C);
+  if (screen == NULL) {
+    return NULL;
+  }
+  ScrArea *area = BKE_screen_find_big_area(screen, SPACE_VIEW3D, 0);
+  if (area == NULL) {
+    return NULL;
+  }
+  if (area) {
+    return area->spacedata.first;
+  }
+
+  return NULL;
 }
 
 static bool is_keyframe_empty(bGPdata *gpd, int framenum)
@@ -142,6 +160,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "Unable to find valid 3D View area");
     return OPERATOR_CANCELLED;
   }
+  View3D *v3d = get_invoke_view3d(C);
 
   char filename[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filename);
@@ -160,6 +179,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   struct GpencilExportParams params = {
       .C = C,
       .region = region,
+      .v3d = v3d,
       .obact = ob,
       .filename = filename,
       .mode = GP_EXPORT_TO_SVG,

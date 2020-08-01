@@ -38,6 +38,7 @@
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_view3d_types.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -105,12 +106,35 @@ void GpencilExporterSVG::create_document_header(void)
   main_node.append_attribute("x").set_value("0px");
   main_node.append_attribute("y").set_value("0px");
 
-  std::string width = std::to_string(winx) + "px";
-  std::string height = std::to_string(winy) + "px";
-  main_node.append_attribute("width").set_value(width.c_str());
-  main_node.append_attribute("height").set_value(height.c_str());
-  std::string viewbox = "0 0 " + std::to_string(winx) + " " + std::to_string(winy);
-  main_node.append_attribute("viewBox").set_value(viewbox.c_str());
+  if (is_camera_mode()) {
+    std::string width = std::to_string(render_x_) + "px";
+    std::string height = std::to_string(render_y_) + "px";
+    main_node.append_attribute("width").set_value(width.c_str());
+    main_node.append_attribute("height").set_value(height.c_str());
+    std::string viewbox = "0 0 " + std::to_string(render_x_) + " " + std::to_string(render_y_);
+    main_node.append_attribute("viewBox").set_value(viewbox.c_str());
+
+    /* Camera border. */
+#if 0 /* TODO: Do we need camera border? */
+    pugi::xml_node cam_node = main_node.append_child("rect");
+    cam_node.append_attribute("stroke").set_value("#FF0000");
+    cam_node.append_attribute("stroke-width").set_value("10");
+    cam_node.append_attribute("stroke-opacity").set_value("0.5");
+    cam_node.append_attribute("fill").set_value("none");
+    cam_node.append_attribute("x").set_value(0);
+    cam_node.append_attribute("width").set_value((camera_rect_.xmax - camera_rect_.xmin) * camera_ratio_);
+    cam_node.append_attribute("y").set_value(0);
+    cam_node.append_attribute("height").set_value((camera_rect_.ymax - camera_rect_.ymin) * camera_ratio_);
+#endif
+  }
+  else {
+    std::string width = std::to_string(winx_) + "px";
+    std::string height = std::to_string(winy_) + "px";
+    main_node.append_attribute("width").set_value(width.c_str());
+    main_node.append_attribute("height").set_value(height.c_str());
+    std::string viewbox = "0 0 " + std::to_string(winx_) + " " + std::to_string(winy_);
+    main_node.append_attribute("viewBox").set_value(viewbox.c_str());
+  }
 }
 
 /* Main layer loop. */
