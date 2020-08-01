@@ -57,20 +57,18 @@ class GpencilExporter {
   std::string to_lower_string(char *input_text);
 
  protected:
-  bool invert_axis[2];
-  float diff_mat[4][4];
+  bool invert_axis_[2];
+  float diff_mat_[4][4];
   GpencilExportParams params_;
-  char out_filename[FILE_MAX];
+  char out_filename_[FILE_MAX];
 
+  /* Used for sorting objects. */
   struct ObjectZ {
     float zdepth;
     struct Object *ob;
-    // ObjectZ(int izdepth, Object *iob) : zdepth(izdepth), ob(iob)
-    //{
-    //}
   };
 
-  std::list<ObjectZ> ob_list;
+  std::list<ObjectZ> ob_list_;
 
   /* Data for easy access. */
   struct Depsgraph *depsgraph;
@@ -79,7 +77,7 @@ class GpencilExporter {
   struct RegionView3D *rv3d;
   int winx, winy;
 
-  float stroke_color[4], fill_color[4];
+  float stroke_color_[4], fill_color_[4];
 
   struct bGPDlayer *gpl_current_get(void);
   struct bGPDframe *gpf_current_get(void);

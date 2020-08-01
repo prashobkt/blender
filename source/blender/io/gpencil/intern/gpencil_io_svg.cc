@@ -63,8 +63,8 @@ namespace blender ::io ::gpencil {
 GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *iparams)
     : GpencilExporter(iparams)
 {
-  invert_axis[0] = false;
-  invert_axis[1] = true;
+  invert_axis_[0] = false;
+  invert_axis_[1] = true;
 }
 
 /* Main write method for SVG format. */
@@ -75,7 +75,7 @@ bool GpencilExporterSVG::write(std::string actual_frame)
   export_layers();
 
   /* Add frame to filename. */
-  std::string frame_file = out_filename;
+  std::string frame_file = out_filename_;
   size_t found = frame_file.find_last_of(".", 0);
   if (found != std::string::npos) {
     frame_file.replace(found, 8, actual_frame + ".svg");
@@ -116,7 +116,7 @@ void GpencilExporterSVG::create_document_header(void)
 /* Main layer loop. */
 void GpencilExporterSVG::export_layers(void)
 {
-  for (ObjectZ &obz : ob_list) {
+  for (ObjectZ &obz : ob_list_) {
     Object *ob = obz.ob;
     pugi::xml_node ob_node = main_node.append_child("g");
     ob_node.append_attribute("zdepth").set_value(ob->id.name + 2);
@@ -144,7 +144,7 @@ void GpencilExporterSVG::export_layers(void)
       }
       gpf_current_set(gpf);
 
-      BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat);
+      BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat_);
 
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         if (gps->totpoints == 0) {
@@ -183,7 +183,7 @@ void GpencilExporterSVG::export_layers(void)
             }
             else {
               bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
-                  rv3d, gpd, gpl, gps_duplicate, 3, diff_mat);
+                  rv3d, gpd, gpl, gps_duplicate, 3, diff_mat_);
 
               gps_current_set(ob, gps_perimeter, false);
 
@@ -207,7 +207,7 @@ void GpencilExporterSVG::export_layers(void)
  * Export a point
  * \param gpl_node: Node of the layer.
  * \param gps: Stroke to export.
- * \param diff_mat: Transformation matrix.
+ * \param diff_mat_: Transformation matrix.
  */
 void GpencilExporterSVG::export_point(pugi::xml_node gpl_node)
 {
@@ -235,7 +235,7 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node)
  * Export a stroke using path
  * \param gpl_node: Node of the layer.
  * \param gps: Stroke to export.
- * \param diff_mat: Transformation matrix.
+ * \param diff_mat_: Transformation matrix.
  * \param is_fill: True if the stroke is only fill
  */
 void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool is_fill)
@@ -248,15 +248,15 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
   float col[3];
   std::string stroke_hex;
   if (is_fill) {
-    gps_node.append_attribute("fill-opacity").set_value(fill_color[3] * gpl->opacity);
+    gps_node.append_attribute("fill-opacity").set_value(fill_color_[3] * gpl->opacity);
 
-    interp_v3_v3v3(col, fill_color, gpl->tintcolor, gpl->tintcolor[3]);
+    interp_v3_v3v3(col, fill_color_, gpl->tintcolor, gpl->tintcolor[3]);
   }
   else {
     gps_node.append_attribute("fill-opacity")
-        .set_value(stroke_color[3] * stroke_average_opacity() * gpl->opacity);
+        .set_value(stroke_color_[3] * stroke_average_opacity() * gpl->opacity);
 
-    interp_v3_v3v3(col, stroke_color, gpl->tintcolor, gpl->tintcolor[3]);
+    interp_v3_v3v3(col, stroke_color_, gpl->tintcolor, gpl->tintcolor[3]);
   }
   linearrgb_to_srgb_v3_v3(col, col);
   stroke_hex = rgb_to_hex(col);
@@ -286,7 +286,7 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
  * Export a stroke using polyline or polygon
  * \param gpl_node: Node of the layer.
  * \param gps: Stroke to export.
- * \param diff_mat: Transformation matrix.
+ * \param diff_mat_: Transformation matrix.
  * \param is_fill: True if the stroke is only fill
  */
 void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const bool is_fill)
@@ -347,20 +347,20 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is
 
   float col[3];
   if (is_fill) {
-    interp_v3_v3v3(col, fill_color, gpl->tintcolor, gpl->tintcolor[3]);
+    interp_v3_v3v3(col, fill_color_, gpl->tintcolor, gpl->tintcolor[3]);
     linearrgb_to_srgb_v3_v3(col, col);
     std::string stroke_hex = rgb_to_hex(col);
     gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
     gps_node.append_attribute("stroke").set_value("none");
-    gps_node.append_attribute("fill-opacity").set_value(fill_color[3] * gpl->opacity);
+    gps_node.append_attribute("fill-opacity").set_value(fill_color_[3] * gpl->opacity);
   }
   else {
-    interp_v3_v3v3(col, stroke_color, gpl->tintcolor, gpl->tintcolor[3]);
+    interp_v3_v3v3(col, stroke_color_, gpl->tintcolor, gpl->tintcolor[3]);
     linearrgb_to_srgb_v3_v3(col, col);
     std::string stroke_hex = rgb_to_hex(col);
     gps_node.append_attribute("stroke").set_value(stroke_hex.c_str());
     gps_node.append_attribute("stroke-opacity")
-        .set_value(stroke_color[3] * stroke_average_opacity() * gpl->opacity);
+        .set_value(stroke_color_[3] * stroke_average_opacity() * gpl->opacity);
 
     if (gps->totpoints > 1) {
       gps_node.append_attribute("fill").set_value("none");
@@ -368,7 +368,7 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is
     }
     else {
       gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
-      gps_node.append_attribute("fill-opacity").set_value(fill_color[3] * gpl->opacity);
+      gps_node.append_attribute("fill-opacity").set_value(fill_color_[3] * gpl->opacity);
     }
   }
 }

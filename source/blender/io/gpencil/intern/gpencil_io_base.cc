@@ -100,12 +100,13 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
       ObjectZ obz = {camera_z, object};
       // obz.zdepth = camera_z;
       // obz.ob = object;
-      ob_list.push_back(obz);
+      ob_list_.push_back(obz);
     }
   }
 
   /* Sort list of objects from point of view. */
-  ob_list.sort([](const ObjectZ &obz1, const ObjectZ &obz2) { return obz1.zdepth < obz2.zdepth; });
+  ob_list_.sort(
+      [](const ObjectZ &obz1, const ObjectZ &obz2) { return obz1.zdepth < obz2.zdepth; });
 }
 
 /**
@@ -115,8 +116,8 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
  */
 void GpencilExporter::set_out_filename(char *filename)
 {
-  BLI_strncpy(out_filename, filename, FILE_MAX);
-  BLI_path_abs(out_filename, BKE_main_blendfile_path(bmain));
+  BLI_strncpy(out_filename_, filename, FILE_MAX);
+  BLI_path_abs(out_filename_, BKE_main_blendfile_path(bmain));
 
   //#ifdef WIN32
   //  UTF16_ENCODE(svg_filename);
@@ -128,7 +129,7 @@ void GpencilExporter::set_out_filename(char *filename)
 bool GpencilExporter::gpencil_3d_point_to_screen_space(const float co[3], float r_co[2])
 {
   float parent_co[3];
-  mul_v3_m4v3(parent_co, diff_mat, co);
+  mul_v3_m4v3(parent_co, diff_mat_, co);
   float screen_co[2];
   eV3DProjTest test = (eV3DProjTest)(V3D_PROJ_RET_OK);
   if (ED_view3d_project_float_global(params_.region, parent_co, screen_co, test) ==
@@ -136,11 +137,11 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(const float co[3], float 
     if (!ELEM(V2D_IS_CLIPPED, screen_co[0], screen_co[1])) {
       copy_v2_v2(r_co, screen_co);
       /* Invert X axis. */
-      if (invert_axis[0]) {
+      if (invert_axis_[0]) {
         r_co[0] = winx - r_co[0];
       }
       /* Invert Y axis. */
-      if (invert_axis[1]) {
+      if (invert_axis_[1]) {
         r_co[1] = winy - r_co[1];
       }
 
@@ -151,11 +152,11 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(const float co[3], float 
   r_co[1] = V2D_IS_CLIPPED;
 
   /* Invert X axis. */
-  if (invert_axis[0]) {
+  if (invert_axis_[0]) {
     r_co[0] = winx - r_co[0];
   }
   /* Invert Y axis. */
-  if (invert_axis[1]) {
+  if (invert_axis_[1]) {
     r_co[1] = winy - r_co[1];
   }
 
@@ -220,7 +221,7 @@ float GpencilExporter::stroke_point_radius_get(struct bGPDstroke *gps)
 
   /* Radius. */
   bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
-      rv3d, gpd, gpl, gps, 3, diff_mat);
+      rv3d, gpd, gpl, gps, 3, diff_mat_);
 
   pt = &gps_perimeter->points[0];
   gpencil_3d_point_to_screen_space(&pt->x, screen_ex);
@@ -279,7 +280,7 @@ struct bGPDlayer *GpencilExporter::gpl_current_get(void)
 void GpencilExporter::gpl_current_set(struct bGPDlayer *gpl)
 {
   gpl_cur = gpl;
-  BKE_gpencil_parent_matrix_get(depsgraph, params_.obact, gpl, diff_mat);
+  BKE_gpencil_parent_matrix_get(depsgraph, params_.obact, gpl, diff_mat_);
 }
 
 struct bGPDframe *GpencilExporter::gpf_current_get(void)
@@ -310,7 +311,7 @@ void GpencilExporter::gps_current_set(struct Object *ob,
                (gp_style->fill_rgba[3] > GPENCIL_ALPHA_OPACITY_THRESH));
 
     /* Stroke color. */
-    copy_v4_v4(stroke_color, gp_style->stroke_rgba);
+    copy_v4_v4(stroke_color_, gp_style->stroke_rgba);
     avg_opacity = 0;
     /* Get average vertex color and apply. */
     float avg_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
@@ -321,13 +322,13 @@ void GpencilExporter::gps_current_set(struct Object *ob,
     }
 
     mul_v4_v4fl(avg_color, avg_color, 1.0f / (float)gps->totpoints);
-    interp_v3_v3v3(stroke_color, stroke_color, avg_color, avg_color[3]);
+    interp_v3_v3v3(stroke_color_, stroke_color_, avg_color, avg_color[3]);
     avg_opacity /= (float)gps->totpoints;
 
     /* Fill color. */
-    copy_v4_v4(fill_color, gp_style->fill_rgba);
+    copy_v4_v4(fill_color_, gp_style->fill_rgba);
     /* Apply vertex color for fill. */
-    interp_v3_v3v3(fill_color, fill_color, gps->vert_color_fill, gps->vert_color_fill[3]);
+    interp_v3_v3v3(fill_color_, fill_color_, gps->vert_color_fill, gps->vert_color_fill[3]);
   }
 }
 
