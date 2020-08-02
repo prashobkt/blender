@@ -56,6 +56,7 @@ static bool is_keyframe_empty(bGPdata *gpd, int framenum)
   return true;
 }
 
+/* Export current frame. */
 static bool gpencil_io_export_frame(const GpencilExportParams *params)
 {
 
@@ -83,6 +84,7 @@ bool gpencil_io_export(GpencilExportParams *params)
   Object *ob = CTX_data_active_object(params->C);
   Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
   bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
+
   const bool only_active_frame = ((params->flag & GP_EXPORT_ACTIVE_FRAME) != 0);
 
   int oldframe = (int)DEG_get_ctime(depsgraph);
@@ -105,7 +107,7 @@ bool gpencil_io_export(GpencilExportParams *params)
     }
   }
 
-  /* Return frame state and DB to original state */
+  /* Return frame state and DB to original state. */
   if (!only_active_frame) {
     CFRA = oldframe;
     BKE_scene_graph_update_for_newframe(depsgraph, bmain);
