@@ -48,6 +48,9 @@
 
 #include "ED_view3d.h"
 
+#include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
+
 #include "gpencil_io_base.h"
 #include "gpencil_io_exporter.h"
 
@@ -412,4 +415,59 @@ bool GpencilExporter::is_camera_mode(void)
 {
   return is_camera;
 }
+
+/* Calc selected strokes boundbox. */
+void GpencilExporter::selected_objects_boundbox(void)
+{
+  const bGPDspoint *pt;
+  int i;
+
+  float r_min[2], r_max[2];
+  INIT_MINMAX2(r_min, r_max);
+
+  for (ObjectZ &obz : ob_list_) {
+    Object *ob = obz.ob;
+    /* Use evaluated version to get strokes with modifiers. */
+    Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
+    bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
+
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_eval->layers) {
+      if (gpl->flag & GP_LAYER_HIDE) {
+        continue;
+      }
+      BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat_);
+
+      bGPDframe *gpf = gpl->actframe;
+      if (gpf == NULL) {
+        continue;
+      }
+
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+        if (gps->totpoints == 0) {
+          continue;
+        }
+        for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+          /* Convert to 2D. */
+          float screen_co[2];
+          gpencil_3d_point_to_screen_space(&pt->x, screen_co);
+          minmax_v2v2_v2(r_min, r_max, screen_co);
+        }
+      }
+    }
+  }
+
+  select_box.xmin = r_min[0];
+  select_box.ymin = r_min[1];
+  select_box.xmax = r_max[0];
+  select_box.ymax = r_max[1];
+}
+
+void GpencilExporter::get_select_boundbox(rcti *boundbox)
+{
+  boundbox->xmin = select_box.xmin;
+  boundbox->xmax = select_box.xmax;
+  boundbox->ymin = select_box.ymin;
+  boundbox->ymax = select_box.ymax;
+}
+
 }  // namespace blender::io::gpencil

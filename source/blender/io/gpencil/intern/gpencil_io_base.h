@@ -52,6 +52,7 @@ class GpencilExporter {
   bool is_stroke_thickness_constant(struct bGPDstroke *gps);
   float stroke_average_pressure_get(struct bGPDstroke *gps);
   float stroke_point_radius_get(struct bGPDstroke *gps);
+  void selected_objects_boundbox(void);
 
   std::string rgb_to_hex(float color[3]);
   void rgb_to_grayscale(float color[3]);
@@ -98,6 +99,8 @@ class GpencilExporter {
   void gpf_current_set(struct bGPDframe *gpf);
   void gps_current_set(struct Object *ob, struct bGPDstroke *gps, const bool set_colors);
 
+  void get_select_boundbox(rcti *boundbox);
+
  private:
   struct bGPDlayer *gpl_cur;
   struct bGPDframe *gpf_cur;
@@ -107,6 +110,7 @@ class GpencilExporter {
   bool is_fill;
   float avg_opacity;
   bool is_camera;
+  rcti select_box;
 
   void set_out_filename(char *filename);
 };
