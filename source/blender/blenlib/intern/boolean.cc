@@ -1325,7 +1325,6 @@ static int find_containing_cell(Vertp v,
                                 int t,
                                 int close_edge,
                                 int close_vert,
-                                const CellsInfo &cinfo,
                                 const PatchesInfo &pinfo,
                                 const Mesh &tm,
                                 const TriMeshTopology &tmtopo,
@@ -1385,7 +1384,7 @@ static int find_containing_cell(Vertp v,
  * for edges ab, bc, or ca in *r_edge; else -1.
  * (Adapted from closest_on_tri_to_point_v3()).
  */
-mpq_class closest_on_tri_to_point(
+static mpq_class closest_on_tri_to_point(
     const mpq3 &p, const mpq3 &a, const mpq3 &b, const mpq3 &c, int *r_edge, int *r_vert)
 {
   constexpr int dbg_level = 0;
@@ -1510,7 +1509,6 @@ static Vector<ComponentContainer> find_component_containers(int comp,
                                                             const Vector<Vector<int>> &components,
                                                             const Array<int> &ambient_cell,
                                                             const Mesh &tm,
-                                                            const CellsInfo &cinfo,
                                                             const PatchesInfo &pinfo,
                                                             const TriMeshTopology &tmtopo,
                                                             MArena *arena)
@@ -1571,7 +1569,7 @@ static Vector<ComponentContainer> find_component_containers(int comp,
                                                  nearest_tri,
                                                  nearest_tri_close_edge,
                                                  nearest_tri_close_vert,
-                                                 cinfo,
+
                                                  pinfo,
                                                  tm,
                                                  tmtopo,
@@ -1627,7 +1625,7 @@ static void finish_patch_cell_graph(const Mesh &tm,
   Array<Vector<ComponentContainer>> comp_cont(tot_components);
   for (int comp : components.index_range()) {
     comp_cont[comp] = find_component_containers(
-        comp, components, ambient_cell, tm, cinfo, pinfo, tmtopo, arena);
+        comp, components, ambient_cell, tm, pinfo, tmtopo, arena);
   }
   if (dbg_level > 0) {
     std::cout << "component containers:\n";
