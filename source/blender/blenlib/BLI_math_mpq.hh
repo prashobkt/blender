@@ -17,6 +17,8 @@
 #ifndef __BLI_MATH_MPQ_HH__
 #define __BLI_MATH_MPQ_HH__
 
+#ifdef WITH_GMP
+
 /* This file uses an external file header to define the multiprecision
  * rational type, mpq_class.
  * This class keeps separate multiprecision integer numerator and
@@ -26,6 +28,7 @@
  * See gmplib.org for full documentation. In particular:
  * https://gmplib.org/manual/C_002b_002b-Interface-Rationals
  */
-#include "gmpxx.h"
+#  include "gmpxx.h"
 
+#endif /* WITH_GMP */
 #endif /* __BLI_MATH_MPQ_HH__ */

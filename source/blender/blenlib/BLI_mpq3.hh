@@ -17,11 +17,13 @@
 #ifndef __BLI_MPQ3_HH__
 #define __BLI_MPQ3_HH__
 
-#include <iostream>
+#ifdef WITH_GMP
 
-#include "BLI_math.h"
-#include "BLI_math_mpq.hh"
-#include "BLI_span.hh"
+#  include <iostream>
+
+#  include "BLI_math.h"
+#  include "BLI_math_mpq.hh"
+#  include "BLI_span.hh"
 
 namespace blender {
 
@@ -270,4 +272,5 @@ uint64_t hash_mpq_class(const mpq_class &value);
 
 }  // namespace blender
 
+#endif /* WITH_GMP */
 #endif /* __BLI_MPQ3_HH__ */

@@ -39,10 +39,12 @@ template<typename T> T math_abs(const T v)
   return (v < 0) ? -v : v;
 }
 
+#ifdef WITH_GMP
 template<> mpq_class math_abs<mpq_class>(const mpq_class v)
 {
   return abs(v);
 }
+#endif
 
 template<> double math_abs<double>(const double v)
 {
@@ -55,10 +57,12 @@ template<typename T> double math_to_double(const T UNUSED(v))
   return 0.0;
 }
 
+#ifdef WITH_GMP
 template<> double math_to_double<mpq_class>(const mpq_class v)
 {
   return v.get_d();
 }
+#endif
 
 template<> double math_to_double<double>(const double v)
 {
@@ -1404,7 +1408,11 @@ void fill_crossdata_for_intersect(const vec2<T> &curco,
   T &lambda = isect.lambda;
   switch (isect.kind) {
     case vec2<T>::isect_result::LINE_LINE_CROSS: {
+#ifdef WITH_GMP
       if (!std::is_same<T, mpq_class>::value) {
+#else
+      if (true) {
+#endif
         T len_ab = vec2<T>::distance(va->co, vb->co);
         if (lambda * len_ab <= epsilon) {
           fill_crossdata_for_through_vert(va, se_vcva, cd, cd_next);
@@ -1441,9 +1449,11 @@ void fill_crossdata_for_intersect(const vec2<T> &curco,
       }
     } break;
     case vec2<T>::isect_result::LINE_LINE_NONE: {
+#ifdef WITH_GMP
       if (std::is_same<T, mpq_class>::value) {
         BLI_assert(false);
       }
+#endif
       /* It should be very near one end or other of segment. */
       const T middle_lambda = 0.5;
       if (lambda <= middle_lambda) {
@@ -1462,7 +1472,7 @@ void fill_crossdata_for_intersect(const vec2<T> &curco,
       }
     } break;
   }
-}
+}  // namespace blender::meshintersect
 
 /*
  * As part of finding the crossings of a ray to v2, find the next crossing after 'cd', assuming
@@ -2307,11 +2317,13 @@ blender::meshintersect::CDT_result<double> delaunay_2d_calc(const CDT_input<doub
   return delaunay_calc(input, output_type);
 }
 
+#ifdef WITH_GMP
 blender::meshintersect::CDT_result<mpq_class> delaunay_2d_calc(const CDT_input<mpq_class> &input,
                                                                CDT_output_type output_type)
 {
   return delaunay_calc(input, output_type);
 }
+#endif
 
 } /* namespace blender::meshintersect */
 

@@ -117,6 +117,7 @@ if(WIN32)
 endif()
 
 if(NOT WIN32 OR ENABLE_MINGW64)
+  include(cmake/gmp.cmake)
   include(cmake/openjpeg.cmake)
   include(cmake/gmp.cmake)
   if(NOT WIN32 OR BUILD_MODE STREQUAL Release)

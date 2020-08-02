@@ -80,12 +80,16 @@ template<typename T> CDT_input<T> fill_input_from_string(const char *spec)
   ans.vert = verts;
   ans.edge = edges;
   ans.face = faces;
+#ifdef WITH_GMP
   if (std::is_same<mpq_class, T>::value) {
     ans.epsilon = T(0);
   }
   else {
     ans.epsilon = T(0.00001);
   }
+#else
+  ans.epsilon = T(0.00001);
+#endif
   return ans;
 }
 
@@ -116,17 +120,21 @@ template<> double math_to_double<double>(const double v)
   return v;
 }
 
+#ifdef WITH_GMP
 template<> double math_to_double<mpq_class>(const mpq_class v)
 {
   return v.get_d();
 }
+#endif
 
 template<typename T> static T math_abs(const T v);
 
+#ifdef WITH_GMP
 template<> mpq_class math_abs(const mpq_class v)
 {
   return abs(v);
 }
+#endif
 
 template<> double math_abs(const double v)
 {
@@ -369,12 +377,14 @@ constexpr bool DO_DRAW = false;
 
 template<typename T> void expect_coord_near(const vec2<T> &testco, const vec2<T> &refco);
 
+#ifdef WITH_GMP
 template<>
 void expect_coord_near<mpq_class>(const vec2<mpq_class> &testco, const vec2<mpq_class> &refco)
 {
   EXPECT_EQ(testco[0], refco[0]);
   EXPECT_EQ(testco[0], refco[0]);
 }
+#endif
 
 template<> void expect_coord_near<double>(const vec2<double> &testco, const vec2<double> &refco)
 {
@@ -1240,19 +1250,9 @@ TEST(delaunay_d, Empty)
   empty_test<double>();
 }
 
-TEST(delaunay_m, Empty)
-{
-  empty_test<mpq_class>();
-}
-
 TEST(delaunay_d, OnePt)
 {
   onept_test<double>();
-}
-
-TEST(delaunay_m, OnePt)
-{
-  onept_test<mpq_class>();
 }
 
 TEST(delaunay_d, TwoPt)
@@ -1260,19 +1260,9 @@ TEST(delaunay_d, TwoPt)
   twopt_test<double>();
 }
 
-TEST(delaunay_m, TwoPt)
-{
-  twopt_test<mpq_class>();
-}
-
 TEST(delaunay_d, ThreePt)
 {
   threept_test<double>();
-}
-
-TEST(delaunay_m, ThreePt)
-{
-  threept_test<mpq_class>();
 }
 
 TEST(delaunay_d, MixedPts)
@@ -1280,19 +1270,9 @@ TEST(delaunay_d, MixedPts)
   mixedpts_test<double>();
 }
 
-TEST(delaunay_m, MixedPts)
-{
-  mixedpts_test<mpq_class>();
-}
-
 TEST(delaunay_d, Quad0)
 {
   quad0_test<double>();
-}
-
-TEST(delaunay_m, Quad0)
-{
-  quad0_test<mpq_class>();
 }
 
 TEST(delaunay_d, Quad1)
@@ -1300,19 +1280,9 @@ TEST(delaunay_d, Quad1)
   quad1_test<double>();
 }
 
-TEST(delaunay_m, Quad1)
-{
-  quad1_test<mpq_class>();
-}
-
 TEST(delaunay_d, Quad2)
 {
   quad2_test<double>();
-}
-
-TEST(delaunay_m, Quad2)
-{
-  quad2_test<mpq_class>();
 }
 
 TEST(delaunay_d, Quad3)
@@ -1320,19 +1290,9 @@ TEST(delaunay_d, Quad3)
   quad3_test<double>();
 }
 
-TEST(delaunay_m, Quad3)
-{
-  quad3_test<mpq_class>();
-}
-
 TEST(delaunay_d, Quad4)
 {
   quad4_test<double>();
-}
-
-TEST(delaunay_m, Quad4)
-{
-  quad4_test<mpq_class>();
 }
 
 TEST(delaunay_d, LineInSquare)
@@ -1340,19 +1300,9 @@ TEST(delaunay_d, LineInSquare)
   lineinsquare_test<double>();
 }
 
-TEST(delaunay_m, LineInSquare)
-{
-  lineinsquare_test<mpq_class>();
-}
-
 TEST(delaunay_d, CrossSegs)
 {
   crosssegs_test<double>();
-}
-
-TEST(delaunay_m, CrossSegs)
-{
-  crosssegs_test<mpq_class>();
 }
 
 TEST(delaunay_d, DiamondCross)
@@ -1360,19 +1310,9 @@ TEST(delaunay_d, DiamondCross)
   diamondcross_test<double>();
 }
 
-TEST(delaunay_m, DiamondCross)
-{
-  diamondcross_test<mpq_class>();
-}
-
 TEST(delaunay_d, TwoDiamondsCross)
 {
   twodiamondscross_test<double>();
-}
-
-TEST(delaunay_m, TwoDiamondsCross)
-{
-  twodiamondscross_test<mpq_class>();
 }
 
 TEST(delaunay_d, ManyCross)
@@ -1380,19 +1320,9 @@ TEST(delaunay_d, ManyCross)
   manycross_test<double>();
 }
 
-TEST(delaunay_m, ManyCross)
-{
-  manycross_test<mpq_class>();
-}
-
 TEST(delaunay_d, TwoFace)
 {
   twoface_test<double>();
-}
-
-TEST(delaunay_m, TwoFace)
-{
-  twoface_test<mpq_class>();
 }
 
 TEST(delaunay_d, TwoFace2)
@@ -1400,19 +1330,9 @@ TEST(delaunay_d, TwoFace2)
   twoface2_test<double>();
 }
 
-TEST(delaunay_m, TwoFace2)
-{
-  twoface2_test<mpq_class>();
-}
-
 TEST(delaunay_d, OverlapFaces)
 {
   overlapfaces_test<double>();
-}
-
-TEST(delaunay_m, OverlapFaces)
-{
-  overlapfaces_test<mpq_class>();
 }
 
 TEST(delaunay_d, TwoSquaresOverlap)
@@ -1420,19 +1340,9 @@ TEST(delaunay_d, TwoSquaresOverlap)
   twosquaresoverlap_test<double>();
 }
 
-TEST(delaunay_m, TwoSquaresOverlap)
-{
-  twosquaresoverlap_test<mpq_class>();
-}
-
 TEST(delaunay_d, TwoFaceEdgeOverlap)
 {
   twofaceedgeoverlap_test<double>();
-}
-
-TEST(delaunay_m, TwoFaceEdgeOverlap)
-{
-  twofaceedgeoverlap_test<mpq_class>();
 }
 
 TEST(delaunay_d, TriInTri)
@@ -1440,19 +1350,9 @@ TEST(delaunay_d, TriInTri)
   triintri_test<double>();
 }
 
-TEST(delaunay_m, TriInTri)
-{
-  triintri_test<mpq_class>();
-}
-
 TEST(delaunay_d, DiamondInSquare)
 {
   diamondinsquare_test<double>();
-}
-
-TEST(delaunay_m, DiamondInSquare)
-{
-  diamondinsquare_test<mpq_class>();
 }
 
 TEST(delaunay_d, DiamondInSquareWire)
@@ -1460,19 +1360,9 @@ TEST(delaunay_d, DiamondInSquareWire)
   diamondinsquarewire_test<double>();
 }
 
-TEST(delaunay_m, DiamondInSquareWire)
-{
-  diamondinsquarewire_test<mpq_class>();
-}
-
 TEST(delaunay_d, RepeatEdge)
 {
   repeatedge_test<double>();
-}
-
-TEST(delaunay_m, RepeatEdge)
-{
-  repeatedge_test<mpq_class>();
 }
 
 TEST(delaunay_d, RepeatTri)
@@ -1480,10 +1370,132 @@ TEST(delaunay_d, RepeatTri)
   repeattri_test<double>();
 }
 
+#  ifdef WITH_GMP
+TEST(delaunay_m, Empty)
+{
+  empty_test<mpq_class>();
+}
+
+TEST(delaunay_m, OnePt)
+{
+  onept_test<mpq_class>();
+}
+TEST(delaunay_m, TwoPt)
+{
+  twopt_test<mpq_class>();
+}
+
+TEST(delaunay_m, ThreePt)
+{
+  threept_test<mpq_class>();
+}
+
+TEST(delaunay_m, MixedPts)
+{
+  mixedpts_test<mpq_class>();
+}
+
+TEST(delaunay_m, Quad0)
+{
+  quad0_test<mpq_class>();
+}
+
+TEST(delaunay_m, Quad1)
+{
+  quad1_test<mpq_class>();
+}
+
+TEST(delaunay_m, Quad2)
+{
+  quad2_test<mpq_class>();
+}
+
+TEST(delaunay_m, Quad3)
+{
+  quad3_test<mpq_class>();
+}
+
+TEST(delaunay_m, Quad4)
+{
+  quad4_test<mpq_class>();
+}
+
+TEST(delaunay_m, LineInSquare)
+{
+  lineinsquare_test<mpq_class>();
+}
+
+TEST(delaunay_m, CrossSegs)
+{
+  crosssegs_test<mpq_class>();
+}
+
+TEST(delaunay_m, DiamondCross)
+{
+  diamondcross_test<mpq_class>();
+}
+
+TEST(delaunay_m, TwoDiamondsCross)
+{
+  twodiamondscross_test<mpq_class>();
+}
+
+TEST(delaunay_m, ManyCross)
+{
+  manycross_test<mpq_class>();
+}
+
+TEST(delaunay_m, TwoFace)
+{
+  twoface_test<mpq_class>();
+}
+
+TEST(delaunay_m, TwoFace2)
+{
+  twoface2_test<mpq_class>();
+}
+
+TEST(delaunay_m, OverlapFaces)
+{
+  overlapfaces_test<mpq_class>();
+}
+
+TEST(delaunay_m, TwoSquaresOverlap)
+{
+  twosquaresoverlap_test<mpq_class>();
+}
+
+TEST(delaunay_m, TwoFaceEdgeOverlap)
+{
+  twofaceedgeoverlap_test<mpq_class>();
+}
+
+TEST(delaunay_m, TriInTri)
+{
+  triintri_test<mpq_class>();
+}
+
+TEST(delaunay_m, DiamondInSquare)
+{
+  diamondinsquare_test<mpq_class>();
+}
+
+TEST(delaunay_m, DiamondInSquareWire)
+{
+  diamondinsquarewire_test<mpq_class>();
+}
+
+TEST(delaunay_m, RepeatEdge)
+{
+  repeatedge_test<mpq_class>();
+}
+
 TEST(delaunay_m, RepeatTri)
 {
   repeattri_test<mpq_class>();
 }
+#  endif
+
 #endif
 
 #if DO_C_TESTS
@@ -1722,24 +1734,65 @@ TEST(delaunay_d, RandomPts)
   rand_delaunay_test<double>(RANDOM_PTS, 0, 7, 1, 0.0, CDT_FULL);
 }
 
-TEST(delaunay_m, RandomPts)
-{
-  rand_delaunay_test<mpq_class>(RANDOM_PTS, 0, 7, 1, 0.0, CDT_FULL);
-}
-
 TEST(delaunay_d, RandomSegs)
 {
   rand_delaunay_test<double>(RANDOM_SEGS, 1, 7, 1, 0.0, CDT_FULL);
 }
 
-TEST(delaunay_m, RandomSegs)
-{
-  rand_delaunay_test<mpq_class>(RANDOM_SEGS, 1, 7, 1, 0.0, CDT_FULL);
-}
-
 TEST(delaunay_d, RandomPoly)
 {
   rand_delaunay_test<double>(RANDOM_POLY, 1, 7, 1, 0.0, CDT_FULL);
+}
+
+TEST(delaunay_d, RandomPolyConstraints)
+{
+  rand_delaunay_test<double>(RANDOM_POLY, 1, 7, 1, 0.0, CDT_CONSTRAINTS);
+}
+
+TEST(delaunay_d, RandomPolyValidBmesh)
+{
+  rand_delaunay_test<double>(RANDOM_POLY, 1, 7, 1, 0.0, CDT_CONSTRAINTS_VALID_BMESH);
+}
+
+TEST(delaunay_d, Grid)
+{
+  rand_delaunay_test<double>(RANDOM_TILTED_GRID, 1, 6, 1, 0.0, CDT_FULL);
+}
+
+TEST(delaunay_d, TiltedGridA)
+{
+  rand_delaunay_test<double>(RANDOM_TILTED_GRID, 1, 6, 1, 1.0, CDT_FULL);
+}
+
+TEST(delaunay_d, TiltedGridB)
+{
+  rand_delaunay_test<double>(RANDOM_TILTED_GRID, 1, 6, 1, 0.01, CDT_FULL);
+}
+
+TEST(delaunay_d, RandomCircle)
+{
+  rand_delaunay_test<double>(RANDOM_CIRCLE, 1, 7, 1, 0.0, CDT_FULL);
+}
+
+TEST(delaunay_d, RandomTrisCircle)
+{
+  rand_delaunay_test<double>(RANDOM_TRI_BETWEEN_CIRCLES, 1, 6, 1, 0.25, CDT_FULL);
+}
+
+TEST(delaunay_d, RandomTrisCircleB)
+{
+  rand_delaunay_test<double>(RANDOM_TRI_BETWEEN_CIRCLES, 1, 6, 1, 1e-4, CDT_FULL);
+}
+
+#  ifdef WITH_GMP
+TEST(delaunay_m, RandomPts)
+{
+  rand_delaunay_test<mpq_class>(RANDOM_PTS, 0, 7, 1, 0.0, CDT_FULL);
+}
+
+TEST(delaunay_m, RandomSegs)
+{
+  rand_delaunay_test<mpq_class>(RANDOM_SEGS, 1, 7, 1, 0.0, CDT_FULL);
 }
 
 TEST(delaunay_m, RandomPoly)
@@ -1757,19 +1810,9 @@ TEST(delaunay_m, RandomPolyInside)
   rand_delaunay_test<mpq_class>(RANDOM_POLY, 1, 7, 1, 0.0, CDT_INSIDE);
 }
 
-TEST(delaunay_d, RandomPolyConstraints)
-{
-  rand_delaunay_test<double>(RANDOM_POLY, 1, 7, 1, 0.0, CDT_CONSTRAINTS);
-}
-
 TEST(delaunay_m, RandomPolyConstraints)
 {
   rand_delaunay_test<mpq_class>(RANDOM_POLY, 1, 7, 1, 0.0, CDT_CONSTRAINTS);
-}
-
-TEST(delaunay_d, RandomPolyValidBmesh)
-{
-  rand_delaunay_test<double>(RANDOM_POLY, 1, 7, 1, 0.0, CDT_CONSTRAINTS_VALID_BMESH);
 }
 
 TEST(delaunay_m, RandomPolyValidBmesh)
@@ -1777,19 +1820,9 @@ TEST(delaunay_m, RandomPolyValidBmesh)
   rand_delaunay_test<mpq_class>(RANDOM_POLY, 1, 7, 1, 0.0, CDT_CONSTRAINTS_VALID_BMESH);
 }
 
-TEST(delaunay_d, Grid)
-{
-  rand_delaunay_test<double>(RANDOM_TILTED_GRID, 1, 6, 1, 0.0, CDT_FULL);
-}
-
 TEST(delaunay_m, Grid)
 {
   rand_delaunay_test<mpq_class>(RANDOM_TILTED_GRID, 1, 6, 1, 0.0, CDT_FULL);
-}
-
-TEST(delaunay_d, TiltedGridA)
-{
-  rand_delaunay_test<double>(RANDOM_TILTED_GRID, 1, 6, 1, 1.0, CDT_FULL);
 }
 
 TEST(delaunay_m, TiltedGridA)
@@ -1797,19 +1830,9 @@ TEST(delaunay_m, TiltedGridA)
   rand_delaunay_test<mpq_class>(RANDOM_TILTED_GRID, 1, 6, 1, 1.0, CDT_FULL);
 }
 
-TEST(delaunay_d, TiltedGridB)
-{
-  rand_delaunay_test<double>(RANDOM_TILTED_GRID, 1, 6, 1, 0.01, CDT_FULL);
-}
-
 TEST(delaunay_m, TiltedGridB)
 {
   rand_delaunay_test<mpq_class>(RANDOM_TILTED_GRID, 1, 6, 1, 0.01, CDT_FULL);
-}
-
-TEST(delaunay_d, RandomCircle)
-{
-  rand_delaunay_test<double>(RANDOM_CIRCLE, 1, 7, 1, 0.0, CDT_FULL);
 }
 
 TEST(delaunay_m, RandomCircle)
@@ -1817,25 +1840,16 @@ TEST(delaunay_m, RandomCircle)
   rand_delaunay_test<mpq_class>(RANDOM_CIRCLE, 1, 7, 1, 0.0, CDT_FULL);
 }
 
-TEST(delaunay_d, RandomTrisCircle)
-{
-  rand_delaunay_test<double>(RANDOM_TRI_BETWEEN_CIRCLES, 1, 6, 1, 0.25, CDT_FULL);
-}
-
 TEST(delaunay_m, RandomTrisCircle)
 {
   rand_delaunay_test<mpq_class>(RANDOM_TRI_BETWEEN_CIRCLES, 1, 6, 1, 0.25, CDT_FULL);
 }
 
-TEST(delaunay_d, RandomTrisCircleB)
+TEST(delaunay_m, RandomTrisCircleB)
 {
   rand_delaunay_test<double>(RANDOM_TRI_BETWEEN_CIRCLES, 1, 6, 1, 1e-4, CDT_FULL);
 }
-
-TEST(delaunay_mpq_class, RandomTrisCircleB)
-{
-  rand_delaunay_test<double>(RANDOM_TRI_BETWEEN_CIRCLES, 1, 6, 1, 1e-4, CDT_FULL);
-}
+#  endif
 
 #endif
 

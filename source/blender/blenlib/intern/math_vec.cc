@@ -91,6 +91,7 @@ double2::isect_result double2::isect_seg_seg(const double2 &v1,
   return ans;
 }
 
+#ifdef WITH_GMP
 mpq2::isect_result mpq2::isect_seg_seg(const mpq2 &v1,
                                        const mpq2 &v2,
                                        const mpq2 &v3,
@@ -235,6 +236,7 @@ int mpq3::orient3d(const mpq3 &a, const mpq3 &b, const mpq3 &c, const mpq3 &d)
   mpq_class det = adz * (bdxcdy - cdxbdy) + bdz * (cdxady - adxcdy) + cdz * (adxbdy - bdxady);
   return sgn(det);
 }
+#endif /* WITH_GMP */
 
 /* For double versions of orient and incircle functions, use robust predicates
  * that give exact answers for double inputs.

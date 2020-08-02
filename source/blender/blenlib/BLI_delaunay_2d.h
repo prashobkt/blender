@@ -218,9 +218,13 @@ template<typename Arith_t> struct vec2_impl;
 template<> struct vec2_impl<double> {
   typedef double2 type;
 };
+
+#  ifdef WITH_GMP
 template<> struct vec2_impl<mpq_class> {
   typedef mpq2 type;
 };
+#  endif
+
 template<typename Arith_t> using vec2 = typename vec2_impl<Arith_t>::type;
 
 template<typename Arith_t> class CDT_input {
@@ -255,8 +259,10 @@ template<typename Arith_t> class CDT_result {
 
 CDT_result<double> delaunay_2d_calc(const CDT_input<double> &input, CDT_output_type output_type);
 
+#  ifdef WITH_GMP
 CDT_result<mpq_class> delaunay_2d_calc(const CDT_input<mpq_class> &input,
                                        CDT_output_type output_type);
+#  endif
 
 } /* namespace blender::meshintersect */
 

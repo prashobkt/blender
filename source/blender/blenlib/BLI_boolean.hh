@@ -21,8 +21,11 @@
  * \ingroup bli
  */
 
-#include "BLI_mesh_intersect.hh"
-#include <functional>
+/* The boolean functions in Blenlib use exact arithmetic, so require GMP. */
+#ifdef WITH_GMP
+
+#  include "BLI_mesh_intersect.hh"
+#  include <functional>
 
 namespace blender::meshintersect {
 
@@ -70,4 +73,6 @@ Mesh boolean_trimesh(Mesh &tm,
                      MArena *arena);
 
 }  // namespace blender::meshintersect
+
+#endif /* WITH_GMP */
 #endif /* __BLI_BOOLEAN_HH__ */

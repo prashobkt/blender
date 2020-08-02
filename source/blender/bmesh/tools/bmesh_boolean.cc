@@ -33,6 +33,7 @@
 namespace blender {
 namespace meshintersect {
 
+#ifdef WITH_GMP
 /* Make a blender::meshintersect::Mesh from BMesh bm.
  * We are given a triangulation of it from the caller via looptris,
  * which are looptris_tot triples of loops that together tessellate
@@ -280,9 +281,9 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
   BMIter iter;
   BMFace *bmf = static_cast<BMFace *>(BM_iter_new(&iter, bm, BM_FACES_OF_MESH, NULL));
   while (bmf != NULL) {
-#ifdef DEBUG
+#  ifdef DEBUG
     iter.count = BM_iter_mesh_count(BM_FACES_OF_MESH, bm);
-#endif
+#  endif
     BMFace *bmf_next = static_cast<BMFace *>(BM_iter_step(&iter));
     if (BM_elem_flag_test(bmf, KEEP_FLAG)) {
       BM_elem_flag_disable(bmf, KEEP_FLAG);
@@ -296,9 +297,9 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
   }
   BMVert *bmv = static_cast<BMVert *>(BM_iter_new(&iter, bm, BM_VERTS_OF_MESH, NULL));
   while (bmv != NULL) {
-#ifdef DEBUG
+#  ifdef DEBUG
     iter.count = BM_iter_mesh_count(BM_VERTS_OF_MESH, bm);
-#endif
+#  endif
     BMVert *bmv_next = static_cast<BMVert *>(BM_iter_step(&iter));
     if (BM_elem_flag_test(bmv, KEEP_FLAG)) {
       BM_elem_flag_disable(bmv, KEEP_FLAG);
@@ -362,6 +363,8 @@ static bool bmesh_boolean(BMesh *bm,
   return any_change;
 }
 
+#endif  // WITH_GMP
+
 }  // namespace meshintersect
 }  // namespace blender
 
@@ -382,6 +385,7 @@ extern "C" {
  * (The actual library function called to do the boolean is internally capable of handling
  * n-ary operands, so maybe in the future we can expose that functionality to users.)
  */
+#ifdef WITH_GMP
 bool BM_mesh_boolean(BMesh *bm,
                      struct BMLoop *(*looptris)[3],
                      const int looptris_tot,
@@ -419,5 +423,38 @@ bool BM_mesh_boolean_knife(BMesh *bm,
                                                use_separate_all,
                                                blender::meshintersect::BOOLEAN_NONE);
 }
+#else
+bool BM_mesh_boolean(BMesh *UNUSED(bm),
+                     struct BMLoop *(*looptris)[3],
+                     const int UNUSED(looptris_tot),
+                     int (*test_fn)(BMFace *, void *),
+                     void *UNUSED(user_data),
+                     const bool UNUSED(use_self),
+                     const int UNUSED(boolean_mode))
+{
+  UNUSED_VARS(looptris, test_fn);
+  return false;
+}
+
+/*
+ * Perform a Knife Intersection operation on the mesh bm.
+ * There are either one or two operands, the same as described above for BM_mesh_boolean().
+ * If use_separate_all is true, each edge that is created from the intersection should
+ * be used to separate all its incident faces. TODO: implement that.
+ * TODO: need to ensure that "selected/non-selected" flag of original faces gets propagated
+ * to the intersection result faces.
+ */
+bool BM_mesh_boolean_knife(BMesh *UNUSED(bm),
+                           struct BMLoop *(*looptris)[3],
+                           const int UNUSED(looptris_tot),
+                           int (*test_fn)(BMFace *, void *),
+                           void *UNUSED(user_data),
+                           const bool UNUSED(use_self),
+                           const bool UNUSED(use_separate_all))
+{
+  UNUSED_VARS(looptris, test_fn);
+  return false;
+}
+#endif
 
 } /* extern "C" */

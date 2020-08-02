@@ -17,8 +17,10 @@
 #ifndef __BLI_MPQ2_HH__
 #define __BLI_MPQ2_HH__
 
-#include "BLI_math_mpq.hh"
-#include "BLI_mpq3.hh"
+#ifdef WITH_GMP
+
+#  include "BLI_math_mpq.hh"
+#  include "BLI_mpq3.hh"
 
 namespace blender {
 
@@ -174,4 +176,5 @@ struct mpq2 {
 
 }  // namespace blender
 
+#endif /* WITH_GMP */
 #endif /* __BLI_MPQ_HH__ */

@@ -79,10 +79,6 @@ if(WITH_TBB)
   link_directories(${LIBDIR}/tbb/lib)
 endif()
 
-if(WITH_GMP)
-  blender_include_dirs(${GMP_INCLUDE_DIRS})
-  link_directories(${LIBDIR}/gmp/lib)
-endif()
 
 if(WITH_PYTHON)
   blender_include_dirs(../blender/python)
@@ -117,6 +113,10 @@ endif()
 
 if(WITH_XR_OPENXR)
   add_definitions(-DWITH_XR_OPENXR)
+endif()
+
+if(WITH_GMP)
+  add_definitions(-DWITH_GMP)
 endif()
 
 # Setup the exe sources and buildinfo
@@ -713,7 +713,7 @@ elseif(WIN32)
           DESTINATION "."
           CONFIGURATIONS Debug
     )
-    endif()
+  endif()
 
   if(WITH_WINDOWS_PDB)
     if(WITH_WINDOWS_STRIPPED_PDB)

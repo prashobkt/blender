@@ -20,19 +20,22 @@
 /** \file
  * \ingroup bli
  *
- *  Work in progress on mesh intersection library function.
+ *  Mesh intersection library functions.
+ *  Uses exact arithmetic, so need GMP.
  */
 
-#include <iostream>
+#ifdef WITH_GMP
 
-#include "BLI_array.hh"
-#include "BLI_double3.hh"
-#include "BLI_index_range.hh"
-#include "BLI_map.hh"
-#include "BLI_math_mpq.hh"
-#include "BLI_mpq3.hh"
-#include "BLI_span.hh"
-#include "BLI_vector.hh"
+#  include <iostream>
+
+#  include "BLI_array.hh"
+#  include "BLI_double3.hh"
+#  include "BLI_index_range.hh"
+#  include "BLI_map.hh"
+#  include "BLI_math_mpq.hh"
+#  include "BLI_mpq3.hh"
+#  include "BLI_span.hh"
+#  include "BLI_vector.hh"
 
 namespace blender::meshintersect {
 
@@ -353,4 +356,5 @@ void write_obj_mesh(Mesh &m, const std::string &objname);
 
 } /* namespace blender::meshintersect */
 
+#endif /* WITH_GMP */
 #endif /* __BLI_MESH_INTERSECT_HH__ */

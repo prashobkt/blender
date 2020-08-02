@@ -14,26 +14,28 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include <algorithm>
-#include <fstream>
-#include <iostream>
+#ifdef WITH_GMP
 
-#include "BLI_array.hh"
-#include "BLI_assert.h"
-#include "BLI_delaunay_2d.h"
-#include "BLI_hash.hh"
-#include "BLI_map.hh"
-#include "BLI_math.h"
-#include "BLI_math_mpq.hh"
-#include "BLI_mesh_intersect.hh"
-#include "BLI_mpq3.hh"
-#include "BLI_set.hh"
-#include "BLI_span.hh"
-#include "BLI_stack.hh"
-#include "BLI_vector.hh"
-#include "BLI_vector_set.hh"
+#  include <algorithm>
+#  include <fstream>
+#  include <iostream>
 
-#include "BLI_boolean.hh"
+#  include "BLI_array.hh"
+#  include "BLI_assert.h"
+#  include "BLI_delaunay_2d.h"
+#  include "BLI_hash.hh"
+#  include "BLI_map.hh"
+#  include "BLI_math.h"
+#  include "BLI_math_mpq.hh"
+#  include "BLI_mesh_intersect.hh"
+#  include "BLI_mpq3.hh"
+#  include "BLI_set.hh"
+#  include "BLI_span.hh"
+#  include "BLI_stack.hh"
+#  include "BLI_vector.hh"
+#  include "BLI_vector_set.hh"
+
+#  include "BLI_boolean.hh"
 
 namespace blender::meshintersect {
 
@@ -2785,3 +2787,5 @@ Mesh boolean_mesh(Mesh &pm,
 }
 
 }  // namespace blender::meshintersect
+
+#endif  // WITH_GMP

@@ -60,9 +60,9 @@ ExternalProject_Add_Step(external_gmp after_install
 endif()
 
 if(WIN32)
-  # gmpxx is somewhat special, it builds on the C style gmp library but exposes C++ bindings
-  # given the C++ ABI between msvc and mingw is not compatible, we need to build the bindings
-  # with MSVC, while GMP builds with mingw.
+  # gmpxx is somewhat special, it builds on top of the C style gmp library but exposes C++ bindings
+  # given the C++ ABI between MSVC and mingw is not compatible, we need to build the bindings
+  # with MSVC, while GMP can only be build with mingw.
   ExternalProject_Add(external_gmpxx
     URL ${GMP_URI}
     DOWNLOAD_DIR ${DOWNLOAD_DIR}

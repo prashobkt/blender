@@ -143,7 +143,11 @@ static int edbm_intersect_exec(bContext *C, wmOperator *op)
   bool use_separate_cut = false;
   const int separate_mode = RNA_enum_get(op->ptr, "separate_mode");
   const float eps = RNA_float_get(op->ptr, "threshold");
+#ifdef WITH_GMP
   const bool exact = RNA_boolean_get(op->ptr, "use_exact");
+#else
+  const bool exact = false;
+#endif
   bool use_self;
   bool has_isect;
 
@@ -266,11 +270,13 @@ void MESH_OT_intersect(struct wmOperatorType *ot)
       ot->srna, "separate_mode", isect_separate_items, ISECT_SEPARATE_CUT, "Separate Mode", "");
   RNA_def_float_distance(
       ot->srna, "threshold", 0.000001f, 0.0, 0.01, "Merge threshold", "", 0.0, 0.001);
+#ifdef WITH_GMP
   RNA_def_boolean(ot->srna,
                   "use_exact",
                   true,
                   "Exact",
                   "Use the Exact-arithmetic boolean (slower, handles more cases");
+#endif
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -294,7 +300,11 @@ static int edbm_intersect_boolean_exec(bContext *C, wmOperator *op)
   const int boolean_operation = RNA_enum_get(op->ptr, "operation");
   bool use_swap = RNA_boolean_get(op->ptr, "use_swap");
   bool use_self = RNA_boolean_get(op->ptr, "use_self");
+#ifdef WITH_GMP
   bool use_exact = RNA_boolean_get(op->ptr, "use_exact");
+#else
+  bool use_exact = false;
+#endif
   const float eps = RNA_float_get(op->ptr, "threshold");
   int (*test_fn)(BMFace *, void *);
   bool has_isect;
@@ -380,11 +390,13 @@ void MESH_OT_intersect_boolean(struct wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "use_self", false, "Self", "Do self-union or self-intersection");
   RNA_def_float_distance(
       ot->srna, "threshold", 0.000001f, 0.0, 0.01, "Merge threshold", "", 0.0, 0.001);
+#ifdef WITH_GMP
   RNA_def_boolean(ot->srna,
                   "use_exact",
                   true,
                   "Exact",
                   "Use the Exact-arithmetic boolean (slower, handles more cases");
+#endif
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

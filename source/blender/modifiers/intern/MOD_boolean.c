@@ -75,7 +75,9 @@ static void initData(ModifierData *md)
 
   bmd->double_threshold = 1e-6f;
   bmd->operation = eBooleanModifierOp_Difference;
+#ifdef WITH_GMP
   bmd->bm_flag = eBooleanModifierBMeshFlag_BMesh_Exact;
+#endif
 }
 
 static bool isDisabled(const struct Scene *UNUSED(scene),
@@ -312,7 +314,11 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
                                0;
         }
 
+#ifdef WITH_GMP
         bool use_exact = bmd->bm_flag & eBooleanModifierBMeshFlag_BMesh_Exact;
+#else
+        bool use_exact = false;
+#endif
 
         if (use_exact) {
           BM_mesh_boolean(bm, looptris, tottri, bm_face_isect_pair, NULL, false, bmd->operation);
@@ -379,7 +385,9 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
   uiItemR(layout, &ptr, "double_threshold", 0, NULL, ICON_NONE);
+#ifdef WITH_GMP
   uiItemR(layout, &ptr, "use_exact", 0, NULL, ICON_NONE);
+#endif
 
   if (G.debug) {
     uiLayout *col = uiLayoutColumn(layout, true);

@@ -14,40 +14,43 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include <fstream>
-#include <iostream>
+/* The blender::meshintersect API needs GMP. */
+#ifdef WITH_GMP
 
-#include "BLI_allocator.hh"
-#include "BLI_array.hh"
-#include "BLI_assert.h"
-#include "BLI_delaunay_2d.h"
-#include "BLI_double3.hh"
-#include "BLI_float3.hh"
-#include "BLI_hash.hh"
-#include "BLI_kdopbvh.h"
-#include "BLI_map.hh"
-#include "BLI_math_mpq.hh"
-#include "BLI_mpq2.hh"
-#include "BLI_mpq3.hh"
-#include "BLI_span.hh"
-#include "BLI_task.h"
-#include "BLI_threads.h"
-#include "BLI_vector.hh"
-#include "BLI_vector_set.hh"
+#  include <fstream>
+#  include <iostream>
 
-#include "BLI_mesh_intersect.hh"
+#  include "BLI_allocator.hh"
+#  include "BLI_array.hh"
+#  include "BLI_assert.h"
+#  include "BLI_delaunay_2d.h"
+#  include "BLI_double3.hh"
+#  include "BLI_float3.hh"
+#  include "BLI_hash.hh"
+#  include "BLI_kdopbvh.h"
+#  include "BLI_map.hh"
+#  include "BLI_math_mpq.hh"
+#  include "BLI_mpq2.hh"
+#  include "BLI_mpq3.hh"
+#  include "BLI_span.hh"
+#  include "BLI_task.h"
+#  include "BLI_threads.h"
+#  include "BLI_vector.hh"
+#  include "BLI_vector_set.hh"
+
+#  include "BLI_mesh_intersect.hh"
 
 // #define PERFDEBUG
 
 namespace blender::meshintersect {
 
-#ifdef PERFDEBUG
+#  ifdef PERFDEBUG
 static void perfdata_init(void);
 static void incperfcount(int countnum);
 static void bumpperfcount(int countnum, int amt);
 static void doperfmax(int maxnum, int val);
 static void dump_perfdata(void);
-#endif
+#  endif
 
 /* For debugging, can disable threading in intersect code with this static constant. */
 static constexpr bool intersect_use_threading = true;
@@ -363,21 +366,21 @@ class MArena::MArenaImpl {
   int next_face_id_ = 0;
 
   /* Need a lock when multithreading to protect allocation of new elements. */
-#ifdef USE_SPINLOCK
+#  ifdef USE_SPINLOCK
   SpinLock lock_;
-#else
+#  else
   ThreadMutex *mutex_;
-#endif
+#  endif
 
  public:
   MArenaImpl()
   {
     if (intersect_use_threading) {
-#ifdef USE_SPINLOCK
+#  ifdef USE_SPINLOCK
       BLI_spin_init(&lock_);
-#else
+#  else
       mutex_ = BLI_mutex_alloc();
-#endif
+#  endif
     }
   }
   MArenaImpl(const MArenaImpl &) = delete;
@@ -385,11 +388,11 @@ class MArena::MArenaImpl {
   ~MArenaImpl()
   {
     if (intersect_use_threading) {
-#ifdef USE_SPINLOCK
+#  ifdef USE_SPINLOCK
       BLI_spin_end(&lock_);
-#else
+#  else
       BLI_mutex_free(mutex_);
-#endif
+#  endif
     }
   }
 
@@ -426,19 +429,19 @@ class MArena::MArenaImpl {
   {
     Face *f = new Face(verts, next_face_id_++, orig, edge_origs, is_intersect);
     if (intersect_use_threading) {
-#ifdef USE_SPINLOCK
+#  ifdef USE_SPINLOCK
       BLI_spin_lock(&lock_);
-#else
+#  else
       BLI_mutex_lock(mutex_);
-#endif
+#  endif
     }
     allocated_faces_.append(std::unique_ptr<Face>(f));
     if (intersect_use_threading) {
-#ifdef USE_SPINLOCK
+#  ifdef USE_SPINLOCK
       BLI_spin_unlock(&lock_);
-#else
+#  else
       BLI_mutex_unlock(mutex_);
-#endif
+#  endif
     }
     return f;
   }
@@ -462,11 +465,11 @@ class MArena::MArenaImpl {
     Vert vtry(co, double3(), NO_INDEX, NO_INDEX);
     VSetKey vskey(&vtry);
     if (intersect_use_threading) {
-#ifdef USE_SPINLOCK
+#  ifdef USE_SPINLOCK
       BLI_spin_lock(&lock_);
-#else
+#  else
       BLI_mutex_lock(mutex_);
-#endif
+#  endif
     }
     int i = vset_.index_of_try(vskey);
     if (i == -1) {
@@ -476,11 +479,11 @@ class MArena::MArenaImpl {
       ans = vset_[i].vert;
     }
     if (intersect_use_threading) {
-#ifdef USE_SPINLOCK
+#  ifdef USE_SPINLOCK
       BLI_spin_unlock(&lock_);
-#else
+#  else
       BLI_mutex_unlock(mutex_);
-#endif
+#  endif
     }
     return ans;
   }
@@ -510,11 +513,11 @@ class MArena::MArenaImpl {
     Vertp ans;
     VSetKey vskey(&vtry);
     if (intersect_use_threading) {
-#ifdef USE_SPINLOCK
+#  ifdef USE_SPINLOCK
       BLI_spin_lock(&lock_);
-#else
+#  else
       BLI_mutex_lock(mutex_);
-#endif
+#  endif
     }
     int i = vset_.index_of_try(vskey);
     if (i == -1) {
@@ -534,11 +537,11 @@ class MArena::MArenaImpl {
       ans = vset_[i].vert;
     }
     if (intersect_use_threading) {
-#ifdef USE_SPINLOCK
+#  ifdef USE_SPINLOCK
       BLI_spin_unlock(&lock_);
-#else
+#  else
       BLI_mutex_unlock(mutex_);
-#endif
+#  endif
     }
     return ans;
   };
@@ -1235,7 +1238,7 @@ static bool non_trivially_coplanar_intersects(const Mesh &tm,
 /* Keeping this code for a while, but for now, almost all
  * trivial intersects are found before calling intersect_tri_tri now.
  */
-#if 0
+#  if 0
 /* Do tri1 and tri2 intersect at all, and if so, is the intersection
  * something other than a common vertex or a common edge?
  * The itt value is the result of calling intersect_tri_tri on tri1, tri2.
@@ -1294,7 +1297,7 @@ static bool non_trivial_intersect(const ITT_value &itt, Facep tri1, Facep tri2)
   const mpq2 *vb[] = {&tri_2d[1][0], &tri_2d[1][1], &tri_2d[1][2]};
   return non_trivially_2d_intersect(va, vb);
 }
-#endif
+#  endif
 
 /* The sup and index functions are defined in the paper:
  * EXACT GEOMETRIC COMPUTATION USING CASCADING, by
@@ -1763,9 +1766,9 @@ static ITT_value itt_canon1(const mpq3 &p1,
 static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
 {
   constexpr int dbg_level = 0;
-#ifdef PERFDEBUG
+#  ifdef PERFDEBUG
   incperfcount(2); /* Intersect_tri_tri calls. */
-#endif
+#  endif
   const Face &tri1 = *tm.face(t1);
   const Face &tri2 = *tm.face(t2);
   Vertp vp1 = tri1[0];
@@ -1808,9 +1811,9 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
   int sq1 = filter_plane_side(d_q1, d_r2, d_n2, abs_d_q1, abs_d_r2, abs_d_n2);
   int sr1 = filter_plane_side(d_r1, d_r2, d_n2, abs_d_r1, abs_d_r2, abs_d_n2);
   if ((sp1 > 0 && sq1 > 0 && sr1 > 0) || (sp1 < 0 && sq1 < 0 && sr1 < 0)) {
-#ifdef PERFDEBUG
+#  ifdef PERFDEBUG
     incperfcount(3); /* Tri tri intersects decided by filter plane tests. */
-#endif
+#  endif
     if (dbg_level > 0) {
       std::cout << "no intersection, all t1's verts above or below t2\n";
     }
@@ -1826,9 +1829,9 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
   int sq2 = filter_plane_side(d_q2, d_r1, d_n1, abs_d_q2, abs_d_r1, abs_d_n1);
   int sr2 = filter_plane_side(d_r2, d_r1, d_n1, abs_d_r2, abs_d_r1, abs_d_n1);
   if ((sp2 > 0 && sq2 > 0 && sr2 > 0) || (sp2 < 0 && sq2 < 0 && sr2 < 0)) {
-#ifdef PERFDEBUG
+#  ifdef PERFDEBUG
     incperfcount(3); /* Tri tri intersects decided by filter plane tests. */
-#endif
+#  endif
     if (dbg_level > 0) {
       std::cout << "no intersection, all t2's verts above or below t1\n";
     }
@@ -1862,9 +1865,9 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
     if (dbg_level > 0) {
       std::cout << "no intersection, all t1's verts above or below t2 (exact)\n";
     }
-#ifdef PERFDEBUG
+#  ifdef PERFDEBUG
     incperfcount(4); /* Tri tri interects decided by exact plane tests. */
-#endif
+#  endif
     return ITT_value(INONE);
   }
 
@@ -1888,9 +1891,9 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
     if (dbg_level > 0) {
       std::cout << "no intersection, all t2's verts above or below t1 (exact)\n";
     }
-#ifdef PERFDEBUG
+#  ifdef PERFDEBUG
     incperfcount(4); /* Tri tri interects decided by exact plane tests. */
-#endif
+#  endif
     return ITT_value(INONE);
   }
 
@@ -1956,11 +1959,11 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
     ans.t_source = t2;
   }
 
-#ifdef PERFDEBUG
+#  ifdef PERFDEBUG
   if (ans.kind != INONE) {
     incperfcount(5);
   }
-#endif
+#  endif
   return ans;
 }
 
@@ -2540,9 +2543,9 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
       if (!(len == 1 && overlap[overlap_index].indexB == t)) {
         OverlapTriRange range = {t, overlap_index, len};
         data.overlap_tri_range.append(range);
-#ifdef PERFDEBUG
+#  ifdef PERFDEBUG
         bumpperfcount(0, len); /* Overlaps. */
-#endif
+#  endif
       }
     }
     overlap_index = i + 1;
@@ -2766,12 +2769,12 @@ Mesh trimesh_nary_intersect(
   if (dbg_level > 1) {
     std::cout << clinfo;
   }
-#ifdef PERFDEBUG
+#  ifdef PERFDEBUG
   perfdata_init();
   doperfmax(0, static_cast<int>(tm_in.face_size()));
   doperfmax(1, static_cast<int>(clinfo.tot_cluster()));
   doperfmax(2, static_cast<int>(tri_ov.overlap().size()));
-#endif
+#  endif
   Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
   for (int c : clinfo.index_range()) {
     cluster_subdivided[c] = calc_cluster_subdivided(clinfo, c, tm_in, arena);
@@ -2793,9 +2796,9 @@ Mesh trimesh_nary_intersect(
     std::cout << "TRIMESH_NARY_INTERSECT answer:\n";
     std::cout << combined;
   }
-#ifdef PERFDEBUG
+#  ifdef PERFDEBUG
   dump_perfdata();
-#endif
+#  endif
   return combined;
 }
 
@@ -2850,11 +2853,11 @@ void write_obj_mesh(Mesh &m, const std::string &objname)
   /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
    * This is just for developer debugging anyway, and should never be called in production Blender.
    */
-#ifdef _WIN_32
+#  ifdef _WIN_32
   const char *objdir = BLI_getenv("HOME");
-#else
+#  else
   const char *objdir = "/tmp/";
-#endif
+#  endif
   if (m.face_size() == 0) {
     return;
   }
@@ -2890,7 +2893,7 @@ void write_obj_mesh(Mesh &m, const std::string &objname)
   f.close();
 }
 
-#ifdef PERFDEBUG
+#  ifdef PERFDEBUG
 struct PerfCounts {
   Vector<int> count;
   Vector<const char *> count_name;
@@ -2962,6 +2965,8 @@ static void dump_perfdata(void)
     std::cout << perfdata.max_name[i] << " = " << perfdata.max[i] << "\n";
   }
 }
-#endif
+#  endif
 
 };  // namespace blender::meshintersect
+
+#endif  // WITH_GMP
