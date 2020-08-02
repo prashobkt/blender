@@ -549,6 +549,9 @@ class CellsInfo {
 
 static void merge_cells(int merge_to, int merge_from, CellsInfo &cinfo, PatchesInfo &pinfo)
 {
+  if (merge_to == merge_from) {
+    return;
+  }
   Cell &merge_from_cell = cinfo.cell(merge_from);
   Cell &merge_to_cell = cinfo.cell(merge_to);
   int final_merge_to = merge_to;
@@ -839,13 +842,14 @@ static Array<int> sort_tris_around_edge(const Mesh &tm,
     }
     std::cout << "sort_tris_around_edge " << e << "\n";
     std::cout << "tris = " << tris << "\n";
+    std::cout << "t0 = " << t0 << "\n";
   }
   Vector<int> g1{tris[0]};
   Vector<int> g2;
   Vector<int> g3;
   Vector<int> g4;
   Vector<int> *groups[] = {&g1, &g2, &g3, &g4};
-  const Face &tri0 = *tm.face(t0);
+  const Face &triref = *tm.face(tris[0]);
   for (int i : tris.index_range()) {
     if (i == 0) {
       continue;
@@ -854,9 +858,9 @@ static Array<int> sort_tris_around_edge(const Mesh &tm,
     BLI_assert(t < tm.face_size() || (t == EXTRA_TRI_INDEX && extra_tri != nullptr));
     const Face &tri = (t == EXTRA_TRI_INDEX) ? *extra_tri : *tm.face(t);
     if (dbg_level > 2) {
-      std::cout << "classifying tri " << t << " with respect to " << t0 << "\n";
+      std::cout << "classifying tri " << t << " with respect to " << tris[0] << "\n";
     }
-    int group_num = sort_tris_class(tri, tri0, e);
+    int group_num = sort_tris_class(tri, triref, e);
     if (dbg_level > 2) {
       std::cout << "  classify result : " << group_num << "\n";
     }
@@ -881,14 +885,14 @@ static Array<int> sort_tris_around_edge(const Mesh &tm,
     }
   }
   if (g3.size() > 1) {
-    Array<int> g3sorted = sort_tris_around_edge(tm, tmtopo, e, g3, g3[0], extra_tri);
+    Array<int> g3sorted = sort_tris_around_edge(tm, tmtopo, e, g3, t0, extra_tri);
     std::copy(g3sorted.begin(), g3sorted.end(), g3.begin());
     if (dbg_level > 1) {
       std::cout << "g3 sorted: " << g3 << "\n";
     }
   }
   if (g4.size() > 1) {
-    Array<int> g4sorted = sort_tris_around_edge(tm, tmtopo, e, g4, g4[0], extra_tri);
+    Array<int> g4sorted = sort_tris_around_edge(tm, tmtopo, e, g4, t0, extra_tri);
     std::copy(g4sorted.begin(), g4sorted.end(), g4.begin());
     if (dbg_level > 1) {
       std::cout << "g4 sorted: " << g4 << "\n";
@@ -987,8 +991,8 @@ static void find_cells_from_edge(const Mesh &tm,
       cell.add_patch(rnext_index);
       cell.check_for_zero_volume(pinfo, tm);
       if (dbg_level > 0) {
-        std::cout << "  p" << rnext_index << "." << (rnext_flipped ? "cell_above" : "cell_below")
-                  << " = c" << c << "\n";
+        std::cout << "  reuse r_follow: p" << rnext_index << "."
+                  << (rnext_flipped ? "cell_above" : "cell_below") << " = c" << c << "\n";
       }
     }
     else if (*r_follow_cell == NO_INDEX && *rnext_prev_cell != NO_INDEX) {
@@ -998,12 +1002,16 @@ static void find_cells_from_edge(const Mesh &tm,
       cell.add_patch(r_index);
       cell.check_for_zero_volume(pinfo, tm);
       if (dbg_level > 0) {
-        std::cout << "  p" << r_index << "." << (r_flipped ? "cell_below" : "cell_above") << " = c"
-                  << c << "\n";
+        std::cout << "  reuse rnext prev: rprev_p" << r_index << "."
+                  << (r_flipped ? "cell_below" : "cell_above") << " = c" << c << "\n";
       }
     }
     else {
       if (*r_follow_cell != *rnext_prev_cell) {
+        if (dbg_level > 0) {
+          std::cout << " merge cell " << *rnext_prev_cell << " into cell " << *r_follow_cell
+                    << "\n";
+        }
         merge_cells(*r_follow_cell, *rnext_prev_cell, cinfo, pinfo);
       }
     }

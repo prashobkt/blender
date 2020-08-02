@@ -600,4 +600,54 @@ TEST(boolean_polymesh, CubeCubeStep)
   }
 }
 
+TEST(boolean_polymesh, CubeCyl4)
+{
+  const char *spec = R"(16 12
+  0 1 -1
+  0 1 1
+  1 0 -1
+  1 0 1
+  0 -1 -1
+  0 -1 1
+  -1 0 -1
+  -1 0 1
+  -1 -1 -1
+  -1 -1 1
+  -1 1 -1
+  -1 1 1
+  1 -1 -1
+  1 -1 1
+  1 1 -1
+  1 1 1
+  0 1 3 2
+  2 3 5 4
+  3 1 7 5
+  4 5 7 6
+  6 7 1 0
+  0 2 4 6
+  8 9 11 10
+  10 11 15 14
+  14 15 13 12
+  12 13 9 8
+  10 14 12 8
+  15 11 9 13
+  )";
+
+  MeshBuilder mb(spec);
+  Mesh out = boolean_mesh(
+      mb.mesh,
+      BOOLEAN_DIFFERENCE,
+      2,
+      [](int t) { return t < 6 ? 1 : 0; },
+      false,
+      nullptr,
+      &mb.arena);
+  out.populate_vert();
+  EXPECT_EQ(out.vert_size(), 16);
+  EXPECT_EQ(out.face_size(), 20);
+  if (DO_OBJ) {
+    write_obj_mesh(out, "cubecyl4");
+  }
+}
+
 }  // namespace blender::meshintersect
