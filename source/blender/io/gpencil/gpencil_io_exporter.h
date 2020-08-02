@@ -54,19 +54,21 @@ struct GpencilExportParams {
 };
 
 typedef enum eGpencilExportParams_Flag {
+  /* Export only active frame. */
+  GP_EXPORT_ACTIVE_FRAME = (1 << 0),
   /* Export Filled strokes. */
-  GP_EXPORT_FILL = (1 << 0),
+  GP_EXPORT_FILL = (1 << 1),
   /* Export normalized thickness. */
-  GP_EXPORT_NORM_THICKNESS = (1 << 1),
+  GP_EXPORT_NORM_THICKNESS = (1 << 2),
   /* Export all selected objects. */
-  GP_EXPORT_SELECTED_OBJECTS = (1 << 2),
+  GP_EXPORT_SELECTED_OBJECTS = (1 << 3),
   /* Clip camera area. */
-  GP_EXPORT_CLIP_CAMERA = (1 << 3),
+  GP_EXPORT_CLIP_CAMERA = (1 << 4),
   /* Gray Scale. */
-  GP_EXPORT_GRAY_SCALE = (1 << 4),
+  GP_EXPORT_GRAY_SCALE = (1 << 5),
 } eGpencilExportParams_Flag;
 
-bool gpencil_io_export(const struct GpencilExportParams *params);
+bool gpencil_io_export(struct GpencilExportParams *params);
 
 #ifdef __cplusplus
 }

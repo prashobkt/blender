@@ -125,28 +125,9 @@ static View3D *get_invoke_view3d(bContext *C)
   return NULL;
 }
 
-static bool is_keyframe_empty(bGPdata *gpd, int framenum)
-{
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    if (gpl->flag & GP_LAYER_HIDE) {
-      continue;
-    }
-    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-      if (gpf->framenum == framenum) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
 static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 {
-  Main *bmain = CTX_data_main(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *ob = CTX_data_active_object(C);
-  Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
-  bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
 
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
     BKE_report(op->reports, RPT_ERROR, "No filename given");
@@ -174,6 +155,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 
   /* Set flags. */
   int flag = 0;
+  SET_FLAG_FROM_TEST(flag, only_active_frame, GP_EXPORT_ACTIVE_FRAME);
   SET_FLAG_FROM_TEST(flag, use_fill, GP_EXPORT_FILL);
   SET_FLAG_FROM_TEST(flag, use_norm_thickness, GP_EXPORT_NORM_THICKNESS);
   SET_FLAG_FROM_TEST(flag, use_selected_objects, GP_EXPORT_SELECTED_OBJECTS);
@@ -200,31 +182,11 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
     params.frame_end = EFRA;
   }
 
-  int oldframe = (int)DEG_get_ctime(depsgraph);
-  bool done = false;
+  /* Do export. */
+  WM_cursor_wait(1);
+  bool done = gpencil_io_export(&params);
+  WM_cursor_wait(0);
 
-  if (only_active_frame) {
-    done = gpencil_io_export(&params);
-  }
-  else {
-    for (int i = params.frame_start; i < params.frame_end + 1; i++) {
-      if (is_keyframe_empty(gpd_eval, i)) {
-        continue;
-      }
-
-      CFRA = i;
-      BKE_scene_graph_update_for_newframe(depsgraph, bmain);
-      sprintf(params.frame, "%04d", i);
-
-      done |= gpencil_io_export(&params);
-    }
-  }
-
-  /* Return frame state and DB to original state */
-  if (!only_active_frame) {
-    CFRA = oldframe;
-    BKE_scene_graph_update_for_newframe(depsgraph, bmain);
-  }
   if (done) {
     BKE_report(op->reports, RPT_INFO, "SVG export file created");
   }

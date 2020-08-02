@@ -66,6 +66,12 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *iparams
 {
   invert_axis_[0] = false;
   invert_axis_[1] = true;
+
+  /* Calc selected object boundbox. */
+  selected_objects_boundbox();
+
+  rcti boundbox;
+  get_select_boundbox(&boundbox);
 }
 
 /* Main write method for SVG format. */
