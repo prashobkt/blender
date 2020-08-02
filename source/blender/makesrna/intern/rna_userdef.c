@@ -1485,6 +1485,33 @@ static void rna_UserDef_usermenus_pie_set(PointerRNA *ptr, int value)
   umg->pie = value;
 }
 
+static PointerRNA rna_UserDef_usermenus_item_op_prop_get(PointerRNA *ptr)
+{
+  bUserMenuItem_Op *umi_op = ptr->data;
+
+  if (umi_op->ptr) {
+    return *(umi_op->ptr);
+  }
+
+  /*return rna_pointer_inherit_refine(ptr, &RNA_OperatorProperties, op->properties); */
+  return PointerRNA_NULL;
+}
+
+static void rna_UserDef_usermenus_item_op_get(PointerRNA *ptr, char *value)
+{
+  bUserMenuItem_Op *umi_op = ptr->data;
+  WM_operator_py_idname(value, umi_op->op_idname);
+}
+
+static int rna_UserDef_usermenus_item_op_length(PointerRNA *ptr)
+{
+  bUserMenuItem_Op *umi_op = ptr->data;
+  char pyname[OP_MAX_TYPENAME];
+
+  WM_operator_py_idname(pyname, umi_op->op_idname);
+  return strlen(pyname);
+}
+
 static void rna_UserDef_usermenus_item_op_set(PointerRNA *ptr, const char *value)
 {
   bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)ptr->data;
@@ -6432,13 +6459,17 @@ static void rna_def_userdef_usermenus_items_subtypes(BlenderRNA *brna)
   prop = RNA_def_property(srna, "operator", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "op_idname");
   RNA_def_property_ui_text(prop, "operator", "the operator that will be executed");
-  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_UserDef_usermenus_item_op_set");
+  RNA_def_property_string_funcs(prop,
+                                "rna_UserDef_usermenus_item_op_get",
+                                "rna_UserDef_usermenus_item_op_length",
+                                "rna_UserDef_usermenus_item_op_set");
   RNA_def_struct_name_property(srna, prop);
 
   prop = RNA_def_property(srna, "prop", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "prop");
-  RNA_def_property_struct_type(prop, "PropertyGroupItem");
-  RNA_def_property_ui_text(prop, "properties", "");
+  RNA_def_property_struct_type(prop, "OperatorProperties");
+  RNA_def_property_ui_text(prop, "properties", "properties of the operator");
+  RNA_def_property_pointer_funcs(prop, "rna_UserDef_usermenus_item_op_prop_get", NULL, NULL, NULL);
 
   /* menu item */
   srna = RNA_def_struct(brna, "um_item_menu", NULL);
@@ -6581,6 +6612,20 @@ static void rna_def_userdef_usermenu(BlenderRNA *brna)
   RNA_def_property_enum_funcs(
       prop, "rna_UserDef_usermenus_item_type_get", "rna_UserDef_usermenus_item_type_set", NULL);
   RNA_def_property_ui_text(prop, "type", "the type of item");
+
+  prop = RNA_def_property(srna, "icon", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "icon");
+  RNA_def_property_range(prop, 0, 255);
+  RNA_def_property_ui_text(prop, "icon", "the icon to display");
+
+  prop = RNA_def_property(srna, "icon_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "icon_name");
+  RNA_def_property_ui_text(prop, "Icon Name", "Name of the icon");
+  // RNA_def_property_string_funcs(prop,
+  //                              "rna_UserDef_usermenus_item_icon_name_get",
+  //                              NULL,
+  //                              "rna_UserDef_usermenus_item_icon_name_set");
+  //                              RNA_def_struct_name_property(srna, prop);
 
   prop = RNA_def_property(srna, "is_selected", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "is_selected", 0);

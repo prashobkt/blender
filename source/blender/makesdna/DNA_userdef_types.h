@@ -542,9 +542,11 @@ typedef struct bUserMenuItem {
   struct bUserMenuItem_SubMenu *parent;
   char ui_name[64];
   char type;
+  char icon;
   // editor
+  char icon_name[64];
   char is_selected;
-  char _pad0[6];
+  char _pad0[5];
 } bUserMenuItem;
 
 typedef struct bUserMenuItem_Op {

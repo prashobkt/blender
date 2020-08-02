@@ -108,6 +108,7 @@ bUserMenuItem *BKE_blender_user_menu_item_add(ListBase *lb, int type)
 
   bUserMenuItem *umi = MEM_callocN(size, __func__);
   umi->type = type;
+  umi->icon = 0;
   if (lb)
     BLI_addtail(lb, umi);
   return umi;

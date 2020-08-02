@@ -68,7 +68,9 @@ def draw_button(context, box, item, index):
     row = col.row(align=True)
     if item.type == "SEPARATOR":
         name = "___________"
-    row.prop(item, "is_selected", text=name, toggle=1)
+    icons = bpy.types.UILayout.bl_rna.functions["prop"].parameters["icon"].enum_items.keys()
+    selected_icon = icons[item.icon]
+    row.prop(item, "is_selected", icon=selected_icon, text=name, toggle=1)
     if item.type == "SUBMENU":
         sm = item.get_submenu()
         if um.active_group.is_pie and index >= 0:
@@ -144,6 +146,12 @@ def draw_item_editor(context, row):
     elif current:
         col.prop(current, "type")
         if (current.type != "SEPARATOR"):
+            rowsub = col.row(align=True)
+            icons = bpy.types.UILayout.bl_rna.functions["prop"].parameters["icon"].enum_items.keys()
+            current.icon_name = icons[current.icon]
+            rowsub.operator("preferences.icon_change", text="", icon='TRIA_LEFT').value = -1
+            rowsub.prop(current, "icon_name", text="")
+            rowsub.operator("preferences.icon_change", text="", icon='TRIA_RIGHT').value = 1
             col.prop(current, "name")
         if (current.type == "OPERATOR"):
             umi_op = current.get_operator()
@@ -200,8 +208,7 @@ def draw_user_menu_preference(context, layout):
     kmi = get_keymap(context, -1, False)
     map_type = None
 
-    col = _indented_layout(layout, 0)
-    box = col.box()
+    box = layout.box()
     row = box.row()
 
     row.prop(um, "expanded", text="", emboss=False)
@@ -274,11 +281,12 @@ def draw_user_menus(context, layout):
     #rowsub.operator("preferences.keyconfig_export", text="", icon='EXPORT')
 
     row = layout.row()
+    row.separator()
 
-    layout.separator()
     draw_user_menu_preference(context=context, layout=row)
 
     row = layout.row()
+    row.separator()
 
     if um.active_group.is_pie:
         draw_pie(context=context, row=row)
@@ -286,5 +294,5 @@ def draw_user_menus(context, layout):
         draw_item_box(context=context, row=row)
     draw_item_editor(context=context, row=row)
 
-    layout.separator()
+    row.separator()
 

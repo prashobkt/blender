@@ -290,7 +290,7 @@ bool screen_user_menu_draw_items(const bContext *C, uiLayout *layout, ListBase *
       wmOperatorType *ot = WM_operatortype_find(umi_op->op_idname, false);
       if (ot != NULL) {
         IDProperty *prop = umi_op->prop ? IDP_CopyProperty(umi_op->prop) : NULL;
-        uiItemFullO_ptr(layout, ot, ui_name, ICON_NONE, prop, umi_op->opcontext, 0, NULL);
+        uiItemFullO_ptr(layout, ot, ui_name, umi->icon, prop, umi_op->opcontext, 0, NULL);
         is_empty = false;
       }
       else {
@@ -305,7 +305,7 @@ bool screen_user_menu_draw_items(const bContext *C, uiLayout *layout, ListBase *
       bUserMenuItem_Menu *umi_mt = (bUserMenuItem_Menu *)umi;
       MenuType *mt = WM_menutype_find(umi_mt->mt_idname, false);
       if (mt != NULL) {
-        uiItemM_ptr(layout, mt, ui_name, ICON_NONE);
+        uiItemM_ptr(layout, mt, ui_name, umi->icon);
         is_empty = false;
       }
       else {
@@ -320,7 +320,7 @@ bool screen_user_menu_draw_items(const bContext *C, uiLayout *layout, ListBase *
       bUserMenuItem_SubMenu *umi_mt = (bUserMenuItem_SubMenu *)umi;
 
       uiItemMenuF(
-          layout, ui_name, ICON_NONE, &screen_user_menu_draw_submenu, (void *)&umi_mt->items);
+          layout, ui_name, umi->icon, &screen_user_menu_draw_submenu, (void *)&umi_mt->items);
       is_empty = false;
     }
     else if (umi->type == USER_MENU_TYPE_PROP) {
@@ -351,7 +351,7 @@ bool screen_user_menu_draw_items(const bContext *C, uiLayout *layout, ListBase *
           prop = RNA_struct_find_property(&prop_ptr, umi_pr->prop_id);
           if (prop) {
             ok = true;
-            uiItemFullR(layout, &prop_ptr, prop, umi_pr->prop_index, 0, 0, ui_name, ICON_NONE);
+            uiItemFullR(layout, &prop_ptr, prop, umi_pr->prop_index, 0, 0, ui_name, umi->icon);
             is_empty = false;
           }
         }
