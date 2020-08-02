@@ -2767,6 +2767,10 @@ Mesh boolean_mesh(Mesh &pm,
     std::cout << "\nBOOLEAN_MESH\n"
               << nshapes << " operand" << (nshapes == 1 ? "" : "s")
               << " op=" << bool_optype_name(op) << "\n";
+    if (dbg_level > 1) {
+      write_obj_mesh(pm, "boolean_mesh_in");
+      std::cout << pm;
+    }
   }
   Mesh *tm_in = pm_triangulated;
   Mesh our_triangulation;
