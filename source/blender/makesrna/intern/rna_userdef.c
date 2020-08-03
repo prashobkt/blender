@@ -1087,14 +1087,14 @@ static void rna_clog_log_severity_set(PointerRNA *UNUSED(ptr), int value)
   CLG_severity_level_set(value);
 }
 
-static int rna_clog_log_verbosity_get(PointerRNA *UNUSED(ptr))
+static int rna_clog_log_level_get(PointerRNA *UNUSED(ptr))
 {
-  return CLG_verbosity_level_get();
+  return CLG_level_get();
 }
 
-static void rna_clog_log_verbosity_set(PointerRNA *UNUSED(ptr), int value)
+static void rna_clog_log_level_set(PointerRNA *UNUSED(ptr), int value)
 {
-  CLG_verbosity_level_set(value);
+  CLG_level_set(value);
 }
 
 /*
@@ -5767,11 +5767,11 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, clog_log_severity_items);
   RNA_def_property_ui_text(prop, "Log Severity", "");
 
-  prop = RNA_def_property(srna, "log_verbosity", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "log_level", PROP_INT, PROP_NONE);
   RNA_def_property_int_funcs(
-      prop, "rna_clog_log_verbosity_get", "rna_clog_log_verbosity_set", NULL);
+      prop, "rna_clog_log_level_get", "rna_clog_log_level_set", NULL);
   RNA_def_property_ui_text(
-      prop, "Log Verbosity", "Log level, when severity is set to verbose or debug");
+      prop, "Log Level", "Log level, when severity is set to verbose or debug");
 
   prop = RNA_def_property(srna, "log_filter", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "log_filter");

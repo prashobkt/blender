@@ -97,7 +97,7 @@ typedef struct CLogContext {
 
   /** For new types. */
   struct {
-    short verbosity_level;
+    short level;
     short severity_level;
   } default_type;
 
@@ -361,7 +361,7 @@ static CLG_LogType *clg_ctx_type_register(CLogContext *ctx, const char *identifi
   ctx->types = ty;
   strncpy(ty->identifier, identifier, sizeof(ty->identifier) - 1);
   ty->ctx = ctx;
-  ty->verbosity_level = ctx->default_type.verbosity_level;
+  ty->level = ctx->default_type.level;
   ty->severity_level = ctx->default_type.severity_level;
 
   if (clg_ctx_filter_check(ctx, ty->identifier)) {
@@ -798,16 +798,16 @@ static void CLG_ctx_severity_level_set(CLogContext *ctx, enum CLG_Severity level
   }
 }
 
-static short CLG_ctx_verbosity_level_get(CLogContext *ctx)
+static short CLG_ctx_level_get(CLogContext *ctx)
 {
-  return ctx->default_type.verbosity_level;
+  return ctx->default_type.level;
 }
 
-static void CLG_ctx_verbosity_level_set(CLogContext *ctx, unsigned short level)
+static void CLG_ctx_level_set(CLogContext *ctx, unsigned short level)
 {
-  ctx->default_type.verbosity_level = level;
+  ctx->default_type.level = level;
   for (CLG_LogType *ty = ctx->types; ty; ty = ty->next) {
-    ty->verbosity_level = level;
+    ty->level = level;
   }
 }
 
@@ -824,9 +824,12 @@ static CLogContext *CLG_ctx_init(void)
 #endif
   ctx->use_color = true;
   ctx->default_type.severity_level = CLG_SEVERITY_WARN;
-  ctx->default_type.verbosity_level = 0;
+  ctx->default_type.level = 0;
   ctx->use_stdout = true;
+
+  /* enable all loggers by default */
   CLG_ctx_type_filter_include(ctx, "*", strlen("*"));
+
   CLG_ctx_output_update(ctx);
 
   return ctx;
@@ -995,14 +998,14 @@ enum CLG_Severity CLG_severity_level_get()
   return CLG_ctx_severity_level_get(g_ctx);
 }
 
-void CLG_verbosity_level_set(unsigned short level)
+void CLG_level_set(unsigned short level)
 {
-  CLG_ctx_verbosity_level_set(g_ctx, level);
+  CLG_ctx_level_set(g_ctx, level);
 }
 
-short CLG_verbosity_level_get()
+short CLG_level_get()
 {
-  return CLG_ctx_verbosity_level_get(g_ctx);
+  return CLG_ctx_level_get(g_ctx);
 }
 
 LogRecordList *CLG_log_record_get()

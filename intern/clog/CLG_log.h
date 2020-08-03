@@ -117,7 +117,7 @@ typedef struct CLG_LogType {
   char identifier[64];
   /** FILE output. */
   struct CLogContext *ctx;
-  unsigned short verbosity_level;
+  unsigned short level;
   unsigned short severity_level;
   enum CLG_LogFlag flag;
 } CLG_LogType;
@@ -190,9 +190,9 @@ void CLG_type_filters_clear(void);
 void CLG_type_filter_exclude(const char *type_filter, int type_filter_len);
 
 enum CLG_Severity CLG_severity_level_get(void);
-void CLG_severity_level_set(enum CLG_Severity level);
-short CLG_verbosity_level_get(void);
-void CLG_verbosity_level_set(unsigned short level);
+void CLG_severity_level_set(enum CLG_Severity log_level);
+short CLG_level_get(void);
+void CLG_level_set(unsigned short log_level);
 struct LogRecordList *CLG_log_record_get(void);
 
 void CLG_logref_init(CLG_LogRef *clg_ref);
@@ -217,33 +217,33 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #endif  // DEBUG
 
 /** check verbosity/debug level when using severity DEBUG/VERBOSE */
-#define CLOG_CHECK_LEVEL(clg_ref, verbose_level, ...) \
+#define CLOG_CHECK_LEVEL(clg_ref, log_level, ...) \
   (CLOG_CHECK_IN_USE(clg_ref) && ((clg_ref)->type->severity_level <= CLG_SEVERITY_VERBOSE) && \
-   ((clg_ref)->type->verbosity_level >= verbose_level))
+   ((clg_ref)->type->level >= log_level))
 
 #ifdef DEBUG
 /** same as CLOG_CHECK_LEVEL, but will be automatically disable in release build */
-#  define CLOG_DEBUG_CHECK_LEVEL(clg_ref, verbose_level, ...) \
-    CLOG_CHECK_LEVEL(clg_ref, verbose_level, __VA_ARGS__)
+#  define CLOG_DEBUG_CHECK_LEVEL(clg_ref, log_level, ...) \
+    CLOG_CHECK_LEVEL(clg_ref, log_level, __VA_ARGS__)
 #else
-#  define CLOG_DEBUG_CHECK_LEVEL(clg_ref, verbose_level, ...) (void)0
+#  define CLOG_DEBUG_CHECK_LEVEL(clg_ref, log_level, ...) (void)0
 #endif  // DEBUG
 
-#define CLOG_AT_SEVERITY(clg_ref, severity, verbose_level, ...) \
+#define CLOG_AT_SEVERITY(clg_ref, severity, log_level, ...) \
   { \
     CLG_LogType *_lg_ty = CLOG_ENSURE(clg_ref); \
     if ((_lg_ty->flag & CLG_FLAG_USE) && severity >= _lg_ty->severity_level) { \
       switch (severity) { \
         case CLG_SEVERITY_DEBUG: \
         case CLG_SEVERITY_VERBOSE: \
-          if (verbose_level > _lg_ty->verbosity_level) { \
+          if (log_level > _lg_ty->level) { \
             break; \
           } \
           __attribute__((fallthrough)); \
         default: \
           CLG_logf(_lg_ty, \
                    severity, \
-                   verbose_level, \
+                   log_level, \
                    __FILE__ ":" STRINGIFY(__LINE__), \
                    __func__, \
                    __VA_ARGS__); \
@@ -252,40 +252,40 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
   } \
   ((void)0)
 
-#define CLOG_STR_AT_SEVERITY(clg_ref, severity, verbose_level, str) \
+#define CLOG_STR_AT_SEVERITY(clg_ref, severity, log_level, str) \
   { \
     CLG_LogType *_lg_ty = CLOG_ENSURE(clg_ref); \
     if ((_lg_ty->flag & CLG_FLAG_USE) && severity >= _lg_ty->severity_level) { \
       switch (severity) { \
         case CLG_SEVERITY_DEBUG: \
         case CLG_SEVERITY_VERBOSE: \
-          if (verbose_level > _lg_ty->verbosity_level) { \
+          if (log_level > _lg_ty->level) { \
             break; \
           } \
           __attribute__((fallthrough)); \
         default: \
           CLG_log_str( \
-              _lg_ty, severity, verbose_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, str); \
+              _lg_ty, severity, log_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, str); \
       } \
     } \
   } \
   ((void)0)
 
-#define CLOG_STR_AT_SEVERITY_N(clg_ref, severity, verbose_level, str) \
+#define CLOG_STR_AT_SEVERITY_N(clg_ref, severity, log_level, str) \
   { \
     CLG_LogType *_lg_ty = CLOG_ENSURE(clg_ref); \
     if ((_lg_ty->flag & CLG_FLAG_USE) && severity >= _lg_ty->severity_level) { \
       switch (severity) { \
         case CLG_SEVERITY_DEBUG: \
         case CLG_SEVERITY_VERBOSE: \
-          if (verbose_level > _lg_ty->verbosity_level) { \
+          if (log_level > _lg_ty->level) { \
             break; \
           } \
           __attribute__((fallthrough)); \
         default: { \
           const char *_str = str; \
           CLG_log_str( \
-              _lg_ty, severity, verbose_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, _str); \
+              _lg_ty, severity, log_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, _str); \
           MEM_freeN((void *)_str); \
         } \
       } \
@@ -295,30 +295,30 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 
 /* CLOG_DEBUG is the same as CLOG_VERBOSE, but available only in debug builds */
 #ifdef DEBUG
-#  define CLOG_DEBUG(clg_ref, level, ...) \
-    CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_DEBUG, level, __VA_ARGS__)
+#  define CLOG_DEBUG(clg_ref, log_level, ...) \
+    CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_DEBUG, log_level, __VA_ARGS__)
 #else
-#  define CLOG_DEBUG(clg_ref, level, ...) \
+#  define CLOG_DEBUG(clg_ref, log_level, ...) \
     do { \
     } while (false)
 #endif  // DEBUG
-#define CLOG_VERBOSE(clg_ref, level, ...) \
-  CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_VERBOSE, level, __VA_ARGS__)
+#define CLOG_VERBOSE(clg_ref, log_level, ...) \
+  CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_VERBOSE, log_level, __VA_ARGS__)
 #define CLOG_INFO(clg_ref, ...) CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_INFO, 0, __VA_ARGS__)
 #define CLOG_WARN(clg_ref, ...) CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_WARN, 0, __VA_ARGS__)
 #define CLOG_ERROR(clg_ref, ...) CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_ERROR, 0, __VA_ARGS__)
 #define CLOG_FATAL(clg_ref, ...) CLOG_AT_SEVERITY(clg_ref, CLG_SEVERITY_FATAL, 0, __VA_ARGS__)
 
 #ifdef DEBUG
-#  define CLOG_STR_DEBUG(clg_ref, level, str) \
-    CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_DEBUG, level, str)
+#  define CLOG_STR_DEBUG(clg_ref, log_level, str) \
+    CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_DEBUG, log_level, str)
 #else
-#  define CLOG_STR_DEBUG(clg_ref, level, str) \
+#  define CLOG_STR_DEBUG(clg_ref, log_level, str) \
     do { \
     } while (false)
 #endif  // DEBUG
-#define CLOG_STR_VERBOSE(clg_ref, level, str) \
-  CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_VERBOSE, level, str)
+#define CLOG_STR_VERBOSE(clg_ref, log_level, str) \
+  CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_VERBOSE, log_level, str)
 #define CLOG_STR_INFO(clg_ref, str) CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_INFO, 0, str)
 #define CLOG_STR_WARN(clg_ref, str) CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_WARN, 0, str)
 #define CLOG_STR_ERROR(clg_ref, str) CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_ERROR, 0, str)
@@ -326,15 +326,15 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 
 /* Allocated string which is immediately freed. */
 #ifdef DEBUG
-#  define CLOG_STR_DEBUG_N(clg_ref, level, str) \
-    CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_DEBUG, level, str)
+#  define CLOG_STR_DEBUG_N(clg_ref, log_level, str) \
+    CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_DEBUG, log_level, str)
 #else
-#  define CLOG_STR_DEBUG_N(clg_ref, level, str) \
+#  define CLOG_STR_DEBUG_N(clg_ref, log_level, str) \
     do { \
     } while (false)
 #endif  // DEBUG
-#define CLOG_STR_VERBOSE_N(clg_ref, level, str) \
-  CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_VERBOSE, level, str)
+#define CLOG_STR_VERBOSE_N(clg_ref, log_level, str) \
+  CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_VERBOSE, log_level, str)
 #define CLOG_STR_INFO_N(clg_ref, str) CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_INFO, 0, str)
 #define CLOG_STR_WARN_N(clg_ref, str) CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_WARN, 0, str)
 #define CLOG_STR_ERROR_N(clg_ref, str) CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_ERROR, 0, str)
@@ -354,14 +354,14 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
   what_to_do
 
 /* same as CLOG_VERBOSE, but every n times */
-#define CLOG_VERBOSE_EVERY_N(clg_ref, verbosity_level, n, ...) \
-  EVERY_N(n, CLOG_VERBOSE(clg_ref, verbosity_level, __VA_ARGS__))
+#define CLOG_VERBOSE_EVERY_N(clg_ref, log_level, n, ...) \
+  EVERY_N(n, CLOG_VERBOSE(clg_ref, log_level, __VA_ARGS__))
 /* same as CLOG_STR_VERBOSE, but every n times */
-#define CLOG_STR_VERBOSE_EVERY_N(clg_ref, verbosity_level, n, str) \
-  EVERY_N(n, CLOG_STR_VERBOSE(clg_ref, verbosity_level, str))
+#define CLOG_STR_VERBOSE_EVERY_N(clg_ref, log_level, n, str) \
+  EVERY_N(n, CLOG_STR_VERBOSE(clg_ref, log_level, str))
 /* same as CLOG_STR_VERBOSE_N, but every n times */
-#define CLOG_STR_VERBOSE_N_EVERY_N(clg_ref, verbosity_level, n, str) \
-  EVERY_N(n, CLOG_STR_VERBOSE_N(clg_ref, verbosity_level, str))
+#define CLOG_STR_VERBOSE_N_EVERY_N(clg_ref, log_level, n, str) \
+  EVERY_N(n, CLOG_STR_VERBOSE_N(clg_ref, log_level, str))
 
 #ifdef __cplusplus
 }

@@ -5154,7 +5154,7 @@ int main(int argc, char **argv)
   /* Some useful defaults since this runs standalone. */
   CLG_output_use_basename_set(true);
   CLG_severity_level_set(CLG_SEVERITY_VERBOSE);
-  CLG_verbosity_level_set(debugSRNA);
+  CLG_level_set(debugSRNA);
 
   if (argc < 2) {
     fprintf(stderr, "Usage: %s outdirectory/\n", argv[0]);

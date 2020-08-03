@@ -786,13 +786,13 @@ static int arg_handle_log_severity_set(int argc, const char **argv, void *UNUSED
   }
 }
 
-static const char arg_handle_log_verbosity_set_doc[] =
-    "<log verbosity>\n"
-    "\tSet the logging verbosity level (higher for more details) defaults to 0,\n"
+static const char arg_handle_log_level_set_doc[] =
+    "<log level>\n"
+    "\tSet the logging debug/verbosity level (higher for more details),\n"
     "\tuse -1 to max verbosity.";
-static int arg_handle_log_verbosity_set(int argc, const char **argv, void *UNUSED(data))
+static int arg_handle_log_level_set(int argc, const char **argv, void *UNUSED(data))
 {
-  const char *arg_id = "--log-verbosity";
+  const char *arg_id = "--log-level";
   if (argc > 1) {
     const char *err_msg = NULL;
     int verbosity_level = 0;
@@ -801,10 +801,10 @@ static int arg_handle_log_verbosity_set(int argc, const char **argv, void *UNUSE
     }
     else {
       if (verbosity_level == -1) {
-        CLG_verbosity_level_set(USHRT_MAX);
+        CLG_level_set(USHRT_MAX);
       }
       else {
-        CLG_verbosity_level_set(verbosity_level);
+        CLG_level_set(verbosity_level);
       }
     }
     return 1;
@@ -2054,7 +2054,7 @@ void main_args_setup(bContext *C, bArgs *ba)
 
   BLI_argsAdd(ba, 1, NULL, "--log", CB(arg_handle_log_set), ba);
   BLI_argsAdd(ba, 1, NULL, "--log-severity", CB(arg_handle_log_severity_set), ba);
-  BLI_argsAdd(ba, 1, NULL, "--log-verbosity", CB(arg_handle_log_verbosity_set), ba);
+  BLI_argsAdd(ba, 1, NULL, "--log-level", CB(arg_handle_log_level_set), ba);
   BLI_argsAdd(ba, 1, NULL, "--log-show-basename", CB(arg_handle_log_show_basename_set), ba);
   BLI_argsAdd(ba, 1, NULL, "--log-show-backtrace", CB(arg_handle_log_show_backtrace_set), ba);
   BLI_argsAdd(ba, 1, NULL, "--log-show-timestamp", CB(arg_handle_log_show_timestamp_set), ba);

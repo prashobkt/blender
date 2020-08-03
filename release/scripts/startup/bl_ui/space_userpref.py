@@ -659,7 +659,7 @@ class USERPREF_PT_system_logging(SystemPanel, CenterAlignMixIn, Panel):
 
         col = layout.column()
         col.active = system.log_severity in {'LOG_VERBOSE', 'LOG_DEBUG'}
-        col.prop(system, "log_verbosity")
+        col.prop(system, "log_level")
 
         layout.prop(system, "log_use_stdout")
         col = layout.column()
