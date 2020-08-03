@@ -29,10 +29,8 @@
 /* XXX, temp feature - campbell */
 #define DURIAN_CAMERA_SWITCH
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+#include "DNA_ID.h"
+#include "DNA_collection_types.h"
 #include "DNA_color_types.h" /* color management */
 #include "DNA_curveprofile_types.h"
 #include "DNA_customdata_types.h" /* Scene's runtime cddata masks. */
@@ -44,6 +42,10 @@ extern "C" {
 #include "DNA_userdef_types.h"
 #include "DNA_vec_types.h"
 #include "DNA_view3d_types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct AnimData;
 struct Brush;
@@ -998,8 +1000,7 @@ typedef struct UvSculpt {
 /* grease pencil drawing brushes */
 typedef struct GpPaint {
   Paint paint;
-  int flag; /* Line Art stuff */
-  /*struct SceneLineart lineart; XXX: Why this ended up here? */
+  int flag;
   /* Mode of paint (Materials or Vertex Color). */
   int mode;
 } GpPaint;
@@ -1061,27 +1062,6 @@ typedef enum eGP_Lockaxis_Types {
   GP_LOCKAXIS_CURSOR = 4,
 } eGP_Lockaxis_Types;
 
-/* GP_Sculpt_Settings.brushtype */
-typedef enum eGP_Sculpt_Types {
-  GP_SCULPT_TYPE_SMOOTH = 0,
-  GP_SCULPT_TYPE_THICKNESS = 1,
-  GP_SCULPT_TYPE_STRENGTH = 2,
-  GP_SCULPT_TYPE_GRAB = 3,
-  GP_SCULPT_TYPE_PUSH = 4,
-  GP_SCULPT_TYPE_TWIST = 5,
-  GP_SCULPT_TYPE_PINCH = 6,
-  GP_SCULPT_TYPE_RANDOMIZE = 7,
-  GP_SCULPT_TYPE_CLONE = 8,
-  GP_SCULPT_TYPE_SUBDIVIDE = 9,
-  GP_SCULPT_TYPE_SIMPLIFY = 10,
-  /* add any sculpt brush above this value */
-  GP_SCULPT_TYPE_WEIGHT = 11,
-  /* add any weight paint brush below this value. Do no mix brushes */
-
-  /* !!! Update GP_Sculpt_Data brush[###]; below !!! */
-  GP_SCULPT_TYPE_MAX,
-} eGP_Sculpt_Types;
-
 /* Settings for a GPencil Speed Guide */
 typedef struct GP_Sculpt_Guide {
   char use_guide;
@@ -1096,43 +1076,17 @@ typedef struct GP_Sculpt_Guide {
   struct Object *reference_object;
 } GP_Sculpt_Guide;
 
-typedef struct GP_Sculpt_Data {
-  /** Radius of brush. */
-  short size;
-  /** EGP_Sculpt_Flag. */
-  short flag;
-  /** Strength of effect. */
-  float strength;
-  /** Cursor color for add. */
-  float curcolor_add[3];
-  /** Cursor color for sub. */
-  float curcolor_sub[3];
-  /** Target weight. */
-  float weight;
-  char _pad[4];
-} GP_Sculpt_Data;
-
-/* GPencil Stroke Sculpting Settings */ typedef struct GP_Sculpt_Settings {
-  /** GP_SCULPT_TYPE_MAX. */
-  GP_Sculpt_Data brush[12];
+/* GPencil Stroke Sculpting Settings */
+typedef struct GP_Sculpt_Settings {
   /** Runtime. */
   void *paintcursor;
-
-  /** #eGP_Sculpt_Types (sculpt). */
-  int brushtype;
   /** #eGP_Sculpt_SettingsFlag. */
   int flag;
   /** #eGP_Lockaxis_Types lock drawing to one axis. */
   int lock_axis;
   /** Threshold for intersections */
   float isect_threshold;
-
-  /* weight paint is a submode of sculpt but use its own index. All weight paint
-   * brushes must be defined at the end of the brush array.
-   */
-  /** #eGP_Sculpt_Types (weight paint). */
-  int weighttype;
-  char _pad[4];
+  char _pad_[4];
   /** Multiframe edit falloff effect by frame. */
   struct CurveMapping *cur_falloff;
   /** Curve used for primitive tools. */
@@ -1739,15 +1693,6 @@ typedef struct SceneLineart {
   float chaining_image_threshold;
 } SceneLineart;
 
-enum {
-  LRT_GPU_CACHE_SIZE_512 = 0,
-  LRT_GPU_CACHE_SIZE_1K = 1, /* default */
-  LRT_GPU_CACHE_SIZE_2K = 2,
-  LRT_GPU_CACHE_SIZE_4K = 3,
-  LRT_GPU_CACHE_SIZE_8K = 4,
-  LRT_GPU_CACHE_SIZE_16K = 5,
-};
-
 typedef struct SceneGpencil {
   float smaa_threshold;
   char _pad[4];
@@ -1884,10 +1829,7 @@ typedef struct Scene {
 
   struct SceneDisplay display;
   struct SceneEEVEE eevee;
-
   struct SceneGpencil grease_pencil_settings;
-
-  /* Line Art stuff */
   struct SceneLineart lineart;
 } Scene;
 

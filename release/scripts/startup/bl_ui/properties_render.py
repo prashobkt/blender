@@ -18,14 +18,11 @@
 # ##### END GPL LICENSE BLOCK #####
 
 # <pep8 compliant>
+from bpy.types import Panel
 from bl_ui.space_view3d import (
     VIEW3D_PT_shading_lighting,
     VIEW3D_PT_shading_color,
     VIEW3D_PT_shading_options,
-)
-from bpy.types import (
-    Panel,
-    UIList,
 )
 
 from bl_ui.properties_grease_pencil_common import GreasePencilSimplifyPanel

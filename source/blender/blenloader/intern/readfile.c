@@ -6240,36 +6240,6 @@ static void lib_link_scene(BlendLibReader *reader, Scene *sce)
     }
   }
 
-  if (sce->rigidbody_world) {
-    RigidBodyWorld *rbw = sce->rigidbody_world;
-    if (rbw->group) {
-      BLO_read_id_address(reader, sce->id.lib, &rbw->group);
-    }
-    if (rbw->constraints) {
-      BLO_read_id_address(reader, sce->id.lib, &rbw->constraints);
-    }
-    if (rbw->effector_weights) {
-      BLO_read_id_address(reader, sce->id.lib, &rbw->effector_weights->group);
-    }
-  }
-
-  if (sce->nodetree) {
-    composite_patch(sce->nodetree, sce);
-  }
-
-  for (SceneRenderLayer *srl = sce->r.layers.first; srl; srl = srl->next) {
-    BLO_read_id_address(reader, sce->id.lib, &srl->mat_override);
-    for (FreestyleModuleConfig *fmc = srl->freestyleConfig.modules.first; fmc; fmc = fmc->next) {
-      BLO_read_id_address(reader, sce->id.lib, &fmc->script);
-    }
-    for (FreestyleLineSet *fls = srl->freestyleConfig.linesets.first; fls; fls = fls->next) {
-      BLO_read_id_address(reader, sce->id.lib, &fls->linestyle);
-      BLO_read_id_address(reader, sce->id.lib, &fls->group);
-    }
-  }
-
-  /* Motion Tracking */
-  BLO_read_id_address(reader, sce->id.lib, &sce->clip);
   if (sce->nodetree) {
     composite_patch(sce->nodetree, sce);
   }

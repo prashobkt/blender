@@ -196,31 +196,9 @@ typedef struct Object_Runtime {
   short _pad2[3];
 } Object_Runtime;
 
-typedef struct ObjectLineartLineType {
-  int use;
-  char _pad[4];
-  char target_layer[128];
-  char target_material[128];
-} ObjectLineartLineType;
-
 typedef struct ObjectLineart {
   int usage;
-
-  /* Separate flags for Line Art shared flag values. */
-  int flags;
-
-  struct Object *target;
-  char target_layer[128];
-  char target_material[128];
-
-  ObjectLineartLineType crease;
-  ObjectLineartLineType contour;
-  ObjectLineartLineType material;
-  ObjectLineartLineType edge_mark;
-  /* Intersection not implemented as per-object */
-
-  int level_start;
-  int level_end;
+  int _pad;
 } ObjectLineart;
 
 enum ObjectFeatureLine_Usage {

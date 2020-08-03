@@ -264,7 +264,7 @@ static void updateDepsgraph(GpencilModifierData *md,
   else {
     FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (ctx->scene->master_collection, ob, mode) {
       if (ob->type == OB_MESH) {
-        if (!(ob->lineart.flags & COLLECTION_LRT_EXCLUDE)) {
+        if (!(ob->lineart.usage & COLLECTION_LRT_EXCLUDE)) {
           DEG_add_object_relation(ctx->node, ob, DEG_OB_COMP_GEOMETRY, "Line Art Modifier");
           DEG_add_object_relation(ctx->node, ob, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
         }

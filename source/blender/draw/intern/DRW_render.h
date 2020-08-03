@@ -175,17 +175,6 @@ void DRW_texture_ensure_fullscreen_2d(struct GPUTexture **tex,
 void DRW_texture_ensure_2d(
     struct GPUTexture **tex, int w, int h, eGPUTextureFormat format, DRWTextureFlag flags);
 
-void DRW_texture_ensure_fullscreen_2D_multisample(struct GPUTexture **tex,
-                                                  eGPUTextureFormat format,
-                                                  int samples,
-                                                  DRWTextureFlag flags);
-void DRW_texture_ensure_2D_multisample(struct GPUTexture **tex,
-                                       int w,
-                                       int h,
-                                       eGPUTextureFormat format,
-                                       int samples,
-                                       DRWTextureFlag flags);
-
 void DRW_texture_generate_mipmaps(struct GPUTexture *tex);
 void DRW_texture_free(struct GPUTexture *tex);
 #define DRW_TEXTURE_FREE_SAFE(tex) \
