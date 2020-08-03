@@ -51,10 +51,9 @@ static LineartRenderLine *lineart_line_get_connected(LineartBoundingArea *ba,
                                                      LineartRenderVert **new_rv,
                                                      int match_flag)
 {
-  LinkData *lip;
   LineartRenderLine *nrl;
 
-  for (lip = ba->linked_lines.first; lip; lip = lip->next) {
+  LISTBASE_FOREACH (LinkData *, lip, &ba->linked_lines) {
     nrl = lip->data;
 
     if ((!(nrl->flags & LRT_EDGE_FLAG_ALL_TYPE)) || (nrl->flags & LRT_EDGE_FLAG_CHAIN_PICKED)) {
@@ -194,12 +193,11 @@ void ED_lineart_chain_feature_lines(LineartRenderBuffer *rb)
 {
   LineartRenderLineChain *rlc;
   LineartRenderLineChainItem *rlci;
-  LineartRenderLine *rl;
   LineartBoundingArea *ba;
   LineartRenderLineSegment *rls;
   int last_occlusion;
 
-  for (rl = rb->all_render_lines.first; rl; rl = rl->next) {
+  LISTBASE_FOREACH (LineartRenderLine *, rl, &rb->all_render_lines) {
 
     if ((!(rl->flags & LRT_EDGE_FLAG_ALL_TYPE)) || (rl->flags & LRT_EDGE_FLAG_CHAIN_PICKED)) {
       continue;
@@ -554,7 +552,7 @@ static void lineart_bounding_area_link_chain(LineartRenderBuffer *rb, LineartRen
 void ED_lineart_chain_split_for_fixed_occlusion(LineartRenderBuffer *rb)
 {
   LineartRenderLineChain *rlc, *new_rlc;
-  LineartRenderLineChainItem *rlci, *next_rlci, *prev_rlci;
+  LineartRenderLineChainItem *rlci, *next_rlci;
   ListBase swap = {0};
 
   swap.first = rb->chains.first;
@@ -570,7 +568,6 @@ void ED_lineart_chain_split_for_fixed_occlusion(LineartRenderBuffer *rb)
     rlc->level = fixed_occ;
     for (rlci = first_rlci->next; rlci; rlci = next_rlci) {
       next_rlci = rlci->next;
-      prev_rlci = rlci->prev;
       if (rlci->occlusion != fixed_occ) {
         if (next_rlci) {
           if (lineart_point_overlapping(next_rlci, rlci->pos[0], rlci->pos[1], 1e-5)) {
@@ -607,8 +604,8 @@ void ED_lineart_chain_split_for_fixed_occlusion(LineartRenderBuffer *rb)
       }
     }
   }
-  for (rlc = rb->chains.first; rlc; rlc = rlc->next) {
-    lineart_bounding_area_link_chain(rb, rlc);
+  LISTBASE_FOREACH (LineartRenderLineChain *, irlc, &rb->chains) {
+    lineart_bounding_area_link_chain(rb, irlc);
   }
 }
 
@@ -663,17 +660,20 @@ static void lineart_chain_connect(LineartRenderBuffer *UNUSED(rb),
   }
 }
 
-LineartChainRegisterEntry *lineart_chain_get_closest_cre(LineartRenderBuffer *rb,
-                                                         LineartBoundingArea *ba,
-                                                         LineartRenderLineChain *rlc,
-                                                         LineartRenderLineChainItem *rlci,
-                                                         int occlusion,
-                                                         float dist,
-                                                         int do_geometry_space,
-                                                         float *result_new_len)
+static LineartChainRegisterEntry *lineart_chain_get_closest_cre(LineartRenderBuffer *rb,
+                                                                LineartBoundingArea *ba,
+                                                                LineartRenderLineChain *rlc,
+                                                                LineartRenderLineChainItem *rlci,
+                                                                int occlusion,
+                                                                float dist,
+                                                                int do_geometry_space,
+                                                                float *result_new_len)
 {
 
   LineartChainRegisterEntry *cre, *next_cre, *closest_cre = NULL;
+
+  /* Keep using for loop because cre could be removed from the iteration before getting to the
+   * next one. */
   for (cre = ba->linked_chains.first; cre; cre = next_cre) {
     next_cre = cre->next;
     if (cre->rlc->object_ref != rlc->object_ref) {
@@ -830,9 +830,8 @@ void ED_lineart_chain_discard_short(LineartRenderBuffer *rb, const float thresho
 
 int ED_lineart_chain_count(const LineartRenderLineChain *rlc)
 {
-  LineartRenderLineChainItem *rlci;
   int count = 0;
-  for (rlci = rlc->chain.first; rlci; rlci = rlci->next) {
+  LISTBASE_FOREACH (LineartRenderLineChainItem *, rlci, &rlc->chain) {
     count++;
   }
   return count;
@@ -840,11 +839,10 @@ int ED_lineart_chain_count(const LineartRenderLineChain *rlc)
 
 void ED_lineart_chain_clear_picked_flag(LineartRenderBuffer *rb)
 {
-  LineartRenderLineChain *rlc;
   if (rb == NULL) {
     return;
   }
-  for (rlc = rb->chains.first; rlc; rlc = rlc->next) {
+  LISTBASE_FOREACH (LineartRenderLineChain *, rlc, &rb->chains) {
     rlc->picked = 0;
   }
 }
