@@ -121,15 +121,7 @@ void GpencilExporterSVG::create_document_header(void)
   if (is_camera_mode() && ((params_.flag & GP_EXPORT_CLIP_CAMERA) != 0)) {
     pugi::xml_node clip_node = main_node.append_child("clipPath");
     clip_node.append_attribute("id").set_value("clip-path");
-    create_rect(clip_node,
-                0,
-                0,
-                render_x_,
-                render_y_,
-                //(camera_rect_.xmax - camera_rect_.xmin) * camera_ratio_,
-                //(camera_rect_.xmax - camera_rect_.xmin) * camera_ratio_,
-                0.0f,
-                "#000000");
+    create_rect(clip_node, 0, 0, render_x_, render_y_, 0.0f, "#000000");
   }
 }
 
