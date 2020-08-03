@@ -3874,7 +3874,7 @@ void BKE_particlesettings_clump_curve_init(ParticleSettings *part)
   cumap->cm[0].curve[1].x = 1.0f;
   cumap->cm[0].curve[1].y = 1.0f;
 
-  BKE_curvemapping_initialize(cumap);
+  BKE_curvemapping_init(cumap);
 
   part->clumpcurve = cumap;
 }
@@ -3888,7 +3888,7 @@ void BKE_particlesettings_rough_curve_init(ParticleSettings *part)
   cumap->cm[0].curve[1].x = 1.0f;
   cumap->cm[0].curve[1].y = 1.0f;
 
-  BKE_curvemapping_initialize(cumap);
+  BKE_curvemapping_init(cumap);
 
   part->roughcurve = cumap;
 }
@@ -3902,7 +3902,7 @@ void BKE_particlesettings_twist_curve_init(ParticleSettings *part)
   cumap->cm[0].curve[1].x = 1.0f;
   cumap->cm[0].curve[1].y = 1.0f;
 
-  BKE_curvemapping_initialize(cumap);
+  BKE_curvemapping_init(cumap);
 
   part->twistcurve = cumap;
 }

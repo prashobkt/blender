@@ -1121,6 +1121,7 @@ static void ensure_obstaclefields(FluidDomainSettings *fds)
   if (fds->active_fields & FLUID_DOMAIN_ACTIVE_GUIDE) {
     manta_ensure_guiding(fds->fluid, fds->fmd);
   }
+  manta_update_pointers(fds->fluid, fds->fmd);
 }
 
 static void update_obstacleflags(FluidDomainSettings *fds,
@@ -2597,7 +2598,7 @@ static void ensure_flowsfields(FluidDomainSettings *fds)
     manta_smoke_ensure_fire(fds->fluid, fds->fmd);
   }
   if (fds->active_fields & FLUID_DOMAIN_ACTIVE_COLORS) {
-    /* initialize all smoke with "active_color" */
+    /* Initialize all smoke with "active_color". */
     manta_smoke_ensure_colors(fds->fluid, fds->fmd);
   }
   if (fds->type == FLUID_DOMAIN_TYPE_LIQUID &&
@@ -2606,6 +2607,7 @@ static void ensure_flowsfields(FluidDomainSettings *fds)
        fds->particle_type & FLUID_DOMAIN_PARTICLE_TRACER)) {
     manta_liquid_ensure_sndparts(fds->fluid, fds->fmd);
   }
+  manta_update_pointers(fds->fluid, fds->fmd);
 }
 
 static void update_flowsflags(FluidDomainSettings *fds, Object **flowobjs, int numflowobj)
@@ -2618,7 +2620,7 @@ static void update_flowsflags(FluidDomainSettings *fds, Object **flowobjs, int n
                     FLUID_DOMAIN_ACTIVE_HEAT | FLUID_DOMAIN_ACTIVE_FIRE);
   active_fields &= ~prev_flags;
 
-  /* Monitor active fields based on flow settings */
+  /* Monitor active fields based on flow settings. */
   for (flow_index = 0; flow_index < numflowobj; flow_index++) {
     Object *flow_ob = flowobjs[flow_index];
     FluidModifierData *fmd2 = (FluidModifierData *)BKE_modifiers_findby_type(flow_ob,
@@ -2629,6 +2631,7 @@ static void update_flowsflags(FluidDomainSettings *fds, Object **flowobjs, int n
       continue;
     }
 
+    /* Activate specific grids if at least one flow object requires this grid. */
     if ((fmd2->type & MOD_FLUID_TYPE_FLOW) && fmd2->flow) {
       FluidFlowSettings *ffs = fmd2->flow;
       if (!ffs) {
@@ -2649,17 +2652,17 @@ static void update_flowsflags(FluidDomainSettings *fds, Object **flowobjs, int n
         continue;
       }
 
-      /* activate heat field if flow produces any heat */
-      if (ffs->temperature) {
+      /* Activate heat field if a flow object produces any heat. */
+      if (ffs->temperature != 0.0) {
         active_fields |= FLUID_DOMAIN_ACTIVE_HEAT;
       }
-      /* activate fuel field if flow adds any fuel */
-      if (ffs->fuel_amount &&
-          (ffs->type == FLUID_FLOW_TYPE_FIRE || ffs->type == FLUID_FLOW_TYPE_SMOKEFIRE)) {
+      /* Activate fuel field if a flow object is of fire type. */
+      if (ffs->fuel_amount != 0.0 || ffs->type == FLUID_FLOW_TYPE_FIRE ||
+          ffs->type == FLUID_FLOW_TYPE_SMOKEFIRE) {
         active_fields |= FLUID_DOMAIN_ACTIVE_FIRE;
       }
-      /* activate color field if flows add smoke with varying colors */
-      if (ffs->density &&
+      /* Activate color field if flows add smoke with varying colors. */
+      if (ffs->density != 0.0 &&
           (ffs->type == FLUID_FLOW_TYPE_SMOKE || ffs->type == FLUID_FLOW_TYPE_SMOKEFIRE)) {
         if (!(active_fields & FLUID_DOMAIN_ACTIVE_COLOR_SET)) {
           copy_v3_v3(fds->active_color, ffs->color);
@@ -2672,11 +2675,11 @@ static void update_flowsflags(FluidDomainSettings *fds, Object **flowobjs, int n
       }
     }
   }
-  /* Monitor active fields based on domain settings */
+  /* Monitor active fields based on domain settings. */
   if (fds->type == FLUID_DOMAIN_TYPE_GAS && active_fields & FLUID_DOMAIN_ACTIVE_FIRE) {
-    /* heat is always needed for fire */
+    /* Heat is always needed for fire. */
     active_fields |= FLUID_DOMAIN_ACTIVE_HEAT;
-    /* also activate colors if domain smoke color differs from active color */
+    /* Also activate colors if domain smoke color differs from active color. */
     if (!(active_fields & FLUID_DOMAIN_ACTIVE_COLOR_SET)) {
       copy_v3_v3(fds->active_color, fds->flame_smoke_color);
       active_fields |= FLUID_DOMAIN_ACTIVE_COLOR_SET;
@@ -3615,14 +3618,16 @@ static int manta_step(
     fds->time_per_frame = time_per_frame;
     fds->time_total = time_total;
   }
+
   /* Total time must not exceed framecount times framelength. Correct tiny errors here. */
   CLAMP(fds->time_total, fds->time_total, time_total_old + fds->frame_length);
 
+  /* Compute shadow grid for gas simulations. Make sure to skip if bake job was canceled early. */
   if (fds->type == FLUID_DOMAIN_TYPE_GAS && result) {
     manta_smoke_calc_transparency(fds, DEG_get_evaluated_view_layer(depsgraph));
   }
-  BLI_mutex_unlock(&object_update_lock);
 
+  BLI_mutex_unlock(&object_update_lock);
   return result;
 }
 
@@ -4070,6 +4075,9 @@ static void BKE_fluid_modifier_processDomain(FluidModifierData *fmd,
       }
     }
   }
+
+  /* Ensure that fluid pointers are always up to date at the end of modifier processing. */
+  manta_update_pointers(fds->fluid, fmd);
 
   fds->flags &= ~FLUID_DOMAIN_FILE_LOAD;
   fmd->time = scene_framenr;

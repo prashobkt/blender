@@ -1961,7 +1961,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
           GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
           if ((gset) && (gset->cur_falloff == NULL)) {
             gset->cur_falloff = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
-            BKE_curvemapping_initialize(gset->cur_falloff);
+            BKE_curvemapping_init(gset->cur_falloff);
             BKE_curvemap_reset(gset->cur_falloff->cm,
                                &gset->cur_falloff->clipr,
                                CURVE_PRESET_GAUSS,
@@ -3374,7 +3374,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
         if ((gset) && (gset->cur_primitive == NULL)) {
           gset->cur_primitive = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
-          BKE_curvemapping_initialize(gset->cur_primitive);
+          BKE_curvemapping_init(gset->cur_primitive);
           BKE_curvemap_reset(gset->cur_primitive->cm,
                              &gset->cur_primitive->clipr,
                              CURVE_PRESET_BELL,
@@ -4770,7 +4770,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               if (mmd->curve_intensity == NULL) {
                 mmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
                 if (mmd->curve_intensity) {
-                  BKE_curvemapping_initialize(mmd->curve_intensity);
+                  BKE_curvemapping_init(mmd->curve_intensity);
                 }
               }
               break;
@@ -4781,7 +4781,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               if (mmd->curve_intensity == NULL) {
                 mmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
                 if (mmd->curve_intensity) {
-                  BKE_curvemapping_initialize(mmd->curve_intensity);
+                  BKE_curvemapping_init(mmd->curve_intensity);
                 }
               }
               break;
@@ -4791,7 +4791,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               if (mmd->curve_intensity == NULL) {
                 mmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
                 if (mmd->curve_intensity) {
-                  BKE_curvemapping_initialize(mmd->curve_intensity);
+                  BKE_curvemapping_init(mmd->curve_intensity);
                 }
               }
               break;
@@ -4801,7 +4801,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               if (mmd->curve_intensity == NULL) {
                 mmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
                 if (mmd->curve_intensity) {
-                  BKE_curvemapping_initialize(mmd->curve_intensity);
+                  BKE_curvemapping_init(mmd->curve_intensity);
                 }
               }
               break;
@@ -4811,7 +4811,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               if (mmd->curve_intensity == NULL) {
                 mmd->curve_intensity = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
                 if (mmd->curve_intensity) {
-                  BKE_curvemapping_initialize(mmd->curve_intensity);
+                  BKE_curvemapping_init(mmd->curve_intensity);
                 }
               }
               break;
