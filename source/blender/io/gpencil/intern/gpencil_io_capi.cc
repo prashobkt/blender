@@ -102,7 +102,7 @@ bool gpencil_io_export(GpencilExportParams *params)
       CFRA = i;
       BKE_scene_graph_update_for_newframe(depsgraph, bmain);
       sprintf(params->frame, "%04d", i);
-
+      params->cfra = i;
       done |= gpencil_io_export_frame(params);
     }
   }

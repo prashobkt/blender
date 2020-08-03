@@ -44,12 +44,22 @@ class GpencilExporterSVG : public GpencilExporter {
   GpencilExporterSVG(const struct GpencilExportParams *iparams);
   bool write(std::string actual_frame);
 
+ protected:
+  void create_rect(pugi::xml_node node,
+                   float x,
+                   float y,
+                   float width,
+                   float height,
+                   float thickness,
+                   std::string hexcolor);
+
  private:
   /* XML doc. */
   pugi::xml_document doc;
   /* Main document node. */
   pugi::xml_node main_node;
-
+  /** Frame node  */
+  pugi::xml_node frame_node;
   void create_document_header(void);
   void export_layers(void);
 

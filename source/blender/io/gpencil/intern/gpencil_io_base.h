@@ -83,6 +83,7 @@ class GpencilExporter {
   float camera_ratio_;
   float offset_[2];
   rctf camera_rect_;
+  int cfra_;
 
   float stroke_color_[4], fill_color_[4];
 
@@ -94,12 +95,13 @@ class GpencilExporter {
   bool gp_style_is_fill(void);
   float stroke_average_opacity(void);
   bool is_camera_mode(void);
+  bool is_bound_mode(void);
 
   void gpl_current_set(struct bGPDlayer *gpl);
   void gpf_current_set(struct bGPDframe *gpf);
   void gps_current_set(struct Object *ob, struct bGPDstroke *gps, const bool set_colors);
 
-  void get_select_boundbox(rcti *boundbox);
+  void get_select_boundbox(rctf *boundbox);
 
  private:
   struct bGPDlayer *gpl_cur;
@@ -113,6 +115,7 @@ class GpencilExporter {
   rcti select_box;
 
   void set_out_filename(char *filename);
+  void create_object_list(void);
 };
 
 }  // namespace blender::io::gpencil

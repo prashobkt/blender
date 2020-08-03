@@ -47,6 +47,8 @@ struct GpencilExportParams {
   double frame_end;
   /** Frame subfix. */
   char frame[5];
+  /* Current frame. */
+  int cfra;
   /** Flags. */
   int flag;
   /** Stroke sampling. */

@@ -66,12 +66,6 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *iparams
 {
   invert_axis_[0] = false;
   invert_axis_[1] = true;
-
-  /* Calc selected object boundbox. */
-  selected_objects_boundbox();
-
-  rcti boundbox;
-  get_select_boundbox(&boundbox);
 }
 
 /* Main write method for SVG format. */
@@ -115,14 +109,8 @@ void GpencilExporterSVG::create_document_header(void)
   std::string width;
   std::string height;
 
-  if (is_camera_mode()) {
-    width = std::to_string(render_x_);
-    height = std::to_string(render_y_);
-  }
-  else {
-    width = std::to_string(winx_);
-    height = std::to_string(winy_);
-  }
+  width = std::to_string(render_x_);
+  height = std::to_string(render_y_);
 
   main_node.append_attribute("width").set_value((width + "px").c_str());
   main_node.append_attribute("height").set_value((height + "px").c_str());
@@ -133,14 +121,13 @@ void GpencilExporterSVG::create_document_header(void)
   if (is_camera_mode() && ((params_.flag & GP_EXPORT_CLIP_CAMERA) != 0)) {
     pugi::xml_node clip_node = main_node.append_child("clipPath");
     clip_node.append_attribute("id").set_value("clip-path");
-    pugi::xml_node rect_node = clip_node.append_child("rect");
-    rect_node.append_attribute("x").set_value(0);
-    rect_node.append_attribute("width").set_value((camera_rect_.xmax - camera_rect_.xmin) *
-                                                  camera_ratio_);
-    rect_node.append_attribute("y").set_value(0);
-    rect_node.append_attribute("height").set_value((camera_rect_.ymax - camera_rect_.ymin) *
-                                                   camera_ratio_);
-    rect_node.append_attribute("fill").set_value("none");
+    create_rect(clip_node,
+                0,
+                0,
+                (camera_rect_.xmax - camera_rect_.xmin) * camera_ratio_,
+                (camera_rect_.xmax - camera_rect_.xmin) * camera_ratio_,
+                0.0f,
+                "#000000");
   }
 }
 
@@ -149,7 +136,22 @@ void GpencilExporterSVG::export_layers(void)
 {
   for (ObjectZ &obz : ob_list_) {
     Object *ob = obz.ob;
-    pugi::xml_node ob_node = main_node.append_child("g");
+    frame_node = main_node.append_child("g");
+    std::string frametxt = " Frame_ " + std::to_string(params_.cfra);
+    frame_node.append_attribute("id").set_value(frametxt.c_str());
+
+    /* Test */
+    rctf bb;
+    get_select_boundbox(&bb);
+    create_rect(frame_node,
+                bb.xmin - offset_[0],
+                bb.ymin - offset_[1],
+                (bb.xmax - bb.xmin),
+                (bb.ymax - bb.ymin),
+                5.0f,
+                "#FF0000");
+
+    pugi::xml_node ob_node = frame_node.append_child("g");
     ob_node.append_attribute("id").set_value(ob->id.name + 2);
 
     /* Clip area. */
@@ -181,6 +183,9 @@ void GpencilExporterSVG::export_layers(void)
       gpf_current_set(gpf);
 
       BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat_);
+      // if (is_bound_mode()) {
+      //  diff_mat_[3][0] *= -1.0f;
+      //}
 
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         if (gps->totpoints == 0) {
@@ -418,6 +423,26 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is
       gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
       gps_node.append_attribute("fill-opacity").set_value(fill_color_[3] * gpl->opacity);
     }
+  }
+}
+
+void GpencilExporterSVG::create_rect(pugi::xml_node node,
+                                     float x,
+                                     float y,
+                                     float width,
+                                     float height,
+                                     float thickness,
+                                     std::string hexcolor)
+{
+  pugi::xml_node rect_node = node.append_child("rect");
+  rect_node.append_attribute("x").set_value(x);
+  rect_node.append_attribute("y").set_value(y);
+  rect_node.append_attribute("width").set_value(width);
+  rect_node.append_attribute("height").set_value(height);
+  rect_node.append_attribute("fill").set_value("none");
+  if (thickness > 0.0f) {
+    rect_node.append_attribute("stroke").set_value(hexcolor.c_str());
+    rect_node.append_attribute("stroke-width").set_value(thickness);
   }
 }
 

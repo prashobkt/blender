@@ -71,19 +71,31 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   params_.mode = iparams->mode;
   params_.flag = iparams->flag;
   params_.stroke_sample = iparams->stroke_sample;
+  params_.cfra = iparams->cfra;
 
   /* Easy access data. */
   bmain = CTX_data_main(params_.C);
   depsgraph = CTX_data_depsgraph_pointer(params_.C);
   rv3d = (RegionView3D *)params_.region->regiondata;
   gpd = (bGPdata *)params_.obact->data;
+  const bool only_active_frame = ((params_.flag & GP_EXPORT_ACTIVE_FRAME) != 0);
 
   Scene *scene = CTX_data_scene(params_.C);
-  render_x_ = (scene->r.xsch * scene->r.size) / 100;
-  render_y_ = (scene->r.ysch * scene->r.size) / 100;
+
+  /* Load list of selected objects. */
+  create_object_list();
+
+  winx_ = params_.region->winx;
+  winy_ = params_.region->winy;
+
+  invert_axis_[0] = false;
+  invert_axis_[1] = true;
 
   /* Camera rectangle. */
   if (rv3d->persp == RV3D_CAMOB) {
+    render_x_ = (scene->r.xsch * scene->r.size) / 100;
+    render_y_ = (scene->r.ysch * scene->r.size) / 100;
+
     ED_view3d_calc_camera_border(CTX_data_scene(params_.C),
                                  depsgraph,
                                  params_.region,
@@ -98,24 +110,35 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   }
   else {
     is_camera = false;
-    render_x_ = params_.region->winx;
-    render_y_ = params_.region->winy;
-    camera_ratio_ = 1.0f;
-    offset_[0] = 0.0f;
-    offset_[1] = 0.0f;
-  }
+    if (only_active_frame && (ob_list_.size() == 1)) {
+      /* Calc selected object boundbox. Need set initial value to some variables. */
+      camera_ratio_ = 1.0f;
+      offset_[0] = 0.0f;
+      offset_[1] = 0.0f;
 
-  winx_ = params_.region->winx;
-  winy_ = params_.region->winy;
+      selected_objects_boundbox();
+      rctf boundbox;
+      get_select_boundbox(&boundbox);
+
+      render_x_ = boundbox.xmax - boundbox.xmin;  // winx_;
+      render_y_ = boundbox.ymax - boundbox.ymin;  // winy_;
+      offset_[0] = boundbox.xmin;
+      offset_[1] = boundbox.ymin;
+    }
+  }
 
   /* Prepare output filename with full path. */
   set_out_filename(params_.filename);
+}
 
-  /* Load list of selected objects. */
+/** Create a list of selected objects sorted from back to front */
+void GpencilExporter::create_object_list(void)
+{
+  ViewLayer *view_layer = CTX_data_view_layer(params_.C);
+
   float camera_z_axis[3];
   copy_v3_v3(camera_z_axis, rv3d->viewinv[2]);
 
-  ViewLayer *view_layer = CTX_data_view_layer(params_.C);
   LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
     Object *object = base->object;
 
@@ -153,7 +176,6 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
         [](const ObjectZ &obz1, const ObjectZ &obz2) { return obz1.zdepth < obz2.zdepth; });
   }
 }
-
 /**
  * Set output file input_text full path.
  * \param C: Context.
@@ -419,23 +441,25 @@ bool GpencilExporter::is_camera_mode(void)
 /* Calc selected strokes boundbox. */
 void GpencilExporter::selected_objects_boundbox(void)
 {
+  const float gap = 10.0f;
   const bGPDspoint *pt;
   int i;
 
+  float screen_co[2];
   float r_min[2], r_max[2];
   INIT_MINMAX2(r_min, r_max);
 
   for (ObjectZ &obz : ob_list_) {
     Object *ob = obz.ob;
     /* Use evaluated version to get strokes with modifiers. */
-    Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
-    bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
+    Object *ob_eval = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
+    bGPdata *gpd_eval = (bGPdata *)ob_eval->data;
 
     LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_eval->layers) {
       if (gpl->flag & GP_LAYER_HIDE) {
         continue;
       }
-      BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat_);
+      BKE_gpencil_parent_matrix_get(depsgraph, ob_eval, gpl, diff_mat_);
 
       bGPDframe *gpf = gpl->actframe;
       if (gpf == NULL) {
@@ -448,13 +472,15 @@ void GpencilExporter::selected_objects_boundbox(void)
         }
         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
           /* Convert to 2D. */
-          float screen_co[2];
           gpencil_3d_point_to_screen_space(&pt->x, screen_co);
           minmax_v2v2_v2(r_min, r_max, screen_co);
         }
       }
     }
   }
+  /* Add small gap. */
+  add_v2_fl(r_min, gap * -1.0f);
+  add_v2_fl(r_max, gap);
 
   select_box.xmin = r_min[0];
   select_box.ymin = r_min[1];
@@ -462,7 +488,7 @@ void GpencilExporter::selected_objects_boundbox(void)
   select_box.ymax = r_max[1];
 }
 
-void GpencilExporter::get_select_boundbox(rcti *boundbox)
+void GpencilExporter::get_select_boundbox(rctf *boundbox)
 {
   boundbox->xmin = select_box.xmin;
   boundbox->xmax = select_box.xmax;
