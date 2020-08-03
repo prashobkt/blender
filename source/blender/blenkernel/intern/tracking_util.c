@@ -24,6 +24,7 @@
  * by multiple tracking files but which should not be public.
  */
 
+#include <CLG_log.h>
 #include <stddef.h>
 
 #include "MEM_guardedalloc.h"
@@ -52,13 +53,8 @@
 #include "libmv-capi.h"
 
 /* Uncomment this to have caching-specific debug prints. */
-// #define DEBUG_CACHE
 
-#ifdef DEBUG_CACHE
-#  define CACHE_PRINTF(...) printf(__VA_ARGS__)
-#else
-#  define CACHE_PRINTF(...)
-#endif
+static CLG_LogRef LOG = {"bke.tracking_util"};
 
 /*********************** Tracks map *************************/
 
@@ -769,7 +765,7 @@ static ImBuf *accessor_get_ibuf(TrackingImageAccessor *accessor,
       accessor, clip_index, frame, input_mode, downscale, region, transform_key);
   BLI_spin_unlock(&accessor->cache_lock);
   if (ibuf != NULL) {
-    CACHE_PRINTF("Used cached buffer for frame %d\n", frame);
+    CLOG_DEBUG(&LOG, 4, "Used cached buffer for frame %d", frame);
     /* This is a little heuristic here: if we re-used image once, this is
      * a high probability of the image to be related to a keyframe matched
      * reference image. Those images we don't want to be thrown away because
@@ -779,7 +775,7 @@ static ImBuf *accessor_get_ibuf(TrackingImageAccessor *accessor,
     ibuf->userflags |= IB_PERSISTENT;
     return ibuf;
   }
-  CACHE_PRINTF("Calculate new buffer for frame %d\n", frame);
+  CLOG_DEBUG(&LOG, 4, "Calculate new buffer for frame %d", frame);
   /* And now we do postprocessing of the original frame. */
   orig_ibuf = accessor_get_preprocessed_ibuf(accessor, clip_index, frame);
   if (orig_ibuf == NULL) {
