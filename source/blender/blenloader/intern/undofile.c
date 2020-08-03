@@ -36,6 +36,7 @@
 #  include <io.h>
 #endif
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "DNA_listBase.h"
@@ -51,6 +52,8 @@
 
 /* keep last */
 #include "BLI_strict_flags.h"
+
+static CLG_LogRef LOG = {"blenloader.undofile"};
 
 /* **************** support for memory-write, for undo buffers *************** */
 
@@ -244,10 +247,10 @@ bool BLO_memfile_write_file(struct MemFile *memfile, const char *filename)
   file = BLI_open(filename, oflags, 0666);
 
   if (file == -1) {
-    fprintf(stderr,
-            "Unable to save '%s': %s\n",
-            filename,
-            errno ? strerror(errno) : "Unknown error opening file");
+    CLOG_ERROR(&LOG,
+               "Unable to save '%s': %s",
+               filename,
+               errno ? strerror(errno) : "Unknown error opening file");
     return false;
   }
 
@@ -260,10 +263,10 @@ bool BLO_memfile_write_file(struct MemFile *memfile, const char *filename)
   close(file);
 
   if (chunk) {
-    fprintf(stderr,
-            "Unable to save '%s': %s\n",
-            filename,
-            errno ? strerror(errno) : "Unknown error writing file");
+    CLOG_ERROR(&LOG,
+               "Unable to save '%s': %s",
+               filename,
+               errno ? strerror(errno) : "Unknown error writing file");
     return false;
   }
   return true;

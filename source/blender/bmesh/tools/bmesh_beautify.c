@@ -32,6 +32,7 @@
 #include "BLI_heap.h"
 #include "BLI_math.h"
 #include "BLI_polyfill_2d_beautify.h"
+#include <CLG_log.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -44,6 +45,8 @@
 #  include "PIL_time.h"
 #  include "PIL_time_utildefines.h"
 #endif
+
+static CLG_LogRef LOG = {"bmesh.bmesh_beautify"};
 
 /* -------------------------------------------------------------------- */
 /* GSet for edge rotation */
@@ -157,7 +160,7 @@ static float bm_edge_calc_rotate_beauty__area(const float v1[3],
       cross_tri_v3(no_a, v2, v3, v4);
       cross_tri_v3(no_b, v2, v4, v1);
 
-      // printf("%p %p %p %p - %p %p\n", v1, v2, v3, v4, e->l->f, e->l->radial_next->f);
+      CLOG_DEBUG(&LOG, 20, "%p %p %p %p", v1, v2, v3, v4);
       BLI_assert((ELEM(v1, v2, v3, v4) == false) && (ELEM(v2, v1, v3, v4) == false) &&
                  (ELEM(v3, v1, v2, v4) == false) && (ELEM(v4, v1, v2, v3) == false));
 
@@ -256,7 +259,7 @@ float BM_verts_calc_rotate_beauty(const BMVert *v1,
     }
 
     if (UNLIKELY(v1 == v3)) {
-      // printf("This should never happen, but does sometimes!\n");
+      CLOG_ERROR(&LOG, "This should never happen, but does sometimes!");
       break;
     }
 
@@ -320,7 +323,7 @@ static void bm_edge_update_beauty_cost_single(BMEdge *e,
       EdRotState e_state_alt;
       erot_state_alternate(e, &e_state_alt);
       if (BLI_gset_haskey(e_state_set, (void *)&e_state_alt)) {
-        // printf("  skipping, we already have this state\n");
+        CLOG_VERBOSE(&LOG, 0, "  skipping, we already have this state");
         return;
       }
     }
@@ -436,7 +439,7 @@ void BM_mesh_beautify_fill(BMesh *bm,
       BLI_assert(BLI_gset_haskey(e_state_set, (void *)e_state) == false);
       BLI_gset_insert(e_state_set, e_state);
 
-      // printf("  %d -> %d, %d\n", i, BM_elem_index_get(e->v1), BM_elem_index_get(e->v2));
+      CLOG_DEBUG(&LOG, 0, "  %d -> %d, %d", i, BM_elem_index_get(e->v1), BM_elem_index_get(e->v2));
 
       /* maintain the index array */
       edge_array[i] = e;

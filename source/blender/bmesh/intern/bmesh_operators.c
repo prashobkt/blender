@@ -20,6 +20,7 @@
  * BMesh operator access.
  */
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
@@ -33,6 +34,8 @@
 
 #include "bmesh.h"
 #include "intern/bmesh_private.h"
+
+static CLG_LogRef LOG = {"bmesh.bmesh_operators"};
 
 /* forward declarations */
 static void bmo_flag_layer_alloc(BMesh *bm);
@@ -427,7 +430,7 @@ void BMO_slot_mat_set(BMOperator *op,
     copy_m4_m3(slot->data.p, (float(*)[3])mat);
   }
   else {
-    fprintf(stderr, "%s: invalid size argument %d (bmesh internal error)\n", __func__, size);
+    CLOG_ERROR(&LOG,  "%s: invalid size argument %d (bmesh internal error)\n", __func__, size);
 
     zero_m4(slot->data.p);
   }
@@ -1646,7 +1649,7 @@ static int bmo_name_to_slotcode_check(BMOpSlot slot_args[BMO_OP_MAX_SLOTS], cons
 {
   int i = bmo_name_to_slotcode(slot_args, identifier);
   if (i < 0) {
-    fprintf(stderr,
+    CLOG_ERROR(&LOG, 
             "%s: ! could not find bmesh slot for name %s! (bmesh internal error)\n",
             __func__,
             identifier);
@@ -1672,7 +1675,7 @@ static int BMO_opcode_from_opname_check(const char *opname)
 {
   int i = BMO_opcode_from_opname(opname);
   if (i == -1) {
-    fprintf(stderr,
+    CLOG_ERROR(&LOG, 
             "%s: could not find bmesh slot for name %s! (bmesh internal error)\n",
             __func__,
             opname);
@@ -1953,7 +1956,7 @@ bool BMO_op_vinitf(BMesh *bm, BMOperator *op, const int flag, const char *_fmt, 
           state = true;
           break;
         default:
-          fprintf(stderr,
+          CLOG_ERROR(&LOG, 
                   "%s: unrecognized bmop format char: '%c', %d in '%s'\n",
                   __func__,
                   *fmt,
@@ -1970,21 +1973,21 @@ bool BMO_op_vinitf(BMesh *bm, BMOperator *op, const int flag, const char *_fmt, 
 error:
 
   /* non urgent todo - explain exactly what is failing */
-  fprintf(stderr, "%s: error parsing formatting string\n", __func__);
+  CLOG_ERROR(&LOG,  "%s: error parsing formatting string\n", __func__);
 
-  fprintf(stderr, "string: '%s', position %d\n", _fmt, (int)(fmt - ofmt));
-  fprintf(stderr, "         ");
+  CLOG_ERROR(&LOG,  "string: '%s', position %d\n", _fmt, (int)(fmt - ofmt));
+  CLOG_ERROR(&LOG,  "         ");
   {
     int pos = (int)(fmt - ofmt);
     for (i = 0; i < pos; i++) {
-      fprintf(stderr, " ");
+      CLOG_ERROR(&LOG,  " ");
     }
-    fprintf(stderr, "^\n");
+    CLOG_ERROR(&LOG,  "^\n");
   }
 
-  fprintf(stderr, "source code:  %s:%d\n", __FILE__, lineno);
+  CLOG_ERROR(&LOG,  "source code:  %s:%d\n", __FILE__, lineno);
 
-  fprintf(stderr, "reason: %s\n", err_reason);
+  CLOG_ERROR(&LOG,  "reason: %s\n", err_reason);
 
   MEM_freeN(ofmt);
 
@@ -2000,7 +2003,7 @@ bool BMO_op_initf(BMesh *bm, BMOperator *op, const int flag, const char *fmt, ..
 
   va_start(list, fmt);
   if (!BMO_op_vinitf(bm, op, flag, fmt, list)) {
-    printf("%s: failed\n", __func__);
+    CLOG_STR_ERROR(&LOG, "Function failed");
     va_end(list);
     return false;
   }
@@ -2016,7 +2019,7 @@ bool BMO_op_callf(BMesh *bm, const int flag, const char *fmt, ...)
 
   va_start(list, fmt);
   if (!BMO_op_vinitf(bm, &op, flag, fmt, list)) {
-    printf("%s: failed, format is:\n    \"%s\"\n", __func__, fmt);
+    CLOG_ERROR(&LOG, "format is:\n    \"%s\"", fmt);
     va_end(list);
     return false;
   }

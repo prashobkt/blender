@@ -20,9 +20,9 @@
  * This file contains functions for splitting faces into isolated regions,
  * defined by connected edges.
  */
-// #define DEBUG_PRINT
 
 #include "MEM_guardedalloc.h"
+#include <CLG_log.h>
 
 #include "BLI_alloca.h"
 #include "BLI_array.h"
@@ -38,6 +38,7 @@
 #include "bmesh.h"
 #include "intern/bmesh_private.h"
 
+static CLG_LogRef LOG = {"bmesh.bmesh_polygon_edgenet"};
 /* -------------------------------------------------------------------- */
 /* Face Split Edge-Net */
 
@@ -304,9 +305,7 @@ static bool bm_face_split_edgenet_find_loop_walk(BMVert *v_init,
 
   v_dst = BM_edge_other_vert(e_pair[1], v_init);
 
-#ifdef DEBUG_PRINT
-  printf("%s: vert (search) %d\n", __func__, BM_elem_index_get(v_init));
-#endif
+  CLOG_DEBUG(&LOG, 0, "%s: vert (search) %d\n", __func__, BM_elem_index_get(v_init));
 
   /* This loop will keep stepping over the best possible edge,
    * in most cases it finds the direct route to close the face.
@@ -344,19 +343,21 @@ static bool bm_face_split_edgenet_find_loop_walk(BMVert *v_init,
           v_next = BM_edge_other_vert(e_next, v);
           BLI_assert(v->e != e_next);
 
-#ifdef DEBUG_PRINT
           /* indent and print */
-          {
+          if (CLOG_CHECK_IN_USE(&LOG)) {
             BMVert *_v = v;
+            char indentation[32] = "";
             do {
-              printf("  ");
+              sprintf(indentation, "  ");
             } while ((_v = BM_edge_other_vert(_v->e, _v)) != v_init);
-            printf("vert %d -> %d (add=%d)\n",
-                   BM_elem_index_get(v),
-                   BM_elem_index_get(v_next),
-                   BM_ELEM_API_FLAG_TEST(v_next, VERT_VISIT) == 0);
+            CLOG_DEBUG(&LOG,
+                       4,
+                       "%svert %d -> %d (add=%d)",
+                       indentation,
+                       BM_elem_index_get(v),
+                       BM_elem_index_get(v_next),
+                       BM_ELEM_API_FLAG_TEST(v_next, VERT_VISIT) == 0);
           }
-#endif
 
           if (!BM_ELEM_API_FLAG_TEST(v_next, VERT_VISIT)) {
             eo = STACK_PUSH_RET_PTR(edge_order);
@@ -1042,7 +1043,7 @@ static int bm_face_split_edgenet_find_connection(const struct EdgeGroup_FindConn
              (e_hit = test_edges_isect_2d_vert(args, v_origin, v_other)));
 
     if (v_other == NULL) {
-      printf("Using fallback\n");
+      CLOG_VERBOSE(&LOG, 0, "Using fallback");
       v_other = v_other_fallback;
     }
 
