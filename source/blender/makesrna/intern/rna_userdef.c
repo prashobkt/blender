@@ -5829,6 +5829,7 @@ static void rna_def_userdef_system(BlenderRNA *brna)
        ICON_NONE,
        "Debug Depsgraph Pretty",
        ""},
+      {G_DEBUG_DEPSGRAPH_UUID, "DEBUG_DEPSGRAPH_UUID", ICON_NONE, "Debug Depsgraph UUID", ""},
       /* skipped G_DEBUG_DEPSGRAPH */
       {G_DEBUG_SIMDATA, "DEBUG_SIMDATA", ICON_NONE, "Debug Simulation Data", ""},
       {G_DEBUG_GPU_MEM, "DEBUG_GPU_MEM", ICON_NONE, "Debug GPU Memory", ""},
