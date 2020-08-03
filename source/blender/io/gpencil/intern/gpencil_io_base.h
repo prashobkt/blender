@@ -44,19 +44,12 @@ class GpencilExporter {
 
  public:
   GpencilExporter(const struct GpencilExportParams *iparams);
-  virtual bool write(std::string actual_frame) = 0;
+  virtual bool write(std::string actual_frame, const bool newpage, const bool savepage) = 0;
 
-  /* Geometry functions. */
-  bool gpencil_3d_point_to_screen_space(const float co[3], float r_co[2]);
-
-  bool is_stroke_thickness_constant(struct bGPDstroke *gps);
-  float stroke_average_pressure_get(struct bGPDstroke *gps);
-  float stroke_point_radius_get(struct bGPDstroke *gps);
-  void selected_objects_boundbox(void);
-
-  std::string rgb_to_hex(float color[3]);
-  void rgb_to_grayscale(float color[3]);
-  std::string to_lower_string(char *input_text);
+  void set_frame_number(int value);
+  void set_frame_offset(float value[2]);
+  void set_frame_ratio(float value[2]);
+  void set_frame_box(float value[2]);
 
  protected:
   bool invert_axis_[2];
@@ -83,9 +76,24 @@ class GpencilExporter {
   float camera_ratio_;
   float offset_[2];
   rctf camera_rect_;
+  float frame_box_[2];
+  float frame_offset_[2];
+  float frame_ratio_[2];
   int cfra_;
 
   float stroke_color_[4], fill_color_[4];
+
+  /* Geometry functions. */
+  bool gpencil_3d_point_to_screen_space(const float co[3], float r_co[2]);
+
+  bool is_stroke_thickness_constant(struct bGPDstroke *gps);
+  float stroke_average_pressure_get(struct bGPDstroke *gps);
+  float stroke_point_radius_get(struct bGPDstroke *gps);
+  void selected_objects_boundbox(void);
+
+  std::string rgb_to_hex(float color[3]);
+  void rgb_to_grayscale(float color[3]);
+  std::string to_lower_string(char *input_text);
 
   struct bGPDlayer *gpl_current_get(void);
   struct bGPDframe *gpf_current_get(void);

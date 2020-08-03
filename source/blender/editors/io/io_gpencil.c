@@ -152,6 +152,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   const bool use_selected_objects = RNA_boolean_get(op->ptr, "use_selected_objects");
   const bool use_clip_camera = RNA_boolean_get(op->ptr, "use_clip_camera");
   const bool use_gray_scale = RNA_boolean_get(op->ptr, "use_gray_scale");
+  const bool use_storyboard = RNA_boolean_get(op->ptr, "use_storyboard");
 
   /* Set flags. */
   int flag = 0;
@@ -161,6 +162,8 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   SET_FLAG_FROM_TEST(flag, use_selected_objects, GP_EXPORT_SELECTED_OBJECTS);
   SET_FLAG_FROM_TEST(flag, use_clip_camera, GP_EXPORT_CLIP_CAMERA);
   SET_FLAG_FROM_TEST(flag, use_gray_scale, GP_EXPORT_GRAY_SCALE);
+  SET_FLAG_FROM_TEST(flag, use_storyboard, GP_EXPORT_STORYBOARD_MODE);
+
   struct GpencilExportParams params = {
       .C = C,
       .region = region,
@@ -222,6 +225,7 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
   uiLayoutSetActive(sub, !RNA_boolean_get(imfptr, "only_active_frame"));
   uiItemR(sub, imfptr, "start", 0, IFACE_("Frame Start"), ICON_NONE);
   uiItemR(sub, imfptr, "end", 0, IFACE_("End"), ICON_NONE);
+  uiItemR(sub, imfptr, "use_storyboard", 0, NULL, ICON_NONE);
 
   box = uiLayoutBox(layout);
   row = uiLayoutRow(box, false);
@@ -356,6 +360,8 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
                   false,
                   "Gray Scale",
                   "Export in gray scale instead of full color");
+  RNA_def_boolean(
+      ot->srna, "use_storyboard", false, "Storyboard Mode", "Export several frame sin same page");
   RNA_def_float(ot->srna,
                 "stroke_sample",
                 0.03f,

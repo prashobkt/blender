@@ -69,9 +69,11 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *iparams
 }
 
 /* Main write method for SVG format. */
-bool GpencilExporterSVG::write(std::string actual_frame)
+bool GpencilExporterSVG::write(std::string actual_frame, const bool newpage, const bool savepage)
 {
-  create_document_header();
+  if (newpage) {
+    create_document_header();
+  }
 
   export_layers();
 
@@ -82,7 +84,11 @@ bool GpencilExporterSVG::write(std::string actual_frame)
     frame_file.replace(found, 8, actual_frame + ".svg");
   }
 
-  return doc.save_file(frame_file.c_str());
+  if (savepage) {
+    return doc.save_file(frame_file.c_str());
+  }
+
+  return true;
 }
 
 /* Create document header and main svg node. */
@@ -109,49 +115,57 @@ void GpencilExporterSVG::create_document_header(void)
   std::string width;
   std::string height;
 
-  width = std::to_string(render_x_);
-  height = std::to_string(render_y_);
+  if ((params_.flag & GP_EXPORT_STORYBOARD_MODE) != 0) {
+    width = std::to_string(params_.paper_size[0]);
+    height = std::to_string(params_.paper_size[1]);
+  }
+  else {
+    width = std::to_string(render_x_);
+    height = std::to_string(render_y_);
+  }
 
   main_node.append_attribute("width").set_value((width + "px").c_str());
   main_node.append_attribute("height").set_value((height + "px").c_str());
   std::string viewbox = "0 0 " + width + " " + height;
   main_node.append_attribute("viewBox").set_value(viewbox.c_str());
-
-  /* Camera clipping. */
-  if (is_camera_mode() && ((params_.flag & GP_EXPORT_CLIP_CAMERA) != 0)) {
-    pugi::xml_node clip_node = main_node.append_child("clipPath");
-    clip_node.append_attribute("id").set_value("clip-path");
-    create_rect(clip_node, 0, 0, render_x_, render_y_, 0.0f, "#000000");
-  }
 }
 
 /* Main layer loop. */
 void GpencilExporterSVG::export_layers(void)
 {
+  const bool is_clipping = is_camera_mode() && (params_.flag & (GP_EXPORT_CLIP_CAMERA |
+                                                                GP_EXPORT_STORYBOARD_MODE)) != 0;
   for (ObjectZ &obz : ob_list_) {
     Object *ob = obz.ob;
-    frame_node = main_node.append_child("g");
-    std::string frametxt = " Frame_ " + std::to_string(params_.cfra);
-    frame_node.append_attribute("id").set_value(frametxt.c_str());
-    /* Clip area. */
-    if (is_camera_mode() && ((params_.flag & GP_EXPORT_CLIP_CAMERA) != 0)) {
-      frame_node.append_attribute("clip-path").set_value("url(#clip-path)");
+
+    /* Camera clipping. */
+    if (is_clipping) {
+      pugi::xml_node clip_node = main_node.append_child("clipPath");
+      clip_node.append_attribute("id").set_value(("clip-path" + std::to_string(cfra_)).c_str());
+
+      if ((params_.flag & GP_EXPORT_STORYBOARD_MODE) != 0) {
+        create_rect(clip_node,
+                    frame_offset_[0],
+                    frame_offset_[1],
+                    frame_box_[0],
+                    frame_box_[1],
+                    0.0f,
+                    "#000000");
+      }
+      else {
+        create_rect(clip_node, 0, 0, render_x_, render_y_, 0.0f, "#000000");
+      }
     }
 
-#if 0
-    /* Boundbox border. */
-    if (!is_camera_mode()) {
-      rctf bb;
-      get_select_boundbox(&bb);
-      create_rect(frame_node,
-                  bb.xmin - offset_[0],
-                  bb.ymin - offset_[1],
-                  (bb.xmax - bb.xmin),
-                  (bb.ymax - bb.ymin),
-                  5.0f,
-                  "#FF0000");
+    frame_node = main_node.append_child("g");
+    std::string frametxt = "Frame_" + std::to_string(cfra_);
+    frame_node.append_attribute("id").set_value(frametxt.c_str());
+
+    /* Clip area. */
+    if (is_clipping) {
+      frame_node.append_attribute("clip-path")
+          .set_value(("url(#clip-path" + std::to_string(cfra_) + ")").c_str());
     }
-#endif
 
     pugi::xml_node ob_node = frame_node.append_child("g");
     ob_node.append_attribute("id").set_value(ob->id.name + 2);
@@ -165,6 +179,11 @@ void GpencilExporterSVG::export_layers(void)
         continue;
       }
       gpl_current_set(gpl);
+      bGPDframe *gpf = gpl->actframe;
+      if ((gpf == NULL) || (gpf->strokes.first == NULL)) {
+        continue;
+      }
+      gpf_current_set(gpf);
 
       /* Layer node. */
       std::string txt = "Layer: ";
@@ -173,16 +192,7 @@ void GpencilExporterSVG::export_layers(void)
       pugi::xml_node gpl_node = ob_node.append_child("g");
       gpl_node.append_attribute("id").set_value(gpl->info);
 
-      bGPDframe *gpf = gpl->actframe;
-      if (gpf == NULL) {
-        continue;
-      }
-      gpf_current_set(gpf);
-
       BKE_gpencil_parent_matrix_get(depsgraph, ob, gpl, diff_mat_);
-      // if (is_bound_mode()) {
-      //  diff_mat_[3][0] *= -1.0f;
-      //}
 
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         if (gps->totpoints == 0) {
@@ -239,6 +249,17 @@ void GpencilExporterSVG::export_layers(void)
 
         BKE_gpencil_free_stroke(gps_duplicate);
       }
+    }
+
+    /* Frame border. */
+    if ((params_.flag & GP_EXPORT_STORYBOARD_MODE) != 0) {
+      create_rect(frame_node,
+                  frame_offset_[0],
+                  frame_offset_[1],
+                  frame_box_[0],
+                  frame_box_[1],
+                  5.0f,
+                  "#000000");
     }
   }
 }

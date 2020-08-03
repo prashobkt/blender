@@ -1,3 +1,5 @@
+
+
 /*
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -71,7 +73,10 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   params_.mode = iparams->mode;
   params_.flag = iparams->flag;
   params_.stroke_sample = iparams->stroke_sample;
-  params_.cfra = iparams->cfra;
+  params_.framenum = iparams->framenum;
+
+  copy_v2_v2_int(params_.story_size, iparams->story_size);
+  copy_v2_v2(params_.paper_size, iparams->paper_size);
 
   /* Easy access data. */
   bmain = CTX_data_main(params_.C);
@@ -191,8 +196,7 @@ void GpencilExporter::set_out_filename(char *filename)
   //#endif
 }
 
-/* Convert to screen space.
- * TODO: Cleanup using a more generic BKE function.?? */
+/* Convert to screen space. */
 bool GpencilExporter::gpencil_3d_point_to_screen_space(const float co[3], float r_co[2])
 {
   float parent_co[3];
@@ -214,6 +218,10 @@ bool GpencilExporter::gpencil_3d_point_to_screen_space(const float co[3], float 
       /* Apply offset and scale. */
       sub_v2_v2(r_co, offset_);
       mul_v2_fl(r_co, camera_ratio_);
+
+      /* Apply frame offset and scale. */
+      mul_v2_v2(r_co, frame_ratio_);
+      add_v2_v2(r_co, frame_offset_);
 
       return true;
     }
@@ -494,6 +502,26 @@ void GpencilExporter::get_select_boundbox(rctf *boundbox)
   boundbox->xmax = select_box.xmax;
   boundbox->ymin = select_box.ymin;
   boundbox->ymax = select_box.ymax;
+}
+
+void GpencilExporter::set_frame_number(int value)
+{
+  cfra_ = value;
+}
+
+void GpencilExporter::set_frame_offset(float value[2])
+{
+  copy_v2_v2(frame_offset_, value);
+}
+
+void GpencilExporter::set_frame_ratio(float value[2])
+{
+  copy_v2_v2(frame_ratio_, value);
+}
+
+void GpencilExporter::set_frame_box(float value[2])
+{
+  copy_v2_v2(frame_box_, value);
 }
 
 }  // namespace blender::io::gpencil

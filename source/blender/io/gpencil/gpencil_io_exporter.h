@@ -27,6 +27,9 @@ struct Scene;
 struct bContext;
 struct ARegion;
 
+/* Paper Size: A4, Letter. */
+static const float paper_size[2][2] = {3508, 2480, 3300, 2550};
+
 typedef enum eGpencilExport_Modes {
   GP_EXPORT_TO_SVG = 0,
 } eGpencilExport_Modes;
@@ -46,13 +49,17 @@ struct GpencilExportParams {
   /** End frame.  */
   double frame_end;
   /** Frame subfix. */
-  char frame[5];
+  char file_subfix[5];
   /* Current frame. */
-  int cfra;
+  int framenum;
   /** Flags. */
   int flag;
   /** Stroke sampling. */
   float stroke_sample;
+  /** Row and cols of storyboard. */
+  int story_size[2];
+  /** Paper size in pixels. */
+  float paper_size[2];
 };
 
 typedef enum eGpencilExportParams_Flag {
@@ -68,9 +75,11 @@ typedef enum eGpencilExportParams_Flag {
   GP_EXPORT_CLIP_CAMERA = (1 << 4),
   /* Gray Scale. */
   GP_EXPORT_GRAY_SCALE = (1 << 5),
+  /* Use Storyboard format. */
+  GP_EXPORT_STORYBOARD_MODE = (1 << 6),
 } eGpencilExportParams_Flag;
 
-bool gpencil_io_export(struct GpencilExportParams *params);
+bool gpencil_io_export(struct GpencilExportParams *iparams);
 
 #ifdef __cplusplus
 }

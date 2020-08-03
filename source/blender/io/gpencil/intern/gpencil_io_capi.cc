@@ -21,6 +21,7 @@
 #include <stdio.h>
 
 #include "BLI_listbase.h"
+#include "BLI_math.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -57,14 +58,19 @@ static bool is_keyframe_empty(bGPdata *gpd, int framenum)
 }
 
 /* Export current frame. */
-static bool gpencil_io_export_frame(const GpencilExportParams *params)
+static bool gpencil_io_export_frame(GpencilExporterSVG *writter,
+                                    const GpencilExportParams *iparams,
+                                    float frame_offset[2],
+                                    const bool newpage,
+                                    const bool savepage)
 {
 
   bool result = false;
-  switch (params->mode) {
+  switch (iparams->mode) {
     case GP_EXPORT_TO_SVG: {
-      GpencilExporterSVG writter = GpencilExporterSVG(params);
-      result = writter.write(std::string(params->frame));
+      writter->set_frame_number(iparams->framenum);
+      writter->set_frame_offset(frame_offset);
+      result = writter->write(std::string(""), newpage, savepage);
       break;
     }
     default:
@@ -75,35 +81,79 @@ static bool gpencil_io_export_frame(const GpencilExportParams *params)
 }
 
 /* Main export entry point function. */
-bool gpencil_io_export(GpencilExportParams *params)
+bool gpencil_io_export(GpencilExportParams *iparams)
 {
-  Main *bmain = CTX_data_main(params->C);
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(params->C);
-  Scene *scene = CTX_data_scene(params->C);
+  Main *bmain = CTX_data_main(iparams->C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(iparams->C);
+  Scene *scene = CTX_data_scene(iparams->C);
 
-  Object *ob = CTX_data_active_object(params->C);
+  Object *ob = CTX_data_active_object(iparams->C);
   Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
   bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
 
-  const bool only_active_frame = ((params->flag & GP_EXPORT_ACTIVE_FRAME) != 0);
+  const bool only_active_frame = ((iparams->flag & GP_EXPORT_ACTIVE_FRAME) != 0);
 
   int oldframe = (int)DEG_get_ctime(depsgraph);
   bool done = false;
 
+  /* Calc paper sizes. */
+  const float blocks[2] = {3.0f, 1.0f};
+
+  /* Prepare document. */
+  // TODO: Fix paper using parameter
+  copy_v2_v2(iparams->paper_size, paper_size[0]);
+
+  GpencilExporterSVG writter = GpencilExporterSVG(iparams);
+
+  float frame_box[2] = {iparams->paper_size[0] / (blocks[0] + 1.0f),
+                        iparams->paper_size[1] / (blocks[0] + 1.0f)};
+  writter.set_frame_box(frame_box);
+
+  const float gap[2] = {frame_box[0] / (blocks[0] + 1.0f), frame_box[1] / (blocks[1] + 1.0f)};
+
+  float frame_offset[2] = {gap[0], gap[1]};
+
   if (only_active_frame) {
-    done |= gpencil_io_export_frame(params);
+    float no_offset[2] = {0.0f, 0.0f};
+    float ratio[2] = {1.0f, 1.0f};
+    writter.set_frame_ratio(ratio);
+    done |= gpencil_io_export_frame(&writter, iparams, no_offset, true, true);
   }
   else {
-    for (int i = params->frame_start; i < params->frame_end + 1; i++) {
+    bool newpage = true;
+    bool savepage = false;
+    float render_ratio[2];
+    render_ratio[0] = frame_box[0] / ((scene->r.xsch * scene->r.size) / 100);
+    render_ratio[1] = frame_box[1] / ((scene->r.ysch * scene->r.size) / 100);
+    writter.set_frame_ratio(render_ratio);
+
+    int x = 1;
+    for (int i = iparams->frame_start; i < iparams->frame_end + 1; i++) {
       if (is_keyframe_empty(gpd_eval, i)) {
         continue;
+      }
+      if (x == 3) {
+        savepage = true;
       }
 
       CFRA = i;
       BKE_scene_graph_update_for_newframe(depsgraph, bmain);
-      sprintf(params->frame, "%04d", i);
-      params->cfra = i;
-      done |= gpencil_io_export_frame(params);
+      sprintf(iparams->file_subfix, "%04d", i);
+      iparams->framenum = i;
+      done |= gpencil_io_export_frame(&writter, iparams, frame_offset, newpage, savepage);
+
+      if (x == 3) {
+        savepage = true;
+        newpage = false;
+        x = 0;
+      }
+      else {
+        newpage = false;
+        x++;
+      }
+
+      frame_offset[0] += frame_box[0];
+      frame_offset[0] += gap[0];
     }
   }
 
