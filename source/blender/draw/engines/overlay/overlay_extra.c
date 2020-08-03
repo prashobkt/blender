@@ -1429,7 +1429,14 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
 
   if (draw_velocity) {
     const bool use_needle = (fds->vector_draw_type == VECTOR_DRAW_NEEDLE);
-    int line_count = (use_needle) ? 6 : 1;
+    const bool use_mac = (fds->vector_draw_type == VECTOR_DRAW_MAC);
+    int line_count = 1;
+    if (use_needle) {
+      line_count = 6;
+    }
+    else if (use_mac) {
+      line_count = 3;
+    }
     line_count *= fds->res[0] * fds->res[1] * fds->res[2];
 
     if (fds->axis_slice_method == AXIS_SLICE_SINGLE) {
@@ -1438,7 +1445,7 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
 
     GPU_create_smoke_velocity(fmd);
 
-    GPUShader *sh = OVERLAY_shader_volume_velocity(use_needle);
+    GPUShader *sh = OVERLAY_shader_volume_velocity(use_needle, use_mac);
     DRWShadingGroup *grp = DRW_shgroup_create(sh, data->psl->extra_ps[0]);
     DRW_shgroup_uniform_texture(grp, "velocityX", fds->tex_velocity_x);
     DRW_shgroup_uniform_texture(grp, "velocityY", fds->tex_velocity_y);

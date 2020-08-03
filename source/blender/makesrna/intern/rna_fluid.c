@@ -1343,6 +1343,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   static const EnumPropertyItem vector_draw_items[] = {
       {VECTOR_DRAW_NEEDLE, "NEEDLE", 0, "Needle", "Display vectors as needles"},
       {VECTOR_DRAW_STREAMLINE, "STREAMLINE", 0, "Streamlines", "Display vectors as streamlines"},
+      {VECTOR_DRAW_MAC, "MAC", 0, "MAC Grid", "Display vector field as MAC grid"},
       {0, NULL, 0, NULL, NULL},
   };
 

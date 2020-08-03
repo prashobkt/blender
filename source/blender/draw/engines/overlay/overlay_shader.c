@@ -196,6 +196,7 @@ typedef struct OVERLAY_Shaders {
   GPUShader *sculpt_mask;
   GPUShader *uniform_color;
   GPUShader *volume_velocity_needle_sh;
+  GPUShader *volume_velocity_mac_sh;
   GPUShader *volume_velocity_sh;
   GPUShader *volume_gridlines_sh;
   GPUShader *volume_gridlines_flags_sh;
@@ -1373,7 +1374,7 @@ struct GPUShader *OVERLAY_shader_uniform_color(void)
   return sh_data->uniform_color;
 }
 
-struct GPUShader *OVERLAY_shader_volume_velocity(bool use_needle)
+struct GPUShader *OVERLAY_shader_volume_velocity(bool use_needle, bool use_mac)
 {
   OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
   if (use_needle && !sh_data->volume_velocity_needle_sh) {
@@ -1385,6 +1386,15 @@ struct GPUShader *OVERLAY_shader_volume_velocity(bool use_needle)
         "#define blender_srgb_to_framebuffer_space(a) a\n"
         "#define USE_NEEDLE\n");
   }
+  else if (use_mac && !sh_data->volume_velocity_mac_sh) {
+    sh_data->volume_velocity_mac_sh = DRW_shader_create_with_lib(
+        datatoc_volume_velocity_vert_glsl,
+        NULL,
+        datatoc_gpu_shader_3D_smooth_color_frag_glsl,
+        datatoc_common_view_lib_glsl,
+        "#define blender_srgb_to_framebuffer_space(a) a\n"
+        "#define USE_MAC\n");
+  }
   else if (!sh_data->volume_velocity_sh) {
     sh_data->volume_velocity_sh = DRW_shader_create_with_lib(
         datatoc_volume_velocity_vert_glsl,
@@ -1393,7 +1403,14 @@ struct GPUShader *OVERLAY_shader_volume_velocity(bool use_needle)
         datatoc_common_view_lib_glsl,
         "#define blender_srgb_to_framebuffer_space(a) a\n");
   }
-  return (use_needle) ? sh_data->volume_velocity_needle_sh : sh_data->volume_velocity_sh;
+  if (use_needle) {
+    return sh_data->volume_velocity_needle_sh;
+  }
+  if (use_mac) {
+    return sh_data->volume_velocity_mac_sh;
+  }
+
+  return sh_data->volume_velocity_sh;
 }
 
 struct GPUShader *OVERLAY_shader_volume_gridlines(bool color_with_flags, bool color_range)

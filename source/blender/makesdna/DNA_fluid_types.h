@@ -91,6 +91,7 @@ enum {
 enum {
   VECTOR_DRAW_NEEDLE = 0,
   VECTOR_DRAW_STREAMLINE = 1,
+  VECTOR_DRAW_MAC = 2,
 };
 
 enum {

@@ -14,7 +14,11 @@ uniform vec3 domainOriginOffset;
 /* FluidDomainSettings.res_min */
 uniform ivec3 adaptiveCellOffset;
 
+#ifdef USE_MAC
+out vec4 finalColor;
+#else
 flat out vec4 finalColor;
+#endif
 
 const vec3 corners[4] = vec3[4](vec3(0.0, 0.2, -0.5),
                                 vec3(-0.2 * 0.866, -0.2 * 0.5, -0.5),
@@ -69,6 +73,8 @@ void main()
 {
 #ifdef USE_NEEDLE
   int cell = gl_VertexID / 12;
+#elif defined(USE_MAC)
+  int cell = gl_VertexID / 6;
 #else
   int cell = gl_VertexID / 2;
 #endif
@@ -103,6 +109,38 @@ void main()
   velocity.y = texelFetch(velocityY, cell_co, 0).r;
   velocity.z = texelFetch(velocityZ, cell_co, 0).r;
 
+#ifdef USE_MAC
+  vec3 color;
+
+  switch (gl_VertexID % 6) {
+    case 0: /* tail of X component */
+      pos.x += -0.5 * cellSize.x;
+      color = vec3(1.0, 0.0, 0.0); /* red */
+      break;
+    case 1: /* head of X component */
+      pos.x += (-0.5 + velocity.x * displaySize) * cellSize.x;
+      color = vec3(1.0, 1.0, 0.0); /* yellow */
+      break;
+    case 2: /* tail of Y component */
+      pos.y += -0.5 * cellSize.y;
+      color = vec3(0.0, 1.0, 0.0); /* green */
+      break;
+    case 3: /* head of Y component */
+      pos.y += (-0.5 + velocity.y * displaySize) * cellSize.y;
+      color = vec3(1.0, 1.0, 0.0); /* yellow */
+      break;
+    case 4: /* tail of Z component */
+      pos.z += -0.5 * cellSize.z;
+      color = vec3(0.0, 0.0, 1.0); /* blue */
+      break;
+    case 5: /* head of Z component */
+      pos.z += (-0.5 + velocity.z * displaySize) * cellSize.z;
+      color = vec3(1.0, 1.0, 0.0); /* yellow */
+      break;
+  }
+
+  finalColor = vec4(color, 1.0);
+#else
   finalColor = vec4(weight_to_color(length(velocity)), 1.0);
 
   float vector_length = 1.0;
@@ -116,13 +154,14 @@ void main()
 
   mat3 rot_mat = rotation_from_vector(velocity);
 
-#ifdef USE_NEEDLE
+#  ifdef USE_NEEDLE
   vec3 rotated_pos = rot_mat * corners[indices[gl_VertexID % 12]];
   pos += rotated_pos * vector_length * displaySize * cellSize;
-#else
+#  else
   vec3 rotated_pos = rot_mat * vec3(0.0, 0.0, 1.0);
   pos += ((gl_VertexID % 2) == 1) ? rotated_pos * vector_length * displaySize * cellSize :
                                     vec3(0.0);
+#  endif
 #endif
 
   vec3 world_pos = point_object_to_world(pos);
