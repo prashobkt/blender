@@ -29,6 +29,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "DNA_anim_types.h"
@@ -98,6 +99,8 @@
 #  include <AUD_Special.h>
 #endif
 
+static CLG_LogRef LOG = {"bke.sequencer"};
+
 /* mutable state for sequencer */
 typedef struct SeqRenderState {
   LinkNode *scene_parents;
@@ -133,29 +136,21 @@ int seqbase_clipboard_frame;
 
 SequencerDrawView sequencer_view3d_fn = NULL; /* NULL in background mode */
 
-#if 0 /* unused function */
-static void printf_strip(Sequence *seq)
-{
-  fprintf(stderr,
-          "name: '%s', len:%d, start:%d, (startofs:%d, endofs:%d), "
-          "(startstill:%d, endstill:%d), machine:%d, (startdisp:%d, enddisp:%d)\n",
-          seq->name,
-          seq->len,
-          seq->start,
-          seq->startofs,
-          seq->endofs,
-          seq->startstill,
-          seq->endstill,
-          seq->machine,
-          seq->startdisp,
-          seq->enddisp);
-
-  fprintf(stderr,
-          "\tseq_tx_set_final_left: %d %d\n\n",
-          seq_tx_get_final_left(seq, 0),
-          seq_tx_get_final_right(seq, 0));
-}
-#endif
+#define CLOG_DEBUG_SEQUENCE(log_ref, level, seq) \
+  CLOG_DEBUG(log_ref, \
+             level, \
+             "name: '%s', len:%d, start:%d, (startofs:%d, endofs:%d), " \
+             "(startstill:%d, endstill:%d), machine:%d, (startdisp:%d, enddisp:%d)", \
+             seq->name, \
+             seq->len, \
+             seq->start, \
+             seq->startofs, \
+             seq->endofs, \
+             seq->startstill, \
+             seq->endstill, \
+             seq->machine, \
+             seq->startdisp, \
+             seq->enddisp)
 
 static void sequencer_state_init(SeqRenderState *state)
 {
@@ -209,7 +204,7 @@ static void seq_free_strip(Strip *strip)
     return;
   }
   if (strip->us < 0) {
-    printf("error: negative users in strip\n");
+    CLOG_ERROR(&LOG, "negative users in strip");
     return;
   }
 
@@ -3584,7 +3579,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
         context->gpu_offscreen,
         err_out);
     if (ibuf == NULL) {
-      fprintf(stderr, "seq_render_scene_strip failed to get opengl buffer: %s\n", err_out);
+      CLOG_ERROR(&LOG, "failed to get opengl buffer: %s", err_out);
     }
   }
   else {
@@ -5510,7 +5505,7 @@ Sequence *BKE_sequencer_add_sound_strip(bContext *C, ListBase *seqbasep, SeqLoad
 
   return seq;
 }
-#else   // WITH_AUDASPACE
+#else  // WITH_AUDASPACE
 Sequence *BKE_sequencer_add_sound_strip(bContext *C, ListBase *seqbasep, SeqLoadInfo *seq_load)
 {
   (void)C;

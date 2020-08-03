@@ -52,6 +52,7 @@
 
 /* This needs to be included after BLI_math_base.h otherwise it will redefine some math defines
  * like M_SQRT1_2 leading to warnings with MSVC */
+#  include <CLG_log.h>
 #  include <libavcodec/avcodec.h>
 #  include <libavformat/avformat.h>
 #  include <libavutil/imgutils.h>
@@ -60,6 +61,8 @@
 #  include <libswscale/swscale.h>
 
 #  include "ffmpeg_compat.h"
+
+static CLG_LogRef LOG = {"bke.writeffmpeg"};
 
 struct StampData;
 
@@ -639,7 +642,7 @@ static AVStream *alloc_video_stream(FFMpegContext *context,
         deadline_name = "realtime";
         break;
       default:
-        printf("Unknown preset number %i, ignoring.\n", context->ffmpeg_preset);
+        CLOG_WARN(&LOG, "Unknown preset number %i, ignoring", context->ffmpeg_preset);
     }
     if (preset_name != NULL) {
       av_dict_set(&opts, "preset", preset_name, 0);

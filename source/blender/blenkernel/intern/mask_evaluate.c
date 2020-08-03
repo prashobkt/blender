@@ -23,6 +23,8 @@
  * Functions for evaluating the mask beziers into points for the outline and feather.
  */
 
+#include <BLI_blenlib.h>
+#include <CLG_log.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -39,6 +41,8 @@
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
+
+static CLG_LogRef LOG = {"bke.mask_evaluate"};
 
 unsigned int BKE_mask_spline_resolution(MaskSpline *spline, int width, int height)
 {
@@ -881,25 +885,23 @@ void BKE_mask_layer_evaluate_animation(MaskLayer *masklay, const float ctime)
   if ((found = BKE_mask_layer_shape_find_frame_range(
            masklay, ctime, &masklay_shape_a, &masklay_shape_b))) {
     if (found == 1) {
-#if 0
-      printf("%s: exact %d %d (%d)\n",
-             __func__,
-             (int)ctime,
-             BLI_listbase_count(&masklay->splines_shapes),
-             masklay_shape_a->frame);
-#endif
+      CLOG_DEBUG(&LOG,
+                 5,
+                 "exact %d %d (%d)",
+                 (int)ctime,
+                 BLI_listbase_count(&masklay->splines_shapes),
+                 masklay_shape_a->frame);
       BKE_mask_layer_shape_to_mask(masklay, masklay_shape_a);
     }
     else if (found == 2) {
       float w = masklay_shape_b->frame - masklay_shape_a->frame;
-#if 0
-      printf("%s: tween %d %d (%d %d)\n",
-             __func__,
-             (int)ctime,
-             BLI_listbase_count(&masklay->splines_shapes),
-             masklay_shape_a->frame,
-             masklay_shape_b->frame);
-#endif
+      CLOG_DEBUG(&LOG,
+                 5,
+                 "tween %d %d (%d %d)",
+                 (int)ctime,
+                 BLI_listbase_count(&masklay->splines_shapes),
+                 masklay_shape_a->frame,
+                 masklay_shape_b->frame);
       BKE_mask_layer_shape_to_mask_interp(
           masklay, masklay_shape_a, masklay_shape_b, (ctime - masklay_shape_a->frame) / w);
     }

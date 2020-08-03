@@ -2140,21 +2140,27 @@ struct GSet *BKE_pbvh_bmesh_node_faces(PBVHNode *node)
 
 #if 0
 
-static void pbvh_bmesh_print(PBVH *pbvh)
+#  include <CLG_log.h>
+
+static CLG_LogRef _LOG = {"bke.pbvh_bmesh.debug"};
+
+static void clog_pbvh_bmesh(PBVH *pbvh)
 {
-  fprintf(stderr, "\npbvh=%p\n", pbvh);
-  fprintf(stderr, "bm_face_to_node:\n");
+  CLOG_VERBOSE(&_LOG, 0, "pbvh=%p", pbvh);
+  CLOG_VERBOSE(&_LOG, 0, "bm_face_to_node:");
 
   BMIter iter;
   BMFace *f;
   BM_ITER_MESH (f, &iter, pbvh->bm, BM_FACES_OF_MESH) {
-    fprintf(stderr, "  %d -> %d\n", BM_elem_index_get(f), pbvh_bmesh_node_index_from_face(pbvh, f));
+    CLOG_VERBOSE(
+        &_LOG, 0, "  %d -> %d", BM_elem_index_get(f), pbvh_bmesh_node_index_from_face(pbvh, f));
   }
 
-  fprintf(stderr, "bm_vert_to_node:\n");
+  CLOG_VERBOSE(&_LOG, 0, "bm_vert_to_node:");
   BMVert *v;
   BM_ITER_MESH (v, &iter, pbvh->bm, BM_FACES_OF_MESH) {
-    fprintf(stderr, "  %d -> %d\n", BM_elem_index_get(v), pbvh_bmesh_node_index_from_vert(pbvh, v));
+    CLOG_VERBOSE(
+        &_LOG, 0, "  %d -> %d", BM_elem_index_get(v), pbvh_bmesh_node_index_from_vert(pbvh, v));
   }
 
   for (int n = 0; n < pbvh->totnode; n++) {
@@ -2164,27 +2170,31 @@ static void pbvh_bmesh_print(PBVH *pbvh)
     }
 
     GSetIterator gs_iter;
-    fprintf(stderr, "node %d\n  faces:\n", n);
+    CLOG_VERBOSE(&_LOG, 0, "node %d\n  faces:", n);
     GSET_ITER (gs_iter, node->bm_faces)
-      fprintf(stderr, "    %d\n", BM_elem_index_get((BMFace *)BLI_gsetIterator_getKey(&gs_iter)));
-    fprintf(stderr, "  unique verts:\n");
+      CLOG_VERBOSE(
+          &_LOG, 0, "    %d", BM_elem_index_get((BMFace *)BLI_gsetIterator_getKey(&gs_iter)));
+    CLOG_VERBOSE(&_LOG, 0, "  unique verts:");
     GSET_ITER (gs_iter, node->bm_unique_verts)
-      fprintf(stderr, "    %d\n", BM_elem_index_get((BMVert *)BLI_gsetIterator_getKey(&gs_iter)));
-    fprintf(stderr, "  other verts:\n");
+      CLOG_VERBOSE(
+          &_LOG, 0, "    %d", BM_elem_index_get((BMVert *)BLI_gsetIterator_getKey(&gs_iter)));
+    CLOG_VERBOSE(&_LOG, 0, "  other verts:");
     GSET_ITER (gs_iter, node->bm_other_verts)
-      fprintf(stderr, "    %d\n", BM_elem_index_get((BMVert *)BLI_gsetIterator_getKey(&gs_iter)));
+      CLOG_VERBOSE(
+          &_LOG, 0, "    %d", BM_elem_index_get((BMVert *)BLI_gsetIterator_getKey(&gs_iter)));
   }
 }
 
-static void print_flag_factors(int flag)
+static void clog_flag_factors(int flag)
 {
-  printf("flag=0x%x:\n", flag);
+  CLOG_VERBOSE(&_LOG, 0, "flag=0x%x:", (unsigned int)flag);
   for (int i = 0; i < 32; i++) {
     if (flag & (1 << i)) {
-      printf("  %d (1 << %d)\n", 1 << i, i);
+      CLOG_VERBOSE(&_LOG, 1, "  %d (1 << %d)", 1 << i, i);
     }
   }
 }
+
 #endif
 
 #ifdef USE_VERIFY
@@ -2357,4 +2367,4 @@ static void pbvh_bmesh_verify(PBVH *pbvh)
   BLI_gset_free(verts_all, NULL);
 }
 
-#endif
+#endif  // USE_VERIFY

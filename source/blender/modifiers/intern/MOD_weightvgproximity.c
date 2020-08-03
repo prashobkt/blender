@@ -57,6 +57,7 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "MOD_modifiertypes.h"
@@ -75,8 +76,10 @@
  * Util functions.                    *
  **************************************/
 
+static CLG_LogRef LOG = {"bke.MOD_weightvgproximity"};
+
 /* Util macro. */
-#define OUT_OF_MEMORY() ((void)printf("WeightVGProximity: Out of memory.\n"))
+#define CLOG_OUT_OF_MEMORY() CLOG_ERROR(&LOG, "WeightVGProximity: Out of memory.\n")
 
 typedef struct Vert2GeomData {
   /* Read-only data */
@@ -171,7 +174,7 @@ static void get_vert2geom_distance(int numVerts,
     /* Create a bvh-tree of the given target's verts. */
     BKE_bvhtree_from_mesh_get(&treeData_v, target, BVHTREE_FROM_VERTS, 2);
     if (treeData_v.tree == NULL) {
-      OUT_OF_MEMORY();
+      CLOG_OUT_OF_MEMORY();
       return;
     }
   }
@@ -179,7 +182,7 @@ static void get_vert2geom_distance(int numVerts,
     /* Create a bvh-tree of the given target's edges. */
     BKE_bvhtree_from_mesh_get(&treeData_e, target, BVHTREE_FROM_EDGES, 2);
     if (treeData_e.tree == NULL) {
-      OUT_OF_MEMORY();
+      CLOG_OUT_OF_MEMORY();
       return;
     }
   }
@@ -187,7 +190,7 @@ static void get_vert2geom_distance(int numVerts,
     /* Create a bvh-tree of the given target's faces. */
     BKE_bvhtree_from_mesh_get(&treeData_f, target, BVHTREE_FROM_LOOPTRI, 2);
     if (treeData_f.tree == NULL) {
-      OUT_OF_MEMORY();
+      CLOG_OUT_OF_MEMORY();
       return;
     }
   }

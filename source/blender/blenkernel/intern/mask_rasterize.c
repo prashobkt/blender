@@ -361,7 +361,7 @@ static bool layer_bucket_isect_test(const MaskRasterLayer *layer,
         return true;
       }
       else {
-        // printf("skip tri\n");
+        CLOG_DEBUG(&LOG, 0, "skip tri");
         return false;
       }
     }
@@ -386,7 +386,7 @@ static bool layer_bucket_isect_test(const MaskRasterLayer *layer,
         return true;
       }
       else {
-        // printf("skip quad\n");
+        CLOG_DEBUG(&LOG, 0, "skip quad");
         return false;
       }
     }
@@ -420,7 +420,7 @@ static void layer_bucket_init(MaskRasterLayer *layer, const float pixel_size)
   layer->buckets_x = (unsigned int)((bucket_dim_x / pixel_size) / (float)BUCKET_PIXELS_PER_CELL);
   layer->buckets_y = (unsigned int)((bucket_dim_y / pixel_size) / (float)BUCKET_PIXELS_PER_CELL);
 
-  //      printf("bucket size %ux%u\n", layer->buckets_x, layer->buckets_y);
+  CLOG_DEBUG(&LOG, 1, "bucket size %ux%u", layer->buckets_x, layer->buckets_y);
 
   CLAMP(layer->buckets_x, 8, 512);
   CLAMP(layer->buckets_y, 8, 512);
@@ -1172,15 +1172,14 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
 
       MEM_freeN(open_spline_ranges);
 
-#if 0
-      fprintf(stderr,
-              "%u %u (%u %u), %u\n",
-              face_index,
-              sf_tri_tot + tot_feather_quads,
-              sf_tri_tot,
-              tot_feather_quads,
-              tot_boundary_used - tot_boundary_found);
-#endif
+      CLOG_DEBUG(&LOG,
+                 2,
+                 "%u %u (%u %u), %u",
+                 face_index,
+                 sf_tri_tot + tot_feather_quads,
+                 sf_tri_tot,
+                 tot_feather_quads,
+                 tot_boundary_used - tot_boundary_found);
 
 #ifdef USE_SCANFILL_EDGE_WORKAROUND
       BLI_assert(face_index + (tot_boundary_used - tot_boundary_found) ==
@@ -1220,7 +1219,7 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
         layer->falloff = masklay->falloff;
       }
 
-      /* printf("tris %d, feather tris %d\n", sf_tri_tot, tot_feather_quads); */
+      CLOG_DEBUG(&LOG, 2, "tris %ud, feather tris %ud", sf_tri_tot, tot_feather_quads);
     }
 
     /* add trianges */

@@ -27,6 +27,7 @@
 #include <math.h>
 #include <stdlib.h>
 
+#include <CLG_log.h>
 #include <string.h>
 
 #include "MEM_guardedalloc.h"
@@ -52,6 +53,8 @@
 #include "BLI_hash.h"
 
 #ifdef WITH_OCEANSIM
+
+static CLG_LogRef LOG = {"bke.ocean"};
 
 /* Ocean code */
 
@@ -1417,20 +1420,20 @@ void BKE_ocean_bake(struct Ocean *o,
     /* write the images */
     cache_filename(string, och->bakepath, och->relbase, f, CACHE_TYPE_DISPLACE);
     if (0 == BKE_imbuf_write(ibuf_disp, string, &imf)) {
-      printf("Cannot save Displacement File Output to %s\n", string);
+      CLOG_ERROR(&LOG, "Cannot save Displacement File Output to %s", string);
     }
 
     if (o->_do_jacobian) {
       cache_filename(string, och->bakepath, och->relbase, f, CACHE_TYPE_FOAM);
       if (0 == BKE_imbuf_write(ibuf_foam, string, &imf)) {
-        printf("Cannot save Foam File Output to %s\n", string);
+        CLOG_ERROR(&LOG, "Cannot save Foam File Output to %s", string);
       }
     }
 
     if (o->_do_normals) {
       cache_filename(string, och->bakepath, och->relbase, f, CACHE_TYPE_NORMAL);
       if (0 == BKE_imbuf_write(ibuf_normal, string, &imf)) {
-        printf("Cannot save Normal File Output to %s\n", string);
+        CLOG_ERROR(&LOG, "Cannot save Normal File Output to %s", string);
       }
     }
 

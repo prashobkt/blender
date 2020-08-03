@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "DNA_ID.h"
@@ -62,6 +63,8 @@
 #ifdef DEBUG_OVERRIDE_TIMEIT
 #  include "PIL_time_utildefines.h"
 #endif
+
+static CLG_LogRef LOG = {"bke.lib_override"};
 
 static void lib_override_library_property_copy(IDOverrideLibraryProperty *op_dst,
                                                IDOverrideLibraryProperty *op_src);
@@ -1104,17 +1107,15 @@ bool BKE_lib_override_library_operations_create(Main *bmain, ID *local)
     if (report_flags & RNA_OVERRIDE_MATCH_RESULT_CREATED) {
       ret = true;
     }
-#ifndef NDEBUG
     if (report_flags & RNA_OVERRIDE_MATCH_RESULT_RESTORED) {
-      printf("We did restore some properties of %s from its reference.\n", local->name);
+      CLOG_DEBUG(&LOG, 0, "We did restore some properties of %s from its reference", local->name);
     }
     if (ret) {
-      printf("We did generate library override rules for %s\n", local->name);
+      CLOG_DEBUG(&LOG, 0, "We did generate library override rules for %s", local->name);
     }
     else {
-      printf("No new library override rules for %s\n", local->name);
+      CLOG_DEBUG(&LOG, 0, "No new library override rules for %s", local->name);
     }
-#endif
   }
   return ret;
 }

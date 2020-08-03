@@ -21,6 +21,7 @@
  * \ingroup bke
  */
 
+#include <CLG_log.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,6 +80,8 @@
 #include "RE_render_ext.h"
 
 #include "particle_private.h"
+
+static CLG_LogRef LOG = {"bke.particle"};
 
 static void fluid_free_settings(SPHFluidSettings *fluid);
 
@@ -1650,11 +1653,11 @@ int psys_particle_dm_face_lookup(Mesh *mesh_final,
   if (osface_final == NULL) {
     /* Assume we don't need osface_final data, and we get a direct 1-1 mapping... */
     if (findex_orig < totface_final) {
-      // printf("\tNO CD_ORIGSPACE, assuming not needed\n");
+      CLOG_VERBOSE(&LOG, 0, "\tNO CD_ORIGSPACE, assuming not needed");
       return findex_orig;
     }
     else {
-      printf("\tNO CD_ORIGSPACE, error out of range\n");
+      CLOG_ERROR(&LOG, "\tNO CD_ORIGSPACE, error out of range");
       return DMCACHE_NOTFOUND;
     }
   }

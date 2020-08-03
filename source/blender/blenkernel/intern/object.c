@@ -3431,12 +3431,13 @@ static void object_handle_update_proxy(Depsgraph *depsgraph,
   }
   /* set pointer in library proxy target, for copying, but restore it */
   object->proxy->proxy_from = object;
-  // printf("set proxy pointer for later collection stuff %s\n", ob->id.name);
+  CLOG_VERBOSE(&LOG, 3, "set proxy pointer for later collection stuff %s", object->id.name);
 
   /* the no-group proxy case, we call update */
   if (object->proxy_group == NULL) {
     if (do_proxy_update) {
-      // printf("call update, lib ob %s proxy %s\n", ob->proxy->id.name, ob->id.name);
+      CLOG_VERBOSE(
+          &LOG, 3, "call update, lib ob %s proxy %s", object->proxy->id.name, object->id.name);
       BKE_object_handle_update(depsgraph, scene, object->proxy);
     }
   }
@@ -3493,7 +3494,7 @@ void BKE_object_handle_update_ex(Depsgraph *depsgraph,
   /* XXX: should this case be ID_RECALC_TRANSFORM instead? */
   if (recalc_object || recalc_data) {
     if (G.debug & G_DEBUG_DEPSGRAPH_EVAL) {
-      printf("recalcob %s\n", ob->id.name + 2);
+      CLOG_VERBOSE(&LOG, 2, "recalcob %s", ob->id.name + 2);
     }
     /* Handle proxy copy for target. */
     if (!BKE_object_eval_proxy_copy(depsgraph, ob)) {

@@ -413,8 +413,6 @@ static int do_step_cloth(
 
   BKE_effectors_free(effectors);
 
-  // printf ( "%f\n", ( float ) tval() );
-
   return ret;
 }
 

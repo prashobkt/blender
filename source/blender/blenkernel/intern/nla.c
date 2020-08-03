@@ -1034,13 +1034,14 @@ NlaTrack *BKE_nlatrack_find_tweaked(AnimData *adt)
       if (BLI_findindex(&nlt->strips, adt->actstrip) != -1) {
         return nlt;
       }
-      else if (G.debug & G_DEBUG) {
-        printf("%s: Active strip (%p, %s) not in NLA track found (%p, %s)\n",
-               __func__,
-               adt->actstrip,
-               (adt->actstrip) ? adt->actstrip->name : "<None>",
-               nlt,
-               nlt->name);
+      else {
+        CLOG_VERBOSE(&LOG,
+                     1,
+                     "Active strip (%p, %s) not in NLA track found (%p, %s)",
+                     adt->actstrip,
+                     (adt->actstrip) ? adt->actstrip->name : "<None>",
+                     nlt,
+                     nlt->name);
       }
     }
   }
@@ -1309,8 +1310,8 @@ static void nlastrip_fix_resize_overlaps(NlaStrip *strip)
       }
     }
     else if (strip->end > nls->start) {
-      /* NOTE: need to ensure we don't have a fractional frame offset, even if that leaves a gap,
-       * otherwise it will be very hard to get rid of later
+      /* NOTE: need to ensure we don't have a fractional frame offset, even if that leaves a
+       * gap, otherwise it will be very hard to get rid of later
        */
       offset = ceilf(strip->end - nls->start);
 
@@ -1358,8 +1359,8 @@ static void nlastrip_fix_resize_overlaps(NlaStrip *strip)
       }
     }
     else if (strip->start < nls->end) {
-      /* NOTE: need to ensure we don't have a fractional frame offset, even if that leaves a gap,
-       * otherwise it will be very hard to get rid of later
+      /* NOTE: need to ensure we don't have a fractional frame offset, even if that leaves a
+       * gap, otherwise it will be very hard to get rid of later
        */
       offset = ceilf(nls->end - strip->start);
 
@@ -1793,8 +1794,9 @@ void BKE_nla_validate_state(AnimData *adt)
   /* second pass over the strips to adjust the extend-mode to fix any problems */
   for (nlt = adt->nla_tracks.first; nlt; nlt = nlt->next) {
     for (strip = nlt->strips.first; strip; strip = strip->next) {
-      /* apart from 'nothing' option which user has to explicitly choose, we don't really know if
-       * we should be overwriting the extend setting (but assume that's what the user wanted)
+      /* apart from 'nothing' option which user has to explicitly choose, we don't really know
+       * if we should be overwriting the extend setting (but assume that's what the user
+       * wanted)
        */
       /* TODO: 1 solution is to tie this in with auto-blending... */
       if (strip->extendmode != NLASTRIP_EXTEND_NOTHING) {
@@ -1907,7 +1909,8 @@ bool BKE_nla_action_stash(AnimData *adt)
 
   /* also mark the strip for auto syncing the length, so that the strips accurately
    * reflect the length of the action
-   * XXX: we could do with some extra flags here to prevent repeats/scaling options from working!
+   * XXX: we could do with some extra flags here to prevent repeats/scaling options from
+   * working!
    */
   strip->flag |= NLASTRIP_FLAG_SYNC_LENGTH;
 
@@ -2032,10 +2035,10 @@ bool BKE_nla_tweakmode_enter(AnimData *adt)
     }
   }
 
-  /* There are situations where we may have multiple strips selected and we want to enter tweakmode
-   * on all of those at once. Usually in those cases,
-   * it will usually just be a single strip per AnimData.
-   * In such cases, compromise and take the last selected track and/or last selected strip, T28468.
+  /* There are situations where we may have multiple strips selected and we want to enter
+   * tweakmode on all of those at once. Usually in those cases, it will usually just be a
+   * single strip per AnimData. In such cases, compromise and take the last selected track
+   * and/or last selected strip, T28468.
    */
   if (activeTrack == NULL) {
     /* try last selected track for active strip */
@@ -2062,10 +2065,12 @@ bool BKE_nla_tweakmode_enter(AnimData *adt)
   }
 
   if (ELEM(NULL, activeTrack, activeStrip, activeStrip->act)) {
-    if (G.debug & G_DEBUG) {
-      printf("NLA tweakmode enter - neither active requirement found\n");
-      printf("\tactiveTrack = %p, activeStrip = %p\n", (void *)activeTrack, (void *)activeStrip);
-    }
+    CLOG_VERBOSE(&LOG,
+                 1,
+                 "NLA tweakmode enter - neither active requirement found"
+                 "\tactiveTrack = %p, activeStrip = %p",
+                 (void *)activeTrack,
+                 (void *)activeStrip);
     return false;
   }
 
@@ -2094,7 +2099,8 @@ bool BKE_nla_tweakmode_enter(AnimData *adt)
   }
 
   /* go over all the tracks after AND INCLUDING the active one, tagging them as being disabled
-   * - the active track needs to also be tagged, otherwise, it'll overlap with the tweaks going on
+   * - the active track needs to also be tagged, otherwise, it'll overlap with the tweaks going
+   * on
    */
   for (nlt = activeTrack; nlt; nlt = nlt->next) {
     nlt->flag |= NLATRACK_DISABLED;
@@ -2102,7 +2108,8 @@ bool BKE_nla_tweakmode_enter(AnimData *adt)
 
   /* handle AnimData level changes:
    * - 'real' active action to temp storage (no need to change user-counts).
-   * - Action of active strip set to be the 'active action', and have its usercount incremented.
+   * - Action of active strip set to be the 'active action', and have its usercount
+   * incremented.
    * - Editing-flag for this AnimData block should also get turned on
    *   (for more efficient restoring).
    * - Take note of the active strip for mapping-correction of keyframes
@@ -2175,7 +2182,8 @@ void BKE_nla_tweakmode_exit(AnimData *adt)
   }
 
   /* handle AnimData level changes:
-   * - 'temporary' active action needs its usercount decreased, since we're removing this reference
+   * - 'temporary' active action needs its usercount decreased, since we're removing this
+   * reference
    * - 'real' active action is restored from storage
    * - storage pointer gets cleared (to avoid having bad notes hanging around)
    * - editing-flag for this AnimData block should also get turned off

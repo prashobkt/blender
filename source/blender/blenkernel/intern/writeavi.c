@@ -23,6 +23,7 @@
  * \ingroup bke
  */
 
+#include <CLG_log.h>
 #include <string.h>
 
 #include "MEM_guardedalloc.h"
@@ -39,6 +40,8 @@
 #endif
 
 #include "BKE_writeavi.h"
+
+static CLG_LogRef LOG = {"bke.writeavi"};
 
 /* ********************** general blender movie support ***************************** */
 
@@ -239,7 +242,7 @@ static int start_avi(void *context_v,
   avi->interlace = 0;
   avi->odd_fields = 0;
 
-  printf("Created avi: %s\n", name);
+  CLOG_INFO(&LOG, "Created avi: %s", name);
   return 1;
 }
 
@@ -283,7 +286,7 @@ static int append_avi(void *context_v,
   }
 
   AVI_write_frame(avi, (frame - start_frame), AVI_FORMAT_RGB32, rectot, rectx * recty * 4);
-  //  printf("added frame %3d (frame %3d in avi): ", frame, frame-start_frame);
+  CLOG_DEBUG(&LOG, 3, "added frame %3d (frame %3d in avi): ", frame, frame-start_frame);
 
   return 1;
 }

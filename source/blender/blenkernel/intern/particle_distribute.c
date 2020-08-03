@@ -21,6 +21,7 @@
  * \ingroup bke
  */
 
+#include <CLG_log.h>
 #include <string.h>
 
 #include "MEM_guardedalloc.h"
@@ -47,6 +48,8 @@
 #include "BKE_particle.h"
 
 #include "DEG_depsgraph_query.h"
+
+static CLG_LogRef LOG = {"bke.particle_distribute"};
 
 static void alloc_child_particles(ParticleSystem *psys, int tot)
 {
@@ -913,8 +916,9 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx,
 
   if (!final_mesh->runtime.deformed_only &&
       !CustomData_get_layer(&final_mesh->fdata, CD_ORIGINDEX)) {
-    printf(
-        "Can't create particles with the current modifier stack, disable destructive modifiers\n");
+    CLOG_STR_ERROR(
+        &LOG,
+        "Can't create particles with the current modifier stack, disable destructive modifiers");
     // XXX error("Can't paint with the current modifier stack, disable destructive modifiers");
     return 0;
   }
@@ -1033,9 +1037,7 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx,
   if (totelem == 0) {
     distribute_invalid(sim, children ? PART_FROM_CHILD : 0);
 
-    if (G.debug & G_DEBUG) {
-      fprintf(stderr, "Particle distribution error: Nothing to emit from!\n");
-    }
+    CLOG_ERROR(&LOG, "Particle distribution error: Nothing to emit from!");
 
     if (mesh != final_mesh) {
       BKE_id_free(NULL, mesh);
@@ -1366,7 +1368,7 @@ static void distribute_particles_on_shape(ParticleSimulationData *sim, int UNUSE
 {
   distribute_invalid(sim, 0);
 
-  fprintf(stderr, "Shape emission not yet possible!\n");
+  CLOG_STR_ERROR(&LOG, "Shape emission not yet possible!");
 }
 
 void distribute_particles(ParticleSimulationData *sim, int from)
@@ -1389,6 +1391,6 @@ void distribute_particles(ParticleSimulationData *sim, int from)
   if (distr_error) {
     distribute_invalid(sim, from);
 
-    fprintf(stderr, "Particle distribution error!\n");
+    CLOG_STR_ERROR(&LOG, "Particle distribution error!");
   }
 }

@@ -1448,10 +1448,10 @@ void BKE_mask_layer_calc_handles(MaskLayer *masklay)
 void BKE_mask_spline_ensure_deform(MaskSpline *spline)
 {
   int allocated_points = (MEM_allocN_len(spline->points_deform) / sizeof(*spline->points_deform));
-  // printf("SPLINE ALLOC %p %d\n", spline->points_deform, allocated_points);
+  CLOG_DEBUG(&LOG, 0, "SPLINE ALLOC %p %d", spline->points_deform, allocated_points);
 
   if (spline->points_deform == NULL || allocated_points != spline->tot_point) {
-    // printf("alloc new deform spline\n");
+    CLOG_DEBUG(&LOG, 1, "alloc new deform spline");
 
     if (spline->points_deform) {
       int i;
@@ -1468,7 +1468,7 @@ void BKE_mask_spline_ensure_deform(MaskSpline *spline)
                                         __func__);
   }
   else {
-    // printf("alloc spline done\n");
+    CLOG_DEBUG(&LOG, 0, "alloc spline done");
   }
 }
 

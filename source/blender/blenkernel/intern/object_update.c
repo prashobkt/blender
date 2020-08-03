@@ -29,6 +29,7 @@
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_scene_types.h"
+#include <CLG_log.h>
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
@@ -65,6 +66,8 @@
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
+
+static CLG_LogRef LOG = {"bke.object_update"};
 
 /**
  * Restore the object->data to a non-modifier evaluated state.
@@ -196,9 +199,10 @@ void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
     case OB_ARMATURE:
       if (ID_IS_LINKED(ob) && ob->proxy_from) {
         if (BKE_pose_copy_result(ob->pose, ob->proxy_from->pose) == false) {
-          printf("Proxy copy error, lib Object: %s proxy Object: %s\n",
-                 ob->id.name + 2,
-                 ob->proxy_from->id.name + 2);
+          CLOG_ERROR(&LOG,
+                     "Proxy copy error, lib Object: %s proxy Object: %s",
+                     ob->id.name + 2,
+                     ob->proxy_from->id.name + 2);
         }
       }
       else {

@@ -149,7 +149,7 @@ typedef struct SB_thread_context {
 #define BSF_INTERSECT 1 /* edge intersects collider face */
 
 /* private definitions for bodypoint states */
-#define SBF_DOFUZZY 1        /* Bodypoint do fuzzy */
+#define SBF_DOFUZZY 1 /* Bodypoint do fuzzy */
 #define SBF_OUTOFCOLLISION 2 /* Bodypoint does not collide  */
 
 #define BFF_INTERSECT 1 /* collider edge   intrudes face */
@@ -1996,7 +1996,7 @@ static int _softbody_calc_forces_slice_in_a_thread(Scene *scene,
 
   /* debugerin */
   if (sb->totpoint < ifirst) {
-    printf("Aye 998");
+    CLOG_VERBOSE(&LOG, 0, "Aye 998");
     return (998);
   }
   /* debugerin */
@@ -2225,7 +2225,7 @@ static void sb_cf_threads_run(Scene *scene,
     totthread--;
   }
 
-  /* printf("sb_cf_threads_run spawning %d threads\n", totthread); */
+  CLOG_DEBUG(&LOG, 0, "spawning %d threads", totthread);
 
   sb_threads = MEM_callocN(sizeof(SB_thread_context) * totthread, "SBThread");
   memset(sb_threads, 0, sizeof(SB_thread_context) * totthread);
@@ -2479,7 +2479,7 @@ static void softbody_apply_forces(Object *ob, float forcetime, int mode, float *
     else {
       *err = maxerrpos;
     }
-    // printf("EP %f EV %f\n", maxerrpos, maxerrvel);
+    CLOG_DEBUG(&LOG, 1, "EP %f EV %f", maxerrpos, maxerrvel);
     if (fuzzy) {
       *err /= sb->fuzzyness;
     }
@@ -2812,7 +2812,7 @@ static void reference_to_scratch(Object *ob)
   }
   mul_v3_fl(accu_pos, 1.0f / accu_mass);
   copy_v3_v3(sb->scratch->Ref.com, accu_pos);
-  /* printf("reference_to_scratch\n"); */
+  CLOG_DEBUG(&LOG, 5, "reference_to_scratch");
 }
 
 /*
@@ -3439,7 +3439,7 @@ static void softbody_step(
         if (forcetime > forcetimemin) {
           forcetime = max_ff(forcetime / 2.0f, forcetimemin);
           softbody_restore_prev_step(ob);
-          // printf("down, ");
+          CLOG_DEBUG(&LOG, 0, "step down, ");
         }
         else {
           timedone += forcetime;
@@ -3461,7 +3461,9 @@ static void softbody_step(
         }
         timedone += forcetime;
         newtime = min_ff(forcetimemax, max_ff(newtime, forcetimemin));
-        // if (newtime > forcetime) printf("up, ");
+         if (newtime > forcetime) {
+             CLOG_DEBUG(&LOG, 0, "step up, ");
+         }
         if (forcetime > 0.0f) {
           forcetime = min_ff(dtime - timedone, newtime);
         }
@@ -3473,7 +3475,7 @@ static void softbody_step(
       if (sb->solverflags & SBSO_MONITOR) {
         sct = PIL_check_seconds_timer();
         if (sct - sst > 0.5) {
-          printf("%3.0f%% \r", 100.0f * timedone / dtime);
+          CLOG_VERBOSE(&LOG, 2, "%3.0f%% ", 100.0f * timedone / dtime);
         }
       }
       /* ask for user break */
@@ -3485,10 +3487,9 @@ static void softbody_step(
     interpolate_exciter(ob, 2, 2);
     softbody_apply_goalsnap(ob);
 
-    //              if (G.debug & G_DEBUG) {
     if (sb->solverflags & SBSO_MONITOR) {
       if (loops > HEUNWARNLIMIT) { /* monitor high loop counts */
-        printf("\r needed %d steps/frame", loops);
+        CLOG_VERBOSE(&LOG, 3, "needed %d steps/frame", loops);
       }
     }
   }
@@ -3514,7 +3515,7 @@ static void softbody_step(
   if (sb->solverflags & SBSO_MONITOR) {
     sct = PIL_check_seconds_timer();
     if ((sct - sst > 0.5) || (G.debug & G_DEBUG)) {
-      printf(" solver time %f sec %s\n", sct - sst, ob->id.name);
+      CLOG_DEBUG(&LOG, 0, "solver time %f sec %s", sct - sst, ob->id.name);
     }
   }
 }

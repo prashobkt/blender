@@ -23,6 +23,7 @@
  * This file contains blender-side implementation of camera solver.
  */
 
+#include <CLG_log.h>
 #include <limits.h>
 
 #include "MEM_guardedalloc.h"
@@ -45,6 +46,8 @@
 
 #include "libmv-capi.h"
 #include "tracking_private.h"
+
+static CLG_LogRef LOG = {"bke.tracking_solver"};
 
 typedef struct MovieReconstructContext {
   struct libmv_Tracks *tracks;
@@ -181,7 +184,7 @@ static bool reconstruct_retrieve_libmv_tracks(MovieReconstructContext *context,
       track->flag &= ~TRACK_HAS_BUNDLE;
       ok = false;
 
-      printf("Unable to reconstruct position for track #%d '%s'\n", tracknr, track->name);
+      CLOG_ERROR(&LOG, "Unable to reconstruct position for track #%d '%s'", tracknr, track->name);
     }
 
     track = track->next;
@@ -237,7 +240,7 @@ static bool reconstruct_retrieve_libmv_tracks(MovieReconstructContext *context,
     }
     else {
       ok = false;
-      printf("No camera for frame %d\n", a);
+      CLOG_ERROR(&LOG, "No camera for frame %d", a);
     }
   }
 

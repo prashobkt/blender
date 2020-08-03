@@ -283,6 +283,14 @@ typedef struct SubdivCCGNeighbors {
   SubdivCCGCoord coords_fixed[256];
 } SubdivCCGNeighbors;
 
+/** healthy alternative to BKE_subdiv_ccg_print_coord */
+#define CLOG_VERBOSE_SUBDIV_CCG_COORD(log_ref, level, coord) /* const SubdivCCGCoord *coord */\
+  CLOG_VERBOSE(log_ref, \
+               level, \
+               "grid index: %d, coord: (%d, %d)\n", \
+               coord->grid_index, \
+               coord->x, \
+               coord->y)
 void BKE_subdiv_ccg_print_coord(const char *message, const SubdivCCGCoord *coord);
 bool BKE_subdiv_ccg_check_coord_valid(const SubdivCCG *subdiv_ccg, const SubdivCCGCoord *coord);
 
