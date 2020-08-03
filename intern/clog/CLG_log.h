@@ -216,7 +216,8 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #  define CLOG_DEBUG_CHECK_IN_USE(clg_ref) false
 #endif  // DEBUG
 
-#define CLOG_CHECK_VERBOSITY(clg_ref, verbose_level, ...) \
+/** check verbosity/debug level when using severity DEBUG/VERBOSE */
+#define CLOG_CHECK_LEVEL(clg_ref, verbose_level, ...) \
   (CLOG_CHECK_IN_USE(clg_ref) && ((clg_ref)->type->severity_level <= CLG_SEVERITY_VERBOSE) && \
    ((clg_ref)->type->verbosity_level >= verbose_level))
 

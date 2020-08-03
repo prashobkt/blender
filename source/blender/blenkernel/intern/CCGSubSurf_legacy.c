@@ -1304,7 +1304,7 @@ void ccgSubSurf__sync_legacy(CCGSubSurf *ss)
   MEM_freeN(effectedE);
   MEM_freeN(effectedV);
 
-  if (CLOG_CHECK_VERBOSITY(BKE_LOG_SUBSURF_DUMP_COORDS, 2)) {
+  if (CLOG_CHECK_LEVEL(BKE_LOG_SUBSURF_DUMP_COORDS, 2)) {
     CLOG_VERBOSE(BKE_LOG_SUBSURF_DUMP_COORDS, 2, "Dump subsufr %p", ss);
     ccgSubSurf__dumpCoords(ss);
   }

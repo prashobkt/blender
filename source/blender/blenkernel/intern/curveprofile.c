@@ -863,7 +863,7 @@ void BKE_curveprofile_create_samples(CurveProfile *profile,
     BLI_assert(i_sample <= n_segments);
   }
 
-  if (CLOG_CHECK_VERBOSITY(&BKE_LOG_CURVEPROFILE_TABLE, 2)) {
+  if (CLOG_CHECK_LEVEL(&BKE_LOG_CURVEPROFILE_TABLE, 2)) {
     DynStr *message = BLI_dynstr_new();
     BLI_dynstr_appendf(message,
                        "CURVEPROFILE CREATE SAMPLES\n"

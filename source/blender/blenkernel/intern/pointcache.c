@@ -4160,7 +4160,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
       baker->update_progress(baker->bake_job, progress, &cancel);
     }
 
-    if (CLOG_CHECK_VERBOSITY(&LOG, 2)) {
+    if (CLOG_CHECK_LEVEL(&LOG, 2)) {
       ctime = PIL_check_seconds_timer();
 
       fetd = (ctime - ptime) * (endframe - CFRA) / baker->quick_step;

@@ -1382,7 +1382,7 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
             const bScreen *screen = WM_window_get_active_screen(win);
 
             /* debug prints */
-            if (CLOG_CHECK_VERBOSITY(WM_LOG_EVENTS, 1)) {
+            if (CLOG_CHECK_LEVEL(WM_LOG_EVENTS, 1)) {
               const char *state_str;
               state = GHOST_GetWindowState(win->ghostwin);
 
