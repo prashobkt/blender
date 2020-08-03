@@ -206,12 +206,27 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #define CLOG_ENSURE(clg_ref) \
   ((clg_ref)->type ? (clg_ref)->type : (CLG_logref_init(clg_ref), (clg_ref)->type))
 
-#define CLOG_CHECK_IN_USE(clg_ref, ...) \
+#define CLOG_CHECK_IN_USE(clg_ref) \
   ((void)CLOG_ENSURE(clg_ref), ((clg_ref)->type->flag & CLG_FLAG_USE))
+
+#ifdef DEBUG
+/** same as CLOG_CHECK_IN_USE, but will be automatically disable in release build */
+#  define CLOG_DEBUG_CHECK_IN_USE(clg_ref) CLOG_CHECK_IN_USE(clg_ref)
+#else
+#  define CLOG_DEBUG_CHECK_IN_USE(clg_ref) false
+#endif  // DEBUG
 
 #define CLOG_CHECK_VERBOSITY(clg_ref, verbose_level, ...) \
   (CLOG_CHECK_IN_USE(clg_ref) && ((clg_ref)->type->severity_level <= CLG_SEVERITY_VERBOSE) && \
    ((clg_ref)->type->verbosity_level >= verbose_level))
+
+#ifdef DEBUG
+/** same as CLOG_CHECK_LEVEL, but will be automatically disable in release build */
+#  define CLOG_DEBUG_CHECK_LEVEL(clg_ref, verbose_level, ...) \
+    CLOG_CHECK_LEVEL(clg_ref, verbose_level, __VA_ARGS__)
+#else
+#  define CLOG_DEBUG_CHECK_LEVEL(clg_ref, verbose_level, ...) (void)0
+#endif  // DEBUG
 
 #define CLOG_AT_SEVERITY(clg_ref, severity, verbose_level, ...) \
   { \
