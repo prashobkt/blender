@@ -38,34 +38,34 @@ struct LineartStaticMemPoolNode;
 struct LineartRenderLine;
 struct LineartRenderBuffer;
 
-void *list_append_pointer_static(ListBase *h, struct LineartStaticMemPool *smp, void *p);
-void *list_append_pointer_static_sized(ListBase *h,
-                                       struct LineartStaticMemPool *smp,
-                                       void *p,
-                                       int size);
+void *lineart_list_append_pointer_static(ListBase *h, struct LineartStaticMemPool *smp, void *p);
+void *lineart_list_append_pointer_static_sized(ListBase *h,
+                                               struct LineartStaticMemPool *smp,
+                                               void *p,
+                                               int size);
 void *list_push_pointer_static(ListBase *h, struct LineartStaticMemPool *smp, void *p);
 void *list_push_pointer_static_sized(ListBase *h,
                                      struct LineartStaticMemPool *smp,
                                      void *p,
                                      int size);
 
-void *list_append_pointer_static_pool(struct LineartStaticMemPool *mph, ListBase *h, void *p);
-void *list_pop_pointer_no_free(ListBase *h);
-void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip);
+void *lineart_list_pop_pointer_no_free(ListBase *h);
+void lineart_list_remove_pointer_item_no_free(ListBase *h, LinkData *lip);
 
-LineartStaticMemPoolNode *mem_new_static_pool(struct LineartStaticMemPool *smp, size_t size);
-void *mem_static_aquire(struct LineartStaticMemPool *smp, size_t size);
-void *mem_static_aquire_thread(struct LineartStaticMemPool *smp, size_t size);
-void *mem_static_destroy(LineartStaticMemPool *smp);
+LineartStaticMemPoolNode *lineart_mem_new_static_pool(struct LineartStaticMemPool *smp,
+                                                      size_t size);
+void *lineart_mem_aquire(struct LineartStaticMemPool *smp, size_t size);
+void *lineart_mem_aquire_thread(struct LineartStaticMemPool *smp, size_t size);
+void *lineart_mem_destroy(LineartStaticMemPool *smp);
 
-void tmat_make_ortho_matrix_44d(double (*mProjection)[4],
-                                double xMin,
-                                double xMax,
-                                double yMin,
-                                double yMax,
-                                double zMin,
-                                double zMax);
-void tmat_make_perspective_matrix_44d(
+void lineart_matrix_ortho_44d(double (*mProjection)[4],
+                              double xMin,
+                              double xMax,
+                              double yMin,
+                              double yMax,
+                              double zMin,
+                              double zMax);
+void lineart_matrix_perspective_44d(
     double (*mProjection)[4], double fFov_rad, double fAspect, double zMin, double zMax);
 
 int lineart_count_intersection_segment_count(struct LineartRenderBuffer *rb);

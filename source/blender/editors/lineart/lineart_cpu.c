@@ -163,7 +163,7 @@ static void lineart_render_line_cut(LineartRenderBuffer *rb,
     irls = rls->next;
     if (irls->at > start + 1e-09 && start > rls->at) {
       start_segment = irls;
-      ns = mem_static_aquire_thread(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+      ns = lineart_mem_aquire_thread(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
       break;
     }
   }
@@ -186,13 +186,13 @@ static void lineart_render_line_cut(LineartRenderBuffer *rb,
     }
     else if (rls->at > end) {
       end_segment = rls;
-      ns2 = mem_static_aquire_thread(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+      ns2 = lineart_mem_aquire_thread(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
       break;
     }
   }
 
   if (ns == NULL) {
-    ns = mem_static_aquire_thread(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+    ns = lineart_mem_aquire_thread(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
   }
   if (ns2 == NULL) {
     if (untouched) {
@@ -200,7 +200,7 @@ static void lineart_render_line_cut(LineartRenderBuffer *rb,
       end_segment = ns2;
     }
     else
-      ns2 = mem_static_aquire_thread(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+      ns2 = lineart_mem_aquire_thread(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
   }
 
   if (start_segment) {
@@ -508,8 +508,8 @@ static int lineart_point_on_lined(double v[2], double v0[2], double v1[2])
 {
   double c1, c2;
 
-  c1 = tmat_get_linear_ratio(v0[0], v1[0], v[0]);
-  c2 = tmat_get_linear_ratio(v0[1], v1[1], v[1]);
+  c1 = lineart_get_linear_ratio(v0[0], v1[0], v[0]);
+  c2 = lineart_get_linear_ratio(v0[1], v1[1], v[1]);
 
   if (LRT_DOUBLE_CLOSE_ENOUGH(c1, c2) && c1 >= 0 && c1 <= 1) {
     return 1;
@@ -599,14 +599,14 @@ static LineartRenderElementLinkNode *lineart_memory_get_triangle_space(LineartRe
 {
   LineartRenderElementLinkNode *reln;
 
-  LineartRenderTriangle *render_triangles = mem_static_aquire(
+  LineartRenderTriangle *render_triangles = lineart_mem_aquire(
       &rb->render_data_pool,
       64 * rb->triangle_size); /*  CreateNewBuffer(LineartRenderTriangle, 64); */
 
-  reln = list_append_pointer_static_sized(&rb->triangle_buffer_pointers,
-                                          &rb->render_data_pool,
-                                          render_triangles,
-                                          sizeof(LineartRenderElementLinkNode));
+  reln = lineart_list_append_pointer_static_sized(&rb->triangle_buffer_pointers,
+                                                  &rb->render_data_pool,
+                                                  render_triangles,
+                                                  sizeof(LineartRenderElementLinkNode));
   reln->element_count = 64;
   reln->additional = 1;
 
@@ -617,13 +617,13 @@ static LineartRenderElementLinkNode *lineart_memory_get_vert_space(LineartRender
 {
   LineartRenderElementLinkNode *reln;
 
-  LineartRenderVert *render_vertices = mem_static_aquire(&rb->render_data_pool,
-                                                         sizeof(LineartRenderVert) * 64);
+  LineartRenderVert *render_vertices = lineart_mem_aquire(&rb->render_data_pool,
+                                                          sizeof(LineartRenderVert) * 64);
 
-  reln = list_append_pointer_static_sized(&rb->vertex_buffer_pointers,
-                                          &rb->render_data_pool,
-                                          render_vertices,
-                                          sizeof(LineartRenderElementLinkNode));
+  reln = lineart_list_append_pointer_static_sized(&rb->vertex_buffer_pointers,
+                                                  &rb->render_data_pool,
+                                                  render_vertices,
+                                                  sizeof(LineartRenderElementLinkNode));
   reln->element_count = 64;
   reln->additional = 1;
 
@@ -807,8 +807,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rt->rl[2]->next = rt->rl[2]->prev = 0;
 
             /* New line connecting two new points */
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             /** note: inverting rl->l/r (left/right point) doesn't matter as long as
@@ -824,8 +824,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rl->object_ref = ob;
 
             /* new line connecting original point 0 and a new point */
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[1];
@@ -837,8 +837,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rl->object_ref = ob;
 
             /* new line connecting original point 0 and another new point */
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[0];
@@ -884,8 +884,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[2]);
             rt->rl[2]->next = rt->rl[2]->prev = 0;
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[0];
@@ -894,8 +894,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rt1->rl[0] = rl;
             rl->object_ref = ob;
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[1];
@@ -905,8 +905,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rt1->rl[1] = rl;
             rl->object_ref = ob;
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[2];
@@ -950,8 +950,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[2]);
             rt->rl[2]->next = rt->rl[2]->prev = 0;
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[1];
@@ -960,8 +960,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rt1->rl[2] = rl;
             rl->object_ref = ob;
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[0];
@@ -971,8 +971,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rt1->rl[0] = rl;
             rl->object_ref = ob;
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[1];
@@ -1046,8 +1046,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rt->rl[2]->next = rt->rl[2]->prev = 0;
 
             /* New line connects two new points */
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[1];
@@ -1059,8 +1059,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             /** New line connects new point 0 and old point 1,
              * this is a border line.
              */
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[0];
@@ -1073,8 +1073,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             /** New line connects new point 1 and old point 1,
              * this is a inner line separating newly generated triangles.
              */
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[1];
@@ -1093,8 +1093,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             /** New line connects new point 1 and old point 2,
              * this is also a border line.
              */
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[2];
@@ -1140,8 +1140,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[1]);
             rt->rl[1]->next = rt->rl[1]->prev = 0;
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[1];
@@ -1150,8 +1150,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rt1->rl[1] = rl;
             rl->object_ref = ob;
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[0];
@@ -1161,8 +1161,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rt1->rl[2] = rl;
             rl->object_ref = ob;
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[2];
@@ -1177,8 +1177,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rt1->v[1] = &rv[1];
             rt1->v[2] = &rv[0];
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[0];
@@ -1223,8 +1223,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             BLI_remlink(&rb->all_render_lines, (void *)rt->rl[2]);
             rt->rl[2]->next = rt->rl[2]->prev = 0;
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[1];
@@ -1233,8 +1233,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rt1->rl[1] = rl;
             rl->object_ref = ob;
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[0];
@@ -1244,8 +1244,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rt1->rl[2] = rl;
             rl->object_ref = ob;
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[0];
@@ -1260,8 +1260,8 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rt1->v[1] = &rv[1];
             rt1->v[2] = &rv[0];
 
-            rl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
-            rls = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
+            rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+            rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[1];
@@ -1386,30 +1386,30 @@ static void lineart_geometry_object_load(Object *ob,
       CanFindFreestyle = 1;
     }
 
-    orv = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderVert) * bm->totvert);
-    ort = mem_static_aquire(&rb->render_data_pool, bm->totface * rb->triangle_size);
-    orl = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine) * bm->totedge);
+    orv = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderVert) * bm->totvert);
+    ort = lineart_mem_aquire(&rb->render_data_pool, bm->totface * rb->triangle_size);
+    orl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine) * bm->totedge);
 
     orig_ob = ob->id.orig_id ? (Object *)ob->id.orig_id : ob;
 
-    reln = list_append_pointer_static_sized(&rb->vertex_buffer_pointers,
-                                            &rb->render_data_pool,
-                                            orv,
-                                            sizeof(LineartRenderElementLinkNode));
+    reln = lineart_list_append_pointer_static_sized(&rb->vertex_buffer_pointers,
+                                                    &rb->render_data_pool,
+                                                    orv,
+                                                    sizeof(LineartRenderElementLinkNode));
     reln->element_count = bm->totvert;
     reln->object_ref = orig_ob;
 
-    reln = list_append_pointer_static_sized(&rb->line_buffer_pointers,
-                                            &rb->render_data_pool,
-                                            orl,
-                                            sizeof(LineartRenderElementLinkNode));
+    reln = lineart_list_append_pointer_static_sized(&rb->line_buffer_pointers,
+                                                    &rb->render_data_pool,
+                                                    orl,
+                                                    sizeof(LineartRenderElementLinkNode));
     reln->element_count = bm->totedge;
     reln->object_ref = orig_ob;
 
-    reln = list_append_pointer_static_sized(&rb->triangle_buffer_pointers,
-                                            &rb->render_data_pool,
-                                            ort,
-                                            sizeof(LineartRenderElementLinkNode));
+    reln = lineart_list_append_pointer_static_sized(&rb->triangle_buffer_pointers,
+                                                    &rb->render_data_pool,
+                                                    ort,
+                                                    sizeof(LineartRenderElementLinkNode));
     reln->element_count = bm->totface;
     reln->object_ref = orig_ob;
 
@@ -1438,8 +1438,8 @@ static void lineart_geometry_object_load(Object *ob,
 
       rl->object_ref = orig_ob;
 
-      LineartRenderLineSegment *rls = mem_static_aquire(&rb->render_data_pool,
-                                                        sizeof(LineartRenderLineSegment));
+      LineartRenderLineSegment *rls = lineart_mem_aquire(&rb->render_data_pool,
+                                                         sizeof(LineartRenderLineSegment));
       BLI_addtail(&rl->segments, rls);
       if (usage == OBJECT_FEATURE_LINE_INHERENT) {
         BLI_addtail(&rb->all_render_lines, rl);
@@ -1555,11 +1555,11 @@ static void lineart_main_load_geometries(Depsgraph *depsgraph,
     double asp = ((double)rb->w / (double)rb->h);
 
     if (cam->type == CAM_PERSP) {
-      tmat_make_perspective_matrix_44d(proj, fov, asp, cam->clip_start, cam->clip_end);
+      lineart_matrix_perspective_44d(proj, fov, asp, cam->clip_start, cam->clip_end);
     }
     else if (cam->type == CAM_ORTHO) {
       double w = cam->ortho_scale / 2;
-      tmat_make_ortho_matrix_44d(proj, -w, w, -w / asp, w / asp, cam->clip_start, cam->clip_end);
+      lineart_matrix_ortho_44d(proj, -w, w, -w / asp, w / asp, cam->clip_start, cam->clip_end);
     }
     invert_m4_m4(inv, camera->obmat);
     mul_m4db_m4db_m4fl_uniq(result, proj, inv);
@@ -1751,10 +1751,10 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl
 
   /* To accomodate k=0 and k=inf (vertical) lines. */
   if (fabs(rl->l->fbcoord[0] - rl->r->fbcoord[0]) > fabs(rl->l->fbcoord[1] - rl->r->fbcoord[1])) {
-    cut = tmat_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], trans[0]);
+    cut = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], trans[0]);
   }
   else {
-    cut = tmat_get_linear_ratio(rl->l->fbcoord[1], rl->r->fbcoord[1], trans[1]);
+    cut = lineart_get_linear_ratio(rl->l->fbcoord[1], rl->r->fbcoord[1], trans[1]);
   }
 
   if (st_l == 2) {
@@ -1943,7 +1943,7 @@ static LineartRenderVert *lineart_triangle_line_intersection_test(LineartRenderB
     return NULL;
   }
 
-  result = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderVert));
+  result = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderVert));
 
   result->edge_used = 1;
 
@@ -1983,7 +1983,7 @@ static LineartRenderLine *lineart_triangle_generate_intersection_line_only(
     LineartRenderVert *new_share;
     LineartRenderLine *rl = lineart_another_edge(rt, share);
 
-    l = new_share = mem_static_aquire(&rb->render_data_pool, (sizeof(LineartRenderVert)));
+    l = new_share = lineart_mem_aquire(&rb->render_data_pool, (sizeof(LineartRenderVert)));
 
     new_share->edge_used = 1;
     new_share->v = (void *)
@@ -2081,17 +2081,17 @@ static LineartRenderLine *lineart_triangle_generate_intersection_line_only(
   l->intersecting_with = rt;
   r->intersecting_with = testing;
 
-  result = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
+  result = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
   result->l = l;
   result->r = r;
   result->tl = rt;
   result->tr = testing;
-  LineartRenderLineSegment *rls = mem_static_aquire(&rb->render_data_pool,
-                                                    sizeof(LineartRenderLineSegment));
+  LineartRenderLineSegment *rls = lineart_mem_aquire(&rb->render_data_pool,
+                                                     sizeof(LineartRenderLineSegment));
   BLI_addtail(&result->segments, rls);
   BLI_addtail(&rb->all_render_lines, result);
   result->flags |= LRT_EDGE_FLAG_INTERSECTION;
-  list_append_pointer_static(&rb->intersection_lines, &rb->render_data_pool, result);
+  lineart_list_append_pointer_static(&rb->intersection_lines, &rb->render_data_pool, result);
   int r1, r2, c1, c2, row, col;
   if (lineart_get_line_bounding_areas(rb, result, &r1, &r2, &c1, &c2)) {
     for (row = r1; row != r2 + 1; row++) {
@@ -2237,23 +2237,23 @@ static void lineart_compute_scene_contours(LineartRenderBuffer *rb, const float 
 
     if (rb->use_contour && (add == 1)) {
       rl->flags |= LRT_EDGE_FLAG_CONTOUR;
-      list_append_pointer_static(&rb->contours, &rb->render_data_pool, rl);
+      lineart_list_append_pointer_static(&rb->contours, &rb->render_data_pool, rl);
       contour_count++;
     }
     else if (add == 2) {
       rl->flags |= LRT_EDGE_FLAG_CREASE;
-      list_append_pointer_static(&rb->crease_lines, &rb->render_data_pool, rl);
+      lineart_list_append_pointer_static(&rb->crease_lines, &rb->render_data_pool, rl);
       crease_count++;
     }
     else if (rb->use_material && (add == 3)) {
       rl->flags |= LRT_EDGE_FLAG_MATERIAL;
-      list_append_pointer_static(&rb->material_lines, &rb->render_data_pool, rl);
+      lineart_list_append_pointer_static(&rb->material_lines, &rb->render_data_pool, rl);
       material_count++;
     }
     else if (rb->use_edge_marks && (rl->flags & LRT_EDGE_FLAG_EDGE_MARK)) {
       /*  no need to mark again */
       add = 4;
-      list_append_pointer_static(&rb->edge_marks, &rb->render_data_pool, rl);
+      lineart_list_append_pointer_static(&rb->edge_marks, &rb->render_data_pool, rl);
       /*  continue; */
     }
     if (add) {
@@ -2306,7 +2306,7 @@ static void lineart_destroy_render_data(void)
   BLI_spin_end(&rb->lock_task);
   BLI_spin_end(&rb->render_data_pool.lock_mem);
 
-  mem_static_destroy(&rb->render_data_pool);
+  lineart_mem_destroy(&rb->render_data_pool);
 }
 
 void ED_lineart_destroy_render_data(void)
@@ -2502,7 +2502,7 @@ static void lineart_bounding_area_make_initial(LineartRenderBuffer *rb)
   rb->height_per_tile = span_h;
 
   rb->bounding_area_count = sp_w * sp_h;
-  rb->initial_bounding_areas = mem_static_aquire(
+  rb->initial_bounding_areas = lineart_mem_aquire(
       &rb->render_data_pool, sizeof(LineartBoundingArea) * rb->bounding_area_count);
 
   for (row = 0; row < sp_h; row++) {
@@ -2518,19 +2518,19 @@ static void lineart_bounding_area_make_initial(LineartRenderBuffer *rb)
       ba->cy = (ba->u + ba->b) / 2;
 
       if (row) {
-        list_append_pointer_static(
+        lineart_list_append_pointer_static(
             &ba->up, &rb->render_data_pool, &rb->initial_bounding_areas[(row - 1) * 4 + col]);
       }
       if (col) {
-        list_append_pointer_static(
+        lineart_list_append_pointer_static(
             &ba->lp, &rb->render_data_pool, &rb->initial_bounding_areas[row * 4 + col - 1]);
       }
       if (row != sp_h - 1) {
-        list_append_pointer_static(
+        lineart_list_append_pointer_static(
             &ba->bp, &rb->render_data_pool, &rb->initial_bounding_areas[(row + 1) * 4 + col]);
       }
       if (col != sp_w - 1) {
-        list_append_pointer_static(
+        lineart_list_append_pointer_static(
             &ba->rp, &rb->render_data_pool, &rb->initial_bounding_areas[row * 4 + col + 1]);
       }
     }
@@ -2544,14 +2544,14 @@ static void lineart_bounding_areas_connect_new(LineartRenderBuffer *rb, LineartB
   LineartStaticMemPool *mph = &rb->render_data_pool;
 
   /* Inter-connection with newly created 4 child bounding areas. */
-  list_append_pointer_static_pool(mph, &ba[1].rp, &ba[0]);
-  list_append_pointer_static_pool(mph, &ba[0].lp, &ba[1]);
-  list_append_pointer_static_pool(mph, &ba[1].bp, &ba[2]);
-  list_append_pointer_static_pool(mph, &ba[2].up, &ba[1]);
-  list_append_pointer_static_pool(mph, &ba[2].rp, &ba[3]);
-  list_append_pointer_static_pool(mph, &ba[3].lp, &ba[2]);
-  list_append_pointer_static_pool(mph, &ba[3].up, &ba[0]);
-  list_append_pointer_static_pool(mph, &ba[0].bp, &ba[3]);
+  lineart_list_append_pointer_static(&ba[1].rp, mph, &ba[0]);
+  lineart_list_append_pointer_static(&ba[0].lp, mph, &ba[1]);
+  lineart_list_append_pointer_static(&ba[1].bp, mph, &ba[2]);
+  lineart_list_append_pointer_static(&ba[2].up, mph, &ba[1]);
+  lineart_list_append_pointer_static(&ba[2].rp, mph, &ba[3]);
+  lineart_list_append_pointer_static(&ba[3].lp, mph, &ba[2]);
+  lineart_list_append_pointer_static(&ba[3].up, mph, &ba[0]);
+  lineart_list_append_pointer_static(&ba[0].bp, mph, &ba[3]);
 
   /** Connect 4 child bounding areas to other areas that are
    * adjacent to their original parents */
@@ -2566,45 +2566,45 @@ static void lineart_bounding_areas_connect_new(LineartRenderBuffer *rb, LineartB
      * the two new areas on the left side of the parent,
      * then add them to the adjacent list as well. */
     if (ba[1].u > tba->b && ba[1].b < tba->u) {
-      list_append_pointer_static_pool(mph, &ba[1].lp, tba);
-      list_append_pointer_static_pool(mph, &tba->rp, &ba[1]);
+      lineart_list_append_pointer_static(&ba[1].lp, mph, tba);
+      lineart_list_append_pointer_static(&tba->rp, mph, &ba[1]);
     }
     if (ba[2].u > tba->b && ba[2].b < tba->u) {
-      list_append_pointer_static_pool(mph, &ba[2].lp, tba);
-      list_append_pointer_static_pool(mph, &tba->rp, &ba[2]);
+      lineart_list_append_pointer_static(&ba[2].lp, mph, tba);
+      lineart_list_append_pointer_static(&tba->rp, mph, &ba[2]);
     }
   }
   LISTBASE_FOREACH (LinkData *, lip, &root->rp) {
     tba = lip->data;
     if (ba[0].u > tba->b && ba[0].b < tba->u) {
-      list_append_pointer_static_pool(mph, &ba[0].rp, tba);
-      list_append_pointer_static_pool(mph, &tba->lp, &ba[0]);
+      lineart_list_append_pointer_static(&ba[0].rp, mph, tba);
+      lineart_list_append_pointer_static(&tba->lp, mph, &ba[0]);
     }
     if (ba[3].u > tba->b && ba[3].b < tba->u) {
-      list_append_pointer_static_pool(mph, &ba[3].rp, tba);
-      list_append_pointer_static_pool(mph, &tba->lp, &ba[3]);
+      lineart_list_append_pointer_static(&ba[3].rp, mph, tba);
+      lineart_list_append_pointer_static(&tba->lp, mph, &ba[3]);
     }
   }
   LISTBASE_FOREACH (LinkData *, lip, &root->up) {
     tba = lip->data;
     if (ba[0].r > tba->l && ba[0].l < tba->r) {
-      list_append_pointer_static_pool(mph, &ba[0].up, tba);
-      list_append_pointer_static_pool(mph, &tba->bp, &ba[0]);
+      lineart_list_append_pointer_static(&ba[0].up, mph, tba);
+      lineart_list_append_pointer_static(&tba->bp, mph, &ba[0]);
     }
     if (ba[1].r > tba->l && ba[1].l < tba->r) {
-      list_append_pointer_static_pool(mph, &ba[1].up, tba);
-      list_append_pointer_static_pool(mph, &tba->bp, &ba[1]);
+      lineart_list_append_pointer_static(&ba[1].up, mph, tba);
+      lineart_list_append_pointer_static(&tba->bp, mph, &ba[1]);
     }
   }
   LISTBASE_FOREACH (LinkData *, lip, &root->bp) {
     tba = lip->data;
     if (ba[2].r > tba->l && ba[2].l < tba->r) {
-      list_append_pointer_static_pool(mph, &ba[2].bp, tba);
-      list_append_pointer_static_pool(mph, &tba->up, &ba[2]);
+      lineart_list_append_pointer_static(&ba[2].bp, mph, tba);
+      lineart_list_append_pointer_static(&tba->up, mph, &ba[2]);
     }
     if (ba[3].r > tba->l && ba[3].l < tba->r) {
-      list_append_pointer_static_pool(mph, &ba[3].bp, tba);
-      list_append_pointer_static_pool(mph, &tba->up, &ba[3]);
+      lineart_list_append_pointer_static(&ba[3].bp, mph, tba);
+      lineart_list_append_pointer_static(&tba->up, mph, &ba[3]);
     }
   }
 
@@ -2615,12 +2615,12 @@ static void lineart_bounding_areas_connect_new(LineartRenderBuffer *rb, LineartB
       next_lip = lip2->next;
       tba = lip2->data;
       if (tba == root) {
-        list_remove_pointer_item_no_free(&((LineartBoundingArea *)lip->data)->rp, lip2);
+        lineart_list_remove_pointer_item_no_free(&((LineartBoundingArea *)lip->data)->rp, lip2);
         if (ba[1].u > tba->b && ba[1].b < tba->u) {
-          list_append_pointer_static_pool(mph, &tba->rp, &ba[1]);
+          lineart_list_append_pointer_static(&tba->rp, mph, &ba[1]);
         }
         if (ba[2].u > tba->b && ba[2].b < tba->u) {
-          list_append_pointer_static_pool(mph, &tba->rp, &ba[2]);
+          lineart_list_append_pointer_static(&tba->rp, mph, &ba[2]);
         }
       }
     }
@@ -2630,12 +2630,12 @@ static void lineart_bounding_areas_connect_new(LineartRenderBuffer *rb, LineartB
       next_lip = lip2->next;
       tba = lip2->data;
       if (tba == root) {
-        list_remove_pointer_item_no_free(&((LineartBoundingArea *)lip->data)->lp, lip2);
+        lineart_list_remove_pointer_item_no_free(&((LineartBoundingArea *)lip->data)->lp, lip2);
         if (ba[0].u > tba->b && ba[0].b < tba->u) {
-          list_append_pointer_static_pool(mph, &tba->lp, &ba[0]);
+          lineart_list_append_pointer_static(&tba->lp, mph, &ba[0]);
         }
         if (ba[3].u > tba->b && ba[3].b < tba->u) {
-          list_append_pointer_static_pool(mph, &tba->lp, &ba[3]);
+          lineart_list_append_pointer_static(&tba->lp, mph, &ba[3]);
         }
       }
     }
@@ -2645,12 +2645,12 @@ static void lineart_bounding_areas_connect_new(LineartRenderBuffer *rb, LineartB
       next_lip = lip2->next;
       tba = lip2->data;
       if (tba == root) {
-        list_remove_pointer_item_no_free(&((LineartBoundingArea *)lip->data)->bp, lip2);
+        lineart_list_remove_pointer_item_no_free(&((LineartBoundingArea *)lip->data)->bp, lip2);
         if (ba[0].r > tba->l && ba[0].l < tba->r) {
-          list_append_pointer_static_pool(mph, &tba->up, &ba[0]);
+          lineart_list_append_pointer_static(&tba->up, mph, &ba[0]);
         }
         if (ba[1].r > tba->l && ba[1].l < tba->r) {
-          list_append_pointer_static_pool(mph, &tba->up, &ba[1]);
+          lineart_list_append_pointer_static(&tba->up, mph, &ba[1]);
         }
       }
     }
@@ -2660,32 +2660,32 @@ static void lineart_bounding_areas_connect_new(LineartRenderBuffer *rb, LineartB
       next_lip = lip2->next;
       tba = lip2->data;
       if (tba == root) {
-        list_remove_pointer_item_no_free(&((LineartBoundingArea *)lip->data)->up, lip2);
+        lineart_list_remove_pointer_item_no_free(&((LineartBoundingArea *)lip->data)->up, lip2);
         if (ba[2].r > tba->l && ba[2].l < tba->r) {
-          list_append_pointer_static_pool(mph, &tba->bp, &ba[2]);
+          lineart_list_append_pointer_static(&tba->bp, mph, &ba[2]);
         }
         if (ba[3].r > tba->l && ba[3].l < tba->r) {
-          list_append_pointer_static_pool(mph, &tba->bp, &ba[3]);
+          lineart_list_append_pointer_static(&tba->bp, mph, &ba[3]);
         }
       }
     }
   }
 
   /* Finally clear parent'scene adjacent list. */
-  while (list_pop_pointer_no_free(&root->lp))
+  while (lineart_list_pop_pointer_no_free(&root->lp))
     ;
-  while (list_pop_pointer_no_free(&root->rp))
+  while (lineart_list_pop_pointer_no_free(&root->rp))
     ;
-  while (list_pop_pointer_no_free(&root->up))
+  while (lineart_list_pop_pointer_no_free(&root->up))
     ;
-  while (list_pop_pointer_no_free(&root->bp))
+  while (lineart_list_pop_pointer_no_free(&root->bp))
     ;
 }
 
 static void lineart_bounding_area_split(LineartRenderBuffer *rb, LineartBoundingArea *root)
 {
-  LineartBoundingArea *ba = mem_static_aquire(&rb->render_data_pool,
-                                              sizeof(LineartBoundingArea) * 4);
+  LineartBoundingArea *ba = lineart_mem_aquire(&rb->render_data_pool,
+                                               sizeof(LineartBoundingArea) * 4);
   LineartRenderTriangle *rt;
   LineartRenderLine *rl;
 
@@ -2721,7 +2721,7 @@ static void lineart_bounding_area_split(LineartRenderBuffer *rb, LineartBounding
 
   lineart_bounding_areas_connect_new(rb, root);
 
-  while ((rt = list_pop_pointer_no_free(&root->linked_triangles)) != NULL) {
+  while ((rt = lineart_list_pop_pointer_no_free(&root->linked_triangles)) != NULL) {
     LineartBoundingArea *cba = root->child;
     double b[4];
     b[0] = MIN3(rt->v[0]->fbcoord[0], rt->v[1]->fbcoord[0], rt->v[2]->fbcoord[0]);
@@ -2742,7 +2742,7 @@ static void lineart_bounding_area_split(LineartRenderBuffer *rb, LineartBounding
     }
   }
 
-  while ((rl = list_pop_pointer_no_free(&root->linked_lines)) != NULL) {
+  while ((rl = lineart_list_pop_pointer_no_free(&root->linked_lines)) != NULL) {
     lineart_bounding_area_link_line(rb, root, rl);
   }
 
@@ -2840,7 +2840,7 @@ static void lineart_bounding_area_link_triangle(LineartRenderBuffer *rb,
     return;
   }
   if (root_ba->child == NULL) {
-    list_append_pointer_static_pool(&rb->render_data_pool, &root_ba->linked_triangles, rt);
+    lineart_list_append_pointer_static(&root_ba->linked_triangles, &rb->render_data_pool, rt);
     root_ba->triangle_count++;
     if (root_ba->triangle_count > 200 && recursive) {
       lineart_bounding_area_split(rb, root_ba);
@@ -2879,7 +2879,7 @@ static void lineart_bounding_area_link_line(LineartRenderBuffer *rb,
                                             LineartRenderLine *rl)
 {
   if (root_ba->child == NULL) {
-    list_append_pointer_static_pool(&rb->render_data_pool, &root_ba->linked_lines, rl);
+    lineart_list_append_pointer_static(&root_ba->linked_lines, &rb->render_data_pool, rl);
   }
   else {
     if (lineart_bounding_area_line_crossed(
@@ -3111,8 +3111,8 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
     if (positive_y > 0) {
       uy = this->u;
       ux = x + (uy - y) / k;
-      r1 = tmat_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], rx);
-      r2 = tmat_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], ux);
+      r1 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], rx);
+      r2 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], ux);
       if (MIN2(r1, r2) > 1) {
         return 0;
       }
@@ -3144,8 +3144,8 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
     else if (positive_y < 0) {
       by = this->b;
       bx = x + (by - y) / k;
-      r1 = tmat_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], rx);
-      r2 = tmat_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], bx);
+      r1 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], rx);
+      r2 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], bx);
       if (MIN2(r1, r2) > 1) {
         return 0;
       }
@@ -3172,7 +3172,7 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
     }
     /* If the line is compeletely horizontal, in which Y diffence == 0 */
     else {
-      r1 = tmat_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], this->r);
+      r1 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], this->r);
       if (r1 > 1) {
         return 0;
       }
@@ -3196,8 +3196,8 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
     if (positive_y > 0) {
       uy = this->u;
       ux = x + (uy - y) / k;
-      r1 = tmat_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], lx);
-      r2 = tmat_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], ux);
+      r1 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], lx);
+      r2 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], ux);
       if (MIN2(r1, r2) > 1) {
         return 0;
       }
@@ -3227,8 +3227,8 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
     else if (positive_y < 0) {
       by = this->b;
       bx = x + (by - y) / k;
-      r1 = tmat_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], lx);
-      r2 = tmat_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], bx);
+      r1 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], lx);
+      r2 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], bx);
       if (MIN2(r1, r2) > 1) {
         return 0;
       }
@@ -3255,7 +3255,7 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
     }
     /* Again, horizontal */
     else {
-      r1 = tmat_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], this->l);
+      r1 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], this->l);
       if (r1 > 1) {
         return 0;
       }
@@ -3272,7 +3272,7 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
   /* If the line is completely vertical, hence X difference == 0 */
   else {
     if (positive_y > 0) {
-      r1 = tmat_get_linear_ratio(rl->l->fbcoord[1], rl->r->fbcoord[1], this->u);
+      r1 = lineart_get_linear_ratio(rl->l->fbcoord[1], rl->r->fbcoord[1], this->u);
       if (r1 > 1) {
         return 0;
       }
@@ -3286,7 +3286,7 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
       }
     }
     else if (positive_y < 0) {
-      r1 = tmat_get_linear_ratio(rl->l->fbcoord[1], rl->r->fbcoord[1], this->b);
+      r1 = lineart_get_linear_ratio(rl->l->fbcoord[1], rl->r->fbcoord[1], this->b);
       if (r1 > 1) {
         return 0;
       }

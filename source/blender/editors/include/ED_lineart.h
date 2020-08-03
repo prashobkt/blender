@@ -411,7 +411,7 @@ typedef struct LineartBoundingArea {
 
 #define LRT_DOUBLE_CLOSE_ENOUGH(a, b) (((a) + DBL_EDGE_LIM) >= (b) && ((a)-DBL_EDGE_LIM) <= (b))
 
-BLI_INLINE double tmat_get_linear_ratio(double l, double r, double from_l);
+BLI_INLINE double lineart_get_linear_ratio(double l, double r, double from_l);
 BLI_INLINE int lineart_LineIntersectTest2d(
     const double *a1, const double *a2, const double *b1, const double *b2, double *aRatio)
 {
@@ -427,14 +427,14 @@ BLI_INLINE int lineart_LineIntersectTest2d(
       *aRatio = 0;
       return 0;
     }
-    double r2 = tmat_get_linear_ratio(b1[0], b2[0], a1[0]);
+    double r2 = lineart_get_linear_ratio(b1[0], b2[0], a1[0]);
     x = interpd(b2[0], b1[0], r2);
     y = interpd(b2[1], b1[1], r2);
-    *aRatio = ratio = tmat_get_linear_ratio(a1[1], a2[1], y);
+    *aRatio = ratio = lineart_get_linear_ratio(a1[1], a2[1], y);
   }
   else {
     if (x_diff2 == 0) {
-      ratio = tmat_get_linear_ratio(a1[0], a2[0], b1[0]);
+      ratio = lineart_get_linear_ratio(a1[0], a2[0], b1[0]);
       x = interpd(a2[0], a1[0], ratio);
       *aRatio = ratio;
     }
@@ -466,7 +466,7 @@ BLI_INLINE int lineart_LineIntersectTest2d(
   return 1;
 }
 
-BLI_INLINE double tmat_get_linear_ratio(double l, double r, double from_l)
+BLI_INLINE double lineart_get_linear_ratio(double l, double r, double from_l)
 {
   double ra = (from_l - l) / (r - l);
   return ra;

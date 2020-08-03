@@ -95,7 +95,7 @@ static LineartRenderLine *lineart_line_get_connected(LineartBoundingArea *ba,
 static LineartRenderLineChain *lineart_chain_create(LineartRenderBuffer *rb)
 {
   LineartRenderLineChain *rlc;
-  rlc = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineChain));
+  rlc = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineChain));
 
   BLI_addtail(&rb->chains, rlc);
 
@@ -139,7 +139,7 @@ static LineartRenderLineChainItem *lineart_chain_append_point(LineartRenderBuffe
     return old_rlci;
   }
 
-  rlci = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineChainItem));
+  rlci = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineChainItem));
 
   rlci->pos[0] = x;
   rlci->pos[1] = y;
@@ -173,7 +173,7 @@ static LineartRenderLineChainItem *lineart_chain_push_point(LineartRenderBuffer 
     return rlc->chain.first;
   }
 
-  rlci = mem_static_aquire(&rb->render_data_pool, sizeof(LineartRenderLineChainItem));
+  rlci = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineChainItem));
 
   rlci->pos[0] = x;
   rlci->pos[1] = y;
@@ -504,7 +504,7 @@ static void lineart_bounding_area_link_point_recursive(LineartRenderBuffer *rb,
                                                        LineartRenderLineChainItem *rlci)
 {
   if (root->child == NULL) {
-    LineartChainRegisterEntry *cre = list_append_pointer_static_sized(
+    LineartChainRegisterEntry *cre = lineart_list_append_pointer_static_sized(
         &root->linked_chains, &rb->render_data_pool, rlc, sizeof(LineartChainRegisterEntry));
 
     cre->rlci = rlci;

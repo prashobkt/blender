@@ -30,46 +30,35 @@
 
 #include "lineart_intern.h"
 
-/* ===================================================================[slt] */
+/* Line art memory and list helper */
 
-void *list_append_pointer_static(ListBase *h, LineartStaticMemPool *smp, void *data)
+void *lineart_list_append_pointer_static(ListBase *h, LineartStaticMemPool *smp, void *data)
 {
   LinkData *lip;
   if (h == NULL) {
     return 0;
   }
-  lip = mem_static_aquire(smp, sizeof(LinkData));
+  lip = lineart_mem_aquire(smp, sizeof(LinkData));
   lip->data = data;
   BLI_addtail(h, lip);
   return lip;
 }
-void *list_append_pointer_static_sized(ListBase *h,
-                                       LineartStaticMemPool *smp,
-                                       void *data,
-                                       int size)
+void *lineart_list_append_pointer_static_sized(ListBase *h,
+                                               LineartStaticMemPool *smp,
+                                               void *data,
+                                               int size)
 {
   LinkData *lip;
   if (h == NULL) {
     return 0;
   }
-  lip = mem_static_aquire(smp, size);
+  lip = lineart_mem_aquire(smp, size);
   lip->data = data;
   BLI_addtail(h, lip);
   return lip;
 }
 
-void *list_append_pointer_static_pool(LineartStaticMemPool *mph, ListBase *h, void *data)
-{
-  LinkData *lip;
-  if (h == NULL) {
-    return 0;
-  }
-  lip = mem_static_aquire(mph, sizeof(LinkData));
-  lip->data = data;
-  BLI_addtail(h, lip);
-  return lip;
-}
-void *list_pop_pointer_no_free(ListBase *h)
+void *lineart_list_pop_pointer_no_free(ListBase *h)
 {
   LinkData *lip;
   void *rev = 0;
@@ -80,12 +69,12 @@ void *list_pop_pointer_no_free(ListBase *h)
   rev = lip ? lip->data : 0;
   return rev;
 }
-void list_remove_pointer_item_no_free(ListBase *h, LinkData *lip)
+void lineart_list_remove_pointer_item_no_free(ListBase *h, LinkData *lip)
 {
   BLI_remlink(h, (void *)lip);
 }
 
-LineartStaticMemPoolNode *mem_new_static_pool(LineartStaticMemPool *smp, size_t size)
+LineartStaticMemPoolNode *lineart_mem_new_static_pool(LineartStaticMemPool *smp, size_t size)
 {
   size_t set_size = size;
   if (set_size < LRT_MEMORY_POOL_64MB) {
@@ -98,13 +87,13 @@ LineartStaticMemPoolNode *mem_new_static_pool(LineartStaticMemPool *smp, size_t 
   BLI_addhead(&smp->pools, smpn);
   return smpn;
 }
-void *mem_static_aquire(LineartStaticMemPool *smp, size_t size)
+void *lineart_mem_aquire(LineartStaticMemPool *smp, size_t size)
 {
   LineartStaticMemPoolNode *smpn = smp->pools.first;
   void *ret;
 
   if (!smpn || (smpn->used_byte + size) > smpn->size) {
-    smpn = mem_new_static_pool(smp, size);
+    smpn = lineart_mem_new_static_pool(smp, size);
   }
 
   ret = ((unsigned char *)smpn) + smpn->used_byte;
@@ -113,7 +102,7 @@ void *mem_static_aquire(LineartStaticMemPool *smp, size_t size)
 
   return ret;
 }
-void *mem_static_aquire_thread(LineartStaticMemPool *smp, size_t size)
+void *lineart_mem_aquire_thread(LineartStaticMemPool *smp, size_t size)
 {
   LineartStaticMemPoolNode *smpn = smp->pools.first;
   void *ret;
@@ -121,7 +110,7 @@ void *mem_static_aquire_thread(LineartStaticMemPool *smp, size_t size)
   BLI_spin_lock(&smp->lock_mem);
 
   if (!smpn || (smpn->used_byte + size) > smpn->size) {
-    smpn = mem_new_static_pool(smp, size);
+    smpn = lineart_mem_new_static_pool(smp, size);
   }
 
   ret = ((unsigned char *)smpn) + smpn->used_byte;
@@ -132,7 +121,7 @@ void *mem_static_aquire_thread(LineartStaticMemPool *smp, size_t size)
 
   return ret;
 }
-void *mem_static_destroy(LineartStaticMemPool *smp)
+void *lineart_mem_destroy(LineartStaticMemPool *smp)
 {
   LineartStaticMemPoolNode *smpn;
   void *ret = 0;
@@ -146,7 +135,7 @@ void *mem_static_destroy(LineartStaticMemPool *smp)
 
 /* =======================================================================[str] */
 
-void tmat_make_perspective_matrix_44d(
+void lineart_matrix_perspective_44d(
     double (*mProjection)[4], double fFov_rad, double fAspect, double zMin, double zMax)
 {
   double yMax;
@@ -178,13 +167,13 @@ void tmat_make_perspective_matrix_44d(
   mProjection[3][2] = -((2.0f * (zMax * zMin)) / (zMax - zMin));
   mProjection[3][3] = 0.0f;
 }
-void tmat_make_ortho_matrix_44d(double (*mProjection)[4],
-                                double xMin,
-                                double xMax,
-                                double yMin,
-                                double yMax,
-                                double zMin,
-                                double zMax)
+void lineart_matrix_ortho_44d(double (*mProjection)[4],
+                              double xMin,
+                              double xMax,
+                              double yMin,
+                              double yMax,
+                              double zMin,
+                              double zMax)
 {
   unit_m4_db(mProjection);
 
