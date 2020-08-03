@@ -32,6 +32,7 @@
  */
 
 #include "MEM_guardedalloc.h"
+#include <CLG_log.h>
 
 #include "BLI_alloca.h"
 #include "BLI_math.h"
@@ -77,6 +78,14 @@
 #define USE_BVH
 
 // #define USE_DUMP
+#ifdef USE_DUMP
+static CLG_LogRef LOG = {"bmesh.bmesh_intersect"};
+#  define CLOG_BMESH_INTERSECT(level, ...) CLOG_VERBOSE(&LOG, level, __VA_ARGS__)
+#else
+#  define CLOG_BMESH_INTERSECT(level, ...) \
+    do { \
+    } while (0)
+#endif  // USE_DUMP
 
 static void tri_v3_scale(float v1[3], float v2[3], float v3[3], const float t)
 {
@@ -233,9 +242,7 @@ static void face_edges_split(BMesh *bm,
   }
   BLI_assert(node == NULL);
 
-#  ifdef USE_DUMP
-  printf("# %s: %d %u\n", __func__, BM_elem_index_get(f), e_ls_base->list_len);
-#  endif
+  CLOG_BMESH_INTERSECT(0, "# %d %u", BM_elem_index_get(f), e_ls_base->list_len);
 
 #  ifdef USE_NET_ISLAND_CONNECT
   if (use_island_connect) {
@@ -414,9 +421,7 @@ static BMVert *bm_isect_edge_tri(struct ISectState *s,
     iv = BLI_ghash_lookup(s->edgetri_cache, k_arr[i]);
 
     if (iv) {
-#ifdef USE_DUMP
-      printf("# cache hit (%d, %d, %d, %d)\n", UNPACK4(k_arr[i]));
-#endif
+      CLOG_BMESH_INTERSECT(1, "# cache hit (%d, %d, %d, %d)", UNPACK4(k_arr[i]));
       *r_side = (enum ISectType)i;
       return iv;
     }
@@ -426,9 +431,7 @@ static BMVert *bm_isect_edge_tri(struct ISectState *s,
   if (*r_side != IX_NONE) {
     BMVert *iv;
     BMEdge *e;
-#ifdef USE_DUMP
-    printf("# new vertex (%.6f, %.6f, %.6f) %d\n", UNPACK3(ix), *r_side);
-#endif
+    CLOG_BMESH_INTERSECT(1, "# new vertex (%.6f, %.6f, %.6f) %d", UNPACK3(ix), *r_side);
 
 #ifdef USE_PARANOID
     BLI_assert(len_squared_v3v3(ix, e_v0->co) > s->epsilon.eps_sq);
@@ -441,9 +444,7 @@ static BMVert *bm_isect_edge_tri(struct ISectState *s,
 
     e = BM_edge_exists(e_v0, e_v1);
     if (e) {
-#ifdef USE_DUMP
-      printf("# adding to edge %d\n", BM_elem_index_get(e));
-#endif
+      CLOG_BMESH_INTERSECT(2, "# adding to edge %d", BM_elem_index_get(e));
       edge_verts_add(s, e, iv, false);
     }
     else {
@@ -568,14 +569,14 @@ static void bm_isect_tri_tri(
       uint i_b;
       for (i_b = 0; i_b < 3; i_b++) {
         if (len_squared_v3v3(fv_a[i_a]->co, fv_b[i_b]->co) <= s->epsilon.eps2x_sq) {
-#ifdef USE_DUMP
           if (BM_ELEM_API_FLAG_TEST(fv_a[i_a], VERT_VISIT_A) == 0) {
-            printf("  ('VERT-VERT-A') %u, %d),\n", i_a, BM_elem_index_get(fv_a[i_a]));
+            CLOG_BMESH_INTERSECT(
+                10, "  ('VERT-VERT-A') %u, %d),", i_a, BM_elem_index_get(fv_a[i_a]));
           }
           if (BM_ELEM_API_FLAG_TEST(fv_b[i_b], VERT_VISIT_B) == 0) {
-            printf("  ('VERT-VERT-B') %u, %d),\n", i_b, BM_elem_index_get(fv_b[i_b]));
+            CLOG_BMESH_INTERSECT(
+                10, "  ('VERT-VERT-B') %u, %d),", i_b, BM_elem_index_get(fv_b[i_b]));
           }
-#endif
           STACK_PUSH_TEST_A(fv_a[i_a]);
           STACK_PUSH_TEST_B(fv_b[i_b]);
         }
@@ -608,15 +609,12 @@ static void bm_isect_tri_tri(
               STACK_PUSH_TEST_B(fv_a[i_a]);
               // STACK_PUSH_TEST_A(fv_a[i_a]);
               e = BM_edge_exists(fv_b[i_b_e0], fv_b[i_b_e1]);
-#ifdef USE_DUMP
-              printf("  ('VERT-EDGE-A', %d, %d),\n",
-                     BM_elem_index_get(fv_b[i_b_e0]),
-                     BM_elem_index_get(fv_b[i_b_e1]));
-#endif
+              CLOG_BMESH_INTERSECT(15,
+                                   "  ('VERT-EDGE-A', %d, %d),",
+                                   BM_elem_index_get(fv_b[i_b_e0]),
+                                   BM_elem_index_get(fv_b[i_b_e1]));
               if (e) {
-#ifdef USE_DUMP
-                printf("# adding to edge %d\n", BM_elem_index_get(e));
-#endif
+                CLOG_BMESH_INTERSECT(15, "# adding to edge %d", BM_elem_index_get(e));
                 edge_verts_add(s, e, fv_a[i_a], true);
               }
               break;
@@ -650,15 +648,12 @@ static void bm_isect_tri_tri(
               STACK_PUSH_TEST_A(fv_b[i_b]);
               // STACK_PUSH_NOTEST(iv_ls_b, fv_b[i_b]);
               e = BM_edge_exists(fv_a[i_a_e0], fv_a[i_a_e1]);
-#ifdef USE_DUMP
-              printf("  ('VERT-EDGE-B', %d, %d),\n",
-                     BM_elem_index_get(fv_a[i_a_e0]),
-                     BM_elem_index_get(fv_a[i_a_e1]));
-#endif
+              CLOG_BMESH_INTERSECT(15,
+                                   "  ('VERT-EDGE-B', %d, %d),",
+                                   BM_elem_index_get(fv_a[i_a_e0]),
+                                   BM_elem_index_get(fv_a[i_a_e1]));
               if (e) {
-#ifdef USE_DUMP
-                printf("# adding to edge %d\n", BM_elem_index_get(e));
-#endif
+                CLOG_BMESH_INTERSECT(15, "# adding to edge %d", BM_elem_index_get(e));
                 edge_verts_add(s, e, fv_b[i_b], true);
               }
               break;
@@ -692,9 +687,7 @@ static void bm_isect_tri_tri(
         if (len_squared_v3v3(ix, fv_a[i_a]->co) <= s->epsilon.eps2x_sq) {
           STACK_PUSH_TEST_A(fv_a[i_a]);
           STACK_PUSH_TEST_B(fv_a[i_a]);
-#ifdef USE_DUMP
-          printf("  'VERT TRI-A',\n");
-#endif
+          CLOG_BMESH_INTERSECT(6, "  'VERT TRI-A',");
         }
       }
     }
@@ -719,18 +712,14 @@ static void bm_isect_tri_tri(
         if (len_squared_v3v3(ix, fv_b[i_b]->co) <= s->epsilon.eps2x_sq) {
           STACK_PUSH_TEST_A(fv_b[i_b]);
           STACK_PUSH_TEST_B(fv_b[i_b]);
-#ifdef USE_DUMP
-          printf("  'VERT TRI-B',\n");
-#endif
+          CLOG_BMESH_INTERSECT(6, "  'VERT TRI-B',");
         }
       }
     }
   }
 
   if ((STACK_SIZE(iv_ls_a) >= 3) && (STACK_SIZE(iv_ls_b) >= 3)) {
-#ifdef USE_DUMP
-    printf("# OVERLAP\n");
-#endif
+    CLOG_BMESH_INTERSECT(6, "# OVERLAP");
     goto finally;
   }
 
@@ -755,9 +744,7 @@ static void bm_isect_tri_tri(
       if (iv) {
         STACK_PUSH_TEST_A(iv);
         STACK_PUSH_TEST_B(iv);
-#ifdef USE_DUMP
-        printf("  ('EDGE-TRI-A', %d),\n", side);
-#endif
+        CLOG_BMESH_INTERSECT(6, "  ('EDGE-TRI-A', %d),", side);
       }
     }
 
@@ -776,9 +763,7 @@ static void bm_isect_tri_tri(
       if (iv) {
         STACK_PUSH_TEST_A(iv);
         STACK_PUSH_TEST_B(iv);
-#ifdef USE_DUMP
-        printf("  ('EDGE-TRI-B', %d),\n", side);
-#endif
+        CLOG_BMESH_INTERSECT(6, "  ('EDGE-TRI-B', %d),", side);
       }
     }
   }
@@ -871,19 +856,14 @@ static void raycast_callback(void *userdata,
 #  endif
   ) {
     if (dist >= 0.0f) {
-#  ifdef USE_DUMP
-      printf("%s:\n", __func__);
       print_v3("  origin", ray->origin);
       print_v3("  direction", ray->direction);
-      printf("  dist %f\n", dist);
+      CLOG_BMESH_INTERSECT(0, "  dist %f", dist);
       print_v3("  v0", v0);
       print_v3("  v1", v1);
       print_v3("  v2", v2);
-#  endif
 
-#  ifdef USE_DUMP
-      printf("%s: Adding depth %f\n", __func__, dist);
-#  endif
+      CLOG_BMESH_INTERSECT(0, "Adding depth %f", dist);
       BLI_buffer_append(raycast_data->z_buffer, float, dist);
     }
   }
@@ -909,9 +889,7 @@ static int isect_bvhtree_point_v3(BVHTree *tree, const float **looptris, const f
 
   BLI_bvhtree_ray_cast(tree, co, dir, 0.0f, &hit, raycast_callback, &raycast_data);
 
-#  ifdef USE_DUMP
-  printf("%s: Total intersections: %zu\n", __func__, z_buffer.count);
-#  endif
+  CLOG_BMESH_INTERSECT(0, "Total intersections: %zu", z_buffer.count);
 
   int num_isect;
 
@@ -1031,9 +1009,7 @@ bool BM_mesh_intersect(BMesh *bm,
   UNUSED_VARS(use_dissolve);
 #endif
 
-#ifdef USE_DUMP
-  printf("data = [\n");
-#endif
+  CLOG_BMESH_INTERSECT(0, "data = [");
 
   if (boolean_mode != BMESH_ISECT_BOOLEAN_NONE) {
     /* keep original geometrty for raycast callbacks */
@@ -1107,18 +1083,14 @@ bool BM_mesh_intersect(BMesh *bm,
     uint i;
 
     for (i = 0; i < tree_overlap_tot; i++) {
-#  ifdef USE_DUMP
-      printf("  ((%d, %d), (\n", overlap[i].indexA, overlap[i].indexB);
-#  endif
+      CLOG_BMESH_INTERSECT(0, "  ((%d, %d), (", overlap[i].indexA, overlap[i].indexB);
       bm_isect_tri_tri(&s,
                        overlap[i].indexA,
                        overlap[i].indexB,
                        looptris[overlap[i].indexA],
                        looptris[overlap[i].indexB],
                        isect_tri_tri_no_shared);
-#  ifdef USE_DUMP
-      printf(")),\n");
-#  endif
+      CLOG_BMESH_INTERSECT(0, ")),");
     }
     MEM_freeN(overlap);
   }
@@ -1149,21 +1121,15 @@ bool BM_mesh_intersect(BMesh *bm,
           }
         }
 
-#  ifdef USE_DUMP
-        printf("  ((%d, %d), (", i_a, i_b);
-#  endif
+        CLOG_BMESH_INTERSECT(0, "  ((%d, %d), (", i_a, i_b);
         bm_isect_tri_tri(&s, i_a, i_b, looptris[i_a], looptris[i_b], isect_tri_tri_no_shared);
-#  ifdef USE_DUMP
-        printf(")),\n");
-#  endif
+        CLOG_BMESH_INTERSECT(0, ")),");
       }
     }
   }
 #endif /* USE_BVH */
 
-#ifdef USE_DUMP
-  printf("]\n");
-#endif
+  CLOG_BMESH_INTERSECT(0, "]");
 
   /* --------- */
 
@@ -1190,9 +1156,8 @@ bool BM_mesh_intersect(BMesh *bm,
         edge_verts_sort(v_start->co, v_ls_base);
       }
 
-#  ifdef USE_DUMP
-      printf("# SPLITTING EDGE: %d, %u\n", BM_elem_index_get(e), v_ls_base->list_len);
-#  endif
+      CLOG_BMESH_INTERSECT(
+          0, "# SPLITTING EDGE: %d, %u", BM_elem_index_get(e), v_ls_base->list_len);
       /* intersect */
       is_wire = BLI_gset_haskey(s.wire_edges, e);
 
@@ -1292,9 +1257,7 @@ bool BM_mesh_intersect(BMesh *bm,
         splice_pair = STACK_PUSH_RET(splice_ls);
         splice_pair[0] = v;
         splice_pair[1] = v_b;
-#  ifdef USE_DUMP
-        printf("# Simple Case!\n");
-#  endif
+        CLOG_BMESH_INTERSECT(0, "# Simple Case!");
       }
       else {
 #  ifdef USE_PARANOID
@@ -1347,9 +1310,7 @@ bool BM_mesh_intersect(BMesh *bm,
 #  ifdef USE_PARANOID
           BLI_assert(e_step != e_keep);
 #  endif
-#  ifdef USE_DUMP
-          printf("# walk step %p %p\n", e_next, v_next);
-#  endif
+          CLOG_BMESH_INTERSECT(0, "# walk step %p %p", e_next, v_next);
         }
 #  ifdef USE_PARANOID
         BLI_assert(BM_elem_flag_test(e_keep, BM_ELEM_TAG) == 0);
@@ -1535,9 +1496,7 @@ bool BM_mesh_intersect(BMesh *bm,
     group_tot = BM_mesh_calc_face_groups(
         bm, groups_array, &group_index, bm_loop_filter_fn, &user_data_wrap, 0, BM_EDGE);
 
-#ifdef USE_DUMP
-    printf("%s: Total face-groups: %d\n", __func__, group_tot);
-#endif
+    CLOG_BMESH_INTERSECT(0, "Total face-groups: %d", group_tot);
 
     /* Check if island is inside/outside */
     for (i = 0; i < group_tot; i++) {
