@@ -34,6 +34,12 @@ typedef enum eGpencilExport_Modes {
   GP_EXPORT_TO_SVG = 0,
 } eGpencilExport_Modes;
 
+typedef enum eGpencilExportSelect {
+  GP_EXPORT_ACTIVE = 0,
+  GP_EXPORT_SELECTED = 1,
+  GP_EXPORT_VISIBLE = 2,
+} eGpencilExportSelect;
+
 struct GpencilExportParams {
   bContext *C;
   ARegion *region;
@@ -54,6 +60,8 @@ struct GpencilExportParams {
   int framenum;
   /** Flags. */
   int flag;
+  /** Select mode */
+  short select;
   /** Stroke sampling. */
   float stroke_sample;
   /** Row and cols of storyboard. */
@@ -69,14 +77,12 @@ typedef enum eGpencilExportParams_Flag {
   GP_EXPORT_FILL = (1 << 1),
   /* Export normalized thickness. */
   GP_EXPORT_NORM_THICKNESS = (1 << 2),
-  /* Export all selected objects. */
-  GP_EXPORT_SELECTED_OBJECTS = (1 << 3),
   /* Clip camera area. */
-  GP_EXPORT_CLIP_CAMERA = (1 << 4),
+  GP_EXPORT_CLIP_CAMERA = (1 << 3),
   /* Gray Scale. */
-  GP_EXPORT_GRAY_SCALE = (1 << 5),
+  GP_EXPORT_GRAY_SCALE = (1 << 4),
   /* Use Storyboard format. */
-  GP_EXPORT_STORYBOARD_MODE = (1 << 6),
+  GP_EXPORT_STORYBOARD_MODE = (1 << 5),
 } eGpencilExportParams_Flag;
 
 bool gpencil_io_export(struct GpencilExportParams *iparams);

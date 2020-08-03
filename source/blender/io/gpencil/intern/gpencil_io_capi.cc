@@ -222,6 +222,7 @@ bool gpencil_io_export(GpencilExportParams *iparams)
     float no_offset[2] = {0.0f, 0.0f};
     float ratio[2] = {1.0f, 1.0f};
     writter.set_frame_ratio(ratio);
+    iparams->file_subfix[0] = '\0';
     done |= gpencil_io_export_frame(&writter, iparams, no_offset, true, true, true);
   }
   else {

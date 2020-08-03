@@ -72,6 +72,7 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   params_.filename = iparams->filename;
   params_.mode = iparams->mode;
   params_.flag = iparams->flag;
+  params_.select = iparams->select;
   params_.stroke_sample = iparams->stroke_sample;
   params_.framenum = iparams->framenum;
 
@@ -150,29 +151,31 @@ void GpencilExporter::create_object_list(void)
     if (object->type != OB_GPENCIL) {
       continue;
     }
-    if (((params_.flag & GP_EXPORT_SELECTED_OBJECTS) == 0) && (params_.obact != object)) {
+    if ((params_.select == GP_EXPORT_ACTIVE) && (params_.obact != object)) {
       continue;
     }
 
-    if (base->flag & BASE_SELECTED) {
-      /* Save z-depth from view to sort from back to front. */
-      if (is_camera) {
-        float camera_z = dot_v3v3(camera_z_axis, object->obmat[3]);
-        ObjectZ obz = {camera_z, object};
-        ob_list_.push_back(obz);
-      }
-      else {
-        float zdepth = 0;
-        if (rv3d) {
-          if (rv3d->is_persp) {
-            zdepth = ED_view3d_calc_zfac(rv3d, object->obmat[3], NULL);
-          }
-          else {
-            zdepth = -dot_v3v3(rv3d->viewinv[2], object->obmat[3]);
-          }
-          ObjectZ obz = {zdepth * -1.0f, object};
-          ob_list_.push_back(obz);
+    if ((params_.select == GP_EXPORT_SELECTED) && ((base->flag & BASE_SELECTED) == 0)) {
+      continue;
+    }
+
+    /* Save z-depth from view to sort from back to front. */
+    if (is_camera) {
+      float camera_z = dot_v3v3(camera_z_axis, object->obmat[3]);
+      ObjectZ obz = {camera_z, object};
+      ob_list_.push_back(obz);
+    }
+    else {
+      float zdepth = 0;
+      if (rv3d) {
+        if (rv3d->is_persp) {
+          zdepth = ED_view3d_calc_zfac(rv3d, object->obmat[3], NULL);
         }
+        else {
+          zdepth = -dot_v3v3(rv3d->viewinv[2], object->obmat[3]);
+        }
+        ObjectZ obz = {zdepth * -1.0f, object};
+        ob_list_.push_back(obz);
       }
     }
 

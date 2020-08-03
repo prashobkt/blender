@@ -149,7 +149,8 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   const bool only_active_frame = RNA_boolean_get(op->ptr, "only_active_frame");
   const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
   const bool use_norm_thickness = RNA_boolean_get(op->ptr, "use_normalized_thickness");
-  const bool use_selected_objects = RNA_boolean_get(op->ptr, "use_selected_objects");
+  const short select = RNA_enum_get(op->ptr, "selected_object_type");
+
   const bool use_clip_camera = RNA_boolean_get(op->ptr, "use_clip_camera");
   const bool use_gray_scale = RNA_boolean_get(op->ptr, "use_gray_scale");
   const bool use_storyboard = RNA_boolean_get(op->ptr, "use_storyboard");
@@ -159,7 +160,6 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   SET_FLAG_FROM_TEST(flag, only_active_frame, GP_EXPORT_ACTIVE_FRAME);
   SET_FLAG_FROM_TEST(flag, use_fill, GP_EXPORT_FILL);
   SET_FLAG_FROM_TEST(flag, use_norm_thickness, GP_EXPORT_NORM_THICKNESS);
-  SET_FLAG_FROM_TEST(flag, use_selected_objects, GP_EXPORT_SELECTED_OBJECTS);
   SET_FLAG_FROM_TEST(flag, use_clip_camera, GP_EXPORT_CLIP_CAMERA);
   SET_FLAG_FROM_TEST(flag, use_gray_scale, GP_EXPORT_GRAY_SCALE);
   SET_FLAG_FROM_TEST(flag, use_storyboard, GP_EXPORT_STORYBOARD_MODE);
@@ -174,6 +174,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
       .frame_start = RNA_int_get(op->ptr, "start"),
       .frame_end = RNA_int_get(op->ptr, "end"),
       .flag = flag,
+      .select = select,
       .stroke_sample = RNA_float_get(op->ptr, "stroke_sample"),
   };
   /* Take some defaults from the scene, if not specified explicitly. */
@@ -214,7 +215,7 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemL(row, IFACE_("Scene Options"), ICON_SCENE_DATA);
 
   row = uiLayoutRow(box, false);
-  uiItemR(row, imfptr, "use_selected_objects", 0, NULL, ICON_NONE);
+  uiItemR(row, imfptr, "selected_object_type", 0, NULL, ICON_NONE);
 
   row = uiLayoutRow(box, false);
   uiItemR(row, imfptr, "only_active_frame", 0, NULL, ICON_NONE);
@@ -298,6 +299,13 @@ static bool wm_gpencil_export_poll(bContext *C)
 
 void WM_OT_gpencil_export(wmOperatorType *ot)
 {
+  static const EnumPropertyItem select_items[] = {
+      {GP_EXPORT_ACTIVE, "ACTIVE", 0, "Active", "Include only active object"},
+      {GP_EXPORT_SELECTED, "SELECTED", 0, "Selected", "Include selected objects"},
+      {GP_EXPORT_VISIBLE, "VISIBLE", 0, "Visible", "Include visible objects"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   ot->name = "Export Grease Pencil";
   ot->description = "Export current grease pencil";
   ot->idname = "WM_OT_gpencil_export";
@@ -345,11 +353,13 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
                   false,
                   "Normalize",
                   "Export strokes with constant thickness along the stroke");
-  RNA_def_boolean(ot->srna,
-                  "use_selected_objects",
-                  true,
-                  "All Selected Objects",
-                  "Export all selected objects, unselect for export active object only");
+  ot->prop = RNA_def_enum(ot->srna,
+                          "selected_object_type",
+                          select_items,
+                          0,
+                          "Object",
+                          "Objects included in the export");
+
   RNA_def_boolean(ot->srna,
                   "use_clip_camera",
                   false,

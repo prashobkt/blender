@@ -187,7 +187,8 @@ void GpencilExporterSVG::export_layers(void)
         continue;
       }
       gpl_current_set(gpl);
-      bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, cfra_, GP_GETFRAME_USE_PREV);
+
+      bGPDframe *gpf = gpl->actframe;
       if ((gpf == NULL) || (gpf->strokes.first == NULL)) {
         continue;
       }
