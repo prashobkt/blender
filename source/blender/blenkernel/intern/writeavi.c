@@ -41,8 +41,6 @@
 
 #include "BKE_writeavi.h"
 
-static CLG_LogRef LOG = {"bke.writeavi"};
-
 /* ********************** general blender movie support ***************************** */
 
 static int start_stub(void *UNUSED(context_v),
@@ -160,6 +158,8 @@ bMovieHandle *BKE_movie_handle_get(const char imtype)
 /* ****************************************************************** */
 
 #ifdef WITH_AVI
+
+static CLG_LogRef LOG = {"bke.writeavi"};
 
 static void filepath_avi(char *string, const RenderData *rd, bool preview, const char *suffix)
 {
