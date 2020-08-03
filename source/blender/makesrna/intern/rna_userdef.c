@@ -1097,6 +1097,13 @@ static void rna_clog_log_level_set(PointerRNA *UNUSED(ptr), int value)
   CLG_level_set(value);
 }
 
+static void rna_clog_log_level_range(
+    PointerRNA *UNUSED(ptr), int *min, int *max, int *UNUSED(softmin), int *UNUSED(softmax))
+{
+  *min = 0;
+  *max = USHRT_MAX;
+}
+
 /*
 static void rna_Userdef_log_filter_update(struct Main *UNUSED(main),
                                           struct Scene *UNUSED(scene),
@@ -1178,6 +1185,15 @@ static void rna_verbose_set(PointerRNA *UNUSED(ptr), int value)
 #  endif
 }
 
+static void rna_verbose_range(
+    PointerRNA *UNUSED(ptr), int *min, int *max, int *softmin, int *softmax)
+{
+  *min = INT_MIN;
+  *max = INT_MAX;
+  *softmin = 0;
+  *softmax = INT_MAX;
+}
+
 static void rna_clog_log_output_file_get(PointerRNA *UNUSED(ptr), char *value)
 {
   BLI_strncpy(value, CLG_file_output_path_get(), FILE_MAX);
@@ -1211,6 +1227,15 @@ static int rna_debug_value_get(PointerRNA *UNUSED(ptr))
 static void rna_debug_value_set(PointerRNA *UNUSED(ptr), int value)
 {
   G.debug_value = value;
+}
+
+static void rna_debug_value_range(
+    PointerRNA *UNUSED(ptr), int *min, int *max, int *softmin, int *softmax)
+{
+  *min = SHRT_MIN;
+  *max = SHRT_MAX;
+  *softmin = SHRT_MIN;
+  *softmax = SHRT_MAX;
 }
 #else
 
@@ -5769,9 +5794,11 @@ static void rna_def_userdef_system(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "log_level", PROP_INT, PROP_NONE);
   RNA_def_property_int_funcs(
-      prop, "rna_clog_log_level_get", "rna_clog_log_level_set", NULL);
-  RNA_def_property_ui_text(
-      prop, "Log Level", "Log level, when severity is set to verbose or debug");
+      prop, "rna_clog_log_level_get", "rna_clog_log_level_set", "rna_clog_log_level_range");
+  RNA_def_property_ui_text(prop,
+                           "Log Level",
+                           "Log level, when severity is set to verbose or debug. "
+                           "The most silent is 0, the most talkative is 65535");
 
   prop = RNA_def_property(srna, "log_filter", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "log_filter");
@@ -5803,7 +5830,7 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Log Output File", "");
 
   prop = RNA_def_property(srna, "verbose", PROP_INT, PROP_NONE);
-  RNA_def_property_int_funcs(prop, "rna_verbose_get", "rna_verbose_set", NULL);
+  RNA_def_property_int_funcs(prop, "rna_verbose_get", "rna_verbose_set", "rna_verbose_range");
   RNA_def_property_ui_text(prop, "Verbosity Level", "Verbosity for libraries that support it");
 
   /* TODO (grzelins) now we can start removing bpy.app.debug */
@@ -5858,7 +5885,7 @@ static void rna_def_userdef_system(BlenderRNA *brna)
 
   /* TODO (grzelins) now we can remove WM_OT_debug_menu */
   prop = RNA_def_property(srna, "debug_value", PROP_INT, PROP_NONE);
-  RNA_def_property_int_funcs(prop, "rna_debug_value_get", "rna_debug_value_set", NULL);
+  RNA_def_property_int_funcs(prop, "rna_debug_value_get", "rna_debug_value_set", "rna_debug_value_range");
   RNA_def_property_ui_text(prop, "Debug Value", "Only developers know what is does");
 }
 

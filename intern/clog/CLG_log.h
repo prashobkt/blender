@@ -191,7 +191,7 @@ void CLG_type_filter_exclude(const char *type_filter, int type_filter_len);
 
 enum CLG_Severity CLG_severity_level_get(void);
 void CLG_severity_level_set(enum CLG_Severity log_level);
-short CLG_level_get(void);
+unsigned short CLG_level_get(void);
 void CLG_level_set(unsigned short log_level);
 struct LogRecordList *CLG_log_record_get(void);
 

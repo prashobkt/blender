@@ -97,8 +97,8 @@ typedef struct CLogContext {
 
   /** For new types. */
   struct {
-    short level;
-    short severity_level;
+    unsigned short level;
+    unsigned short severity_level;
   } default_type;
 
   struct {
@@ -798,7 +798,7 @@ static void CLG_ctx_severity_level_set(CLogContext *ctx, enum CLG_Severity level
   }
 }
 
-static short CLG_ctx_level_get(CLogContext *ctx)
+static unsigned short CLG_ctx_level_get(CLogContext *ctx)
 {
   return ctx->default_type.level;
 }
@@ -953,24 +953,24 @@ int CLG_type_filter_get(char *buff, int buff_len)
   CLG_IDFilter *filters_iter = g_ctx->filters[0]; /* exclude filters */
   while (filters_iter) {
     if (filters_iter->next == NULL) {
-      written += sprintf(buff, "^%s", filters_iter->match);
+      written += sprintf(buff + written, "^%s", filters_iter->match);
     }
     else {
-      written += sprintf(buff, "^%s,", filters_iter->match);
+      written += sprintf(buff + written, "^%s,", filters_iter->match);
     }
     filters_iter = filters_iter->next;
   }
 
   filters_iter = g_ctx->filters[1]; /* include filters */
   if (written != 0 && buff[written - 1] != ',') {
-    written += sprintf(buff, ",");
+    written += sprintf(buff + written, ",");
   }
   while (filters_iter) {
     if (filters_iter->next == NULL) {
-      written += sprintf(buff, "%s", filters_iter->match);
+      written += sprintf(buff + written, "%s", filters_iter->match);
     }
     else {
-      written += sprintf(buff, "%s,", filters_iter->match);
+      written += sprintf(buff + written, "%s,", filters_iter->match);
     }
     filters_iter = filters_iter->next;
   }
@@ -1003,7 +1003,7 @@ void CLG_level_set(unsigned short level)
   CLG_ctx_level_set(g_ctx, level);
 }
 
-short CLG_level_get()
+unsigned short CLG_level_get()
 {
   return CLG_ctx_level_get(g_ctx);
 }
