@@ -124,8 +124,10 @@ void GpencilExporterSVG::create_document_header(void)
     create_rect(clip_node,
                 0,
                 0,
-                (camera_rect_.xmax - camera_rect_.xmin) * camera_ratio_,
-                (camera_rect_.xmax - camera_rect_.xmin) * camera_ratio_,
+                render_x_,
+                render_y_,
+                //(camera_rect_.xmax - camera_rect_.xmin) * camera_ratio_,
+                //(camera_rect_.xmax - camera_rect_.xmin) * camera_ratio_,
                 0.0f,
                 "#000000");
   }
@@ -139,25 +141,26 @@ void GpencilExporterSVG::export_layers(void)
     frame_node = main_node.append_child("g");
     std::string frametxt = " Frame_ " + std::to_string(params_.cfra);
     frame_node.append_attribute("id").set_value(frametxt.c_str());
+    /* Clip area. */
+    if (is_camera_mode() && ((params_.flag & GP_EXPORT_CLIP_CAMERA) != 0)) {
+      frame_node.append_attribute("clip-path").set_value("url(#clip-path)");
+    }
 
     /* Test */
-    rctf bb;
-    get_select_boundbox(&bb);
-    create_rect(frame_node,
-                bb.xmin - offset_[0],
-                bb.ymin - offset_[1],
-                (bb.xmax - bb.xmin),
-                (bb.ymax - bb.ymin),
-                5.0f,
-                "#FF0000");
+    if (is_camera_mode()) {
+      rctf bb;
+      get_select_boundbox(&bb);
+      create_rect(frame_node,
+                  bb.xmin - offset_[0],
+                  bb.ymin - offset_[1],
+                  (bb.xmax - bb.xmin),
+                  (bb.ymax - bb.ymin),
+                  5.0f,
+                  "#FF0000");
+    }
 
     pugi::xml_node ob_node = frame_node.append_child("g");
     ob_node.append_attribute("id").set_value(ob->id.name + 2);
-
-    /* Clip area. */
-    if (is_camera_mode() && ((params_.flag & GP_EXPORT_CLIP_CAMERA) != 0)) {
-      ob_node.append_attribute("clip-path").set_value("url(#clip-path)");
-    }
 
     /* Use evaluated version to get strokes with modifiers. */
     Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
