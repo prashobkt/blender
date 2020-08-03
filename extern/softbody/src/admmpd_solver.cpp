@@ -135,6 +135,7 @@ void Solver::init_solve(
 	// - set x init guess
 	double dt = std::max(0.0, options->timestep_s);
 	data->x_start = data->x;
+	data->x_prev = data->x;
 	for (int i=0; i<nx; ++i)
 	{
 		data->v.row(i) += dt*options->grav;

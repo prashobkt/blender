@@ -8,6 +8,7 @@
 #include "admmpd_types.h"
 #include "admmpd_mesh.h"
 #include <set>
+#include <Discregrid/All>
 
 namespace admmpd {
 
@@ -23,6 +24,7 @@ struct VFCollisionPair {
 
 class Collision {
 public:
+	typedef Discregrid::CubicLagrangeDiscreteGrid SDFType;
 
     struct ObstacleData {
         bool has_obs() const { return F.rows()>0; }
@@ -30,6 +32,9 @@ public:
         Eigen::MatrixXi F;
         AABBTree<double,3> tree;
         std::vector<Eigen::AlignedBox<double,3> > leaves;
+        std::unique_ptr<SDFType> sdf;
+        std::unique_ptr<Discregrid::MeshDistance> md;
+        std::unique_ptr<Discregrid::TriangleMesh> tm;
     } obsdata;
 
     virtual ~Collision() {}
@@ -82,7 +87,8 @@ public:
     // discrete collision detection.
     virtual std::pair<bool,VFCollisionPair>
     detect_against_obs(
-        const Eigen::Vector3d &pt,
+        const Eigen::Vector3d &pt_t0,
+        const Eigen::Vector3d &pt_t1,
         const ObstacleData *obs) const;
 
     virtual std::pair<bool,VFCollisionPair>

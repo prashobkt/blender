@@ -4,10 +4,10 @@
 #ifndef ADMMPD_TYPES_H_
 #define ADMMPD_TYPES_H_
 
-//#include "admmpd_mesh.h"
 #include <Eigen/Geometry>
 #include <Eigen/Sparse>
 #include <Eigen/SparseCholesky>
+#include <thread>
 #include <vector>
 #include <set>
 
@@ -26,6 +26,7 @@ struct Options {
     int max_admm_iters;
     int max_cg_iters;
     int max_gs_iters;
+    int max_threads; // -1 = auto (num cpu threads - 1)
     int elastic_material; // ENUM, see admmpd_energy.h
     double gs_omega; // Gauss-Seidel relaxation
     double mult_ck; // stiffness multiplier for constraints
@@ -43,6 +44,7 @@ struct Options {
         max_admm_iters(30),
         max_cg_iters(10),
         max_gs_iters(100),
+        max_threads(-1),
         gs_omega(1),
         mult_ck(3),
         mult_pk(3),
@@ -87,6 +89,13 @@ struct SolverData {
 	std::vector<double> rest_volumes; // per-energy rest volume
 	std::vector<double> weights; // per-energy weights
 };
+
+static inline int get_max_threads(const Options *options)
+{
+    if (options->max_threads > 0)
+        return options->max_threads;
+    return std::max(1,(int)std::thread::hardware_concurrency()-1);
+}
 
 } // namespace admmpd
 

@@ -35,6 +35,7 @@ endif()
 add_subdirectory(rangetree)
 add_subdirectory(wcwidth)
 add_subdirectory(softbody)
+add_subdirectory(discregrid)
 
 if(WITH_BULLET)
   if(NOT WITH_SYSTEM_BULLET)

@@ -26,18 +26,7 @@ set(INC_SYS
 	${EIGEN3_INCLUDE_DIRS}
 	../../source/blender/blenlib
 	../../source/blender/makesdna # BLI_math_geom requires DNA
-)
-
-set(SDFGEN_SRC
-#	src/sdfgen/array1.h
-#	src/sdfgen/array2.h
-#	src/sdfgen/array3.h
-#	src/sdfgen/hashgrid.h
-#	src/sdfgen/hashtable.h
-#	src/sdfgen/makelevelset3.cpp
-#	src/sdfgen/makelevelset3.h
-#	src/sdfgen/util.h
-#	src/sdfgen/vec.h
+	../discregrid/discregrid/include
 )
 
 set(SRC
@@ -62,10 +51,10 @@ set(SRC
 	src/admmpd_types.h
 	src/svd/ImplicitQRSVD.h
 	src/svd/Tools.h
-	${SDFGEN_SRC}
 )
 
 set(LIB
+	extern_discregrid
 )
 
 blender_add_lib(extern_admmpd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

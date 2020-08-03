@@ -229,11 +229,11 @@ void NearestTriangleTraverse<T>::traverse(
 	const AABB &right_aabb, bool &go_right,
 	bool &go_left_first)
 {
-	T l_d2 = left_aabb.exteriorDistance(point);
-	go_left = l_d2 < output.dist;
-	T r_d2 = right_aabb.exteriorDistance(point);
-	go_right = r_d2 < output.dist;
-	go_left_first = go_left < go_right;
+	T l_d = left_aabb.exteriorDistance(point);
+	go_left = l_d < output.dist;
+	T r_d = right_aabb.exteriorDistance(point);
+	go_right = r_d < output.dist;
+	go_left_first = go_left <= go_right;
 }
 
 template <typename T>

@@ -24,6 +24,7 @@ set(INC
 
 set(INC_SYS
   ../../extern/softbody/src
+  ../../extern/discregrid/discregrid/include
   ../tetgen
   ../../source/blender/makesdna
   ../../source/blender/blenkernel

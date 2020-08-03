@@ -128,7 +128,7 @@ Eigen::Matrix<T,3,1> geom::point_triangle_barys(
 
 // From Real-Time Collision Detection by Christer Ericson
 template<typename T>
-Eigen::Matrix<T,3,1> geom::point_on_triangle(
+Eigen::Matrix<T,3,1> geom::point_on_triangle_ce(
 		const Eigen::Matrix<T,3,1> &p,
 		const Eigen::Matrix<T,3,1> &a,
 		const Eigen::Matrix<T,3,1> &b,
@@ -183,6 +183,96 @@ Eigen::Matrix<T,3,1> geom::point_on_triangle(
 	T v = vb / (va + vb + vc);
 	T w = 1.0f - u - v; // = vc / (va + vb + vc)
 	return u * a + v * b + w * c;
+}
+
+// https://github.com/mattoverby/mclscene/blob/master/include/MCL/Projection.hpp
+template<typename T>
+Eigen::Matrix<T,3,1> geom::point_on_triangle(
+		const Eigen::Matrix<T,3,1> &point,
+		const Eigen::Matrix<T,3,1> &p1,
+		const Eigen::Matrix<T,3,1> &p2,
+		const Eigen::Matrix<T,3,1> &p3)
+{
+	typedef Matrix<T,3,1> VecType;
+	auto myclamp = [](const T &x){ return x<0 ? 0 : (x>1 ? 1 : x); };
+
+	VecType edge0 = p2 - p1;
+	VecType edge1 = p3 - p1;
+	VecType v0 = p1 - point;
+	T a = edge0.dot( edge0 );
+	T b = edge0.dot( edge1 );
+	T c = edge1.dot( edge1 );
+	T d = edge0.dot( v0 );
+	T e = edge1.dot( v0 );
+	T det = a*c - b*b;
+	T s = b*e - c*d;
+	T t = b*d - a*e;
+
+	const T zero(0);
+	const T one(1);
+	if ( s + t < det ) {
+		if ( s < zero ) {
+		    if ( t < zero ) {
+				if ( d < zero ) {
+					s = myclamp( -d/a );
+					t = zero;
+				}
+				else {
+					s = zero;
+					t = myclamp( -e/c );
+				}
+			}
+			else {
+				s = zero;
+				t = myclamp( -e/c );
+		    }
+		}
+		else if ( t < zero ) {
+		    s = myclamp( -d/a );
+		    t = zero;
+		}
+		else {
+		    T invDet = one / det;
+		    s *= invDet;
+		    t *= invDet;
+		}
+	}
+	else {
+		if ( s < zero ) {
+		    T tmp0 = b+d;
+		    T tmp1 = c+e;
+		    if ( tmp1 > tmp0 ) {
+				T numer = tmp1 - tmp0;
+				T denom = a-T(2)*b+c;
+				s = myclamp( numer/denom );
+				t = one-s;
+		    }
+		    else {
+				t = myclamp( -e/c );
+				s = zero;
+		    }
+		}
+		else if ( t < zero ) {
+		    if ( a+d > b+e ) {
+				T numer = c+e-b-d;
+				T denom = a-T(2)*b+c;
+				s = myclamp( numer/denom );
+				t = one-s;
+		    }
+		    else {
+				s = myclamp( -e/c );
+				t = zero;
+		    }
+		}
+		else {
+		    T numer = c+e-b-d;
+		    T denom = a-T(2)*b+c;
+		    s = myclamp( numer/denom );
+		    t = one - s;
+		}
+	}
+
+	return ( p1 + edge0*s + edge1*t );
 }
 
 // From Real-Time Collision Detection by Christer Ericson

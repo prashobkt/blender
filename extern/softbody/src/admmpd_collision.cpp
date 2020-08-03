@@ -8,6 +8,7 @@
 #include "BLI_assert.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
+#include <thread>
 
 #include <iostream>
 #include <sstream>
@@ -33,16 +34,23 @@ void Collision::set_obstacles(
 	(void)(v0);
 	if (nv==0 || nf==0)
 	{
-//		obsdata.mesh = admmpd::EmbeddedMesh();
+		// Why even try this? Are you just being mean?
 		return;
 	}
+
+	std::vector<double> v1_dbl(nv*3);
+    Eigen::AlignedBox<double,3> domain;
 
 	if (obsdata.V.rows() != nv)
 		obsdata.V.resize(nv,3);
 	for (int i=0; i<nv; ++i)
 	{
 		for (int j=0; j<3; ++j)
+		{
 			obsdata.V(i,j) = v1[i*3+j];
+			v1_dbl[i*3+j] = v1[i*3+j];
+		}
+		domain.extend(obsdata.V.row(i).transpose());
 	}
 
 	if ((int)obsdata.leaves.size() != nf)
@@ -62,11 +70,28 @@ void Collision::set_obstacles(
 
 	obsdata.tree.init(obsdata.leaves);
 
+	// Generate signed distance field
+	{
+		obsdata.tm = std::make_unique<Discregrid::TriangleMesh>(v1_dbl.data(), faces, nv, nf);
+		obsdata.md = std::make_unique<Discregrid::MeshDistance>(*(obsdata.tm.get()));
+		domain.max() += 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
+		domain.min() -= 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
+		std::array<unsigned int, 3> resolution;
+		resolution[0] = 10; resolution[1] = 10; resolution[2] = 10;
+		obsdata.sdf = std::make_unique<SDFType>(Discregrid::CubicLagrangeDiscreteGrid(domain, resolution));
+		auto func = Discregrid::DiscreteGrid::ContinuousFunction{};
+		func = [&](Eigen::Vector3d const& xi) {
+			return obsdata.md->signedDistanceCached(xi);
+		};
+		obsdata.sdf->addFunction(func, false);
+	}
+
 } // end add obstacle
 
 std::pair<bool,VFCollisionPair>
 Collision::detect_against_obs(
-        const Eigen::Vector3d &pt,
+        const Eigen::Vector3d &pt_t0,
+		const Eigen::Vector3d &pt_t1,
         const ObstacleData *obs) const
 {
 	std::pair<bool,VFCollisionPair> ret = 
@@ -75,14 +100,25 @@ Collision::detect_against_obs(
 	if (!obs->has_obs())
 		return ret;
 
-	PointInTriangleMeshTraverse<double> pt_in_mesh(pt,&obs->V,&obs->F);
-	obs->tree.traverse(pt_in_mesh);
-	if (pt_in_mesh.output.num_hits()%2==0)
+	Eigen::Vector3d n;
+	double dist = obs->sdf->interpolate(0, pt_t1, &n);
+	if (dist > 0)
 		return ret;
 
-	NearestTriangleTraverse<double> nearest_tri(pt,&obs->V,&obs->F);
-	obs->tree.traverse(nearest_tri);
+	// Performs BVH traversal to find the nearest face
+	// For some reason this is NOT giving me correct results :/
+//	Vector3d nearest_pt = pt_t0;
+//	unsigned int nearest_face = 0;
+//	obs->md->distance(pt_t1, &nearest_pt, &nearest_face);
+//	ret.first = true;
+//	ret.second.q_idx = nearest_face;
+//	ret.second.q_is_obs = true;
+//	ret.second.q_pt = nearest_pt;
+//	return ret;
 
+	// Guess I'll roll my own
+	NearestTriangleTraverse<double> nearest_tri(pt_t1,&obs->V,&obs->F);
+	obs->tree.traverse(nearest_tri);
 	ret.first = true;
 	ret.second.q_idx = nearest_tri.output.prim;
 	ret.second.q_is_obs = true;
@@ -136,28 +172,36 @@ int EmbeddedMeshCollision::detect(
 		const Eigen::MatrixXd *x0;
 		const Eigen::MatrixXd *x1;
 		std::vector<std::vector<VFCollisionPair> > *per_vertex_pairs;
+		std::vector<std::vector<Eigen::Vector2i> > *per_thread_results;
 	} DetectThreadData;
 
 	//
 	// Detection function for a single embedded vertex
 	//
+//	auto per_embedded_vertex_detect = [](
+//		void *__restrict userdata,
+//		const int vi,
+//		const TaskParallelTLS *__restrict tls)->void
 	auto per_embedded_vertex_detect = [](
-		void *__restrict userdata,
-		const int vi,
-		const TaskParallelTLS *__restrict tls)->void
+		DetectThreadData *td,
+		int thread_idx,
+		int vi)->void
 	{
-		(void)(tls);
-		DetectThreadData *td = (DetectThreadData*)userdata;
+//		(void)(tls);
+//		DetectThreadData *td = (DetectThreadData*)userdata;
 		if (td->embmesh == nullptr)
 			return;
 
+		std::vector<Eigen::Vector2i> &pt_res = td->per_thread_results->at(thread_idx);
 		std::vector<VFCollisionPair> &vi_pairs = td->per_vertex_pairs->at(vi);
 		vi_pairs.clear();
+		Vector3d pt_t0 = td->embmesh->get_mapped_facet_vertex(*td->x0,vi);
 		Vector3d pt_t1 = td->embmesh->get_mapped_facet_vertex(*td->x1,vi);
 
 		// Special case, check if we are below the floor
 		if (pt_t1[2] < td->options->floor)
 		{
+			pt_res.emplace_back(vi,vi_pairs.size());
 			vi_pairs.emplace_back();
 			VFCollisionPair &pair = vi_pairs.back();
 			pair.p_idx = vi;
@@ -172,11 +216,12 @@ int EmbeddedMeshCollision::detect(
 		if (td->obsdata->has_obs())
 		{
 			std::pair<bool,VFCollisionPair> pt_hit_obs =
-				td->collision->detect_against_obs(pt_t1,td->obsdata);
+				td->collision->detect_against_obs(pt_t0,pt_t1,td->obsdata);
 			if (pt_hit_obs.first)
 			{
 				pt_hit_obs.second.p_idx = vi;
 				pt_hit_obs.second.p_is_obs = false;
+				pt_res.emplace_back(vi,vi_pairs.size());
 				vi_pairs.emplace_back(pt_hit_obs.second);
 			}
 		}
@@ -188,12 +233,14 @@ int EmbeddedMeshCollision::detect(
 				td->collision->detect_against_self(vi, pt_t1, td->x1);
 			if (pt_hit_self.first)
 			{
+				pt_res.emplace_back(vi,vi_pairs.size());
 				vi_pairs.emplace_back(pt_hit_self.second);
 			}
 		}
 
 	}; // end detect for a single embedded vertex
 
+	std::vector<std::vector<Eigen::Vector2i> > per_thread_results;
 	DetectThreadData thread_data = {
 		.options = options,
 		.collision = this,
@@ -201,20 +248,62 @@ int EmbeddedMeshCollision::detect(
 		.obsdata = &obsdata,
 		.x0 = x0,
 		.x1 = x1,
-		.per_vertex_pairs = &per_vertex_pairs
+		.per_vertex_pairs = &per_vertex_pairs,
+		.per_thread_results = &per_thread_results
 	};
 
-	TaskParallelSettings thrd_settings;
-	BLI_parallel_range_settings_defaults(&thrd_settings);
-	BLI_task_parallel_range(0, nev, &thread_data, per_embedded_vertex_detect, &thrd_settings);
-
-	vf_pairs.clear();
-	for (int i=0; i<nev; ++i)
+	// Okay, the thread pooling is a little strange here so let me explain.
+	// Collisions are processed per-vertex. If one vertex is colliding, it's
+	// likely that adjacent vertices (nearby index) are also colliding.
+	// Because of this, it's better to interlace/offset the pooling so that
+	// vertices next to eachother are on different threads to provide
+	// better concurrency. Otherwise a standard slice may end up doing
+	// all of the BVH traversals and the other threads do none!
+	// I haven't actually profiled this, so maybe I'm wrong. But
+	// parallel-for-all functions that do what I need
+	// aren't available in the Blender lib, so I'll have some funsies here.
+	int max_threads = std::max(1, std::min(nev, admmpd::get_max_threads(options)));
+	const auto & per_thread_function = [&per_embedded_vertex_detect,&max_threads,&nev]
+		(DetectThreadData *td, int thread_idx)
 	{
-		int pvp = per_vertex_pairs[i].size();
-		for (int j=0; j<pvp; ++j)
-			vf_pairs.emplace_back(Vector2i(i,j));
+    	int slice = std::max((int)std::round((nev+1)/double(max_threads)),1);
+		for (int i=0; i<slice; ++i)
+		{
+			int vi = i*max_threads + thread_idx;
+			if (vi >= nev)
+				break;
+
+			per_embedded_vertex_detect(td,thread_idx,vi);
+		}
+	};
+
+	// Launch threads
+	std::vector<std::thread> pool;
+	per_thread_results.resize(max_threads, std::vector<Vector2i>());
+	for (int i=0; i<max_threads; ++i)
+		pool.emplace_back(per_thread_function,&thread_data,i);
+
+	// Combine parallel results
+	vf_pairs.clear();
+	for (int i=0; i<max_threads; ++i)
+	{
+		if (pool[i].joinable())
+			pool[i].join(); // wait for thread to finish
+
+		vf_pairs.insert(vf_pairs.end(),
+			per_thread_results[i].begin(), per_thread_results[i].end());
 	}
+
+//	TaskParallelSettings thrd_settings;
+//	BLI_parallel_range_settings_defaults(&thrd_settings);
+//	BLI_task_parallel_range(0, nev, &thread_data, per_embedded_vertex_detect, &thrd_settings);
+//	vf_pairs.clear();
+//	for (int i=0; i<nev; ++i)
+//	{
+//		int pvp = per_vertex_pairs[i].size();
+//		for (int j=0; j<pvp; ++j)
+//			vf_pairs.emplace_back(Vector2i(i,j));
+//	}
 
 	return vf_pairs.size();
 } // end detect

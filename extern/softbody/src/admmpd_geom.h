@@ -40,6 +40,14 @@ static Eigen::Matrix<T,3,1> point_triangle_barys(
     const Eigen::Matrix<T,3,1> &b,
     const Eigen::Matrix<T,3,1> &c);
 
+// From RTCD by C.E.
+template<typename T>
+static Eigen::Matrix<T,3,1> point_on_triangle_ce(
+    const Eigen::Matrix<T,3,1> &p,
+    const Eigen::Matrix<T,3,1> &a,
+    const Eigen::Matrix<T,3,1> &b,
+    const Eigen::Matrix<T,3,1> &c);
+
 template<typename T>
 static Eigen::Matrix<T,3,1> point_on_triangle(
     const Eigen::Matrix<T,3,1> &p,
