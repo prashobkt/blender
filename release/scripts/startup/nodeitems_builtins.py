@@ -487,7 +487,7 @@ simulation_node_categories = [
         NodeItem("SimulationNodeParticleSimulation"),
     ]),
     SimulationNodeCategory("SIM_INPUTS", "Input", items=[
-        not_implemented_node("SimulationNodeTime"),
+        NodeItem("SimulationNodeTime"),
         NodeItem("SimulationNodeParticleAttribute"),
         NodeItem("FunctionNodeGroupInstanceID"),
         NodeItem("ShaderNodeValue"),
@@ -498,16 +498,18 @@ simulation_node_categories = [
         not_implemented_node("SimulationNodeEmitParticles"),
     ]),
     SimulationNodeCategory("SIM_EVENTS", "Events", items=[
-        not_implemented_node("SimulationNodeParticleBirthEvent"),
-        not_implemented_node("SimulationNodeParticleTimeStepEvent"),
+        NodeItem("SimulationNodeParticleBirthEvent"),
+        NodeItem("SimulationNodeParticleTimeStepEvent"),
+        NodeItem("SimulationNodeAgeReachedEvent"),
         not_implemented_node("SimulationNodeParticleMeshCollisionEvent"),
     ]),
     SimulationNodeCategory("SIM_FORCES", "Forces", items=[
         NodeItem("SimulationNodeForce"),
     ]),
     SimulationNodeCategory("SIM_EXECUTE", "Execute", items=[
-        not_implemented_node("SimulationNodeSetParticleAttribute"),
-        not_implemented_node("SimulationNodeExecuteCondition"),
+        NodeItem("SimulationNodeSetParticleAttribute"),
+        NodeItem("SimulationNodeExecuteCondition"),
+        NodeItem("SimulationNodeKillParticle"),
         not_implemented_node("SimulationNodeMultiExecute"),
     ]),
     SimulationNodeCategory("SIM_NOISE", "Noise", items=[
@@ -523,7 +525,7 @@ simulation_node_categories = [
     ]),
     SimulationNodeCategory("SIM_CONVERTER", "Converter", items=[
         NodeItem("ShaderNodeMapRange"),
-        not_implemented_node("ShaderNodeClamp"),
+        NodeItem("ShaderNodeClamp"),
         NodeItem("ShaderNodeMath"),
         NodeItem("ShaderNodeValToRGB"),
         NodeItem("ShaderNodeVectorMath"),
@@ -537,6 +539,7 @@ simulation_node_categories = [
         NodeItem("FunctionNodeFloatCompare"),
         not_implemented_node("FunctionNodeSwitch"),
         NodeItem("FunctionNodeCombineStrings"),
+        NodeItem("FunctionNodeRandomFloat"),
     ]),
     SimulationNodeCategory("SIM_GROUP", "Group", items=node_group_items),
     SimulationNodeCategory("SIM_LAYOUT", "Layout", items=[

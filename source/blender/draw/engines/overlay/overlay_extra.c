@@ -53,8 +53,6 @@
 
 #include "ED_view3d.h"
 
-#include "GPU_draw.h"
-
 #include "overlay_private.h"
 
 #include "draw_common.h"
@@ -1339,7 +1337,7 @@ static void OVERLAY_relationship_lines(OVERLAY_ExtraCallBuffers *cb,
       else {
         const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(curcon);
 
-        if ((cti && cti->get_constraint_targets) && (curcon->ui_expand_flag && (1 << 0))) {
+        if ((cti && cti->get_constraint_targets) && (curcon->ui_expand_flag & (1 << 0))) {
           ListBase targets = {NULL, NULL};
           bConstraintTarget *ct;
 
@@ -1443,7 +1441,7 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
       line_count /= fds->res[slice_axis];
     }
 
-    GPU_create_smoke_velocity(fmd);
+    DRW_smoke_ensure_velocity(fmd);
 
     GPUShader *sh = OVERLAY_shader_volume_velocity(use_needle, use_mac);
     DRWShadingGroup *grp = DRW_shgroup_create(sh, data->psl->extra_ps[0]);
@@ -1473,12 +1471,12 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
     DRW_shgroup_uniform_int_copy(grp, "sliceAxis", slice_axis);
 
     if (color_with_flags || color_range) {
-      GPU_create_fluid_flags(fmd);
+      DRW_fluid_ensure_flags(fmd);
       DRW_shgroup_uniform_texture(grp, "flagTexture", fds->tex_flags);
     }
 
     if (color_range) {
-      GPU_create_fluid_range_field(fmd);
+      DRW_fluid_ensure_range_field(fmd);
       DRW_shgroup_uniform_texture(grp, "fieldTexture", fds->tex_range_field);
       DRW_shgroup_uniform_float_copy(grp, "lowerBound", fds->gridlines_lower_bound);
       DRW_shgroup_uniform_float_copy(grp, "upperBound", fds->gridlines_upper_bound);
@@ -1505,7 +1503,7 @@ static void OVERLAY_volume_free_smoke_textures(OVERLAY_Data *data)
   LinkData *link;
   while ((link = BLI_pophead(&data->stl->pd->smoke_domains))) {
     FluidModifierData *fmd = (FluidModifierData *)link->data;
-    GPU_free_smoke_velocity(fmd);
+    DRW_smoke_free_velocity(fmd);
     MEM_freeN(link);
   }
 }

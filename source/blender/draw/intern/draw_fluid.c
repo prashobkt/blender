@@ -35,9 +35,9 @@
 
 #include "BKE_colorband.h"
 
-#include "GPU_draw.h"
-#include "GPU_glew.h"
 #include "GPU_texture.h"
+
+#include "draw_common.h" /* Own include. */
 
 #ifdef WITH_FLUID
 #  include "manta_fluid_API.h"
@@ -216,7 +216,7 @@ static GPUTexture *create_field_texture(FluidDomainSettings *fds, bool single_pr
   }
 
   GPUTexture *tex = GPU_texture_create_nD(
-      fds->res[0], fds->res[1], fds->res[2], 3, field, texture_format, data_format, 0, true, NULL);
+      UNPACK3(fds->res), 3, field, texture_format, data_format, 0, true, NULL);
 
   swizzle_texture_channel_single(tex);
   return tex;
@@ -235,7 +235,7 @@ static GPUTexture *create_density_texture(FluidDomainSettings *fds, int highres)
   }
 
   GPUTexture *tex = GPU_texture_create_nD(
-      dim[0], dim[1], dim[2], 3, data, GPU_R8, GPU_DATA_FLOAT, 0, true, NULL);
+      UNPACK3(dim), 3, data, GPU_R8, GPU_DATA_FLOAT, 0, true, NULL);
 
   swizzle_texture_channel_single(tex);
 
@@ -335,7 +335,7 @@ static bool get_smoke_velocity_field(FluidDomainSettings *fds,
 /** \name Public API
  * \{ */
 
-void GPU_free_smoke(FluidModifierData *fmd)
+void DRW_smoke_free(FluidModifierData *fmd)
 {
   if (fmd->type & MOD_FLUID_TYPE_DOMAIN && fmd->domain) {
     if (fmd->domain->tex_density) {
@@ -375,7 +375,7 @@ void GPU_free_smoke(FluidModifierData *fmd)
   }
 }
 
-void GPU_create_smoke_coba_field(FluidModifierData *fmd)
+void DRW_smoke_ensure_coba_field(FluidModifierData *fmd)
 {
 #ifndef WITH_FLUID
   UNUSED_VARS(fmd);
@@ -399,7 +399,7 @@ void GPU_create_smoke_coba_field(FluidModifierData *fmd)
 #endif
 }
 
-void GPU_create_smoke(FluidModifierData *fmd, int highres)
+void DRW_smoke_ensure(FluidModifierData *fmd, int highres)
 {
 #ifndef WITH_FLUID
   UNUSED_VARS(fmd, highres);
@@ -420,9 +420,7 @@ void GPU_create_smoke(FluidModifierData *fmd, int highres)
       fds->tex_flame_coba = create_transfer_function(TFUNC_FLAME_SPECTRUM, NULL);
     }
     if (!fds->tex_shadow) {
-      fds->tex_shadow = GPU_texture_create_nD(fds->res[0],
-                                              fds->res[1],
-                                              fds->res[2],
+      fds->tex_shadow = GPU_texture_create_nD(UNPACK3(fds->res),
                                               3,
                                               manta_smoke_get_shadow(fds->fluid),
                                               GPU_R8,
@@ -435,7 +433,7 @@ void GPU_create_smoke(FluidModifierData *fmd, int highres)
 #endif /* WITH_FLUID */
 }
 
-void GPU_create_smoke_velocity(FluidModifierData *fmd)
+void DRW_smoke_ensure_velocity(FluidModifierData *fmd)
 {
 #ifndef WITH_FLUID
   UNUSED_VARS(fmd);
@@ -454,18 +452,15 @@ void GPU_create_smoke_velocity(FluidModifierData *fmd)
     }
 
     if (!fds->tex_velocity_x) {
-      fds->tex_velocity_x = GPU_texture_create_3d(
-          fds->res[0], fds->res[1], fds->res[2], GPU_R16F, vel_x, NULL);
-      fds->tex_velocity_y = GPU_texture_create_3d(
-          fds->res[0], fds->res[1], fds->res[2], GPU_R16F, vel_y, NULL);
-      fds->tex_velocity_z = GPU_texture_create_3d(
-          fds->res[0], fds->res[1], fds->res[2], GPU_R16F, vel_z, NULL);
+      fds->tex_velocity_x = GPU_texture_create_3d(UNPACK3(fds->res), GPU_R16F, vel_x, NULL);
+      fds->tex_velocity_y = GPU_texture_create_3d(UNPACK3(fds->res), GPU_R16F, vel_y, NULL);
+      fds->tex_velocity_z = GPU_texture_create_3d(UNPACK3(fds->res), GPU_R16F, vel_z, NULL);
     }
   }
 #endif /* WITH_FLUID */
 }
 
-void GPU_create_fluid_flags(FluidModifierData *fmd)
+void DRW_fluid_ensure_flags(FluidModifierData *fmd)
 {
 #ifndef WITH_FLUID
   UNUSED_VARS(fmd);
@@ -473,9 +468,7 @@ void GPU_create_fluid_flags(FluidModifierData *fmd)
   if (fmd->type & MOD_FLUID_TYPE_DOMAIN) {
     FluidDomainSettings *fds = fmd->domain;
     if (!fds->tex_flags) {
-      fds->tex_flags = GPU_texture_create_nD(fds->res[0],
-                                             fds->res[1],
-                                             fds->res[2],
+      fds->tex_flags = GPU_texture_create_nD(UNPACK3(fds->res),
                                              3,
                                              manta_smoke_get_flags(fds->fluid),
                                              GPU_R8UI,
@@ -490,7 +483,7 @@ void GPU_create_fluid_flags(FluidModifierData *fmd)
 #endif /* WITH_FLUID */
 }
 
-void GPU_create_fluid_range_field(FluidModifierData *fmd)
+void DRW_fluid_ensure_range_field(FluidModifierData *fmd)
 {
 #ifndef WITH_FLUID
   UNUSED_VARS(fmd);
@@ -506,7 +499,7 @@ void GPU_create_fluid_range_field(FluidModifierData *fmd)
 }
 
 /* TODO Unify with the other GPU_free_smoke. */
-void GPU_free_smoke_velocity(FluidModifierData *fmd)
+void DRW_smoke_free_velocity(FluidModifierData *fmd)
 {
   if (fmd->type & MOD_FLUID_TYPE_DOMAIN && fmd->domain) {
     if (fmd->domain->tex_velocity_x) {
