@@ -28,27 +28,20 @@
 
 #  include "BLI_edgehash.h"
 #  include "BLI_utildefines.h"
+#  include <CLG_log.h>
 
 #  include "bmesh.h"
 
 #  include "bmesh_mesh_validate.h"
 
-/* macro which inserts the function name */
-#  if defined __GNUC__
-#    define ERRMSG(format, args...) \
-      { \
-        fprintf(stderr, "%s: " format ", " AT "\n", __func__, ##args); \
-        errtot++; \
-      } \
-      (void)0
-#  else
-#    define ERRMSG(format, ...) \
-      { \
-        fprintf(stderr, "%s: " format ", " AT "\n", __func__, __VA_ARGS__); \
-        errtot++; \
-      } \
-      (void)0
-#  endif
+static CLG_LogRef LOG = {"bmesh.bmesh_mesh_validate"};
+
+#  define ERRMSG(...) \
+    { \
+      CLOG_ERROR(&LOG, __VA_ARGS__); \
+      errtot++; \
+    } \
+    (void)0
 
 /**
  * Check of this BMesh is valid,
@@ -69,7 +62,6 @@ bool BM_mesh_validate(BMesh *bm)
   int i, j;
 
   errtot = -1; /* 'ERRMSG' next line will set at zero */
-  fprintf(stderr, "\n");
   ERRMSG("This is a debugging function and not intended for general use, running slow test!");
 
   /* force recalc, even if tagged as valid, since this mesh is suspect! */
