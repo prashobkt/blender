@@ -633,7 +633,7 @@ static void CLG_ctx_output_update(CLogContext *ctx)
     FILE *fp = fopen(ctx->output_file_path, "w");
     if (fp == NULL) {
       const char *err_msg = errno ? strerror(errno) : "unknown";
-      printf("Error: %s '%s'.\n", err_msg, ctx->output_file_path);
+      printf("Log output error: %s '%s'.\n", err_msg, ctx->output_file_path);
       return;
     }
     ctx->output_file = fp;
