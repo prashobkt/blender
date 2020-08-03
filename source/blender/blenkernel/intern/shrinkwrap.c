@@ -56,6 +56,7 @@
 
 #include "DEG_depsgraph_query.h"
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_strict_flags.h"
@@ -67,8 +68,10 @@
 #  define TIMEIT_BENCH(expr, id) (expr)
 #endif
 
+static CLG_LogRef LOG = {"bke.shrinkwrap"};
+
 /* Util macros */
-#define OUT_OF_MEMORY() ((void)printf("Shrinkwrap: Out of memory\n"))
+#define CLOG_OUT_OF_MEMORY() ((void)CLOG_ERROR(&LOG, "Shrinkwrap: Out of memory"))
 
 typedef struct ShrinkwrapCalcData {
   ShrinkwrapModifierData *smd;  // shrinkwrap modifier data
@@ -742,7 +745,16 @@ static void shrinkwrap_calc_normal_projection(ShrinkwrapCalcData *calc)
  * The actual solution vector is [ w0, w1, l ], with w2 eliminated.
  */
 
-//#define TRACE_TARGET_PROJECT
+#define TRACE_TARGET_PROJECT
+#ifdef TRACE_TARGET_PROJECT
+static CLG_LogRef _SHRINKWRAP_LOG_TRACE_TARGET_PROJECT = {"bke.shrinkwrap.trace_target_project"};
+#  define CLOG_TRACE_TARGET_PROJECT(level, ...) \
+    CLOG_VERBOSE(&_SHRINKWRAP_LOG_TRACE_TARGET_PROJECT, level, __VA_ARGS__)
+#else
+#  define CLOG_TRACE_TARGET_PROJECT(level, format, ...) \
+    do { \
+    } while (0)
+#endif
 
 typedef struct TargetProjectTriData {
   const float **vtri_co;
@@ -942,10 +954,12 @@ static bool update_hit(BVHTreeNearest *nearest,
   float dist_sq = len_squared_v3v3(hit_co, co);
 
   if (dist_sq < nearest->dist_sq) {
-#ifdef TRACE_TARGET_PROJECT
-    printf(
-        "#=#=#> %d (%.3f,%.3f,%.3f) %g < %g\n", index, UNPACK3(hit_co), dist_sq, nearest->dist_sq);
-#endif
+    CLOG_TRACE_TARGET_PROJECT(0,
+                              "#=#=#> %d (%.3f,%.3f,%.3f) %g < %g",
+                              index,
+                              UNPACK3(hit_co),
+                              dist_sq,
+                              nearest->dist_sq);
     nearest->index = index;
     nearest->dist_sq = dist_sq;
     copy_v3_v3(nearest->co, hit_co);
@@ -968,12 +982,11 @@ static void target_project_edge(const ShrinkwrapTreeData *tree,
   const MEdge *edge = &tree->mesh->medge[eidx];
   const float *vedge_co[2] = {data->vert[edge->v1].co, data->vert[edge->v2].co};
 
-#ifdef TRACE_TARGET_PROJECT
-  printf("EDGE %d (%.3f,%.3f,%.3f) (%.3f,%.3f,%.3f)\n",
-         eidx,
-         UNPACK3(vedge_co[0]),
-         UNPACK3(vedge_co[1]));
-#endif
+  CLOG_TRACE_TARGET_PROJECT(0,
+                            "EDGE %d (%.3f,%.3f,%.3f) (%.3f,%.3f,%.3f)",
+                            eidx,
+                            UNPACK3(vedge_co[0]),
+                            UNPACK3(vedge_co[1]));
 
   /* Retrieve boundary vertex IDs */
   const int *vert_boundary_id = tree->boundary->vert_boundary_id;
@@ -1053,15 +1066,14 @@ static void mesh_looptri_target_project(void *userdata,
   closest_on_tri_to_point_v3(raw_hit_co, co, UNPACK3(vtri_co));
   dist_sq = len_squared_v3v3(co, raw_hit_co);
 
-#ifdef TRACE_TARGET_PROJECT
-  printf("TRIANGLE %d (%.3f,%.3f,%.3f) (%.3f,%.3f,%.3f) (%.3f,%.3f,%.3f) %g %g\n",
-         index,
-         UNPACK3(vtri_co[0]),
-         UNPACK3(vtri_co[1]),
-         UNPACK3(vtri_co[2]),
-         dist_sq,
-         nearest->dist_sq);
-#endif
+  CLOG_TRACE_TARGET_PROJECT(0,
+                            "TRIANGLE %d (%.3f,%.3f,%.3f) (%.3f,%.3f,%.3f) (%.3f,%.3f,%.3f) %g %g",
+                            index,
+                            UNPACK3(vtri_co[0]),
+                            UNPACK3(vtri_co[1]),
+                            UNPACK3(vtri_co[2]),
+                            dist_sq,
+                            nearest->dist_sq);
 
   if (dist_sq >= nearest->dist_sq) {
     return;
@@ -1102,16 +1114,13 @@ void BKE_shrinkwrap_find_nearest_surface(struct ShrinkwrapTreeData *tree,
   BVHTreeFromMesh *treeData = &tree->treeData;
 
   if (type == MOD_SHRINKWRAP_TARGET_PROJECT) {
-#ifdef TRACE_TARGET_PROJECT
-    printf("\n====== TARGET PROJECT START ======\n");
-#endif
+    CLOG_TRACE_TARGET_PROJECT(0, "\n====== TARGET PROJECT START ======");
 
     BLI_bvhtree_find_nearest_ex(
         tree->bvh, co, nearest, mesh_looptri_target_project, tree, BVH_NEAREST_OPTIMAL_ORDER);
 
-#ifdef TRACE_TARGET_PROJECT
-    printf("====== TARGET PROJECT END: %d %g ======\n\n", nearest->index, nearest->dist_sq);
-#endif
+    CLOG_TRACE_TARGET_PROJECT(
+        0, "====== TARGET PROJECT END: %d %g ======\n", nearest->index, nearest->dist_sq);
 
     if (nearest->index < 0) {
       /* fallback to simple nearest */
@@ -1305,9 +1314,8 @@ static void shrinkwrap_snap_with_side(float r_point_co[3],
       float dist_epsilon = (fabsf(goal_dist) + len_manhattan_v3(hit_co)) * 1e-4f;
 
       if (dist < dist_epsilon) {
-#ifdef TRACE_TARGET_PROJECT
-        printf("zero_factor %g = %g / %g\n", dist / dist_epsilon, dist, dist_epsilon);
-#endif
+        CLOG_TRACE_TARGET_PROJECT(
+            0, "zero_factor %g = %g / %g", dist / dist_epsilon, dist, dist_epsilon);
 
         interp_v3_v3v3(delta, hit_no, delta, dist / dist_epsilon);
       }
@@ -1379,7 +1387,7 @@ void BKE_shrinkwrap_snap_point_to_surface(const struct ShrinkwrapTreeData *tree,
       break;
 
     default:
-      printf("Unknown Shrinkwrap surface snap mode: %d\n", mode);
+      CLOG_ERROR(&LOG, "Unknown Shrinkwrap surface snap mode: %d", mode);
       copy_v3_v3(r_point_co, hit_co);
   }
 }
