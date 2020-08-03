@@ -196,7 +196,7 @@ void SCULPT_vertex_normal_get(SculptSession *ss, int index, float no[3])
   }
 }
 
-static const float *sculpt_vertex_persistent_co_get(SculptSession *ss, int index)
+const float *SCULPT_vertex_persistent_co_get(SculptSession *ss, int index)
 {
   if (ss->persistent_base) {
     return ss->persistent_base[index].co;
@@ -204,7 +204,7 @@ static const float *sculpt_vertex_persistent_co_get(SculptSession *ss, int index
   return SCULPT_vertex_co_get(ss, index);
 }
 
-static void sculpt_vertex_persistent_normal_get(SculptSession *ss, int index, float no[3])
+void SCULPT_vertex_persistent_normal_get(SculptSession *ss, int index, float no[3])
 {
   if (ss->persistent_base) {
     copy_v3_v3(no, ss->persistent_base[index].no);
@@ -2966,7 +2966,7 @@ static void do_draw_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
 
   /* XXX - this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
    * initialize before threads so they can do curve mapping. */
-  BKE_curvemapping_initialize(brush->curve);
+  BKE_curvemapping_init(brush->curve);
 
   /* Threaded loop over nodes. */
   SculptThreadedTaskData data = {
@@ -3043,7 +3043,7 @@ static void do_draw_sharp_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int to
 
   /* XXX - this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
    * initialize before threads so they can do curve mapping. */
-  BKE_curvemapping_initialize(brush->curve);
+  BKE_curvemapping_init(brush->curve);
 
   /* Threaded loop over nodes. */
   SculptThreadedTaskData data = {
@@ -3273,7 +3273,7 @@ static void do_slide_relax_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int t
     return;
   }
 
-  BKE_curvemapping_initialize(brush->curve);
+  BKE_curvemapping_init(brush->curve);
 
   SculptThreadedTaskData data = {
       .sd = sd,
@@ -4341,9 +4341,9 @@ static void do_layer_brush_task_cb_ex(void *__restrict userdata,
       float normal[3];
 
       if (use_persistent_base) {
-        sculpt_vertex_persistent_normal_get(ss, vi, normal);
+        SCULPT_vertex_persistent_normal_get(ss, vi, normal);
         mul_v3_fl(normal, brush->height);
-        madd_v3_v3v3fl(final_co, sculpt_vertex_persistent_co_get(ss, vi), normal, *disp_factor);
+        madd_v3_v3v3fl(final_co, SCULPT_vertex_persistent_co_get(ss, vi), normal, *disp_factor);
       }
       else {
         normal_short_to_float_v3(normal, orig_data.no);
@@ -6390,7 +6390,7 @@ static void sculpt_update_cache_invariants(
         brush = br;
         cache->saved_smooth_size = BKE_brush_size_get(scene, brush);
         BKE_brush_size_set(scene, brush, size);
-        BKE_curvemapping_initialize(brush->curve);
+        BKE_curvemapping_init(brush->curve);
       }
     }
   }
@@ -6458,7 +6458,7 @@ static void sculpt_update_cache_invariants(
 
 #define PIXEL_INPUT_THRESHHOLD 5
   if (brush->sculpt_tool == SCULPT_TOOL_ROTATE) {
-    cache->dial = BLI_dial_initialize(cache->initial_mouse, PIXEL_INPUT_THRESHHOLD);
+    cache->dial = BLI_dial_init(cache->initial_mouse, PIXEL_INPUT_THRESHHOLD);
   }
 
 #undef PIXEL_INPUT_THRESHHOLD
