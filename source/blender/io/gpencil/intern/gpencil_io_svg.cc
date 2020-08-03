@@ -146,8 +146,9 @@ void GpencilExporterSVG::export_layers(void)
       frame_node.append_attribute("clip-path").set_value("url(#clip-path)");
     }
 
-    /* Test */
-    if (is_camera_mode()) {
+#if 0
+    /* Boundbox border. */
+    if (!is_camera_mode()) {
       rctf bb;
       get_select_boundbox(&bb);
       create_rect(frame_node,
@@ -158,6 +159,7 @@ void GpencilExporterSVG::export_layers(void)
                   5.0f,
                   "#FF0000");
     }
+#endif
 
     pugi::xml_node ob_node = frame_node.append_child("g");
     ob_node.append_attribute("id").set_value(ob->id.name + 2);
