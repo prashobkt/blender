@@ -44,12 +44,16 @@ class GpencilExporter {
 
  public:
   GpencilExporter(const struct GpencilExportParams *iparams);
-  virtual bool write(std::string actual_frame, const bool newpage, const bool savepage) = 0;
+  virtual bool write(std::string subfix,
+                     const bool newpage,
+                     const bool body,
+                     const bool savepage) = 0;
 
   void set_frame_number(int value);
   void set_frame_offset(float value[2]);
   void set_frame_ratio(float value[2]);
   void set_frame_box(float value[2]);
+  void set_file_subfix(char *value);
 
  protected:
   bool invert_axis_[2];

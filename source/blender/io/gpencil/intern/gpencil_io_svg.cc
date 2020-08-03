@@ -69,22 +69,30 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *iparams
 }
 
 /* Main write method for SVG format. */
-bool GpencilExporterSVG::write(std::string actual_frame, const bool newpage, const bool savepage)
+bool GpencilExporterSVG::write(std::string subfix,
+                               const bool newpage,
+                               const bool body,
+                               const bool savepage)
 {
+  /* Create new document and add header. */
   if (newpage) {
     create_document_header();
   }
 
-  export_layers();
-
-  /* Add frame to filename. */
-  std::string frame_file = out_filename_;
-  size_t found = frame_file.find_last_of(".");
-  if (found != std::string::npos) {
-    frame_file.replace(found, 8, actual_frame + ".svg");
+  /* Add body. */
+  if (body) {
+    export_layers();
   }
 
+  /* Save File. */
   if (savepage) {
+    /* Add frame to filename. */
+    std::string frame_file = out_filename_;
+    size_t found = frame_file.find_last_of(".");
+    if (found != std::string::npos) {
+      frame_file.replace(found, 8, subfix + ".svg");
+    }
+
     return doc.save_file(frame_file.c_str());
   }
 
@@ -179,7 +187,7 @@ void GpencilExporterSVG::export_layers(void)
         continue;
       }
       gpl_current_set(gpl);
-      bGPDframe *gpf = gpl->actframe;
+      bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, cfra_, GP_GETFRAME_USE_PREV);
       if ((gpf == NULL) || (gpf->strokes.first == NULL)) {
         continue;
       }
