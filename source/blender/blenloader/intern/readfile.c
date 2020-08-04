@@ -5154,6 +5154,9 @@ static void direct_link_pose(BlendDataReader *reader, bPose *pose)
   pose->chan_array = NULL;
 
   for (pchan = pose->chanbase.first; pchan; pchan = pchan->next) {
+    BKE_pose_channel_runtime_reset(&pchan->runtime);
+    BKE_pose_channel_session_uuid_generate(pchan);
+
     pchan->bone = NULL;
     BLO_read_data_address(reader, &pchan->parent);
     BLO_read_data_address(reader, &pchan->child);
@@ -5179,7 +5182,6 @@ static void direct_link_pose(BlendDataReader *reader, bPose *pose)
     CLAMP(pchan->rotmode, ROT_MODE_MIN, ROT_MODE_MAX);
 
     pchan->draw_data = NULL;
-    BKE_pose_channel_runtime_reset(&pchan->runtime);
   }
   pose->ikdata = NULL;
   if (pose->ikparam != NULL) {
