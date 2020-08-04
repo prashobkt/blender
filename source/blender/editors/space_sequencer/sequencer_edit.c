@@ -1000,6 +1000,7 @@ static bool sequence_offset_after_frame(Scene *scene, const int delta, const int
     if (seq->startdisp >= cfra) {
       BKE_sequence_translate(scene, seq, delta);
       BKE_sequence_calc(scene, seq);
+      BKE_sequence_invalidate_cache_preprocessed(scene, seq);
       done = true;
     }
   }
@@ -2150,7 +2151,7 @@ static int sequencer_reassign_inputs_exec(bContext *C, wmOperator *op)
   if (BKE_sequencer_render_loop_check(seq1, last_seq) ||
       BKE_sequencer_render_loop_check(seq2, last_seq) ||
       BKE_sequencer_render_loop_check(seq3, last_seq)) {
-    BKE_report(op->reports, RPT_ERROR, "Cannot reassign inputs: recursion detected.");
+    BKE_report(op->reports, RPT_ERROR, "Cannot reassign inputs: recursion detected");
     return OPERATOR_CANCELLED;
   }
 
