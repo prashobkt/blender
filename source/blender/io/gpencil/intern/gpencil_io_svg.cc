@@ -143,6 +143,12 @@ void GpencilExporterSVG::export_layers(void)
 {
   const bool is_clipping = is_camera_mode() && (params_.flag & (GP_EXPORT_CLIP_CAMERA |
                                                                 GP_EXPORT_STORYBOARD_MODE)) != 0;
+
+  /* If is doing a set of frames, the list of objects can change for each frame. */
+  if (is_camera_mode() && ((params_.flag & GP_EXPORT_ACTIVE_FRAME) == 0)) {
+    create_object_list();
+  }
+
   for (ObjectZ &obz : ob_list_) {
     Object *ob = obz.ob;
 

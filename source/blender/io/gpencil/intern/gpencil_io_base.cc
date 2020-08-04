@@ -144,6 +144,7 @@ void GpencilExporter::create_object_list(void)
 
   float camera_z_axis[3];
   copy_v3_v3(camera_z_axis, rv3d->viewinv[2]);
+  ob_list_.clear();
 
   LISTBASE_FOREACH (Base *, base, &view_layer->object_bases) {
     Object *object = base->object;

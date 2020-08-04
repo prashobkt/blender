@@ -94,6 +94,7 @@ class GpencilExporter {
   float stroke_average_pressure_get(struct bGPDstroke *gps);
   float stroke_point_radius_get(struct bGPDstroke *gps);
   void selected_objects_boundbox(void);
+  void create_object_list(void);
 
   std::string rgb_to_hex(float color[3]);
   void rgb_to_grayscale(float color[3]);
@@ -107,7 +108,6 @@ class GpencilExporter {
   bool gp_style_is_fill(void);
   float stroke_average_opacity(void);
   bool is_camera_mode(void);
-  bool is_bound_mode(void);
 
   void gpl_current_set(struct bGPDlayer *gpl);
   void gpf_current_set(struct bGPDframe *gpf);
@@ -127,7 +127,6 @@ class GpencilExporter {
   rcti select_box;
 
   void set_out_filename(char *filename);
-  void create_object_list(void);
 };
 
 }  // namespace blender::io::gpencil
