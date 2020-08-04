@@ -429,6 +429,34 @@ void print_v3(const char *str, const float a[3]);
 void print_v4(const char *str, const float a[4]);
 void print_vn(const char *str, const float v[], const int n);
 
+#define CLOG_V2(log_ref, log_level, str, v) \
+  { \
+    CLOG_VERBOSE(log_ref, log_level, "%s: %.8f %.8f", str, v[0], v[1]); \
+  } \
+  (void)0
+
+#define CLOG_V3(log_ref, log_level, str, v) \
+  { \
+    CLOG_VERBOSE(log_ref, log_level, "%s: %.8f %.8f %.8f", str, v[0], v[1], v[2]); \
+  } \
+  (void)0
+
+#define CLOG_V4(log_ref, log_level, str, v) \
+  { \
+    CLOG_VERBOSE(log_ref, log_level, "%s: %.8f %.8f %.8f %.8f", str, v[0], v[1], v[2], v[3]); \
+  } \
+  (void)0
+
+#define CLOG_VN(log_ref, log_level, str, v, n) \
+  { \
+    int i = 0; \
+    CLOG_VERBOSE(log_ref, log_level, "%s[%d]:", str, n); \
+    while (i < n) { \
+      CLOG_VERBOSE(log_ref, log_level, " %.8f", v[i++]); \
+    } \
+  } \
+  (void)0
+
 #define print_v2_id(v) print_v2(STRINGIFY(v), v)
 #define print_v3_id(v) print_v3(STRINGIFY(v), v)
 #define print_v4_id(v) print_v4(STRINGIFY(v), v)

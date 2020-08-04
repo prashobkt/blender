@@ -957,11 +957,11 @@ static void bm_mesh_loops_calc_normals(BMesh *bm,
                 /* printf("Invalid clnors in this fan!\n"); */
 
                 while ((clnor = BLI_SMALLSTACK_POP(clnors))) {
-                  // print_v2("org clnor", clnor);
+                  // CLOG_V2(&LOG, 3, "original clnor", clnor);
                   clnor[0] = (short)clnors_avg[0];
                   clnor[1] = (short)clnors_avg[1];
                 }
-                // print_v2("new clnors", clnors_avg);
+                // CLOG_V2(&LOG, 3, "new clnor", clnors_avg);
               }
               else {
                 /* We still have to consume the stack! */
