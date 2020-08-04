@@ -20,6 +20,7 @@
  * Edge based subdivision with various subdivision patterns.
  */
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.h"
@@ -33,6 +34,8 @@
 #include "bmesh.h"
 #include "intern/bmesh_operators_private.h"
 #include "intern/bmesh_private.h"
+
+static CLG_LogRef LOG = {"bmesh.bmo_subdivide"};
 
 typedef struct SubDParams {
   int numcuts;
@@ -456,12 +459,12 @@ static void bm_subdivide_multicut(
     BMO_edge_flag_enable(bm, eed, SUBD_SPLIT | ELE_SPLIT);
     BMO_edge_flag_enable(bm, e_new, SUBD_SPLIT | ELE_SPLIT);
 
-    BM_CHECK_ELEMENT(v);
+    BM_CHECK_ELEMENT(&LOG, v);
     if (v->e) {
-      BM_CHECK_ELEMENT(v->e);
+      BM_CHECK_ELEMENT(&LOG, v->e);
     }
     if (v->e && v->e->l) {
-      BM_CHECK_ELEMENT(v->e->l->f);
+      BM_CHECK_ELEMENT(&LOG, v->e->l->f);
     }
   }
 
@@ -1295,7 +1298,7 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
       verts[b] = l_new->v;
     }
 
-    BM_CHECK_ELEMENT(face);
+    BM_CHECK_ELEMENT(&LOG, face);
     pat->connectexec(bm, face, verts, &params);
   }
 

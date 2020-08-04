@@ -21,6 +21,7 @@
  */
 
 #include "MEM_guardedalloc.h"
+#include <CLG_log.h>
 
 #include "BLI_heap_simple.h"
 #include "BLI_math.h"
@@ -87,7 +88,7 @@
 // #define ELE_TOUCH_TEST_FACE(f) BMO_face_flag_test(pc->bm_bmoflag, f, ELE_TOUCHED)
 // #define ELE_TOUCH_MARK_FACE(f) BMO_face_flag_enable(pc->bm_bmoflag, (BMElemF *)f, ELE_TOUCHED)
 
-// #define DEBUG_PRINT
+static CLG_LogRef LOG = {"bmesh.bmo_connect_pair"};
 
 typedef struct PathContext {
   HeapSimple *states;
@@ -248,31 +249,29 @@ static void state_link_add(PathContext *pc, PathLinkState *state, BMElem *ele, B
   /* never walk onto this again */
   ELE_TOUCH_MARK(ele);
 
-#ifdef DEBUG_PRINT
-  printf("%s: adding to state %p, %.4f - ", __func__, state, state->dist);
+  CLOG_DEBUG(&LOG, 1, "adding to state %p, %.4f - ", state, state->dist);
   if (ele->head.htype == BM_VERT) {
-    printf("vert %d, ", BM_elem_index_get(ele));
+    CLOG_DEBUG(&LOG, 1, "vert %d, ", BM_elem_index_get(ele));
   }
   else if (ele->head.htype == BM_EDGE) {
-    printf("edge %d, ", BM_elem_index_get(ele));
+    CLOG_DEBUG(&LOG, 1, "edge %d, ", BM_elem_index_get(ele));
   }
   else {
     BLI_assert(0);
   }
 
   if (ele_from == NULL) {
-    printf("from NULL\n");
+    CLOG_STR_DEBUG(&LOG, 1, "from NULL");
   }
   else if (ele_from->head.htype == BM_EDGE) {
-    printf("from edge %d\n", BM_elem_index_get(ele_from));
+    CLOG_DEBUG(&LOG, 1, "from edge %d", BM_elem_index_get(ele_from));
   }
   else if (ele_from->head.htype == BM_FACE) {
-    printf("from face %d\n", BM_elem_index_get(ele_from));
+    CLOG_DEBUG(&LOG, 1, "from face %d", BM_elem_index_get(ele_from));
   }
   else {
     BLI_assert(0);
   }
-#endif
 
   /* track distance */
   {
@@ -616,10 +615,8 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
     return;
   }
 
-#ifdef DEBUG_PRINT
-  printf("%s: v_a: %d\n", __func__, BM_elem_index_get(pc.v_a));
-  printf("%s: v_b: %d\n", __func__, BM_elem_index_get(pc.v_b));
-#endif
+  CLOG_DEBUG(&LOG, 6, "v_a: %d", BM_elem_index_get(pc.v_a));
+  CLOG_DEBUG(&LOG, 6, "v_b: %d", BM_elem_index_get(pc.v_b));
 
   /* tag so we won't touch ever (typically hidden faces) */
   BMO_slot_buffer_flag_enable(bm, op->slots_in, "faces_exclude", BM_FACE, FACE_EXCLUDE);
@@ -647,9 +644,7 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
 
   while (!BLI_heapsimple_is_empty(pc.states)) {
 
-#ifdef DEBUG_PRINT
-    printf("\n%s: stepping %u\n", __func__, BLI_heapsimple_len(pc.states));
-#endif
+    CLOG_DEBUG(&LOG, 3, "stepping %u", BLI_heapsimple_len(pc.states));
 
     while (!BLI_heapsimple_is_empty(pc.states)) {
       PathLinkState *state = BLI_heapsimple_pop_min(pc.states);
@@ -659,9 +654,7 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
 
       if (state->link_last->ele == (BMElem *)pc.v_b) {
         /* pass, wait until all are found */
-#ifdef DEBUG_PRINT
-        printf("%s: state %p loop found %.4f\n", __func__, state, state->dist);
-#endif
+        CLOG_DEBUG(&LOG, 3, "state %p loop found %.4f", state, state->dist);
         state_best = *state;
 
         /* we're done, exit all loops */
@@ -674,10 +667,7 @@ void bmo_connect_vert_pair_exec(BMesh *bm, BMOperator *op)
       else {
         /* didn't reach the end, remove it,
          * links are shared between states so just free the link_pool at the end */
-
-#ifdef DEBUG_PRINT
-        printf("%s: state %p removed\n", __func__, state);
-#endif
+        CLOG_DEBUG(&LOG, 3, "state %p removed", state);
         continue_search = false;
       }
 

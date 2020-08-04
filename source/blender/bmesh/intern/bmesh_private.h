@@ -36,15 +36,12 @@
 #  define BM_CHECK_ELEMENT(el) (void)(el)
 #else
 int bmesh_elem_check(void *element, const char htype);
-#  define BM_CHECK_ELEMENT(el) \
+#  define BM_CHECK_ELEMENT(log_ref, el) \
     { \
       if (bmesh_elem_check(el, ((BMHeader *)el)->htype)) { \
-        printf( \
-            "check_element failure, with code %i on line %i in file\n" \
-            "    \"%s\"\n\n", \
-            bmesh_elem_check(el, ((BMHeader *)el)->htype), \
-            __LINE__, \
-            __FILE__); \
+        CLOG_ERROR(log_ref, \
+                   "check_element failure, with code %i", \
+                   bmesh_elem_check(el, ((BMHeader *)el)->htype)); \
       } \
     } \
     ((void)0)

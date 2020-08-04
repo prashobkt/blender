@@ -20,6 +20,7 @@
  * BMesh Walker API.
  */
 
+#include <CLG_log.h>
 #include <stdlib.h>
 #include <string.h> /* for memcpy */
 
@@ -29,6 +30,8 @@
 #include "bmesh.h"
 
 #include "bmesh_walkers_private.h"
+
+static CLG_LogRef LOG = {"bmesh.bmesh_walkers"};
 
 /**
  * - joeedh -
@@ -90,16 +93,15 @@ void BMW_init(BMWalker *walker,
   walker->visit_set_alt = BLI_gset_ptr_new("bmesh walkers sec");
 
   if (UNLIKELY(type >= BMW_MAXWALKERS || type < 0)) {
-    fprintf(stderr,
-            "%s: Invalid walker type in BMW_init; type: %d, "
-            "searchmask: (v:%d, e:%d, f:%d), flag: %u, layer: %d\n",
-            __func__,
-            type,
-            mask_vert,
-            mask_edge,
-            mask_face,
-            flag,
-            layer);
+    CLOG_ERROR(&LOG,
+               "Invalid walker type in BMW_init; type: %d, "
+               "searchmask: (v:%d, e:%d, f:%d), flag: %u, layer: %d",
+               type,
+               mask_vert,
+               mask_edge,
+               mask_face,
+               flag,
+               layer);
     BLI_assert(0);
     return;
   }

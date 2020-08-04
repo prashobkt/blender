@@ -76,6 +76,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_alloca.h"
@@ -92,6 +93,8 @@
 
 #include "bmesh.h"
 #include "intern/bmesh_private.h" /* For element checking. */
+
+static CLG_LogRef LOG = {"bmesh.bmesh_mesh_convert"};
 
 void BM_mesh_cd_flag_ensure(BMesh *bm, Mesh *mesh, const char cd_flag)
 {
@@ -257,10 +260,9 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
       /* Check if we need to generate unique ids for the shape-keys.
        * This also exists in the file reading code, but is here for a sanity check. */
       if (!me->key->uidgen) {
-        fprintf(stderr,
-                "%s had to generate shape key uid's in a situation we shouldn't need to! "
-                "(bmesh internal error)\n",
-                __func__);
+        CLOG_STR_ERROR(&LOG,
+                       "had to generate shape key uid's in a situation we shouldn't need to! "
+                       "(bmesh internal error)");
 
         me->key->uidgen = 1;
         for (block = me->key->block.first; block; block = block->next) {
@@ -390,12 +392,11 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
     }
 
     if (UNLIKELY(f == NULL)) {
-      printf(
-          "%s: Warning! Bad face in mesh"
-          " \"%s\" at index %d!, skipping\n",
-          __func__,
-          me->id.name + 2,
-          i);
+      CLOG_WARN(&LOG,
+                "Warning! Bad face in mesh"
+                " \"%s\" at index %d!, skipping",
+                me->id.name + 2,
+                i);
       continue;
     }
 
@@ -650,7 +651,7 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
     i++;
     mvert++;
 
-    BM_CHECK_ELEMENT(v);
+    BM_CHECK_ELEMENT(&LOG, v);
   }
   bm->elem_index_dirty &= ~BM_VERT;
 
@@ -678,7 +679,7 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
 
     i++;
     med++;
-    BM_CHECK_ELEMENT(e);
+    BM_CHECK_ELEMENT(&LOG, e);
   }
   bm->elem_index_dirty &= ~BM_EDGE;
 
@@ -701,9 +702,9 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
 
       j++;
       mloop++;
-      BM_CHECK_ELEMENT(l_iter);
-      BM_CHECK_ELEMENT(l_iter->e);
-      BM_CHECK_ELEMENT(l_iter->v);
+      BM_CHECK_ELEMENT(&LOG, l_iter);
+      BM_CHECK_ELEMENT(&LOG, l_iter->e);
+      BM_CHECK_ELEMENT(&LOG, l_iter->v);
     } while ((l_iter = l_iter->next) != l_first);
 
     if (f == bm->act_face) {
@@ -715,7 +716,7 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
 
     i++;
     mpoly++;
-    BM_CHECK_ELEMENT(f);
+    BM_CHECK_ELEMENT(&LOG, f);
   }
 
   /* Patch hook indices and vertex parents. */
