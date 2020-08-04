@@ -27,6 +27,7 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_gpencil_types.h"
+#include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
 #include "BKE_context.h"
@@ -107,6 +108,14 @@ static bool gpencil_export_storyboard(
 
   GpencilExporterSVG *writter = new GpencilExporterSVG(iparams);
 
+  /* Storyboard only works in camera view. */
+  RegionView3D *rv3d = (RegionView3D *)iparams->region->regiondata;
+  if ((rv3d == NULL) || (rv3d->persp != RV3D_CAMOB)) {
+    printf("Storyboard only allowed in camera view.\n");
+    delete writter;
+    return false;
+  }
+
   /* Calc paper sizes. */
   const int blocks[2] = {iparams->page_layout[0], iparams->page_layout[1]};
   float frame_box[2];
@@ -118,8 +127,6 @@ static bool gpencil_export_storyboard(
   render_ratio[0] = frame_box[0] / ((scene->r.xsch * scene->r.size) / 100);
   render_ratio[1] = render_ratio[0];
 
-  // float ysize = (iparams->paper_size[1] / ((float)blocks[1] + 1.0f)) / ((float)blocks[1]
-  // + 1.0f);
   float ysize = iparams->paper_size[1] - (frame_box[1] * (float)blocks[1]);
   ysize /= (float)blocks[1] + 1.0f;
 
