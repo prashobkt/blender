@@ -193,7 +193,8 @@ static void do_outliner_item_editmode_toggle(bContext *C,
     }
     else {
       ok = ED_object_editmode_enter_ex(CTX_data_main(C), scene, ob, EM_NO_CONTEXT);
-      ED_object_base_activate(C, base);
+      /* TODO (Nathan): Why does this crash on undo? */
+      // ED_object_base_activate(C, base);
     }
     if (ok) {
       ED_object_base_select(base, (ob->mode & OB_MODE_EDIT) ? BA_SELECT : BA_DESELECT);
