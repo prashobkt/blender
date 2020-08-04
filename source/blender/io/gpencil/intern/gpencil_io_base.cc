@@ -79,7 +79,7 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   copy_v2_v2_int(params_.page_layout, iparams->page_layout);
   params_.page_type = iparams->page_type;
   copy_v2_v2(params_.paper_size, iparams->paper_size);
-  params_.text_flag = iparams->text_flag;
+  params_.text_type = iparams->text_type;
 
   /* Easy access data. */
   bmain = CTX_data_main(params_.C);
@@ -530,4 +530,8 @@ void GpencilExporter::set_frame_box(float value[2])
   copy_v2_v2(frame_box_, value);
 }
 
+void GpencilExporter::set_shot(int value)
+{
+  shot_ = value;
+}
 }  // namespace blender::io::gpencil

@@ -54,6 +54,7 @@ class GpencilExporter {
   void set_frame_ratio(float value[2]);
   void set_frame_box(float value[2]);
   void set_file_subfix(char *value);
+  void set_shot(int value);
 
  protected:
   bool invert_axis_[2];
@@ -84,6 +85,7 @@ class GpencilExporter {
   float frame_offset_[2];
   float frame_ratio_[2];
   int cfra_;
+  int shot_;
 
   float stroke_color_[4], fill_color_[4];
 

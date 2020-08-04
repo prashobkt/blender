@@ -112,10 +112,13 @@ static bool gpencil_export_storyboard(
   int page = 1;
   bool header = true;
   bool pending_save = false;
+  int shot = 0;
   for (int i = iparams->frame_start; i < iparams->frame_end + 1; i++) {
     if (is_keyframe_empty(gpd_eval, i)) {
       continue;
     }
+    shot++;
+    writter->set_shot(shot);
 
     if (header) {
       writter->set_frame_box(frame_box);

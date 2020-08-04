@@ -203,7 +203,8 @@ void GpencilExporterSVG::export_layers(void)
       /* Layer node. */
       std::string txt = "Layer: ";
       txt.append(gpl->info);
-      main_node.append_child(pugi::node_comment).set_value(txt.c_str());
+      ob_node.append_child(pugi::node_comment).set_value(txt.c_str());
+
       pugi::xml_node gpl_node = ob_node.append_child("g");
       gpl_node.append_attribute("id").set_value(gpl->info);
 
@@ -268,13 +269,40 @@ void GpencilExporterSVG::export_layers(void)
 
     /* Frame border. */
     if ((params_.flag & GP_EXPORT_STORYBOARD_MODE) != 0) {
-      create_rect(frame_node,
+      create_rect(main_node,
                   frame_offset_[0],
                   frame_offset_[1],
                   frame_box_[0],
                   frame_box_[1],
-                  5.0f,
+                  6.0f,
                   "#000000");
+
+      /* Frame text. */
+      if (params_.text_type != GP_EXPORT_TXT_NONE) {
+        char text[64];
+        switch (params_.text_type) {
+          case GP_EXPORT_TXT_SHOT:
+            sprintf(text, "#%d", shot_);
+            break;
+          case GP_EXPORT_TXT_FRAME:
+            sprintf(text, "%0004d", cfra_);
+            break;
+          case GP_EXPORT_TXT_SHOT_FRAME:
+            sprintf(text, "#%d/%0004d", shot_, cfra_);
+            break;
+          default:
+            sprintf(text, "%0004d", cfra_);
+            break;
+        }
+
+        const float font_size = 30.0f;
+        create_text(main_node,
+                    frame_offset_[0] + 5.0f,
+                    frame_offset_[1] + frame_box_[1] + font_size,
+                    std::string(text),
+                    font_size,
+                    "#000000");
+      }
     }
   }
 }
@@ -479,4 +507,20 @@ void GpencilExporterSVG::create_rect(pugi::xml_node node,
   }
 }
 
+void GpencilExporterSVG::create_text(pugi::xml_node node,
+                                     float x,
+                                     float y,
+                                     std::string text,
+                                     const float size,
+                                     std::string hexcolor)
+{
+  pugi::xml_node nodetxt = node.append_child("text");
+
+  nodetxt.append_attribute("x").set_value(x);
+  nodetxt.append_attribute("y").set_value(y);
+  // nodetxt.append_attribute("font-family").set_value("'system-ui'");
+  nodetxt.append_attribute("font-size").set_value(size);
+  nodetxt.append_attribute("fill").set_value(hexcolor.c_str());
+  nodetxt.text().set(text.c_str());
+}
 }  // namespace blender::io::gpencil

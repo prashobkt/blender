@@ -189,7 +189,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
       .page_layout = {page_layout[0], page_layout[1]},
       .page_type = (int)RNA_enum_get(op->ptr, "page_type"),
       .paper_size = {paper_size[0], paper_size[1]},
-      .text_flag = (int)RNA_enum_get(op->ptr, "text_type"),
+      .text_type = (int)RNA_enum_get(op->ptr, "text_type"),
 
   };
   /* Take some defaults from the scene, if not specified explicitly. */
@@ -431,7 +431,12 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
                   "Storyboard Mode",
                   "Export several frames by page (valid only in camera view)");
   RNA_def_enum(ot->srna, "page_type", paper_items, 0, "Page", "Page orientation");
-  RNA_def_enum(ot->srna, "text_type", text_items, 0, "Text", "Text included by frame");
+  RNA_def_enum(ot->srna,
+               "text_type",
+               text_items,
+               GP_EXPORT_TXT_SHOT_FRAME,
+               "Text",
+               "Text included by frame");
 
   RNA_def_int(ot->srna, "size_col", 3, 1, 6, "Colums", "Number of columns per page", 1, 6);
   RNA_def_int(ot->srna, "size_row", 2, 1, 6, "Rows", "Number of rows per page", 1, 6);

@@ -60,8 +60,8 @@ struct GpencilExportParams {
   short page_type;
   /** Paper size in pixels. */
   float paper_size[2];
-  /** Paper size in pixels. */
-  short text_flag;
+  /** Text type for each frame. */
+  short text_type;
 };
 
 typedef enum eGpencilExportParams_Flag {
