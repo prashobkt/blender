@@ -124,6 +124,10 @@ typedef struct CLG_LogType {
 
 typedef struct CLG_LogRef {
   const char *identifier;
+  /** set to true to skip all filtering and always print logger
+   * for debug only, do not commit when set to true
+   */
+  bool force_enable;
   CLG_LogType *type;
 } CLG_LogRef;
 
@@ -202,12 +206,17 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
   static CLG_LogRef _static_##var = {id}; \
   CLG_LogRef *var = &_static_##var
 
+/** Same as CLG_LOGREF_DECLARE_GLOBAL, but omits filters. For fast debugging, do not commit */
+#define CLG_LOGREF_DECLARE_GLOBAL_FORCE(var, id) \
+  static CLG_LogRef _static_##var = {id, true}; \
+  CLG_LogRef *var = &_static_##var
+
 /** Initialize struct once. */
 #define CLOG_ENSURE(clg_ref) \
   ((clg_ref)->type ? (clg_ref)->type : (CLG_logref_init(clg_ref), (clg_ref)->type))
 
 #define CLOG_CHECK_IN_USE(clg_ref) \
-  ((void)CLOG_ENSURE(clg_ref), ((clg_ref)->type->flag & CLG_FLAG_USE))
+  ((void)CLOG_ENSURE(clg_ref), ((clg_ref)->force_enable || (clg_ref)->type->flag & CLG_FLAG_USE))
 
 #ifdef DEBUG
 /** same as CLOG_CHECK_IN_USE, but will be automatically disable in release build */
@@ -232,7 +241,11 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #define CLOG_AT_SEVERITY(clg_ref, severity, log_level, ...) \
   { \
     CLG_LogType *_lg_ty = CLOG_ENSURE(clg_ref); \
-    if ((_lg_ty->flag & CLG_FLAG_USE) && severity >= _lg_ty->severity_level) { \
+    if ((clg_ref)->force_enable) { \
+      CLG_logf( \
+          _lg_ty, severity, log_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, __VA_ARGS__); \
+    } \
+    else if ((_lg_ty->flag & CLG_FLAG_USE) && severity >= _lg_ty->severity_level) { \
       switch (severity) { \
         case CLG_SEVERITY_DEBUG: \
         case CLG_SEVERITY_VERBOSE: \
@@ -255,7 +268,10 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #define CLOG_STR_AT_SEVERITY(clg_ref, severity, log_level, str) \
   { \
     CLG_LogType *_lg_ty = CLOG_ENSURE(clg_ref); \
-    if ((_lg_ty->flag & CLG_FLAG_USE) && severity >= _lg_ty->severity_level) { \
+    if ((clg_ref)->force_enable) { \
+      CLG_log_str(_lg_ty, severity, log_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, str); \
+    } \
+    else if ((_lg_ty->flag & CLG_FLAG_USE) && severity >= _lg_ty->severity_level) { \
       switch (severity) { \
         case CLG_SEVERITY_DEBUG: \
         case CLG_SEVERITY_VERBOSE: \
@@ -274,7 +290,12 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #define CLOG_STR_AT_SEVERITY_N(clg_ref, severity, log_level, str) \
   { \
     CLG_LogType *_lg_ty = CLOG_ENSURE(clg_ref); \
-    if ((_lg_ty->flag & CLG_FLAG_USE) && severity >= _lg_ty->severity_level) { \
+    if ((clg_ref)->force_enable) { \
+      const char *_str = str; \
+      CLG_log_str(_lg_ty, severity, log_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, _str); \
+      MEM_freeN((void *)_str); \
+    } \
+    else if ((_lg_ty->flag & CLG_FLAG_USE) && severity >= _lg_ty->severity_level) { \
       switch (severity) { \
         case CLG_SEVERITY_DEBUG: \
         case CLG_SEVERITY_VERBOSE: \
