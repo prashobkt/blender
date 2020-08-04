@@ -152,8 +152,6 @@ ReportList *BKE_reports_duplicate(ReportList *reports)
 
 void BKE_report_format(ReportList *reports, ReportType type, int flags, const char *_message)
 {
-  Report *report;
-  int len;
   const char *message = TIP_(_message);
 
   CLOG_AT_SEVERITY(&LOG,
@@ -165,19 +163,26 @@ void BKE_report_format(ReportList *reports, ReportType type, int flags, const ch
                    message);
 
   if (reports) {
-    char *message_alloc;
-    report = MEM_callocN(sizeof(Report), "Report");
-    report->type = type;
-    report->flag = flags;
-    report->typestr = BKE_report_type_str(type);
-
-    len = strlen(message);
-    message_alloc = MEM_mallocN(sizeof(char) * (len + 1), "ReportMessage");
-    memcpy(message_alloc, message, sizeof(char) * (len + 1));
-    report->message = message_alloc;
-    report->len = len;
+    Report *report = BKE_report_init(type, flags, message);
     BLI_addtail(&reports->list, report);
   }
+}
+
+Report *BKE_report_init(ReportType type, int flags, const char *message)
+{
+  Report *report;
+  char *message_alloc;
+  report = MEM_callocN(sizeof(Report), "Report");
+  report->type = type;
+  report->flag = flags;
+  report->typestr = BKE_report_type_str(type);
+
+  int len = strlen(message);
+  message_alloc = MEM_mallocN(sizeof(char) * (len + 1), "ReportMessage");
+  memcpy(message_alloc, message, sizeof(char) * (len + 1));
+  report->message = message_alloc;
+  report->len = len;
+  return report;
 }
 
 void BKE_report(ReportList *reports, ReportType type, const char *_message)

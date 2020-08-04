@@ -652,14 +652,15 @@ class USERPREF_PT_system_logging(SystemPanel, CenterAlignMixIn, Panel):
         system = prefs.system
 
         layout.prop(system, "log_filter")
-        layout.prop(system, "log_use_basename")
-        layout.prop(system, "log_use_timestamp")
         layout.prop(system, "verbose")
         layout.prop(system, "log_severity")
 
         col = layout.column()
         col.active = system.log_severity in {'LOG_VERBOSE', 'LOG_DEBUG'}
         col.prop(system, "log_level")
+
+        layout.prop(system, "log_use_basename")
+        layout.prop(system, "log_use_timestamp")
 
         layout.prop(system, "log_use_stdout")
         col = layout.column()

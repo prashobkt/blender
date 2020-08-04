@@ -44,6 +44,7 @@ ReportList *BKE_reports_duplicate(ReportList *reports);
 
 void BKE_report_format(ReportList *reports, ReportType type, int flags, const char *message);
 void BKE_report(ReportList *reports, ReportType type, const char *message);
+Report *BKE_report_init(ReportType type, int flags, const char *message);
 void BKE_reportf_format(ReportList *reports, ReportType type, int flags, const char *format, ...)
     ATTR_PRINTF_FORMAT(4, 5);
 void BKE_reportf(ReportList *reports, ReportType type, const char *format, ...)
@@ -66,6 +67,14 @@ const char *BKE_report_type_str(ReportType type);
 
 bool BKE_report_write_file_fp(FILE *fp, ReportList *reports, const char *header);
 bool BKE_report_write_file(const char *filepath, ReportList *reports, const char *header);
+
+#define CLOG_REPORT(log_ref, report) \
+  CLOG_AT_SEVERITY(log_ref, \
+                   report_type_to_severity((report)->type), \
+                   0, \
+                   "%s: %s", \
+                   BKE_report_type_str(type), \
+                   message);
 
 #ifdef __cplusplus
 }

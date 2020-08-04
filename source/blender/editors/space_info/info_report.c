@@ -486,9 +486,9 @@ ReportList *clog_to_report_list()
 {
   ReportList *reports = MEM_mallocN(sizeof(*reports), "ClogConvertedToReportList");
   BKE_reports_init(reports, 0);
-  ListBase *records = (ListBase *)CLG_log_record_get();
+  CLG_LogRecordList *records = CLG_log_record_get();
 
-  if (BLI_listbase_is_empty(records)) {
+  if (BLI_listbase_is_empty((const struct ListBase *)records)) {
     return reports;
   }
 
@@ -507,23 +507,27 @@ ReportList *clog_to_report_list()
     BLI_dynstr_append(dynStr, ":\n");
     BLI_dynstr_append(dynStr, log->message);
     char *cstr = BLI_dynstr_get_cstring(dynStr);
-    /* TODO (grzelins) using BKE_report will log messages in bke.report! it will crash because
-     * message is too long!! */
+    Report *report;
     switch (log->severity) {
+      case CLG_SEVERITY_DEBUG:
+      case CLG_SEVERITY_VERBOSE:
+        report = BKE_report_init(RPT_DEBUG, 0, cstr);
+        break;
       case CLG_SEVERITY_INFO:
-        BKE_report(reports, RPT_INFO, cstr);
+        report = BKE_report_init(RPT_INFO, 0, cstr);
         break;
       case CLG_SEVERITY_WARN:
-        BKE_report(reports, RPT_WARNING, cstr);
+        report = BKE_report_init(RPT_WARNING, 0, cstr);
         break;
       case CLG_SEVERITY_ERROR:
       case CLG_SEVERITY_FATAL:
-        BKE_report(reports, RPT_ERROR, cstr);
+        report = BKE_report_init(RPT_ERROR, 0, cstr);
         break;
       default:
-        BKE_report(reports, RPT_INFO, cstr);
+        report = BKE_report_init(RPT_INFO, 0, cstr);
         break;
     }
+    BLI_addtail(&reports->list, report);
     MEM_freeN(cstr);
     BLI_dynstr_free(dynStr);
     log = log->next;

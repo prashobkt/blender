@@ -76,7 +76,7 @@ typedef struct CLG_IDFilter {
 typedef struct CLogContext {
   /** Single linked list of types.  */
   CLG_LogType *types;
-  LogRecordList log_records;
+  CLG_LogRecordList log_records;
 
 #ifdef WITH_CLOG_PTHREADS
   pthread_mutex_t types_lock;
@@ -489,6 +489,26 @@ static void write_file_line_fn(CLogStringBuf *cstr,
   clg_str_append(cstr, ": ");
 }
 
+/** Clog version of BLI_addtail (to avoid making dependency) */
+static void CLG_report_append(CLG_LogRecordList *listbase, CLG_LogRecord *link)
+{
+
+  if (link == NULL) {
+    return;
+  }
+
+  link->next = NULL;
+  link->prev = listbase->last;
+
+  if (listbase->last) {
+    listbase->last->next = link;
+  }
+  if (listbase->first == NULL) {
+    listbase->first = link;
+  }
+  listbase->last = link;
+}
+
 void CLG_log_str(CLG_LogType *lg,
                  enum CLG_Severity severity,
                  unsigned short verbosity,
@@ -524,6 +544,10 @@ void CLG_log_str(CLG_LogType *lg,
 
   clg_str_free(&cstr);
 
+  CLG_LogRecord *log_record = clog_log_record_init(
+      lg, severity, verbosity, file_line, fn, message);
+  CLG_report_append(&(lg->ctx->log_records), log_record);
+
   if (lg->ctx->callbacks.backtrace_fn) {
     clg_ctx_backtrace(lg->ctx);
   }
@@ -533,25 +557,6 @@ void CLG_log_str(CLG_LogType *lg,
   }
 }
 
-/** Clog version of BLI_addtail (to avoid making dependency) */
-static void CLG_report_append(LogRecordList *listbase, CLG_LogRecord *link)
-{
-
-  if (link == NULL) {
-    return;
-  }
-
-  link->next = NULL;
-  link->prev = listbase->last;
-
-  if (listbase->last) {
-    listbase->last->next = link;
-  }
-  if (listbase->first == NULL) {
-    listbase->first = link;
-  }
-  listbase->last = link;
-}
 
 /* TODO (grzelins) there is problem with handling big messages (example is report from duplicating object) */
 void CLG_logf(CLG_LogType *lg,
@@ -811,7 +816,7 @@ static void CLG_ctx_level_set(CLogContext *ctx, unsigned short level)
   }
 }
 
-static LogRecordList *CLG_ctx_log_record_get(CLogContext *ctx)
+static CLG_LogRecordList *CLG_ctx_log_record_get(CLogContext *ctx)
 {
   return &ctx->log_records;
 }
@@ -1008,7 +1013,7 @@ unsigned short CLG_level_get()
   return CLG_ctx_level_get(g_ctx);
 }
 
-LogRecordList *CLG_log_record_get()
+CLG_LogRecordList *CLG_log_record_get()
 {
   return CLG_ctx_log_record_get(g_ctx);
 }

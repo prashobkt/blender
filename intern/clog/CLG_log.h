@@ -141,13 +141,13 @@ typedef struct CLG_LogRecord {
   uint64_t timestamp;
   const char *file_line;
   const char *function;
-  char *message;
+  const char *message;
 } CLG_LogRecord;
 
 /** clog version of ListBase */
-typedef struct LogRecordList {
+typedef struct CLG_LogRecordList {
   struct CLG_LogRecord *first, *last;
-} LogRecordList;
+} CLG_LogRecordList;
 
 void CLG_log_str(CLG_LogType *lg,
                  enum CLG_Severity severity,
@@ -197,7 +197,7 @@ enum CLG_Severity CLG_severity_level_get(void);
 void CLG_severity_level_set(enum CLG_Severity log_level);
 unsigned short CLG_level_get(void);
 void CLG_level_set(unsigned short log_level);
-struct LogRecordList *CLG_log_record_get(void);
+struct CLG_LogRecordList *CLG_log_record_get(void);
 
 void CLG_logref_init(CLG_LogRef *clg_ref);
 
