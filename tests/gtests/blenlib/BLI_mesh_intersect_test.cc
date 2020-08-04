@@ -422,12 +422,12 @@ TEST(mesh_intersect, TwoTris)
                 << "\n";
     }
 
-    const bool do_all_perms = false;
+    const bool do_all_perms = true;
     const int perm_limit = do_all_perms ? 3 : 1;
 
     for (int i = 0; i < perm_limit; ++i) {
       for (int j = 0; j < perm_limit; ++j) {
-        if (do_all_perms) {
+        if (do_all_perms && verbose) {
           std::cout << "\nperms " << i << " " << j << "\n";
         }
         MArena arena;
@@ -888,7 +888,7 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
 
 TEST(mesh_intersect_perf, SphereSphere)
 {
-  spheresphere_test(256, 0.5, false);
+  spheresphere_test(64, 0.5, false);
 }
 
 #endif

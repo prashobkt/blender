@@ -1329,12 +1329,12 @@ static bool non_trivial_intersect(const ITT_value &itt, Facep tri1, Facep tri2)
  * from above.
  */
 
-static double supremum_cross(const double3 &a, const double3 &b)
+static double supremum_dot_cross(const double3 &a, const double3 &b)
 {
   double3 abs_a = double3::abs(a);
   double3 abs_b = double3::abs(b);
   double3 c;
-  /* This is cross(a, b) but using absoluate values for a and b
+  /* This is dot(cross(a, b), cross(a,b)) but using absoluate values for a and b
    * and always using + when operation is + or -.
    */
   c[0] = abs_a[1] * abs_b[2] + abs_a[2] * abs_b[1];
@@ -1344,10 +1344,15 @@ static double supremum_cross(const double3 &a, const double3 &b)
 }
 
 /* Used with supremum to get error bound. See Burnikel et al paper.
- * In cases where argument coords are known to be exactly
- * representable in doubles, this value is 7 instead of 11.
+ * index_plane_coord is the index of a plane coordinate calculated
+ * for a triangle using the usual formuala, assuming the input
+ * coordinates have index 1.
+ * index_cross is the index of each coordinate of the cross product.
+ * It is actually 2 + 2 * (max index of input coords).
+ * index_dot_cross is the index of the dot product of two cross products.
+ * It is actually 7 + 4 * (max index of input coords)
  */
-constexpr int index_cross = 11;
+constexpr int index_dot_cross = 11;
 
 static double supremum_dot(const double3 &a, const double3 &b)
 {
@@ -1356,8 +1361,11 @@ static double supremum_dot(const double3 &a, const double3 &b)
   return double3::dot(abs_a, abs_b);
 }
 
-/* This value would be 3 if input values are exact */
-constexpr int index_dot = 5;
+/* Actually index_dot = 3 + 2 * (max index of input coordinates). */
+/* The index of dot when inputs are plane_coords with index 1 is much higher.
+ * Plane coords have index 6.
+ */
+constexpr int index_dot_plane_coords = 15;
 
 static double supremum_orient3d(const double3 &a,
                                 const double3 &b,
@@ -1391,8 +1399,8 @@ static double supremum_orient3d(const double3 &a,
   return det;
 }
 
-/* This value would be 8 if the input values are exact. */
-constexpr int index_orient3d = 11;
+/* Actually index_orient3d = 10 + 4 * (max degree of input coordinates) */
+constexpr int index_orient3d = 14;
 
 /* Return the approximate orient3d of the four double3's, with
  * the guarantee that if the value is -1 or 1 then the underlying
@@ -1434,7 +1442,7 @@ static bool near_parallel_vecs(const double3 &a, const double3 &b)
   if (cr_len_sq == 0.0) {
     return true;
   }
-  double err_bound = supremum_cross(a, b) * index_cross * DBL_EPSILON;
+  double err_bound = supremum_dot_cross(a, b) * index_dot_cross * DBL_EPSILON;
   if (cr_len_sq > err_bound) {
     return false;
   }
@@ -1451,7 +1459,7 @@ static bool dot_must_be_positive(const double3 &a, const double3 &b)
   if (d <= 0.0) {
     return false;
   }
-  double err_bound = supremum_dot(a, b) * index_dot * DBL_EPSILON;
+  double err_bound = supremum_dot(a, b) * index_dot_plane_coords * DBL_EPSILON;
   if (d > err_bound) {
     return true;
   }
@@ -1464,8 +1472,8 @@ static bool dot_must_be_positive(const double3 &a, const double3 &b)
  * In exact arithmetic, the answer is just sgn(dot(p - plane_p, plane_no)).
  */
 
-/* This would be 5 if inputs are exact. */
-constexpr int index_plane_side = 7;
+/* The plane_no input is constructed, so has a higher index. */
+constexpr int index_plane_side = 3 + 2 * index_dot_plane_coords;
 
 static int filter_plane_side(const double3 &p,
                              const double3 &plane_p,
@@ -1478,7 +1486,7 @@ static int filter_plane_side(const double3 &p,
   if (d == 0.0) {
     return 0;
   }
-  double supremum = double3::dot(abs_p - abs_plane_p, abs_plane_no);
+  double supremum = double3::dot(abs_p + abs_plane_p, abs_plane_no);
   double err_bound = supremum * index_plane_side * DBL_EPSILON;
   if (d > err_bound) {
     return d > 0 ? 1 : -1;
@@ -1547,7 +1555,7 @@ static bool may_non_trivially_intersect(Facep t1, Facep t2)
       return false;
     }
     p = share1_pos[0];
-    Vertp v1a = (p == 0 || p == 1) ? tri1[2] : tri1[1];
+    Vertp v1a = p == 0 ? tri1[1] : tri1[0];
     Vertp v1b = (p == 0 || p == 1) ? tri1[2] : tri1[1];
     o1 = filter_tri_plane_vert_orient3d(tri2, v1a);
     o2 = filter_tri_plane_vert_orient3d(tri2, v1b);
@@ -1567,10 +1575,42 @@ static bool may_non_trivially_intersect(Facep t1, Facep t2)
  * github.com/erich666/jgt-code/tree/master/Volume_08/Number_1/Guigue2003
  */
 
-/* Helper function for intersect_tri_tri. Args have been fully canonicalized
- * and we can construct the segment of intersection (triangles not coplanar).
+/* Return the point on ab where the plane with normal n containing point c intersects it.
+ * Assumes ab is not perpendicular to n.
+ * This works because the ratio of the projections of ab and ac onto n is the same as
+ * the ratio along the line ab of the intersection point to the whole of ab.
  */
+static inline mpq3 tti_interp(const mpq3 &a, const mpq3 &b, const mpq3 &c, const mpq3 &n)
+{
+  mpq3 ab = a - b;
+  mpq_class den = mpq3::dot(ab, n);
+  BLI_assert(den != 0);
+  mpq_class alpha = mpq3::dot(a - c, n) / den;
+  return a - alpha * ab;
+}
 
+/* Return +1, 0, -1 as a + ad is above, on, or below the oriented plane containing a, b, c in CCW
+ * order. This is the same as -oriented(a, b, c, a + ad), but uses fewer arithmetic operations.
+ * TODO: change arguments to Vertp and use floating filters.
+ */
+static inline int tti_above(const mpq3 &a, const mpq3 &b, const mpq3 &c, const mpq3 &ad)
+{
+  mpq3 n = mpq3::cross(b - a, c - a);
+  return sgn(mpq3::dot(ad, n));
+}
+
+/* Given that triangles (p1, q1, r1) and (p2, q2, r2) are in canonical order,
+ * use the classification chart in the Guigue and Devillers paper to find out
+ * how the intervals [i,j] and [k,l] overlap, where [i,j] is where p1r1 and p1q1
+ * intersect the plane-plane intersection line, L, and [k,l] is where p2q2 and p2r2
+ * intersect L. By the canonicalization, those segments intersect L exactly once.
+ * Canonicalization has made it so that for p1, q1, r1, either:
+ * (a)) p1 is off the second triangle's plane and both q1 and r1 are either
+ *   on the plane or on the other side of it from p1;  or
+ * (b) p1 is on the plane both q1 and r1 are on the same side
+ *   of the plane and at least one of q1 and r1 are off the plane.
+ * Similarly for p2, q2, r2 with respect to the first triangle's plane.
+ */
 static ITT_value itt_canon2(const mpq3 &p1,
                             const mpq3 &q1,
                             const mpq3 &r1,
@@ -1581,129 +1621,101 @@ static ITT_value itt_canon2(const mpq3 &p1,
                             const mpq3 &n2)
 {
   constexpr int dbg_level = 0;
-  mpq3 source;
-  mpq3 target;
-  mpq_class alpha;
-  bool ans_ok = false;
-
-  mpq3 v1 = q1 - p1;
-  mpq3 v2 = r2 - p1;
-  mpq3 n = mpq3::cross(v1, v2);
-  mpq3 v = p2 - p1;
-  if (dbg_level > 1) {
-    std::cout << "itt_canon2:\n";
+  if (dbg_level > 0) {
+    std::cout << "\ntri_tri_intersect_canon:\n";
     std::cout << "p1=" << p1 << " q1=" << q1 << " r1=" << r1 << "\n";
     std::cout << "p2=" << p2 << " q2=" << q2 << " r2=" << r2 << "\n";
-    std::cout << "v=" << v << " n=" << n << "\n";
+    std::cout << "n1=" << n1 << " n2=" << n2 << "\n";
+    std::cout << "approximate values:\n";
+    std::cout << "p1=(" << p1[0].get_d() << "," << p1[1].get_d() << "," << p1[2].get_d() << ")\n";
+    std::cout << "q1=(" << q1[0].get_d() << "," << q1[1].get_d() << "," << q1[2].get_d() << ")\n";
+    std::cout << "r1=(" << r1[0].get_d() << "," << r1[1].get_d() << "," << r1[2].get_d() << ")\n";
+    std::cout << "p2=(" << p2[0].get_d() << "," << p2[1].get_d() << "," << p2[2].get_d() << ")\n";
+    std::cout << "q2=(" << q2[0].get_d() << "," << q2[1].get_d() << "," << q2[2].get_d() << ")\n";
+    std::cout << "r2=(" << r2[0].get_d() << "," << r2[1].get_d() << "," << r2[2].get_d() << ")\n";
+    std::cout << "n1=(" << n1[0].get_d() << "," << n1[1].get_d() << "," << n1[2].get_d() << ")\n";
+    std::cout << "n2=(" << n2[0].get_d() << "," << n2[1].get_d() << "," << n2[2].get_d() << ")\n";
   }
-  if (mpq3::dot(v, n) > 0) {
-    v1 = r1 - p1;
-    n = mpq3::cross(v1, v2);
-    if (dbg_level > 1) {
-      std::cout << "case 1: v1=" << v1 << " v2=" << v2 << " n=" << n << "\n";
-    }
-    if (mpq3::dot(v, n) <= 0) {
-      v2 = q2 - p1;
-      n = mpq3::cross(v1, v2);
-      if (dbg_level > 1) {
-        std::cout << "case 1a: v2=" << v2 << " n=" << n << "\n";
-      }
-      if (mpq3::dot(v, n) > 0) {
-        v1 = p1 - p2;
-        v2 = p1 - r1;
-        alpha = mpq3::dot(v1, n2) / mpq3::dot(v2, n2);
-        v1 = v2 * alpha;
-        source = p1 - v1;
-        v1 = p2 - p1;
-        v2 = p2 - r2;
-        alpha = mpq3::dot(v1, n1) / mpq3::dot(v2, n1);
-        v1 = v2 * alpha;
-        target = p2 - v1;
-        ans_ok = true;
+  mpq3 p1p2 = p2 - p1;
+  mpq3 intersect_1;
+  mpq3 intersect_2;
+  bool no_overlap = false;
+  /* Top test in classification tree. */
+  if (tti_above(p1, q1, r2, p1p2) > 0) {
+    /* Middle right test in classification tree. */
+    if (tti_above(p1, r1, r2, p1p2) <= 0) {
+      /* Bottom right test in classification tree. */
+      if (tti_above(p1, r1, q2, p1p2) > 0) {
+        /* Overlap is [k [i l] j]. */
+        if (dbg_level > 0) {
+          std::cout << "overlap [k [i l] j]\n";
+        }
+        /* i is intersect with p1r1. l is intersect with p2r2. */
+        intersect_1 = tti_interp(p1, r1, p2, n2);
+        intersect_2 = tti_interp(p2, r2, p1, n1);
       }
       else {
-        v1 = p2 - p1;
-        v2 = p2 - q2;
-        alpha = mpq3::dot(v1, n1) / mpq3::dot(v2, n1);
-        v1 = v2 * alpha;
-        source = p2 - v1;
-        v1 = p2 - p1;
-        v2 = p2 - r2;
-        alpha = mpq3::dot(v1, n1) / mpq3::dot(v2, n1);
-        v1 = v2 * alpha;
-        target = p2 - v1;
-        ans_ok = true;
+        /* Overlap is [i [k l] j]. */
+        if (dbg_level > 0) {
+          std::cout << "overlap [i [k l] j]\n";
+        }
+        /* k is intersect with p2q2. l is intersect is p2r2. */
+        intersect_1 = tti_interp(p2, q2, p1, n1);
+        intersect_2 = tti_interp(p2, r2, p1, n1);
       }
     }
     else {
-      if (dbg_level > 1) {
-        std::cout << "case 1b: ans=false\n";
+      /* No overlap: [k l] [i j]. */
+      if (dbg_level > 0) {
+        std::cout << "no overlap: [k l] [i j]\n";
       }
-      ans_ok = false;
+      no_overlap = true;
     }
   }
   else {
-    v2 = q2 - p1;
-    n = mpq3::cross(v1, v2);
-    if (dbg_level > 1) {
-      std::cout << "case 2: v1=" << v1 << " v2=" << v2 << " n=" << n << "\n";
-    }
-    if (mpq3::dot(v, n) < 0) {
-      if (dbg_level > 1) {
-        std::cout << "case 2a: ans=false\n";
+    /* Middle left test in classification tree. */
+    if (tti_above(p1, q1, q2, p1p2) < 0) {
+      /* No overlap: [i j] [k l]. */
+      if (dbg_level > 0) {
+        std::cout << "no overlap: [i j] [k l]\n";
       }
-      ans_ok = false;
+      no_overlap = true;
     }
     else {
-      v1 = r1 - p1;
-      n = mpq3::cross(v1, v2);
-      if (dbg_level > 1) {
-        std::cout << "case 2b: v1=" << v1 << " v2=" << v2 << " n=" << n << "\n";
-      }
-      if (mpq3::dot(v, n) > 0) {
-        v1 = p1 - p2;
-        v2 = p1 - r1;
-        alpha = mpq3::dot(v1, n2) / mpq3::dot(v2, n2);
-        v1 = v2 * alpha;
-        source = p1 - v1;
-        v1 = p1 - p2;
-        v2 = p1 - q1;
-        alpha = mpq3::dot(v1, n2) / mpq3::dot(v2, n2);
-        v1 = v2 * alpha;
-        target = p1 - v1;
-        ans_ok = true;
+      /* Bottom left test in classification tree. */
+      if (tti_above(p1, r1, q2, p1p2) >= 0) {
+        /* Overlap is [k [i j] l]. */
+        if (dbg_level > 0) {
+          std::cout << "overlap [k [i j] l]\n";
+        }
+        /* i is intersect with p1r1. j is intersect with p1q1. */
+        intersect_1 = tti_interp(p1, r1, p2, n2);
+        intersect_2 = tti_interp(p1, q1, p2, n2);
       }
       else {
-        v1 = p2 - p1;
-        v2 = p2 - q2;
-        alpha = mpq3::dot(v1, n1) / mpq3::dot(v2, n1);
-        v1 = v2 * alpha;
-        source = p2 - v1;
-        v1 = p1 - p2;
-        v2 = p1 - q1;
-        alpha = mpq3::dot(v1, n2) / mpq3::dot(v2, n2);
-        v1 = v2 * alpha;
-        target = p1 - v1;
-        ans_ok = true;
+        /* Overlap is [i [k j] l]. */
+        if (dbg_level > 0) {
+          std::cout << "overlap [i [k j] l]\n";
+        }
+        /* k is intersect with p2q2. j is intersect with p1q1.  */
+        intersect_1 = tti_interp(p2, q2, p1, n1);
+        intersect_2 = tti_interp(p1, q1, p2, n2);
       }
     }
   }
-
+  if (no_overlap) {
+    return ITT_value(INONE);
+  }
+  if (intersect_1 == intersect_2) {
+    if (dbg_level > 0) {
+      std::cout << "single intersect: " << intersect_1 << "\n";
+    }
+    return ITT_value(IPOINT, intersect_1);
+  }
   if (dbg_level > 0) {
-    if (ans_ok) {
-      std::cout << "intersect: " << source << ", " << target << "\n";
-    }
-    else {
-      std::cout << "no intersect\n";
-    }
+    std::cout << "intersect segment: " << intersect_1 << ", " << intersect_2 << "\n";
   }
-  if (ans_ok) {
-    if (source == target) {
-      return ITT_value(IPOINT, source);
-    }
-    return ITT_value(ISEGMENT, source, target);
-  }
-  return ITT_value(INONE);
+  return ITT_value(ISEGMENT, intersect_1, intersect_2);
 }
 
 /* Helper function for intersect_tri_tri. Args have been canonicalized for triangle 1. */
@@ -1846,7 +1858,6 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
   const mpq3 &r2 = vr2->co_exact;
 
   const mpq3 &n2 = tri2.plane.norm_exact;
-
   if (sp1 == 0) {
     sp1 = sgn(mpq3::dot(p1 - r2, n2));
   }
@@ -1898,7 +1909,8 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
   }
 
   /* Do rest of the work with vertices in a canonical order, where p1 is on
-   * postive side of plane and q1, r1 are not; similarly for p2.
+   * postive side of plane and q1, r1 are not, or p1 is on the plane and
+   * q1 and r1 are off the plane on the same side.
    */
   ITT_value ans;
   if (sp1 > 0) {
@@ -2717,11 +2729,9 @@ static bool has_degenerate_tris(const Mesh &tm)
     double3 da = v2->co - v0->co;
     double3 db = v2->co - v1->co;
     double3 dab = double3::cross_high_precision(da, db);
-    if (dab.x == 0 && dab.y == 0 && dab.z == 0) {
-      return true;
-    }
-    double err_bound = supremum_cross(da, db) * index_cross * DBL_EPSILON;
-    if (fabs(dab.x) > err_bound && fabs(dab.y) > err_bound && fabs(dab.z) > err_bound) {
+    double dab_length_squared = dab.length_squared();
+    double err_bound = supremum_dot_cross(dab, dab) * index_dot_cross * DBL_EPSILON;
+    if (dab_length_squared > err_bound) {
       return false;
     }
     mpq3 a = v2->co_exact - v0->co_exact;
@@ -2745,7 +2755,7 @@ Mesh trimesh_nary_intersect(
     const Mesh &tm_in, int nshapes, std::function<int(int)> shape_fn, bool use_self, MArena *arena)
 {
   constexpr int dbg_level = 0;
-  if (dbg_level > 0) {
+  if (dbg_level > 2) {
     std::cout << "\nTRIMESH_NARY_INTERSECT nshapes=" << nshapes << " use_self=" << use_self
               << "\n";
     for (Facep f : tm_in.faces()) {
