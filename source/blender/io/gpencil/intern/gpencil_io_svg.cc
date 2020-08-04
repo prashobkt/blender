@@ -37,6 +37,7 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
+#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 
@@ -136,8 +137,17 @@ void GpencilExporterSVG::create_document_header(void)
   main_node.append_attribute("height").set_value((height + "px").c_str());
   std::string viewbox = "0 0 " + width + " " + height;
   main_node.append_attribute("viewBox").set_value(viewbox.c_str());
-}
 
+  /* Scene name. */
+  if ((params_.flag & GP_EXPORT_STORYBOARD_MODE) != 0) {
+    create_text(main_node,
+                30.0f,
+                params_.paper_size[1] - 30.0f,
+                std::string(scene->id.name + 2),
+                12.0f,
+                "#000000");
+  }
+}
 /* Main layer loop. */
 void GpencilExporterSVG::export_layers(void)
 {

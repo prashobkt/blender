@@ -118,8 +118,12 @@ static bool gpencil_export_storyboard(
   render_ratio[0] = frame_box[0] / ((scene->r.xsch * scene->r.size) / 100);
   render_ratio[1] = render_ratio[0];
 
-  const float gap[2] = {frame_box[0] / ((float)blocks[0] + 1.0f),
-                        frame_box[1] / ((float)blocks[1] + 1.0f)};
+  // float ysize = (iparams->paper_size[1] / ((float)blocks[1] + 1.0f)) / ((float)blocks[1]
+  // + 1.0f);
+  float ysize = iparams->paper_size[1] - (frame_box[1] * (float)blocks[1]);
+  ysize /= (float)blocks[1] + 1.0f;
+
+  const float gap[2] = {frame_box[0] / ((float)blocks[0] + 1.0f), ysize};
   float frame_offset[2] = {gap[0], gap[1]};
 
   int col = 1;

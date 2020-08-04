@@ -433,7 +433,7 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
   RNA_def_boolean(ot->srna,
                   "use_storyboard",
                   false,
-                  "Storyboard Mode",
+                  "Storyboard",
                   "Export several frames by page (valid only in camera view)");
   RNA_def_enum(ot->srna, "page_type", paper_items, 0, "Page", "Page orientation");
   RNA_def_enum(ot->srna,

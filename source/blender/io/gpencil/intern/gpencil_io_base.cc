@@ -86,6 +86,7 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   /* Easy access data. */
   bmain = CTX_data_main(params_.C);
   depsgraph = CTX_data_depsgraph_pointer(params_.C);
+  scene = CTX_data_scene(params_.C);
   rv3d = (RegionView3D *)params_.region->regiondata;
   gpd = (bGPdata *)params_.obact->data;
   const bool is_storyboard = ((params_.flag & GP_EXPORT_STORYBOARD_MODE) != 0);

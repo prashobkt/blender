@@ -74,6 +74,7 @@ class GpencilExporter {
   struct Depsgraph *depsgraph;
   struct bGPdata *gpd;
   struct Main *bmain;
+  struct Scene *scene;
   struct RegionView3D *rv3d;
 
   int winx_, winy_;
