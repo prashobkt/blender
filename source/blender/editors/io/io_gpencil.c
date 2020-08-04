@@ -153,6 +153,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 
   const bool use_clip_camera = RNA_boolean_get(op->ptr, "use_clip_camera");
   const bool use_gray_scale = RNA_boolean_get(op->ptr, "use_gray_scale");
+  const bool use_markers = RNA_boolean_get(op->ptr, "use_markers");
 
   /* Set flags. */
   int flag = 0;
@@ -161,6 +162,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   SET_FLAG_FROM_TEST(flag, use_norm_thickness, GP_EXPORT_NORM_THICKNESS);
   SET_FLAG_FROM_TEST(flag, use_clip_camera, GP_EXPORT_CLIP_CAMERA);
   SET_FLAG_FROM_TEST(flag, use_gray_scale, GP_EXPORT_GRAY_SCALE);
+  SET_FLAG_FROM_TEST(flag, use_markers, GP_EXPORT_MARKERS);
 
   float paper_size[2];
   if (RNA_enum_get(op->ptr, "page_type") == GP_EXPORT_PAPER_LANDSCAPE) {
@@ -258,6 +260,9 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
 
   row = uiLayoutRow(col, false);
   uiItemR(row, imfptr, "text_type", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(col, false);
+  uiItemR(row, imfptr, "use_markers", 0, NULL, ICON_NONE);
 
   box = uiLayoutBox(layout);
   row = uiLayoutRow(box, false);
@@ -440,6 +445,7 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
 
   RNA_def_int(ot->srna, "size_col", 3, 1, 6, "Colums", "Number of columns per page", 1, 6);
   RNA_def_int(ot->srna, "size_row", 2, 1, 6, "Rows", "Number of rows per page", 1, 6);
+  RNA_def_boolean(ot->srna, "use_markers", false, "Markers", "Use markers to select frames");
 
   /* This dummy prop is used to check whether we need to init the start and
    * end frame values to that of the scene's, otherwise they are reset at

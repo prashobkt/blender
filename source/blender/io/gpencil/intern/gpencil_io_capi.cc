@@ -34,6 +34,8 @@
 #include "BKE_main.h"
 #include "BKE_scene.h"
 
+#include "ED_markers.h"
+
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
@@ -42,18 +44,31 @@
 
 using blender::io::gpencil::GpencilExporterSVG;
 
-static bool is_keyframe_empty(bGPdata *gpd, int framenum)
+static bool is_keyframe_empty(bContext *C, bGPdata *gpd, int framenum, bool use_markers)
 {
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    if (gpl->flag & GP_LAYER_HIDE) {
-      continue;
+  if (!use_markers) {
+    /* Check if exist a frame. */
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+      if (gpl->flag & GP_LAYER_HIDE) {
+        continue;
+      }
+      LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+        if (gpf->framenum == framenum) {
+          return false;
+        }
+      }
     }
-    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-      if (gpf->framenum == framenum) {
+  }
+  else {
+    ListBase *markers = ED_context_get_markers(C);
+    /* Check if exist a marker. */
+    LISTBASE_FOREACH (TimeMarker *, marker, markers) {
+      if (marker->frame == framenum) {
         return false;
       }
     }
   }
+
   return true;
 }
 
@@ -113,8 +128,11 @@ static bool gpencil_export_storyboard(
   bool header = true;
   bool pending_save = false;
   int shot = 0;
+
+  const bool use_markers = ((iparams->flag & GP_EXPORT_MARKERS) != 0);
+
   for (int i = iparams->frame_start; i < iparams->frame_end + 1; i++) {
-    if (is_keyframe_empty(gpd_eval, i)) {
+    if (is_keyframe_empty(iparams->C, gpd_eval, i, use_markers)) {
       continue;
     }
     shot++;

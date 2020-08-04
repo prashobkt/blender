@@ -75,6 +75,8 @@ typedef enum eGpencilExportParams_Flag {
   GP_EXPORT_CLIP_CAMERA = (1 << 3),
   /* Gray Scale. */
   GP_EXPORT_GRAY_SCALE = (1 << 4),
+  /* Export markers frames. */
+  GP_EXPORT_MARKERS = (1 << 5),
 } eGpencilExportParams_Flag;
 
 typedef enum eGpencilExport_Modes {
