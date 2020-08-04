@@ -1509,6 +1509,7 @@ void OUTLINER_OT_unhide_all(wmOperatorType *ot)
 
 static int outliner_color_tag_set_exec(bContext *C, wmOperator *op)
 {
+  Scene *scene = CTX_data_scene(C);
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
   const short color_tag = RNA_enum_get(op->ptr, "color");
 
@@ -1523,6 +1524,10 @@ static int outliner_color_tag_set_exec(bContext *C, wmOperator *op)
     TreeElement *te_selected = (TreeElement *)link->data;
 
     Collection *collection = outliner_collection_from_tree_element(te_selected);
+    if (collection == scene->master_collection) {
+      continue;
+    }
+
     collection->color = color_tag;
   };
 
