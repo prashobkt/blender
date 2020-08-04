@@ -129,147 +129,93 @@
   (void)0
 
 /** CLOG profiling function family */
-#ifdef CLOG_DO_TIMEIT
-
-#  define CLOG_TIMEIT_START(log_ref, level, var) \
+#define CLOG_TIMEIT_START(log_ref, level, var) \
+  { \
+    double _clog_debug_timeit_##var = PIL_check_seconds_timer(); \
+    CLOG_DEBUG(log_ref, level, "time start (" #var ")"); \
     { \
-      double _clog_debug_timeit_##var = PIL_check_seconds_timer(); \
-      CLOG_DEBUG(log_ref, level, "time start (" #var ")"); \
-      { \
-        (void)0
+      (void)0
 
 /**
  * \return the time since TIMEIT_START was called.
  */
-#  define CLOG_TIMEIT_VALUE(var) \
-    (float)(PIL_check_seconds_timer() - _clog_debug_timeit_##var)
+#define CLOG_TIMEIT_VALUE(var) (float)(PIL_check_seconds_timer() - _clog_debug_timeit_##var)
 
-#  define CLOG_TIMEIT_VALUE_PRINT(log_ref, level, var) \
-    { \
-      CLOG_DEBUG(log_ref, level, "time update   (" #var "): %.6f", CLOG_TIMEIT_VALUE(var)); \
-    } \
-    (void)0
+#define CLOG_TIMEIT_VALUE_PRINT(log_ref, level, var) \
+  { \
+    CLOG_DEBUG(log_ref, level, "time update   (" #var "): %.6f", CLOG_TIMEIT_VALUE(var)); \
+  } \
+  (void)0
 
-#  define CLOG_TIMEIT_END(log_ref, level, var) \
-    } \
-    CLOG_DEBUG(log_ref, level, "time end   (" #var "): %.6f", CLOG_TIMEIT_VALUE(var)); \
-    } \
-    (void)0
+#define CLOG_TIMEIT_END(log_ref, level, var) \
+  } \
+  CLOG_DEBUG(log_ref, level, "time end   (" #var "): %.6f", CLOG_TIMEIT_VALUE(var)); \
+  } \
+  (void)0
 
 /**
  * _AVERAGED variants do same thing as their basic counterpart,
  * but additionally add elapsed time to an averaged static value,
  * useful to get sensible timing of code running fast and often.
  */
-#  define CLOG_TIMEIT_START_AVERAGED(log_ref, level, var) \
+#define CLOG_TIMEIT_START_AVERAGED(log_ref, level, var) \
+  { \
+    static float _clog_debug_sum_##var = 0.0f; \
+    static float _clog_debug_num_##var = 0.0f; \
+    double _clog_debug_timeit_##var = PIL_check_seconds_timer(); \
+    CLOG_DEBUG(log_ref, level, "time start    (" #var ")"); \
     { \
-      static float _clog_debug_sum_##var = 0.0f; \
-      static float _clog_debug_num_##var = 0.0f; \
-      double _clog_debug_timeit_##var = PIL_check_seconds_timer(); \
-      CLOG_DEBUG(log_ref, level, "time start    (" #var ")"); \
-      { \
-        (void)0
+      (void)0
 
-#  define CLOG_TIMEIT_AVERAGED_VALUE(var) \
-    (_clog_debug_num##var ? (_clog_debug_sum_##var / _clog_debug_num_##var) : 0.0f)
+#define CLOG_TIMEIT_AVERAGED_VALUE(var) \
+  (_clog_debug_num##var ? (_clog_debug_sum_##var / _clog_debug_num_##var) : 0.0f)
 
-#  define CLOG_TIMEIT_END_AVERAGED(log_ref, level, var) \
-    } \
-    const float _clog_debug_delta_##var = CLOG_TIMEIT_VALUE(var); \
-    _clog_debug_sum_##var += _clog_debug_delta_##var; \
-    _clog_debug_num_##var++; \
-    CLOG_DEBUG(log_ref, level, "time end      (" #var "): %.6f", _clog_debug_delta_##var); \
-    CLOG_DEBUG(log_ref, \
-               level, \
-               "time averaged (" #var "): %.6f (total: %.6f, in %d runs)", \
-               (_clog_debug_sum_##var / _clog_debug_num_##var), \
-               _clog_debug_sum_##var, \
-               (int)_clog_debug_num_##var); \
-    } \
-    (void)0
+#define CLOG_TIMEIT_END_AVERAGED(log_ref, level, var) \
+  } \
+  const float _clog_debug_delta_##var = CLOG_TIMEIT_VALUE(var); \
+  _clog_debug_sum_##var += _clog_debug_delta_##var; \
+  _clog_debug_num_##var++; \
+  CLOG_DEBUG(log_ref, level, "time end      (" #var "): %.6f", _clog_debug_delta_##var); \
+  CLOG_DEBUG(log_ref, \
+             level, \
+             "time averaged (" #var "): %.6f (total: %.6f, in %d runs)", \
+             (_clog_debug_sum_##var / _clog_debug_num_##var), \
+             _clog_debug_sum_##var, \
+             (int)_clog_debug_num_##var); \
+  } \
+  (void)0
 
 /**
  * Given some function/expression:
  *   TIMEIT_BENCH(some_function(), some_unique_description);
  */
-#  define CLOG_TIMEIT_BENCH(log_ref, level, expr, id) \
+#define CLOG_TIMEIT_BENCH(log_ref, level, expr, id) \
+  { \
+    CLOG_TIMEIT_START(log_ref, level, id); \
+    (expr); \
+    CLOG_TIMEIT_END(log_ref, level, id); \
+  } \
+  (void)0
+
+#define CLOG_TIMEIT_BLOCK_INIT(log_ref, id) double _clog_debug_timeit_var_##id = 0
+
+#define CLOG_TIMEIT_BLOCK_START(id) \
+  { \
+    double _clog_debug_timeit_block_start_##id = PIL_check_seconds_timer(); \
     { \
-      CLOG_TIMEIT_START(log_ref, level, id); \
-      (expr); \
-      CLOG_TIMEIT_END(log_ref, level, id); \
-    } \
-    (void)0
+      (void)0
 
-#  define CLOG_TIMEIT_BLOCK_INIT(log_ref, id) double _clog_debug_timeit_var_##id = 0
+#define CLOG_TIMEIT_BLOCK_END(id) \
+  } \
+  _clog_debug_timeit_var_##id += (PIL_check_seconds_timer() - \
+                                  _clog_debug_timeit_block_start_##id); \
+  } \
+  (void)0
 
-#  define CLOG_TIMEIT_BLOCK_START(id) \
-    { \
-      double _clog_debug_timeit_block_start_##id = PIL_check_seconds_timer(); \
-      { \
-        (void)0
-
-#  define CLOG_TIMEIT_BLOCK_END(id) \
-    } \
-    _clog_debug_timeit_var_##id += (PIL_check_seconds_timer() - \
-                                    _clog_debug_timeit_block_start_##id); \
-    } \
-    (void)0
-
-#  define CLOG_TIMEIT_BLOCK_STATS(log_ref, level, id) \
-    { \
-      CLOG_DEBUG(log_ref, level, "%s time (in seconds): %f", #id, _clog_debug_timeit_var_##id); \
-    } \
-    (void)0
-#else
-
-#  define CLOG_TIMEIT_START(log_ref, level, var) \
-    { \
-      { \
-        (void)0
-
-#  define CLOG_TIMEIT_VALUE(var) \
-    do { \
-    } while (false)
-
-#  define CLOG_TIMEIT_VALUE_PRINT(log_ref, level, var) {}(void)0
-
-#  define CLOG_TIMEIT_END(log_ref, level, var) \
-    } \
-    } \
-    (void)0
-
-#  define CLOG_TIMEIT_START_AVERAGED(log_ref, level, var) \
-    { \
-      { \
-        (void)0
-
-#  define CLOG_TIMEIT_AVERAGED_VALUE(var) \
-    do { \
-    } while (false)
-
-#  define CLOG_TIMEIT_END_AVERAGED(log_ref, level, var) \
-    } \
-    } \
-    (void)0
-
-#  define CLOG_TIMEIT_BENCH(log_ref, level, expr, id) {}(void)0
-
-#  define CLOG_TIMEIT_BLOCK_INIT(log_ref, id) \
-    do { \
-    } while (false)
-
-#  define CLOG_TIMEIT_BLOCK_START(id) \
-    { \
-      { \
-        (void)0
-
-#  define CLOG_TIMEIT_BLOCK_END(id) \
-    } \
-    } \
-    (void)0
-
-#  define CLOG_TIMEIT_BLOCK_STATS(log_ref, level, id) {}(void)0
-
-#endif  // DEBUG
+#define CLOG_TIMEIT_BLOCK_STATS(log_ref, level, id) \
+  { \
+    CLOG_DEBUG(log_ref, level, "%s time (in seconds): %f", #id, _clog_debug_timeit_var_##id); \
+  } \
+  (void)0
 
 #endif /* __PIL_TIME_UTILDEFINES_H__ */
