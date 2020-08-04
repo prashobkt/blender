@@ -82,41 +82,6 @@ static bool gpencil_io_export_frame(GpencilExporterSVG *writter,
   return result;
 }
 
-static bool gpencil_create_page(
-    Depsgraph *depsgraph, Main *bmain, Scene *scene, GpencilExportParams *iparams, int frame)
-{
-  GpencilExporterSVG writter = GpencilExporterSVG(iparams);
-  float no_offset[2] = {0.0f, 0.0f};
-  float ratio[2] = {1.0f, 1.0f};
-  writter.set_frame_ratio(ratio);
-
-  CFRA = frame;
-  BKE_scene_graph_update_for_newframe(depsgraph, bmain);
-  sprintf(iparams->file_subfix, "%04d", frame);
-  iparams->framenum = frame;
-
-  return gpencil_io_export_frame(&writter, iparams, no_offset, true, true, true);
-}
-
-/* Export full animation. */
-static bool gpencil_export_animation(
-    Depsgraph *depsgraph, Main *bmain, Scene *scene, GpencilExportParams *iparams, Object *ob)
-{
-  Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
-  bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
-
-  bool done = false;
-  for (int i = iparams->frame_start; i < iparams->frame_end + 1; i++) {
-    if (is_keyframe_empty(gpd_eval, i)) {
-      continue;
-    }
-
-    done |= gpencil_create_page(depsgraph, bmain, scene, iparams, i);
-  }
-
-  return done;
-}
-
 /* Export full animation in Storyboard mode. */
 static bool gpencil_export_storyboard(
     Depsgraph *depsgraph, Main *bmain, Scene *scene, GpencilExportParams *iparams, Object *ob)
@@ -208,16 +173,15 @@ bool gpencil_io_export(GpencilExportParams *iparams)
   Scene *scene = CTX_data_scene(iparams->C);
   Object *ob = CTX_data_active_object(iparams->C);
 
-  const bool only_active_frame = ((iparams->flag & GP_EXPORT_ACTIVE_FRAME) != 0);
+  const bool is_storyboard = ((iparams->flag & GP_EXPORT_STORYBOARD_MODE) != 0);
 
-  int oldframe = (int)DEG_get_ctime(depsgraph);
   bool done = false;
 
   /* Prepare document. */
   // TODO: Fix paper using parameter
   copy_v2_v2(iparams->paper_size, paper_size[0]);
 
-  if (only_active_frame) {
+  if (!is_storyboard) {
     GpencilExporterSVG writter = GpencilExporterSVG(iparams);
     float no_offset[2] = {0.0f, 0.0f};
     float ratio[2] = {1.0f, 1.0f};
@@ -226,16 +190,9 @@ bool gpencil_io_export(GpencilExportParams *iparams)
     done |= gpencil_io_export_frame(&writter, iparams, no_offset, true, true, true);
   }
   else {
-    if ((iparams->flag & GP_EXPORT_STORYBOARD_MODE) != 0) {
-      done |= gpencil_export_storyboard(depsgraph, bmain, scene, iparams, ob);
-    }
-    else {
-      done |= gpencil_export_animation(depsgraph, bmain, scene, iparams, ob);
-    }
-  }
-
-  /* Return frame state and DB to original state. */
-  if (!only_active_frame) {
+    int oldframe = (int)DEG_get_ctime(depsgraph);
+    done |= gpencil_export_storyboard(depsgraph, bmain, scene, iparams, ob);
+    /* Return frame state and DB to original state. */
     CFRA = oldframe;
     BKE_scene_graph_update_for_newframe(depsgraph, bmain);
   }

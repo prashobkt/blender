@@ -71,8 +71,8 @@ struct GpencilExportParams {
 };
 
 typedef enum eGpencilExportParams_Flag {
-  /* Export only active frame. */
-  GP_EXPORT_ACTIVE_FRAME = (1 << 0),
+  /* Use Storyboard format. */
+  GP_EXPORT_STORYBOARD_MODE = (1 << 0),
   /* Export Filled strokes. */
   GP_EXPORT_FILL = (1 << 1),
   /* Export normalized thickness. */
@@ -81,8 +81,6 @@ typedef enum eGpencilExportParams_Flag {
   GP_EXPORT_CLIP_CAMERA = (1 << 3),
   /* Gray Scale. */
   GP_EXPORT_GRAY_SCALE = (1 << 4),
-  /* Use Storyboard format. */
-  GP_EXPORT_STORYBOARD_MODE = (1 << 5),
 } eGpencilExportParams_Flag;
 
 bool gpencil_io_export(struct GpencilExportParams *iparams);

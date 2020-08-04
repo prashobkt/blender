@@ -146,23 +146,21 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   char filename[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filename);
 
-  const bool only_active_frame = RNA_boolean_get(op->ptr, "only_active_frame");
+  const bool use_storyboard = RNA_boolean_get(op->ptr, "use_storyboard");
   const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
   const bool use_norm_thickness = RNA_boolean_get(op->ptr, "use_normalized_thickness");
   const short select = RNA_enum_get(op->ptr, "selected_object_type");
 
   const bool use_clip_camera = RNA_boolean_get(op->ptr, "use_clip_camera");
   const bool use_gray_scale = RNA_boolean_get(op->ptr, "use_gray_scale");
-  const bool use_storyboard = RNA_boolean_get(op->ptr, "use_storyboard");
 
   /* Set flags. */
   int flag = 0;
-  SET_FLAG_FROM_TEST(flag, only_active_frame, GP_EXPORT_ACTIVE_FRAME);
+  SET_FLAG_FROM_TEST(flag, use_storyboard, GP_EXPORT_STORYBOARD_MODE);
   SET_FLAG_FROM_TEST(flag, use_fill, GP_EXPORT_FILL);
   SET_FLAG_FROM_TEST(flag, use_norm_thickness, GP_EXPORT_NORM_THICKNESS);
   SET_FLAG_FROM_TEST(flag, use_clip_camera, GP_EXPORT_CLIP_CAMERA);
   SET_FLAG_FROM_TEST(flag, use_gray_scale, GP_EXPORT_GRAY_SCALE);
-  SET_FLAG_FROM_TEST(flag, use_storyboard, GP_EXPORT_STORYBOARD_MODE);
 
   struct GpencilExportParams params = {
       .C = C,
@@ -217,16 +215,17 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
   row = uiLayoutRow(box, false);
   uiItemR(row, imfptr, "selected_object_type", 0, NULL, ICON_NONE);
 
+  box = uiLayoutBox(layout);
+
   row = uiLayoutRow(box, false);
-  uiItemR(row, imfptr, "only_active_frame", 0, NULL, ICON_NONE);
+  uiItemR(box, imfptr, "use_storyboard", 0, NULL, ICON_NONE);
 
   col = uiLayoutColumn(box, false);
+  uiLayoutSetActive(col, RNA_boolean_get(imfptr, "use_storyboard"));
 
   sub = uiLayoutColumn(col, true);
-  uiLayoutSetActive(sub, !RNA_boolean_get(imfptr, "only_active_frame"));
   uiItemR(sub, imfptr, "start", 0, IFACE_("Frame Start"), ICON_NONE);
   uiItemR(sub, imfptr, "end", 0, IFACE_("End"), ICON_NONE);
-  uiItemR(sub, imfptr, "use_storyboard", 0, NULL, ICON_NONE);
 
   box = uiLayoutBox(layout);
   row = uiLayoutRow(box, false);
@@ -374,7 +373,7 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
       ot->srna, "use_storyboard", false, "Storyboard Mode", "Export several frame sin same page");
   RNA_def_float(ot->srna,
                 "stroke_sample",
-                0.03f,
+                0.0f,
                 0.0f,
                 100.0f,
                 "Sampling",

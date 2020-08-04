@@ -84,7 +84,7 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   depsgraph = CTX_data_depsgraph_pointer(params_.C);
   rv3d = (RegionView3D *)params_.region->regiondata;
   gpd = (bGPdata *)params_.obact->data;
-  const bool only_active_frame = ((params_.flag & GP_EXPORT_ACTIVE_FRAME) != 0);
+  const bool is_storyboard = ((params_.flag & GP_EXPORT_STORYBOARD_MODE) != 0);
 
   Scene *scene = CTX_data_scene(params_.C);
 
@@ -116,7 +116,7 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   }
   else {
     is_camera = false;
-    if (only_active_frame && (ob_list_.size() == 1)) {
+    if (!is_storyboard && (ob_list_.size() == 1)) {
       /* Calc selected object boundbox. Need set initial value to some variables. */
       camera_ratio_ = 1.0f;
       offset_[0] = 0.0f;
