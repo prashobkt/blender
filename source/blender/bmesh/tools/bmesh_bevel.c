@@ -20,6 +20,7 @@
  * Main functions for beveling a BMesh (used by the tool and modifier)
  */
 
+#include "CLG_log.h"
 #include "MEM_guardedalloc.h"
 
 #include "DNA_curveprofile_types.h"
@@ -58,12 +59,35 @@
 #define BEVEL_MAX_AUTO_ADJUST_PCT 300.0f
 #define BEVEL_MATCH_SPEC_WEIGHT 0.2
 
-//#define DEBUG_CUSTOM_PROFILE_CUTOFF
 /* Happens far too often, uncomment for development. */
 // #define BEVEL_ASSERT_PROJECT
 
 /* for testing */
 // #pragma GCC diagnostic error "-Wpadded"
+
+static CLG_LogRef LOG = {"bmesh.bmesh_bevel"};
+
+//#define DEBUG_ADJUST
+
+#ifdef DEBUG_ADJUST
+static CLG_LogRef _LOG_ADJUST = {"bmesh.bmesh_bevel.debug_adjust"};
+#  define CLOG_ADJUST(log_level, ...) CLOG_VERBOSE(&_LOG_ADJUST, log_level, __VA_ARGS__)
+#else
+#  define CLOG_ADJUST(log_level, ...) {}(void)0
+#endif  // DEBUG_ADJUST
+
+//#define DEBUG_CUSTOM_PROFILE_CUTOFF
+
+#ifdef DEBUG_CUSTOM_PROFILE_CUTOFF
+static CLG_LogRef _LOG_CUSTOM_PROFILE_CUTOFF = {"bmesh.bmesh_bevel.debug_custom_profile_cutoff"};
+#  define CLOG_CUSTOM_PROFILE(log_level, ...) \
+    CLOG_VERBOSE(&_LOG_CUSTOM_PROFILE_CUTOFF, log_level, __VA_ARGS__)
+#  define CLOG_CUSTOM_PROFILE_V3(log_level, ...) \
+    CLOG_V3(&_LOG_CUSTOM_PROFILE_CUTOFF, log_level, __VA_ARGS__)
+#else
+#  define CLOG_CUSTOM_PROFILE(log_level, ...) {}(void)0
+#  define CLOG_CUSTOM_PROFILE_V3(log_level, ...) {}(void)0
+#endif  // DEBUG_CUSTOM_PROFILE_CUTOFF
 
 /* Constructed vertex, sometimes later instantiated as BMVert. */
 typedef struct NewVert {
@@ -2335,7 +2359,7 @@ static void bevel_harden_normals(BevelParams *bp, BMesh *bm)
           pnorm = lnext->f->no;
         }
         else {
-          /* printf("unexpected harden case (edge)\n"); */
+          CLOG_ERROR(&LOG, "unexpected harden case (edge)");
         }
       }
       else if (fkind == F_VERT) {
@@ -2377,7 +2401,7 @@ static void bevel_harden_normals(BevelParams *bp, BMesh *bm)
             pnorm = norm;
           }
           else {
-            /* printf("unexpected harden case (vert)\n"); */
+            CLOG_ERROR(&LOG, "unexpected harden case (vert)");
           }
         }
       }
@@ -3039,14 +3063,14 @@ static void print_adjust_stats(BoundVert *vstart)
   double max_spec_r, max_spec_r_pct;
   double delta, delta_pct;
 
-  printf("\nSolution analysis\n");
+  CLOG_ADJUST(1, "Solution analysis");
   even_residual2 = 0.0;
   spec_residual2 = 0.0;
   max_even_r = 0.0;
   max_even_r_pct = 0.0;
   max_spec_r = 0.0;
   max_spec_r_pct = 0.0;
-  printf("width matching\n");
+  CLOG_ADJUST(1, "width matching");
   v = vstart;
   do {
     if (v->adjchain != NULL) {
@@ -3054,12 +3078,13 @@ static void print_adjust_stats(BoundVert *vstart)
       eleft = v->adjchain->elast;
       delta = fabs(eright->offset_r - eleft->offset_l);
       delta_pct = 100.0 * delta / eright->offset_r_spec;
-      printf("e%d r(%f) vs l(%f): abs(delta)=%f, delta_pct=%f\n",
-             BM_elem_index_get(eright->e),
-             eright->offset_r,
-             eleft->offset_l,
-             delta,
-             delta_pct);
+      CLOG_ADJUST(1,
+                  "e%d r(%f) vs l(%f): abs(delta)=%f, delta_pct=%f",
+                  BM_elem_index_get(eright->e),
+                  eright->offset_r,
+                  eleft->offset_l,
+                  delta,
+                  delta_pct);
       even_residual2 += delta * delta;
       if (delta > max_even_r) {
         max_even_r = delta;
@@ -3071,7 +3096,7 @@ static void print_adjust_stats(BoundVert *vstart)
     v = v->adjchain;
   } while (v && v != vstart);
 
-  printf("spec matching\n");
+  CLOG_ADJUST(2, "spec matching");
   v = vstart;
   do {
     if (v->adjchain != NULL) {
@@ -3079,12 +3104,13 @@ static void print_adjust_stats(BoundVert *vstart)
       eleft = v->adjchain->elast;
       delta = eright->offset_r - eright->offset_r_spec;
       delta_pct = 100.0 * delta / eright->offset_r_spec;
-      printf("e%d r(%f) vs r spec(%f): delta=%f, delta_pct=%f\n",
-             BM_elem_index_get(eright->e),
-             eright->offset_r,
-             eright->offset_r_spec,
-             delta,
-             delta_pct);
+      CLOG_ADJUST(2,
+                  "e%d r(%f) vs r spec(%f): delta=%f, delta_pct=%f",
+                  BM_elem_index_get(eright->e),
+                  eright->offset_r,
+                  eright->offset_r_spec,
+                  delta,
+                  delta_pct);
       spec_residual2 += delta * delta;
       delta = fabs(delta);
       delta_pct = fabs(delta_pct);
@@ -3097,12 +3123,13 @@ static void print_adjust_stats(BoundVert *vstart)
 
       delta = eleft->offset_l - eleft->offset_l_spec;
       delta_pct = 100.0 * delta / eright->offset_l_spec;
-      printf("e%d l(%f) vs l spec(%f): delta=%f, delta_pct=%f\n",
-             BM_elem_index_get(eright->e),
-             eleft->offset_l,
-             eleft->offset_l_spec,
-             delta,
-             delta_pct);
+      CLOG_ADJUST(2,
+                  "e%d l(%f) vs l spec(%f): delta=%f, delta_pct=%f",
+                  BM_elem_index_get(eright->e),
+                  eleft->offset_l,
+                  eleft->offset_l_spec,
+                  delta,
+                  delta_pct);
       spec_residual2 += delta * delta;
       delta = fabs(delta);
       delta_pct = fabs(delta_pct);
@@ -3116,10 +3143,17 @@ static void print_adjust_stats(BoundVert *vstart)
     v = v->adjchain;
   } while (v && v != vstart);
 
-  printf("Analysis Result:\n");
-  printf("even residual2 = %f,  spec residual2 = %f\n", even_residual2, spec_residual2);
-  printf("max even delta = %f, max as percent of spec = %f\n", max_even_r, max_even_r_pct);
-  printf("max spec delta = %f, max as percent of spec = %f\n", max_spec_r, max_spec_r_pct);
+  CLOG_ADJUST(1,
+              "Analysis Result:\n"
+              "even residual2 = %f,  spec residual2 = %f\n"
+              "max even delta = %f, max as percent of spec = %f\n"
+              "max spec delta = %f, max as percent of spec = %f",
+              even_residual2,
+              spec_residual2,
+              max_even_r,
+              max_even_r_pct,
+              max_spec_r,
+              max_spec_r_pct);
 }
 #endif
 
@@ -3373,22 +3407,19 @@ static void adjust_the_cycle_or_chain(BoundVert *vstart, bool iscycle)
   int i, np, nrows, row;
 
   np = 0;
-#ifdef DEBUG_ADJUST
-  printf("\nadjust the %s (with eigen)\n", iscycle ? "cycle" : "chain");
-#endif
+  CLOG_ADJUST(1, "adjust the %s (with eigen)", iscycle ? "cycle" : "chain");
   v = vstart;
   do {
 #ifdef DEBUG_ADJUST
     eleft = v->elast;
     eright = v->efirst;
-    printf(" (left=e%d, right=e%d)", BM_elem_index_get(eleft->e), BM_elem_index_get(eright->e));
+    CLOG_ADJUST(
+        1, " (left=e%d, right=e%d)", BM_elem_index_get(eleft->e), BM_elem_index_get(eright->e));
 #endif
     np++;
     v = v->adjchain;
   } while (v && v != vstart);
-#ifdef DEBUG_ADJUST
-  printf(" -> %d parms\n", np);
-#endif
+  CLOG_ADJUST(1, " -> %d parms", np);
 
 #ifdef FAST_ADJUST_CODE
   if (adjust_the_cycle_or_chain_fast(vstart, np, iscycle)) {
@@ -3409,15 +3440,14 @@ static void adjust_the_cycle_or_chain(BoundVert *vstart, bool iscycle)
       eright = v->efirst;
       eleft = v->elast;
       enextleft = v->adjchain->elast;
-#ifdef DEBUG_ADJUST
-      printf("p%d: e%d->offset_r = %f\n", i, BM_elem_index_get(eright->e), eright->offset_r);
+      CLOG_ADJUST(1, "p%d: e%d->offset_r = %f", i, BM_elem_index_get(eright->e), eright->offset_r);
       if (iscycle || v != vstart) {
-        printf("  dependent: e%d->offset_l = %f * p%d\n",
-               BM_elem_index_get(eleft->e),
-               v->sinratio,
-               i);
+        CLOG_ADJUST(1,
+                    "  dependent: e%d->offset_l = %f * p%d",
+                    BM_elem_index_get(eleft->e),
+                    v->sinratio,
+                    i);
       }
-#endif
 
       /* Residue i: width difference between eright and eleft of next. */
       EIG_linear_solver_matrix_add(solver, i, i, 1.0);
@@ -3436,13 +3466,12 @@ static void adjust_the_cycle_or_chain(BoundVert *vstart, bool iscycle)
       row = iscycle ? np + 2 * i : np - 1 + 2 * i;
       EIG_linear_solver_matrix_add(solver, row, i, weight);
       EIG_linear_solver_right_hand_side_add(solver, 0, row, weight * eright->offset_r);
-#ifdef DEBUG_ADJUST
-      printf("b[%d]=%f * %f, for e%d->offset_r\n",
-             row,
-             weight,
-             eright->offset_r,
-             BM_elem_index_get(eright->e));
-#endif
+      CLOG_ADJUST(1,
+                  "b[%d]=%f * %f, for e%d->offset_r",
+                  row,
+                  weight,
+                  eright->offset_r,
+                  BM_elem_index_get(eright->e));
 
       /* Residue np + 2*i + 1 (if cycle) else np - 1 + 2*i + 1:
        * left offset for parm i matches its spec; weighted. */
@@ -3450,20 +3479,17 @@ static void adjust_the_cycle_or_chain(BoundVert *vstart, bool iscycle)
       EIG_linear_solver_matrix_add(
           solver, row, (i == np - 1) ? 0 : i + 1, weight * v->adjchain->sinratio);
       EIG_linear_solver_right_hand_side_add(solver, 0, row, weight * enextleft->offset_l);
-#ifdef DEBUG_ADJUST
-      printf("b[%d]=%f * %f, for e%d->offset_l\n",
-             row,
-             weight,
-             enextleft->offset_l,
-             BM_elem_index_get(enextleft->e));
-#endif
+      CLOG_ADJUST(1,
+                  "b[%d]=%f * %f, for e%d->offset_l",
+                  row,
+                  weight,
+                  enextleft->offset_l,
+                  BM_elem_index_get(enextleft->e));
     }
     else {
       /* Not a cycle, and last of chain. */
       eleft = v->elast;
-#ifdef DEBUG_ADJUST
-      printf("p%d: e%d->offset_l = %f\n", i, BM_elem_index_get(eleft->e), eleft->offset_l);
-#endif
+      CLOG_ADJUST(1, "p%d: e%d->offset_l = %f", i, BM_elem_index_get(eleft->e), eleft->offset_l);
       /* Second part of residue i for last i. */
       EIG_linear_solver_matrix_add(solver, i - 1, i, -1.0);
     }
@@ -3474,9 +3500,9 @@ static void adjust_the_cycle_or_chain(BoundVert *vstart, bool iscycle)
 #ifdef DEBUG_ADJUST
   /* Note: this print only works after solve, but by that time b has been cleared. */
   EIG_linear_solver_print_matrix(solver);
-  printf("\nSolution:\n");
+  CLOG_ADJUST(1, "Solution:");
   for (i = 0; i < np; i++) {
-    printf("p%d = %f\n", i, EIG_linear_solver_variable_get(solver, 0, i));
+    CLOG_ADJUST(1, "p%d = %f", i, EIG_linear_solver_variable_get(solver, 0, i));
   }
 #endif
 
@@ -3489,23 +3515,17 @@ static void adjust_the_cycle_or_chain(BoundVert *vstart, bool iscycle)
       eright = v->efirst;
       eleft = v->elast;
       eright->offset_r = (float)val;
-#ifdef DEBUG_ADJUST
-      printf("e%d->offset_r = %f\n", BM_elem_index_get(eright->e), eright->offset_r);
-#endif
+      CLOG_ADJUST(1, "e%d->offset_r = %f", BM_elem_index_get(eright->e), eright->offset_r);
       if (iscycle || v != vstart) {
         eleft->offset_l = (float)(v->sinratio * val);
-#ifdef DEBUG_ADJUST
-        printf("e%d->offset_l = %f\n", BM_elem_index_get(eleft->e), eleft->offset_l);
-#endif
+        CLOG_ADJUST(1, "e%d->offset_l = %f", BM_elem_index_get(eleft->e), eleft->offset_l);
       }
     }
     else {
       /* Not a cycle, and last of chain. */
       eleft = v->elast;
       eleft->offset_l = (float)val;
-#ifdef DEBUG_ADJUST
-      printf("e%d->offset_l = %f\n", BM_elem_index_get(eleft->e), eleft->offset_l);
-#endif
+      CLOG_ADJUST(1, "e%d->offset_l = %f", BM_elem_index_get(eleft->e), eleft->offset_l);
     }
     i++;
     v = v->adjchain;
@@ -5294,11 +5314,7 @@ static void bevel_build_rings(BevelParams *bp, BMesh *bm, BevVert *bv, BoundVert
  */
 static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
 {
-#ifdef DEBUG_CUSTOM_PROFILE_CUTOFF
-  printf("BEVEL BUILD CUTOFF\n");
-#  define F3(v) (v)[0], (v)[1], (v)[2]
-  int j;
-#endif
+  CLOG_CUSTOM_PROFILE(1, "BEVEL BUILD CUTOFF");
   int i;
   int n_bndv = bv->vmesh->count;
   BoundVert *bndv;
@@ -5332,12 +5348,9 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
 
   } while ((bndv = bndv->next) != bv->vmesh->boundstart);
 
-#ifdef DEBUG_CUSTOM_PROFILE_CUTOFF
-  printf("Corner vertices:\n");
-  for (j = 0; j < n_bndv; j++) {
-    printf("  (%.3f, %.3f, %.3f)\n", F3(mesh_vert(bv->vmesh, j, 1, 0)->co));
+  for (int j = 0; j < n_bndv; j++) {
+    CLOG_CUSTOM_PROFILE_V3(1, "Corner vertices", mesh_vert(bv->vmesh, j, 1, 0)->co);
   }
-#endif
 
   /* Disable the center face if the corner vertices share the same location. */
   build_center_face = true;
@@ -5349,9 +5362,7 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
     build_center_face &= len_squared_v3v3(mesh_vert(bv->vmesh, 1, 1, 0)->co,
                                           mesh_vert(bv->vmesh, 2, 1, 0)->co) > BEVEL_EPSILON;
   }
-#ifdef DEBUG_CUSTOM_PROFILE_CUTOFF
-  printf("build_center_face: %d\n", build_center_face);
-#endif
+  CLOG_CUSTOM_PROFILE(1, "build_center_face: %d", build_center_face);
 
   /* Create the corner vertex BMVerts. */
   if (build_center_face) {
@@ -5374,9 +5385,7 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
   /* Build the profile cutoff faces. */
   /* Extra one or two for corner vertices and one for last point along profile, or the size of the
    * center face array if it's bigger. */
-#ifdef DEBUG_CUSTOM_PROFILE_CUTOFF
-  printf("Building profile cutoff faces.\n");
-#endif
+  CLOG_CUSTOM_PROFILE(1, "Building profile cutoff faces.");
   face_bmverts = BLI_memarena_alloc(
       bp->mem_arena, ((size_t)max_ii(bp->seg + 2 + build_center_face, n_bndv) * sizeof(BMVert *)));
   bndv = bv->vmesh->boundstart;
@@ -5388,28 +5397,23 @@ static void bevel_build_cutoff(BevelParams *bp, BMesh *bm, BevVert *bv)
     /* Add the first corner vertex under this boundvert. */
     face_bmverts[0] = mesh_vert(bv->vmesh, i, 1, 0)->v;
 
-#ifdef DEBUG_CUSTOM_PROFILE_CUTOFF
-    printf("Profile Number %d:\n", i);
+    CLOG_CUSTOM_PROFILE(1, "Profile Number %d:", i);
     if (bndv->is_patch_start || bndv->is_arc_start) {
-      printf("  Miter profile\n");
+      CLOG_CUSTOM_PROFILE(1, "  Miter profile");
     }
-    printf("  Corner 1: (%0.3f, %0.3f, %0.3f)\n", F3(mesh_vert(bv->vmesh, i, 1, 0)->co));
-#endif
+    CLOG_CUSTOM_PROFILE_V3(1, "  Corner 1", mesh_vert(bv->vmesh, i, 1, 0)->co);
 
     /* Add profile point vertices to the face, including the last one. */
     for (int k = 0; k < bp->seg + 1; k++) {
       face_bmverts[k + 1] = mesh_vert(bv->vmesh, i, 0, k)->v; /* Leave room for first vert. */
-#ifdef DEBUG_CUSTOM_PROFILE_CUTOFF
-      printf("  Profile %d: (%0.3f, %0.3f, %0.3f)\n", k, F3(mesh_vert(bv->vmesh, i, 0, k)->co));
-#endif
+      CLOG_CUSTOM_PROFILE(1, "  Profile %d", k);
+      CLOG_CUSTOM_PROFILE_V3(1, "  Coordinates", mesh_vert(bv->vmesh, i, 0, k)->co);
     }
 
     /* Add the second corner vert to complete the bottom of the face. */
     if (build_center_face) {
       face_bmverts[bp->seg + 2] = mesh_vert(bv->vmesh, i, 1, 1)->v;
-#ifdef DEBUG_CUSTOM_PROFILE_CUTOFF
-      printf("  Corner 2: (%0.3f, %0.3f, %0.3f)\n", F3(mesh_vert(bv->vmesh, i, 1, 1)->co));
-#endif
+      CLOG_CUSTOM_PROFILE_V3(1, "  Corner 2", mesh_vert(bv->vmesh, i, 1, 1)->co);
     }
 
     /* Create the profile cutoff face for this boundvert. */
