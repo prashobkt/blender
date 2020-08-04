@@ -51,10 +51,12 @@
 #include "bmesh_tools.h"
 
 #include "PIL_time.h"
-#include "PIL_time_utildefines.h"
 
 #include "MOD_ui_common.h"
 #include "MOD_util.h"
+
+// #define CLOG_DO_TIMEIT
+#include "PIL_time_utildefines.h"
 
 static CLG_LogRef LOG = {"mod.decimate"};
 
@@ -107,7 +109,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   bool calc_face_normal;
   float *vweights = NULL;
 
-  CLOG_DEBUG_TIMEIT_START(&LOG, 1, decim);
+  CLOG_TIMEIT_START(&LOG, 1, decim);
 
   /* set up front so we dont show invalid info in the UI */
   updateFaceCount(ctx, dmd, mesh->totpoly);
@@ -214,7 +216,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   BM_mesh_free(bm);
 
-  CLOG_DEBUG_TIMEIT_END(&LOG, 1, decim);
+  CLOG_TIMEIT_END(&LOG, 1, decim);
 
   result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
 
