@@ -147,11 +147,11 @@ static bool test_path(char *targetpath,
    * if folder_name is specified but not otherwise? */
 
   if (BLI_is_dir(targetpath)) {
-    CLOG_VERBOSE(&LOG, 1, "\tfound: %s", targetpath);
+    CLOG_VERBOSE(&LOG, 10, "\tfound: %s", targetpath);
     return true;
   }
 
-  CLOG_VERBOSE(&LOG, 1, "\tmissing: %s", targetpath);
+  CLOG_VERBOSE(&LOG, 20, "\tmissing: %s", targetpath);
   // targetpath[0] = '\0';
   return false;
 }
