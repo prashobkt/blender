@@ -76,8 +76,10 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   params_.stroke_sample = iparams->stroke_sample;
   params_.framenum = iparams->framenum;
 
-  copy_v2_v2_int(params_.story_size, iparams->story_size);
+  copy_v2_v2_int(params_.page_layout, iparams->page_layout);
+  params_.page_type = iparams->page_type;
   copy_v2_v2(params_.paper_size, iparams->paper_size);
+  params_.text_flag = iparams->text_flag;
 
   /* Easy access data. */
   bmain = CTX_data_main(params_.C);

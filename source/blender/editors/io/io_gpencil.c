@@ -162,6 +162,18 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
   SET_FLAG_FROM_TEST(flag, use_clip_camera, GP_EXPORT_CLIP_CAMERA);
   SET_FLAG_FROM_TEST(flag, use_gray_scale, GP_EXPORT_GRAY_SCALE);
 
+  float paper_size[2];
+  if (RNA_enum_get(op->ptr, "page_type") == GP_EXPORT_PAPER_LANDSCAPE) {
+    paper_size[0] = gpencil_export_paper_sizes[0][0];
+    paper_size[1] = gpencil_export_paper_sizes[0][1];
+  }
+  else {
+    paper_size[0] = gpencil_export_paper_sizes[0][1];
+    paper_size[1] = gpencil_export_paper_sizes[0][0];
+  }
+
+  const int page_layout[2] = {RNA_int_get(op->ptr, "size_col"), RNA_int_get(op->ptr, "size_row")};
+
   struct GpencilExportParams params = {
       .C = C,
       .region = region,
@@ -174,6 +186,11 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
       .flag = flag,
       .select = select,
       .stroke_sample = RNA_float_get(op->ptr, "stroke_sample"),
+      .page_layout = {page_layout[0], page_layout[1]},
+      .page_type = (int)RNA_enum_get(op->ptr, "page_type"),
+      .paper_size = {paper_size[0], paper_size[1]},
+      .text_flag = (int)RNA_enum_get(op->ptr, "text_type"),
+
   };
   /* Take some defaults from the scene, if not specified explicitly. */
   Scene *scene = CTX_data_scene(C);
@@ -202,7 +219,7 @@ static int wm_gpencil_export_exec(bContext *C, wmOperator *op)
 static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
 {
 
-  uiLayout *box, *row, *col, *sub;
+  uiLayout *box, *row, *col, *sub, *col1;
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
@@ -226,6 +243,21 @@ static void ui_gpencil_export_settings(uiLayout *layout, PointerRNA *imfptr)
   sub = uiLayoutColumn(col, true);
   uiItemR(sub, imfptr, "start", 0, IFACE_("Frame Start"), ICON_NONE);
   uiItemR(sub, imfptr, "end", 0, IFACE_("End"), ICON_NONE);
+
+  uiLayoutSetPropSep(box, true);
+
+  /* Add the Row, Col. */
+  col1 = uiLayoutColumnWithHeading(col, true, IFACE_("Layout"));
+  uiItemR(col1, imfptr, "size_col", 0, NULL, ICON_NONE);
+  uiItemR(col1, imfptr, "size_row", 0, NULL, ICON_NONE);
+
+  uiLayoutSetPropSep(box, true);
+
+  row = uiLayoutRow(col, false);
+  uiItemR(row, imfptr, "page_type", 0, NULL, ICON_NONE);
+
+  row = uiLayoutRow(col, false);
+  uiItemR(row, imfptr, "text_type", 0, NULL, ICON_NONE);
 
   box = uiLayoutBox(layout);
   row = uiLayoutRow(box, false);
@@ -305,6 +337,20 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem paper_items[] = {
+      {GP_EXPORT_PAPER_LANDSCAPE, "LANDSCAPE", 0, "Landscape", ""},
+      {GP_EXPORT_PAPER_PORTRAIT, "PORTRAIT", 0, "Portrait", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem text_items[] = {
+      {GP_EXPORT_TXT_NONE, "NONE", 0, "None", ""},
+      {GP_EXPORT_TXT_SHOT, "SHOT", 0, "Shot", "Include shot number"},
+      {GP_EXPORT_TXT_FRAME, "FRAME", 0, "Frame", "Include Frame number"},
+      {GP_EXPORT_TXT_SHOT_FRAME, "SHOTFRAME", 0, "Shot & Frame", "Include Shot and Frame number"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   ot->name = "Export Grease Pencil";
   ot->description = "Export current grease pencil";
   ot->idname = "WM_OT_gpencil_export";
@@ -369,8 +415,6 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
                   false,
                   "Gray Scale",
                   "Export in gray scale instead of full color");
-  RNA_def_boolean(
-      ot->srna, "use_storyboard", false, "Storyboard Mode", "Export several frame sin same page");
   RNA_def_float(ot->srna,
                 "stroke_sample",
                 0.0f,
@@ -380,6 +424,17 @@ void WM_OT_gpencil_export(wmOperatorType *ot)
                 "Precision of sampling stroke, set to zero to disable",
                 0.0f,
                 100.0f);
+
+  RNA_def_boolean(ot->srna,
+                  "use_storyboard",
+                  false,
+                  "Storyboard Mode",
+                  "Export several frames by page (valid only in camera view)");
+  RNA_def_enum(ot->srna, "page_type", paper_items, 0, "Page", "Page orientation");
+  RNA_def_enum(ot->srna, "text_type", text_items, 0, "Text", "Text included by frame");
+
+  RNA_def_int(ot->srna, "size_col", 3, 1, 6, "Colums", "Number of columns per page", 1, 6);
+  RNA_def_int(ot->srna, "size_row", 2, 1, 6, "Rows", "Number of rows per page", 1, 6);
 
   /* This dummy prop is used to check whether we need to init the start and
    * end frame values to that of the scene's, otherwise they are reset at

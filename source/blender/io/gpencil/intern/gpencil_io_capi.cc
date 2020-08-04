@@ -93,14 +93,18 @@ static bool gpencil_export_storyboard(
   GpencilExporterSVG *writter = new GpencilExporterSVG(iparams);
 
   /* Calc paper sizes. */
-  const float blocks[2] = {3.0f, 2.0f};
-  float frame_box[2] = {iparams->paper_size[0] / (blocks[0] + 1.0f),
-                        iparams->paper_size[1] / (blocks[0] + 1.0f)};
+  const int blocks[2] = {iparams->page_layout[0], iparams->page_layout[1]};
+  float frame_box[2];
   float render_ratio[2];
-  render_ratio[0] = frame_box[0] / ((scene->r.xsch * scene->r.size) / 100);
-  render_ratio[1] = frame_box[1] / ((scene->r.ysch * scene->r.size) / 100);
 
-  const float gap[2] = {frame_box[0] / (blocks[0] + 1.0f), frame_box[1] / (blocks[1] + 1.0f)};
+  frame_box[0] = iparams->paper_size[0] / ((float)blocks[0] + 1.0f);
+  frame_box[1] = ((float)scene->r.ysch / (float)scene->r.xsch) * frame_box[0];
+
+  render_ratio[0] = frame_box[0] / ((scene->r.xsch * scene->r.size) / 100);
+  render_ratio[1] = render_ratio[0];
+
+  const float gap[2] = {frame_box[0] / ((float)blocks[0] + 1.0f),
+                        frame_box[1] / ((float)blocks[1] + 1.0f)};
   float frame_offset[2] = {gap[0], gap[1]};
 
   int col = 1;
@@ -178,8 +182,7 @@ bool gpencil_io_export(GpencilExportParams *iparams)
   bool done = false;
 
   /* Prepare document. */
-  // TODO: Fix paper using parameter
-  copy_v2_v2(iparams->paper_size, paper_size[0]);
+  copy_v2_v2(iparams->paper_size, iparams->paper_size);
 
   if (!is_storyboard) {
     GpencilExporterSVG writter = GpencilExporterSVG(iparams);
@@ -191,7 +194,9 @@ bool gpencil_io_export(GpencilExportParams *iparams)
   }
   else {
     int oldframe = (int)DEG_get_ctime(depsgraph);
+
     done |= gpencil_export_storyboard(depsgraph, bmain, scene, iparams, ob);
+
     /* Return frame state and DB to original state. */
     CFRA = oldframe;
     BKE_scene_graph_update_for_newframe(depsgraph, bmain);

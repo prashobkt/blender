@@ -28,17 +28,7 @@ struct bContext;
 struct ARegion;
 
 /* Paper Size: A4, Letter. */
-static const float paper_size[2][2] = {3508, 2480, 3300, 2550};
-
-typedef enum eGpencilExport_Modes {
-  GP_EXPORT_TO_SVG = 0,
-} eGpencilExport_Modes;
-
-typedef enum eGpencilExportSelect {
-  GP_EXPORT_ACTIVE = 0,
-  GP_EXPORT_SELECTED = 1,
-  GP_EXPORT_VISIBLE = 2,
-} eGpencilExportSelect;
+static const float gpencil_export_paper_sizes[1][2] = {3508, 2480};
 
 struct GpencilExportParams {
   bContext *C;
@@ -65,9 +55,13 @@ struct GpencilExportParams {
   /** Stroke sampling. */
   float stroke_sample;
   /** Row and cols of storyboard. */
-  int story_size[2];
+  int page_layout[2];
+  /** Page type (Landscape/Portrait). */
+  short page_type;
   /** Paper size in pixels. */
   float paper_size[2];
+  /** Paper size in pixels. */
+  short text_flag;
 };
 
 typedef enum eGpencilExportParams_Flag {
@@ -82,6 +76,29 @@ typedef enum eGpencilExportParams_Flag {
   /* Gray Scale. */
   GP_EXPORT_GRAY_SCALE = (1 << 4),
 } eGpencilExportParams_Flag;
+
+typedef enum eGpencilExport_Modes {
+  GP_EXPORT_TO_SVG = 0,
+} eGpencilExport_Modes;
+
+typedef enum eGpencilExportSelect {
+  GP_EXPORT_ACTIVE = 0,
+  GP_EXPORT_SELECTED = 1,
+  GP_EXPORT_VISIBLE = 2,
+} eGpencilExportSelect;
+
+typedef enum eGpencilExportPaper {
+  GP_EXPORT_PAPER_LANDSCAPE = 0,
+  GP_EXPORT_PAPER_PORTRAIT = 1,
+} eGpencilExportPaper;
+
+/* GpencilExportParams->text_flag. */
+typedef enum eGpencilExportText {
+  GP_EXPORT_TXT_NONE = 0,
+  GP_EXPORT_TXT_SHOT = 1,
+  GP_EXPORT_TXT_FRAME = 2,
+  GP_EXPORT_TXT_SHOT_FRAME = 3,
+} eGpencilExportText;
 
 bool gpencil_io_export(struct GpencilExportParams *iparams);
 
