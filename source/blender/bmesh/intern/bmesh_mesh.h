@@ -83,8 +83,7 @@ void bmesh_edit_end(BMesh *bm, const BMOpTypeFlag type_flag);
 
 void BM_mesh_elem_index_ensure_ex(BMesh *bm, const char htype, int elem_offset[4]);
 void BM_mesh_elem_index_ensure(BMesh *bm, const char hflag);
-void BM_mesh_elem_index_validate(
-    BMesh *bm, const char *location, const char *func, const char *msg_a, const char *msg_b);
+void BM_mesh_elem_index_validate(BMesh *bm);
 
 void BM_mesh_toolflags_set(BMesh *bm, bool use_toolflags);
 

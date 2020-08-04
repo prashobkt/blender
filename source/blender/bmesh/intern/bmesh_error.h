@@ -49,9 +49,6 @@ void BMO_error_clear(BMesh *bm);
  * int BMO_error_catch_op(BMesh *bm, BMOperator *catchop, int errorcode, char **msg);
  */
 
-#define BM_ELEM_INDEX_VALIDATE(_bm, _msg_a, _msg_b) \
-  BM_mesh_elem_index_validate(_bm, __FILE__ ":" STRINGIFY(__LINE__), __func__, _msg_a, _msg_b)
-
 /*------ error code defines -------*/
 
 /*error messages*/

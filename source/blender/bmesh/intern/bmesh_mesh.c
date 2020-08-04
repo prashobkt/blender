@@ -43,7 +43,7 @@
 
 #include "intern/bmesh_private.h"
 
-CLG_LOGREF_DECLARE_GLOBAL(BMESH_LOG, "bmesh.mesh");
+static CLG_LogRef LOG = {"bmesh.bmesh_mesh"};
 
 /* used as an extern, defined in bmesh.h */
 const BMAllocTemplate bm_mesh_allocsize_default = {512, 1024, 2048, 512};
@@ -954,7 +954,7 @@ static void bm_mesh_loops_calc_normals(BMesh *bm,
                 /* Fix/update all clnors of this fan with computed average value. */
 
                 /* Prints continuously when merge custom normals, so commenting. */
-                /* printf("Invalid clnors in this fan!\n"); */
+                CLOG_DEBUG(&LOG, 3, "Invalid clnors in this fan!");
 
                 while ((clnor = BLI_SMALLSTACK_POP(clnors))) {
                   // CLOG_V2(&LOG, 3, "original clnor", clnor);
@@ -1030,7 +1030,9 @@ static bool bm_mesh_loops_split_lnor_fans(BMesh *bm,
        * Maybe we should set those loops' edges as sharp?
        */
       BLI_BITMAP_ENABLE(done_loops, i);
-      CLOG_WARN(BMESH_LOG, "Getting invalid NULL loop space for loop %d!", i);
+      if (G.debug & G_DEBUG) {
+        CLOG_WARN(&LOG, "Getting invalid NULL loop space for loop %d!", i);
+      }
       continue;
     }
 
@@ -1124,7 +1126,8 @@ static void bm_mesh_loops_assign_normal_data(BMesh *bm,
     if (!lnors_spacearr->lspacearr[i]) {
       BLI_BITMAP_ENABLE(done_loops, i);
       if (G.debug & G_DEBUG) {
-        printf("WARNING! Still getting invalid NULL loop space in second loop for loop %d!\n", i);
+        CLOG_WARN(
+            &LOG, "WARNING! Still getting invalid NULL loop space in second loop for loop %d!", i);
       }
       continue;
     }
@@ -2029,7 +2032,8 @@ void BM_mesh_elem_index_ensure_ex(BMesh *bm, const char htype, int elem_offset[4
 {
 
 #ifdef DEBUG
-  BM_ELEM_INDEX_VALIDATE(bm, "Should Never Fail!", __func__);
+  CLOG_STR_DEBUG(&LOG, 0, "Check bmesh: (Should Never Fail)");
+  BM_mesh_elem_index_validate(bm);
 #endif
 
   if (elem_offset == NULL) {
@@ -2052,7 +2056,7 @@ void BM_mesh_elem_index_ensure_ex(BMesh *bm, const char htype, int elem_offset[4
       BLI_assert(elem_offset || index == bm->totvert);
     }
     else {
-      // printf("%s: skipping vert index calc!\n", __func__);
+      CLOG_DEBUG(&LOG, 3, "skipping vert index calc!");
     }
   }
 
@@ -2068,7 +2072,7 @@ void BM_mesh_elem_index_ensure_ex(BMesh *bm, const char htype, int elem_offset[4
       BLI_assert(elem_offset || index == bm->totedge);
     }
     else {
-      // printf("%s: skipping edge index calc!\n", __func__);
+      CLOG_DEBUG(&LOG, 3, "skipping edge index calc!");
     }
   }
 
@@ -2105,7 +2109,7 @@ void BM_mesh_elem_index_ensure_ex(BMesh *bm, const char htype, int elem_offset[4
       }
     }
     else {
-      // printf("%s: skipping face/loop index calc!\n", __func__);
+      CLOG_DEBUG(&LOG, 3, "skipping face/loop index calc!");
     }
   }
 
@@ -2156,8 +2160,10 @@ void BM_mesh_elem_index_ensure(BMesh *bm, const char htype)
  * Keep this function read-only.
  */
 
-void BM_mesh_elem_index_validate(
-    BMesh *bm, const char *location, const char *func, const char *msg_a, const char *msg_b)
+static CLG_LogRef BMESH_LOG_VALIDATE = {"bmesh.bmesh_mesh.validate"};
+
+/** before calling this function, call CLOG_* to get location in code */
+void BM_mesh_elem_index_validate(BMesh *bm)
 {
   const char iter_types[3] = {BM_VERTS_OF_MESH, BM_EDGES_OF_MESH, BM_FACES_OF_MESH};
 
@@ -2190,41 +2196,27 @@ void BM_mesh_elem_index_validate(
 
     if ((is_error == true) && (is_dirty == false)) {
       is_any_error = true;
-      fprintf(stderr,
-              "Invalid Index: at %s, %s, %s[%d] invalid index %d, '%s', '%s'\n",
-              location,
-              func,
-              type_names[i],
-              err_idx,
-              err_val,
-              msg_a,
-              msg_b);
+      CLOG_VERBOSE(&BMESH_LOG_VALIDATE,
+                   10,
+                   "Invalid Index %s[%d] invalid index %d",
+                   type_names[i],
+                   err_idx,
+                   err_val
+
+      );
     }
     else if ((is_error == false) && (is_dirty == true)) {
-
-#if 0 /* mostly annoying */
-
       /* dirty may have been incorrectly set */
-      fprintf(stderr,
-              "Invalid Dirty: at %s, %s (%s), dirty flag was set but all index values are "
-              "correct, '%s', '%s'\n",
-              location,
-              func,
-              type_names[i],
-              msg_a,
-              msg_b);
-#endif
+      CLOG_VERBOSE(&BMESH_LOG_VALIDATE,
+                   200,
+                   "Invalid Dirty (%s), dirty flag was set but all index values are correct",
+                   type_names[i]);
     }
   }
 
-#if 0 /* mostly annoying, even in debug mode */
-#  ifdef DEBUG
   if (is_any_error == 0) {
-    fprintf(stderr, "Valid Index Success: at %s, %s, '%s', '%s'\n", location, func, msg_a, msg_b);
+    CLOG_STR_VERBOSE(&BMESH_LOG_VALIDATE, 100, "Valid Index Success");
   }
-#  endif
-#endif
-  (void)is_any_error; /* shut up the compiler */
 }
 
 /* debug check only - no need to optimize */
@@ -2499,7 +2491,7 @@ void BM_mesh_remap(BMesh *bm, const uint *vert_idx, const uint *edge_idx, const 
     for (i = totvert, ve = verts_copy + totvert - 1, vep = verts_pool + totvert - 1; i--;
          ve--, vep--) {
       *ve = **vep;
-      /*          printf("*vep: %p, verts_pool[%d]: %p\n", *vep, i, verts_pool[i]);*/
+      CLOG_DEBUG(&LOG, 3, "*vep: %p, verts_pool[%d]: %p", *vep, i, verts_pool[i]);
       if (cd_vert_pyptr != -1) {
         void **pyptr = BM_ELEM_CD_GET_VOID_P(((BMElem *)ve), cd_vert_pyptr);
         pyptrs[i] = *pyptr;
@@ -2513,10 +2505,14 @@ void BM_mesh_remap(BMesh *bm, const uint *vert_idx, const uint *edge_idx, const 
     for (i = totvert; i--; new_idx--, ve--, vep--) {
       BMVert *new_vep = verts_pool[*new_idx];
       *new_vep = *ve;
-#if 0
-      printf(
-          "mapping vert from %d to %d (%p/%p to %p)\n", i, *new_idx, *vep, verts_pool[i], new_vep);
-#endif
+      CLOG_DEBUG(&LOG,
+                 3,
+                 "mapping vert from %d to %ud (%p/%p to %p)",
+                 i,
+                 *new_idx,
+                 *vep,
+                 verts_pool[i],
+                 new_vep);
       BLI_ghash_insert(vptr_map, *vep, new_vep);
       if (cd_vert_pyptr != -1) {
         void **pyptr = BM_ELEM_CD_GET_VOID_P(((BMElem *)new_vep), cd_vert_pyptr);
@@ -2565,10 +2561,14 @@ void BM_mesh_remap(BMesh *bm, const uint *vert_idx, const uint *edge_idx, const 
       BMEdge *new_edp = edges_pool[*new_idx];
       *new_edp = *ed;
       BLI_ghash_insert(eptr_map, *edp, new_edp);
-#if 0
-      printf(
-          "mapping edge from %d to %d (%p/%p to %p)\n", i, *new_idx, *edp, edges_pool[i], new_edp);
-#endif
+      CLOG_DEBUG(&LOG,
+                 3,
+                 "mapping edge from %d to %ud (%p/%p to %p)",
+                 i,
+                 *new_idx,
+                 *edp,
+                 edges_pool[i],
+                 new_edp);
       if (cd_edge_pyptr != -1) {
         void **pyptr = BM_ELEM_CD_GET_VOID_P(((BMElem *)new_edp), cd_edge_pyptr);
         *pyptr = pyptrs[*new_idx];
@@ -2635,7 +2635,7 @@ void BM_mesh_remap(BMesh *bm, const uint *vert_idx, const uint *edge_idx, const 
   /* Verts' pointers, only edge pointers... */
   if (eptr_map) {
     BM_ITER_MESH (ve, &iter, bm, BM_VERTS_OF_MESH) {
-      /*          printf("Vert e: %p -> %p\n", ve->e, BLI_ghash_lookup(eptr_map, ve->e));*/
+      CLOG_DEBUG(&LOG, 3, "Vert e: %p -> %p", ve->e, BLI_ghash_lookup(eptr_map, ve->e));
       if (ve->e) {
         ve->e = BLI_ghash_lookup(eptr_map, ve->e);
         BLI_assert(ve->e);
@@ -2649,22 +2649,34 @@ void BM_mesh_remap(BMesh *bm, const uint *vert_idx, const uint *edge_idx, const 
   if (vptr_map || eptr_map) {
     BM_ITER_MESH (ed, &iter, bm, BM_EDGES_OF_MESH) {
       if (vptr_map) {
-        /* printf("Edge v1: %p -> %p\n", ed->v1, BLI_ghash_lookup(vptr_map, ed->v1));*/
-        /* printf("Edge v2: %p -> %p\n", ed->v2, BLI_ghash_lookup(vptr_map, ed->v2));*/
+        CLOG_DEBUG(&LOG, 3, "Edge v1: %p -> %p", ed->v1, BLI_ghash_lookup(vptr_map, ed->v1));
+        CLOG_DEBUG(&LOG, 3, "Edge v2: %p -> %p", ed->v2, BLI_ghash_lookup(vptr_map, ed->v2));
         ed->v1 = BLI_ghash_lookup(vptr_map, ed->v1);
         ed->v2 = BLI_ghash_lookup(vptr_map, ed->v2);
         BLI_assert(ed->v1);
         BLI_assert(ed->v2);
       }
       if (eptr_map) {
-        /* printf("Edge v1_disk_link prev: %p -> %p\n", ed->v1_disk_link.prev,*/
-        /*        BLI_ghash_lookup(eptr_map, ed->v1_disk_link.prev));*/
-        /* printf("Edge v1_disk_link next: %p -> %p\n", ed->v1_disk_link.next,*/
-        /*        BLI_ghash_lookup(eptr_map, ed->v1_disk_link.next));*/
-        /* printf("Edge v2_disk_link prev: %p -> %p\n", ed->v2_disk_link.prev,*/
-        /*        BLI_ghash_lookup(eptr_map, ed->v2_disk_link.prev));*/
-        /* printf("Edge v2_disk_link next: %p -> %p\n", ed->v2_disk_link.next,*/
-        /*        BLI_ghash_lookup(eptr_map, ed->v2_disk_link.next));*/
+        CLOG_DEBUG(&LOG,
+                   3,
+                   "Edge v1_disk_link prev: %p -> %p",
+                   ed->v1_disk_link.prev,
+                   BLI_ghash_lookup(eptr_map, ed->v1_disk_link.prev));
+        CLOG_DEBUG(&LOG,
+                   3,
+                   "Edge v1_disk_link next: %p -> %p",
+                   ed->v1_disk_link.next,
+                   BLI_ghash_lookup(eptr_map, ed->v1_disk_link.next));
+        CLOG_DEBUG(&LOG,
+                   3,
+                   "Edge v2_disk_link prev: %p -> %p",
+                   ed->v2_disk_link.prev,
+                   BLI_ghash_lookup(eptr_map, ed->v2_disk_link.prev));
+        CLOG_DEBUG(&LOG,
+                   3,
+                   "Edge v2_disk_link next: %p -> %p",
+                   ed->v2_disk_link.next,
+                   BLI_ghash_lookup(eptr_map, ed->v2_disk_link.next));
         ed->v1_disk_link.prev = BLI_ghash_lookup(eptr_map, ed->v1_disk_link.prev);
         ed->v1_disk_link.next = BLI_ghash_lookup(eptr_map, ed->v1_disk_link.next);
         ed->v2_disk_link.prev = BLI_ghash_lookup(eptr_map, ed->v2_disk_link.prev);
@@ -2681,17 +2693,17 @@ void BM_mesh_remap(BMesh *bm, const uint *vert_idx, const uint *edge_idx, const 
   BM_ITER_MESH (fa, &iter, bm, BM_FACES_OF_MESH) {
     BM_ITER_ELEM (lo, &iterl, fa, BM_LOOPS_OF_FACE) {
       if (vptr_map) {
-        /*              printf("Loop v: %p -> %p\n", lo->v, BLI_ghash_lookup(vptr_map, lo->v));*/
+        CLOG_DEBUG(&LOG, 3, "Loop v: %p -> %p", lo->v, BLI_ghash_lookup(vptr_map, lo->v));
         lo->v = BLI_ghash_lookup(vptr_map, lo->v);
         BLI_assert(lo->v);
       }
       if (eptr_map) {
-        /*              printf("Loop e: %p -> %p\n", lo->e, BLI_ghash_lookup(eptr_map, lo->e));*/
+        CLOG_DEBUG(&LOG, 3, "Loop e: %p -> %p", lo->e, BLI_ghash_lookup(eptr_map, lo->e));
         lo->e = BLI_ghash_lookup(eptr_map, lo->e);
         BLI_assert(lo->e);
       }
       if (fptr_map) {
-        /*              printf("Loop f: %p -> %p\n", lo->f, BLI_ghash_lookup(fptr_map, lo->f));*/
+        CLOG_DEBUG(&LOG, 3, "Loop f: %p -> %p", lo->f, BLI_ghash_lookup(fptr_map, lo->f));
         lo->f = BLI_ghash_lookup(fptr_map, lo->f);
         BLI_assert(lo->f);
       }

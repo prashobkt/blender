@@ -176,7 +176,8 @@ void BMO_op_init(BMesh *bm, BMOperator *op, const int flag, const char *opname)
   int opcode = BMO_opcode_from_opname(opname);
 
 #ifdef DEBUG
-  BM_ELEM_INDEX_VALIDATE(bm, "pre bmo", opname);
+  CLOG_DEBUG(&LOG, 0, "pre bmo: %s", opname);
+  BM_mesh_elem_index_validate(bm);
 #else
   (void)bm;
 #endif
@@ -243,7 +244,8 @@ void BMO_op_finish(BMesh *bm, BMOperator *op)
   BLI_memarena_free(op->arena);
 
 #ifdef DEBUG
-  BM_ELEM_INDEX_VALIDATE(bm, "post bmo", bmo_opdefines[op->type]->opname);
+  CLOG_DEBUG(&LOG, 0, "post bmo: %s", bmo_opdefines[op->type]->opname);
+  BM_mesh_elem_index_validate(bm);
 
   /* avoid accidental re-use */
   memset(op, 0xff, sizeof(*op));
