@@ -13,12 +13,13 @@ namespace admmpd {
 class geom {
 public:
 
-static Eigen::Vector4d point_tet_barys(
-    const Eigen::Vector3d &p,
-    const Eigen::Vector3d &a,
-    const Eigen::Vector3d &b,
-    const Eigen::Vector3d &c,
-    const Eigen::Vector3d &d);
+template<typename T>
+static Eigen::Matrix<T,4,1> point_tet_barys(
+    const Eigen::Matrix<T,3,1> &p,
+    const Eigen::Matrix<T,3,1> &a,
+    const Eigen::Matrix<T,3,1> &b,
+    const Eigen::Matrix<T,3,1> &c,
+    const Eigen::Matrix<T,3,1> &d);
 
 static bool point_in_tet(
     const Eigen::Vector3d &p,

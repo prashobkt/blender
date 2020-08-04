@@ -16,10 +16,18 @@
 namespace admmpd {
 template <typename T> using RowSparseMatrix = Eigen::SparseMatrix<T,Eigen::RowMajor>;
 
+#define MESHTYPE_EMBEDDED 0
+#define MESHTYPE_TET 1
+#define MESHTYPE_TRIANGLE 2
+#define MESHTYPE_NUM 3
+
 #define ENERGYTERM_TET 0
+#define ENERGYTERM_TRIANGLE 1
+#define ENERGYTERM_NUM 2
 
 #define ELASTIC_ARAP 0 // As-rigid-as-possible
 #define ELASTIC_NH 1 // NeoHookean
+#define ELASTIC_NUM 2
 
 struct Options {
     double timestep_s;

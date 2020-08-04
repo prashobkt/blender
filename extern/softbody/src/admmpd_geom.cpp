@@ -6,33 +6,35 @@
 namespace admmpd {
 using namespace Eigen;
 
-Matrix<double,4,1> geom::point_tet_barys(
-	const Vector3d &p,
-	const Vector3d &a,
-	const Vector3d &b,
-	const Vector3d &c,
-	const Vector3d &d)
+template <typename T>
+Matrix<T,4,1> geom::point_tet_barys(
+	const Matrix<T,3,1> &p,
+	const Matrix<T,3,1> &a,
+	const Matrix<T,3,1> &b,
+	const Matrix<T,3,1> &c,
+	const Matrix<T,3,1> &d)
 {
+	typedef Matrix<T,3,1> VecType;
 	auto scalar_triple_product = [](
-		const Vector3d &u,
-		const Vector3d &v,
-		const Vector3d &w )
+		const VecType &u,
+		const VecType &v,
+		const VecType &w )
 	{
 		return u.dot(v.cross(w));
 	};
-	Vector3d ap = p - a;
-	Vector3d bp = p - b;
-	Vector3d ab = b - a;
-	Vector3d ac = c - a;
-	Vector3d ad = d - a;
-	Vector3d bc = c - b;
-	Vector3d bd = d - b;
-	double va6 = scalar_triple_product(bp, bd, bc);
-	double vb6 = scalar_triple_product(ap, ac, ad);
-	double vc6 = scalar_triple_product(ap, ad, ab);
-	double vd6 = scalar_triple_product(ap, ab, ac);
-	double v6 = 1.0 / scalar_triple_product(ab, ac, ad);
-	return Matrix<double,4,1>(va6*v6, vb6*v6, vc6*v6, vd6*v6);
+	VecType ap = p - a;
+	VecType bp = p - b;
+	VecType ab = b - a;
+	VecType ac = c - a;
+	VecType ad = d - a;
+	VecType bc = c - b;
+	VecType bd = d - b;
+	T va6 = scalar_triple_product(bp, bd, bc);
+	T vb6 = scalar_triple_product(ap, ac, ad);
+	T vc6 = scalar_triple_product(ap, ad, ab);
+	T vd6 = scalar_triple_product(ap, ab, ac);
+	T v6 = 1.0 / scalar_triple_product(ab, ac, ad);
+	return Matrix<T,4,1>(va6*v6, vb6*v6, vc6*v6, vd6*v6);
 } // end point tet barycoords
 
 // Checks that it's on the "correct" side of the normal
@@ -535,6 +537,16 @@ void geom::make_n3(
 //
 // Compile template types
 //
+template Eigen::Matrix<double,4,1>
+	admmpd::geom::point_tet_barys<double>(
+	const Eigen::Vector3d&,
+	const Eigen::Vector3d&, const Eigen::Vector3d&,
+	const Eigen::Vector3d&, const Eigen::Vector3d&);
+template Eigen::Matrix<float,4,1>
+	admmpd::geom::point_tet_barys<float>(
+	const Eigen::Vector3f&,
+	const Eigen::Vector3f&, const Eigen::Vector3f&,
+	const Eigen::Vector3f&, const Eigen::Vector3f&);
 template Eigen::Matrix<double,3,1>
 	admmpd::geom::point_triangle_barys<double>(
 	const Eigen::Vector3d&, const Eigen::Vector3d&,

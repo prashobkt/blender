@@ -109,14 +109,20 @@ bool PointInTetMeshTraverse<T>::stop_traversing(
 	if (!aabb.contains(point))
 		return false;
 
+	int n_tet_skip = skip_tet_inds.size();
+	for (int i=0; i<n_tet_skip; ++i)
+	{
+		if (skip_tet_inds[i]==prim) return false;
+	}
+
 	RowVector4i t = prim_inds->row(prim);
-	int n_skip = skip_inds.size();
+	int n_skip = skip_vert_inds.size();
 	for (int i=0; i<n_skip; ++i)
 	{
-		if (skip_inds[i]==t[0]) return false;
-		if (skip_inds[i]==t[1]) return false;
-		if (skip_inds[i]==t[2]) return false;
-		if (skip_inds[i]==t[3]) return false;
+		if (skip_vert_inds[i]==t[0]) return false;
+		if (skip_vert_inds[i]==t[1]) return false;
+		if (skip_vert_inds[i]==t[2]) return false;
+		if (skip_vert_inds[i]==t[3]) return false;
 	}
 
 	VecType v[4] = {

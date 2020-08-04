@@ -37,7 +37,7 @@ typedef struct ADMMPDInterfaceData {
     // as they will be copied to internal solver data before admmpd_solve.
     int out_totverts; // number of deformable verts (output)
     float in_framerate; // frames per second (input)
-    char last_error[256]; // error message if last returned
+    char last_error[256]; // last error message
     struct ADMMPDInternalData *idata; // internal data
 } ADMMPDInterfaceData;
 
@@ -48,7 +48,10 @@ typedef struct BodyPoint BodyPoint;
 void admmpd_dealloc(ADMMPDInterfaceData*);
 
 // Initializes solver and allocates internal data
-// Mode: 0=lattice, 1=tetgen
+// Mode:
+//      ADMMPD_INIT_MODE_EMBEDDED
+//      ADMMPD_INIT_MODE_TETGEN
+//      ADMMPD_INIT_MODE_TRIANGLE (cloth)
 // Returns 1 on success, 0 on failure
 int admmpd_init(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3], int mode);
 

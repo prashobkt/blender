@@ -12,6 +12,7 @@ using namespace Eigen;
 
 Lame::Lame() : m_material(ELASTIC_ARAP)
 {
+	m_limit = Vector2d(-999,999);
 	set_from_youngs_poisson(10000000,0.399);
 }
 
@@ -63,9 +64,12 @@ void EnergyTerm::update(
 {
 	switch (energyterm_type)
 	{
-		default:
+		default: break;
 		case ENERGYTERM_TET: {
 			update_tet(index,lame,rest_volume,weight,x,Dx,z,u);
+		} break;
+		case ENERGYTERM_TRIANGLE: {
+			update_tri(index,lame,rest_volume,weight,x,Dx,z,u);
 		} break;
 	}
 } // end EnergyTerm::update
@@ -116,6 +120,38 @@ void EnergyTerm::update_tet(
 
 } // end EnergyTerm::update
 
+void EnergyTerm::update_tri(
+	int index,
+	const Lame &lame,
+	double rest_area,
+	double weight,
+	const Eigen::MatrixXd *x,
+	const Eigen::MatrixXd *Dx,
+	Eigen::MatrixXd *z,
+	Eigen::MatrixXd *u)
+{
+	typedef Matrix<double,2,3> Matrix23d;
+	// For we'll assume ARAP energy. If we need nonlinear energies
+	// in the future that's totally doable.
+	(void)(x);
+	Matrix23d Dix = Dx->block<2,3>(index,0);
+	Matrix23d ui = u->block<2,3>(index,0);
+	Matrix<double,3,2> zi_T = (Dix + ui).transpose();
+	JacobiSVD<Matrix<double,3,2> > svd(zi_T, ComputeFullU | ComputeFullV);
+
+	Matrix<double,3,2> S = Matrix<double,3,2>::Zero();
+	S(0,0)=1; S(1,1)=1;
+	Matrix<double,3,2> p = svd.matrixU() * S * svd.matrixV().transpose();
+	double k = lame.m_bulk_mod;
+	double kv = k * rest_area;
+	double w2 = weight*weight;
+	zi_T = (kv*p + w2*zi_T) / (w2 + kv);
+
+	ui += (Dix - zi_T.transpose());
+	u->block<2,3>(index,0) = ui;
+	z->block<2,3>(index,0) = zi_T.transpose();
+}
+
 int EnergyTerm::init_tet(
 	int index,
 	const Lame &lame,
@@ -141,18 +177,58 @@ int EnergyTerm::init_tet(
 	Matrix<double,4,3> S = Matrix<double,4,3>::Zero();
 	S(0,0) = -1; S(0,1) = -1; S(0,2) = -1;
 	S(1,0) =  1; S(2,1) =  1; S(3,2) =  1;
-	Eigen::Matrix<double,4,3> D = S * edges_inv;
-	Eigen::Matrix<double,3,4> Dt = D.transpose();
+	Eigen::Matrix<double,3,4> D = (S * edges_inv).transpose();
 	int rows[3] = { index+0, index+1, index+2 };
 	int cols[4] = { prim[0], prim[1], prim[2], prim[3] };
 	for( int r=0; r<3; ++r )
 	{
 		for( int c=0; c<4; ++c )
 		{
-			triplets.emplace_back(rows[r], cols[c], Dt(r,c));
+			triplets.emplace_back(rows[r], cols[c], D(r,c));
 		}
 	}
 	return 3;
+}
+
+int EnergyTerm::init_triangle(
+	int index,
+	const Lame &lame,
+	const Eigen::RowVector3i &prim,
+	const Eigen::MatrixXd *x,
+	double &area,
+	double &weight,
+	std::vector< Eigen::Triplet<double> > &triplets)
+{
+	Matrix<double,3,2> edges;
+	edges.col(0) = x->row(prim[1]) - x->row(prim[0]);
+	edges.col(1) = x->row(prim[2]) - x->row(prim[0]);
+	Matrix<double,3,2> basis;
+	basis.col(0) = edges.col(0).normalized();
+	double dot = edges.col(1).dot(basis.col(0));
+	basis.col(1) = (edges.col(1)-dot*basis.col(0)).normalized();
+	Matrix<double,2,2> rest_pose = (basis.transpose() * edges).inverse();
+	area = (basis.transpose() * edges).determinant() / 2.0f;
+	if (area < 0)
+	{
+		printf("**admmpd::TriEnergyTerm Error: Inverted initial tri: %f\n",area);
+		return 0;
+	}
+	double k = lame.m_bulk_mod;
+	weight = std::sqrt(k*area);
+	Matrix<double,3,2> S = Matrix<double,3,2>::Zero();
+	S(0,0) = -1; S(0,1) = -1;
+	S(1,0) =  1; S(2,1) =  1;
+	Eigen::Matrix<double,2,3> D = (S * rest_pose).transpose();
+	int rows[2] = { index+0, index+1 };
+	int cols[3] = { prim[0], prim[1], prim[2] };
+	for (int r=0; r<2; ++r)
+	{
+		for (int c=0; c<3; ++c)
+		{
+			triplets.emplace_back(rows[r], cols[c], D(r,c));
+		}
+	}
+	return 2;
 }
 
 void EnergyTerm::solve_prox(

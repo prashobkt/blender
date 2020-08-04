@@ -17,6 +17,7 @@ public:
 	double m_mu;
 	double m_lambda;
 	double m_bulk_mod;
+	Eigen::Vector2d m_limit; // [min,max]
 	void set_from_youngs_poisson(double youngs, double poisson);
 	Lame();
 };
@@ -42,10 +43,22 @@ public:
 		Eigen::MatrixXd *z,
 		Eigen::MatrixXd *u);
 
+	// Updates the z and u variables for a tet
 	void update_tet(
 		int index,
 		const Lame &lame,
 		double rest_volume,
+		double weight,
+		const Eigen::MatrixXd *x,
+		const Eigen::MatrixXd *Dx,
+		Eigen::MatrixXd *z,
+		Eigen::MatrixXd *u);
+
+	// Updates the z and u variables for a tri
+	void update_tri(
+		int index,
+		const Lame &lame,
+		double rest_area,
 		double weight,
 		const Eigen::MatrixXd *x,
 		const Eigen::MatrixXd *Dx,
@@ -59,6 +72,16 @@ public:
 		const Eigen::RowVector4i &prim,
 		const Eigen::MatrixXd *x,
 		double &volume,
+		double &weight,
+		std::vector< Eigen::Triplet<double> > &triplets);
+
+	// Initializes facet energy, returns num rows for D
+	int init_triangle(
+		int index,
+		const Lame &lame,
+		const Eigen::RowVector3i &prim,
+		const Eigen::MatrixXd *x,
+		double &area,
 		double &weight,
 		std::vector< Eigen::Triplet<double> > &triplets);
 

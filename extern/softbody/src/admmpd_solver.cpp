@@ -33,18 +33,29 @@ bool Solver::init(
 {
 	BLI_assert(data != NULL);
 	BLI_assert(options != NULL);
-	BLI_assert(mesh);
-	BLI_assert(mesh->prims().cols()==4);
+	BLI_assert(mesh != NULL);
 
-	data->x = mesh->rest_prim_verts();
+	switch (mesh->type())
+	{
+		case MESHTYPE_EMBEDDED:
+		case MESHTYPE_TET: {
+			data->x = *mesh->rest_prim_verts();
+		} break;
+		case MESHTYPE_TRIANGLE: {
+			data->x = *mesh->rest_facet_verts();
+		} break;
+	}
+
+	BLI_assert(data->x.rows()>0);
+	BLI_assert(data->x.cols()==0);
 	data->v.resize(data->x.rows(), 3);
 	data->v.setZero();
-	mesh->compute_masses(data->x, options->density_kgm3, data->m);
+	mesh->compute_masses(&data->x, options->density_kgm3, data->m);
 	init_matrices(mesh,options,data);
 
-	int nt = mesh->prims().rows();
+	int ne = data->indices.size();
 	int nx = data->x.rows();
-	printf("Solver::init:\n\tNum tets: %d\n\tNum verts: %d\n",nt,nx);
+	printf("Solver::init:\n\tNum energy terms: %d\n\tNum verts: %d\n",ne,nx);
 
 	return true;
 } // end init
@@ -146,7 +157,8 @@ void Solver::init_solve(
 
 	if (collision)
 	{
-		collision->init_bvh(&data->x_start, &data->x);
+		bool sort_tree = true;
+		collision->update_bvh(&data->x_start, &data->x, sort_tree);
 	}
 
 	// ADMM variables
@@ -175,11 +187,13 @@ void Solver::solve_local_step(
 	{
 		(void)(tls);
 		LocalStepThreadData *td = (LocalStepThreadData*)userdata;
+		// We'll unnecessarily recompute Lame here, but in the future each
+		// energy may have a different stiffness.
 		Lame lame;
 		lame.set_from_youngs_poisson(td->options->youngs,td->options->poisson);
 		EnergyTerm().update(
-			td->data->indices[i][0],
-			td->data->indices[i][2],
+			td->data->indices[i][0], // index
+			td->data->indices[i][2], // type
 			lame,
 			td->data->rest_volumes[i],
 			td->data->weights[i],
@@ -210,6 +224,7 @@ void Solver::update_collisions(
 	if (collision==NULL)
 		return;
 
+	collision->update_bvh(&data->x_start, &data->x, false);
 	collision->detect(options, &data->x_start, &data->x);
 
 	std::vector<double> d_coeffs;
@@ -394,43 +409,92 @@ void Solver::append_energies(
 	SolverData *data,
 	std::vector<Triplet<double> > &D_triplets)
 {
-	BLI_assert(data != NULL);
+	BLI_assert(mesh != NULL);
 	BLI_assert(options != NULL);
-	Ref<const MatrixXi> tets = mesh->prims();
-	int nt = tets.rows();
-	BLI_assert(nt > 0);
+	BLI_assert(data != NULL);
+
+	const MatrixXi *elems = nullptr;
+	int mesh_type = mesh->type();
+	switch (mesh_type)
+	{
+		default: {
+			throw_err("append_energies","unknown mesh type");
+		} break;
+		case MESHTYPE_EMBEDDED:
+		case MESHTYPE_TET: {
+			elems = mesh->prims(); // tets
+			BLI_assert(elems->cols()==4);
+		} break;
+		case MESHTYPE_TRIANGLE: {
+			elems = mesh->facets(); // triangles
+			BLI_assert(elems->cols()==3);
+		} break;
+	}
+
+	int n_elems = elems->rows();
+	BLI_assert(n_elems > 0);
 
 	int nx = data->x.rows();
 	if ((int)data->energies_graph.size() != nx)
 		data->energies_graph.resize(nx,std::set<int>());
 
-	data->indices.reserve(nt);
-	data->rest_volumes.reserve(nt);
-	data->weights.reserve(nt);
+	data->indices.reserve((int)data->indices.size()+n_elems);
+	data->rest_volumes.reserve((int)data->rest_volumes.size()+n_elems);
+	data->weights.reserve((int)data->weights.size()+n_elems);
 	Lame lame;
 	lame.set_from_youngs_poisson(options->youngs, options->poisson);
 	lame.m_material = options->elastic_material;
 
 	// The possibility of having an error in energy initialization
 	// while still wanting to continue the simulation is very low.
-	// We can parallelize this step.
+	// We can parallelize this step in the future if needed.
 
 	int energy_index = 0;
-	for (int i=0; i<nt; ++i)
+	for (int i=0; i<n_elems; ++i)
 	{
-		RowVector4i ele = tets.row(i);
 
-		// Initialize the energy
 		data->rest_volumes.emplace_back();
 		data->weights.emplace_back();
-		int energy_dim = EnergyTerm().init_tet(
-			energy_index,
-			lame,
-			ele,
-			&data->x,
-			data->rest_volumes.back(),
-			data->weights.back(),
-			D_triplets );
+		int energy_dim = -1;
+		int energy_type = -1;
+
+		switch (mesh_type)
+		{
+			case MESHTYPE_EMBEDDED:
+			case MESHTYPE_TET: {
+				energy_type = ENERGYTERM_TET;
+				RowVector4i ele(
+					elems->operator()(i,0),
+					elems->operator()(i,1),
+					elems->operator()(i,2),
+					elems->operator()(i,3)
+				);
+				energy_dim = EnergyTerm().init_tet(
+					energy_index,
+					lame,
+					ele,
+					&data->x,
+					data->rest_volumes.back(),
+					data->weights.back(),
+					D_triplets );
+			} break;
+			case MESHTYPE_TRIANGLE: {
+				energy_type = ENERGYTERM_TRIANGLE;
+				RowVector3i ele(
+					elems->operator()(i,0),
+					elems->operator()(i,1),
+					elems->operator()(i,2)
+				);
+				energy_dim = EnergyTerm().init_triangle(
+					energy_index,
+					lame,
+					ele,
+					&data->x,
+					data->rest_volumes.back(),
+					data->weights.back(),
+					D_triplets );
+			} break;
+		}
 
 		// Error in initialization
 		if( energy_dim <= 0 ){
@@ -439,20 +503,21 @@ void Solver::append_energies(
 			continue;
 		}
 
-		// Record energy indices
-		int ele_dim = ele.cols();
+		// Add stencil to graph
+		int ele_dim = elems->cols();
 		for (int j=0; j<ele_dim; ++j)
 		{
-			int ej = ele[j];
+			int ej = elems->operator()(i,j);
 			for (int k=0; k<ele_dim; ++k)
 			{
-				int ek = ele[k];
+				int ek = elems->operator()(i,k);
 				if (ej==ek)
 					continue;
 				data->energies_graph[ej].emplace(ek);
 			}
 		}
-		data->indices.emplace_back(energy_index, energy_dim, ENERGYTERM_TET);
+
+		data->indices.emplace_back(energy_index, energy_dim, energy_type);
 		energy_index += energy_dim;
 	}
 

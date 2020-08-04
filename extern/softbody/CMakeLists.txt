@@ -42,12 +42,11 @@ set(SRC
 	src/admmpd_geom.cpp
 	src/admmpd_linsolve.h
 	src/admmpd_linsolve.cpp
-	src/admmpd_sdf.h
-	src/admmpd_sdf.cpp
 	src/admmpd_solver.h
 	src/admmpd_solver.cpp
 	src/admmpd_mesh.h
 	src/admmpd_mesh.cpp
+	src/admmpd_timer.h
 	src/admmpd_types.h
 	src/svd/ImplicitQRSVD.h
 	src/svd/Tools.h

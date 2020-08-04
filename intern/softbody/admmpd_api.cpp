@@ -228,7 +228,7 @@ static inline int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, Object *o
     nullptr,
     0);
 
-  iface->out_totverts = iface->idata->mesh->rest_prim_verts().rows();
+  iface->out_totverts = iface->idata->mesh->rest_prim_verts()->rows();
   if (!success)
   {
     strcpy_error(iface, "EmbeddedMesh failed on creation");
@@ -236,6 +236,33 @@ static inline int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, Object *o
   }
 
   iface->idata->collision = std::make_unique<admmpd::EmbeddedMeshCollision>(emb_msh);
+  return 1;
+}
+
+static inline int admmpd_init_as_cloth(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
+{
+  std::vector<float> v;
+  std::vector<unsigned int> f;
+  vecs_from_object(ob,vertexCos,v,f);
+
+  iface->out_totverts = 0;
+  iface->idata->mesh = std::make_shared<admmpd::TriangleMesh>();
+  bool success = iface->idata->mesh->create(
+    v.data(),
+    v.size()/3,
+    f.data(),
+    f.size()/3,
+    nullptr,
+    0);
+
+  iface->out_totverts = iface->idata->mesh->rest_facet_verts()->rows();
+  if (!success)
+  {
+    strcpy_error(iface, "TriangleMesh failed on creation");
+    return 0;
+  }
+
+  iface->idata->collision = nullptr; // TODO, triangle mesh collision
   return 1;
 }
 
@@ -279,6 +306,9 @@ int admmpd_init(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3], i
       } break;
       case ADMMPD_INIT_MODE_TETGEN: {
         gen_success = admmpd_init_with_tetgen(iface,ob,vertexCos);
+      } break;
+      case ADMMPD_INIT_MODE_TRIANGLE: {
+        gen_success = admmpd_init_as_cloth(iface,ob,vertexCos);
       } break;
     }
     if (!gen_success || iface->out_totverts==0)
@@ -388,15 +418,16 @@ void admmpd_copy_to_bodypoint_and_object(ADMMPDInterfaceData *iface, BodyPoint *
     }
   }
 
-  // Map the facet vertices 
-  if (vertexCos != NULL)
+  // Map the facet vertices
+  const Eigen::MatrixXd *rest_facet_verts = iface->idata->mesh->rest_facet_verts();
+  if (vertexCos != NULL && rest_facet_verts != nullptr)
   {
-    int num_surf_verts = iface->idata->mesh->rest_facet_verts().rows();
+    int num_surf_verts = rest_facet_verts->rows();
     for (int i=0; i<num_surf_verts; ++i)
     {
       Eigen::Vector3d xi =
         iface->idata->mesh->get_mapped_facet_vertex(
-        iface->idata->data->x, i);
+        &iface->idata->data->x, i);
       vertexCos[i][0] = xi[0];
       vertexCos[i][1] = xi[1];
       vertexCos[i][2] = xi[2];

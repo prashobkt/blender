@@ -338,6 +338,7 @@ class PHYSICS_PT_softbody_admmpdcollision(PhysicButtonsPanel, Panel):
         layout.use_property_split = True
         md = context.soft_body
         softbody = md.settings
+        layout.prop(softbody, "admmpd_self_collision")
         layout.prop(softbody, "admmpd_collisionstiff")
         layout.prop(softbody, "admmpd_floor_z")
 

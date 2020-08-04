@@ -15,9 +15,10 @@ namespace admmpd {
 struct VFCollisionPair {
     int p_idx; // point
     int p_is_obs; // 0 or 1
-    int q_idx; // face, or -1 if floor
+    int q_idx; // idx of hit face, or -1 if obstacle
     int q_is_obs; // 0 or 1
     Eigen::Vector3d q_pt; // pt of collision (if q obs)
+    Eigen::Vector3d q_n; // normal of collision (if q obs)
     Eigen::Vector3d q_bary; // barys of collision (if q !obs)
     VFCollisionPair();
 };
@@ -30,30 +31,16 @@ public:
         bool has_obs() const { return F.rows()>0; }
         Eigen::MatrixXd V;
         Eigen::MatrixXi F;
-        AABBTree<double,3> tree;
-        std::vector<Eigen::AlignedBox<double,3> > leaves;
         std::unique_ptr<SDFType> sdf;
-        std::unique_ptr<Discregrid::MeshDistance> md;
-        std::unique_ptr<Discregrid::TriangleMesh> tm;
     } obsdata;
 
     virtual ~Collision() {}
 
-    // Resets the BVH
-    virtual void init_bvh(
-        const Eigen::MatrixXd *x0,
-        const Eigen::MatrixXd *x1) = 0;
-
-    // Updates the BVH without sorting
+    // Updates the BVH with or without sorting
     virtual void update_bvh(
         const Eigen::MatrixXd *x0,
-        const Eigen::MatrixXd *x1) = 0;
-
-    // Updates the active set of constraints,
-    // but does not detect new ones.
-    virtual void update_constraints(
-        const Eigen::MatrixXd *x0,
-        const Eigen::MatrixXd *x1) = 0;
+        const Eigen::MatrixXd *x1,
+        bool sort = false) = 0;
 
     // Performs collision detection.
     // Returns the number of active constraints.
@@ -70,6 +57,7 @@ public:
     // Set the soup of obstacles for this time step.
     // I don't really like having to switch up interface style, but we'll
     // do so here to avoid copies that would happen in admmpd_api.
+    // We should actually just pash in a mesh class?
     virtual void set_obstacles(
         const float *v0,
         const float *v1,
@@ -94,8 +82,10 @@ public:
     virtual std::pair<bool,VFCollisionPair>
     detect_against_self(
         int pt_idx,
-        const Eigen::Vector3d &pt,
-        const Eigen::MatrixXd *x) const = 0;
+        const Eigen::Vector3d &pt_t0,
+        const Eigen::Vector3d &pt_t1,
+        const Eigen::MatrixXd *x0,
+        const Eigen::MatrixXd *x1) const = 0;
 };
 
 // Collision detection against multiple meshes
@@ -119,32 +109,19 @@ public:
     	std::vector<Eigen::Triplet<double> > *trips,
 		std::vector<double> *d);
 
-    void init_bvh(
-        const Eigen::MatrixXd *x0,
-        const Eigen::MatrixXd *x1);
-
     // Updates the tetmesh BVH for self collisions.
     void update_bvh(
         const Eigen::MatrixXd *x0,
-        const Eigen::MatrixXd *x1);
-
-    // Updates the active set of constraints,
-    // but does not detect new ones.
-    void update_constraints(
-        const Eigen::MatrixXd *x0,
-        const Eigen::MatrixXd *x1);
+        const Eigen::MatrixXd *x1,
+        bool sort = false);
 
 protected:
-    // A ptr to the embedded mesh data
-    std::shared_ptr<EmbeddedMesh> mesh;
-    std::vector<Eigen::AlignedBox<double,3> > tet_boxes;
-    AABBTree<double,3> tet_tree;
 
-    // Copies for now because I don't know how to 
-    // go from Eigen::Ref to pointer
-    Eigen::MatrixXd mesh_emb_V0;
-    Eigen::MatrixXi mesh_F;
-    Eigen::MatrixXi mesh_T;
+    struct MeshData {
+        std::shared_ptr<EmbeddedMesh> mesh;
+        std::vector<Eigen::AlignedBox<double,3> > tet_boxes;
+        AABBTree<double,3> tet_tree;
+    } meshdata;
 
     // Pairs are compute on detect
     std::vector<Eigen::Vector2i> vf_pairs; // index into per_vertex_pairs
@@ -153,8 +130,10 @@ protected:
     std::pair<bool,VFCollisionPair>
     detect_against_self(
         int pt_idx,
-        const Eigen::Vector3d &pt,
-        const Eigen::MatrixXd *x) const;
+        const Eigen::Vector3d &pt_t0,
+        const Eigen::Vector3d &pt_t1,
+        const Eigen::MatrixXd *x0,
+        const Eigen::MatrixXd *x1) const;
 };
 
 } // namespace admmpd

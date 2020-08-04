@@ -90,7 +90,8 @@ protected:
 	VecType point;
 	const MatrixXType *prim_verts;
 	const Eigen::MatrixXi *prim_inds;
-	std::vector<int> skip_inds;
+	std::vector<int> skip_vert_inds; // if tet contains these verts, skip test
+	std::vector<int> skip_tet_inds; // if tet is this index, skip test
 
 public:
 	struct Output {
@@ -102,11 +103,13 @@ public:
 		const VecType &point_,
 		const MatrixXType *prim_verts_,
 		const Eigen::MatrixXi *prim_inds_,
-		const std::vector<int> &skip_inds_=std::vector<int>()) :
+		const std::vector<int> &skip_vert_inds_=std::vector<int>(),
+		const std::vector<int> &skip_tet_inds_=std::vector<int>()) :
 		point(point_),
 		prim_verts(prim_verts_),
 		prim_inds(prim_inds_),
-		skip_inds(skip_inds_)
+		skip_vert_inds(skip_vert_inds_),
+		skip_tet_inds(skip_tet_inds_)
 		{}
 
 	void traverse(
