@@ -126,7 +126,7 @@ class GpencilExporter {
   bool is_fill;
   float avg_opacity;
   bool is_camera;
-  rcti select_box;
+  rctf select_box;
 
   void set_out_filename(char *filename);
 };
