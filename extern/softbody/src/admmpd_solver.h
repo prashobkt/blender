@@ -7,10 +7,14 @@
 #include "admmpd_types.h"
 #include "admmpd_collision.h"
 #include "admmpd_mesh.h"
+#include "admmpd_linsolve.h"
 
 namespace admmpd {
 
 class Solver {
+protected:
+    std::unique_ptr<LinearSolver> linsolver;
+
 public:
     // Initialies solver data. If a per-vertex
     // variable is resized it is initialized to zero.
@@ -69,17 +73,6 @@ protected:
         const Options *options,
         SolverData *data,
         int rows);
-
-    // Linearizes pin constraints P, q
-    void update_pin_matrix(
-        const Mesh *mesh,
-        const Options *options,
-        SolverData *data);
-    
-    // Input: DtW'W, D, and P
-    void update_global_matrix(
-        const Options *options,
-        SolverData *data);
 
     // Generates energies from the mesh
 	void append_energies(

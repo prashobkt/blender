@@ -147,6 +147,18 @@ void EnergyTerm::update_tri(
 	double w2 = weight*weight;
 	zi_T = (kv*p + w2*zi_T) / (w2 + kv);
 
+	// Apply strain limiting
+	bool check_strain = lame.m_limit[0] > 0.0 || lame.m_limit[1] < 99.0;
+	if (check_strain)
+	{
+		double l_col0 = zi_T.col(0).norm();
+		double l_col1 = zi_T.col(1).norm();
+		if (l_col0 < lame.m_limit[0]) { zi_T.col(0) *= ( lame.m_limit[0]/l_col0 ); }
+		if (l_col1 < lame.m_limit[0]) { zi_T.col(1) *= ( lame.m_limit[0]/l_col1 ); }
+		if (l_col0 > lame.m_limit[1]) { zi_T.col(0) *= ( lame.m_limit[1]/l_col0 ); }
+		if (l_col1 > lame.m_limit[1]) { zi_T.col(1) *= ( lame.m_limit[1]/l_col1 ); }
+	}
+
 	ui += (Dix - zi_T.transpose());
 	u->block<2,3>(index,0) = ui;
 	z->block<2,3>(index,0) = zi_T.transpose();

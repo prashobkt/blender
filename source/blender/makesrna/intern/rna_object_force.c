@@ -1787,31 +1787,42 @@ static void rna_def_softbody(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem solvermode_type_items[] = {
+  static const EnumPropertyItem solvermode_items[] = {
       {SOLVER_MODE_LEGACY, "LEGACY", 0, "Legacy", "Legacy solver"},
       {SOLVER_MODE_ADMMPD, "ADMMPD", 0, "ADMM-PD", "Experimental ADMM-PD"},
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem admmpdinitmode_type_items[] = {
+  static const EnumPropertyItem admmpd_initmode_items[] = {
       {ADMMPD_INIT_MODE_EMBEDDED, "EMBEDDED", 0, "Embedded", "Embed surface in low-res lattice"},
-//      {ADMMPD_INIT_MODE_TETGEN, "TETGEN", 0, "TetGen", "Tetrahedralize the surface mesh"},
+      //{ADMMPD_INIT_MODE_TETGEN, "TETGEN", 0, "TetGen", "Tetrahedralize the surface mesh"},
       {ADMMPD_INIT_MODE_TRIANGLE, "CLOTH", 0, "Cloth", "Simulate surface mesh as a cloth"},
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem admmmaterial_type_items[] = {
+  static const EnumPropertyItem admmpd_material_items[] = {
       {ADMMPD_MATERIAL_ARAP, "ARAP", 0, "ARAP", "As-rigid-as-possible"},
       {ADMMPD_MATERIAL_NH, "NH", 0, "neo-Hookean", "Classic neo-Hookean"},
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem admmpd_loglevel_items[] = {
+      {0, "NONE", 0, "None", "No terminal output"},
+      {1, "LOW", 0, "Low", "Minimal terminal output"},
+      {2, "DEBUG", 0, "Debug", "A lot of terminal output"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem admmpd_linsolver_items[] = {
+      {0, "LTLD", 0, "LDL^T", "Factors the matrix on any collision or change in pin stiffness"},
+      {1, "PCG", 0, "Conjugate Gradients", "Iterative solver but factors preconditioner on change in pin stiffness"},
+      //{2, "MCGS", 0, "Multi-Color Gauss-Seidel", "Fast if many threads are available, no support for self collision"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   static const EnumPropertyItem aerodynamics_type[] = {
       {0, "SIMPLE", 0, "Simple", "Edges receive a drag force from surrounding media"},
-      {1,
-       "LIFT_FORCE",
-       0,
-       "Lift Force",
+      {1, "LIFT_FORCE", 0, "Lift Force",
        "Edges receive a lift force when passing through surrounding media"},
       {0, NULL, 0, NULL, NULL},
   };
@@ -1826,7 +1837,7 @@ static void rna_def_softbody(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "solver_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "solver_mode");
-  RNA_def_property_enum_items(prop, solvermode_type_items);
+  RNA_def_property_enum_items(prop, solvermode_items);
   RNA_def_property_ui_text(prop, "Solver", "Choose Solver Type");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
@@ -1834,7 +1845,7 @@ static void rna_def_softbody(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "admmpd_init_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "admmpd_init_mode");
-  RNA_def_property_enum_items(prop, admmpdinitmode_type_items);
+  RNA_def_property_enum_items(prop, admmpd_initmode_items);
   RNA_def_property_ui_text(prop, "Mesh Mode", "ADMM-PD initialization mode");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
@@ -1876,8 +1887,20 @@ static void rna_def_softbody(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "admmpd_material", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "admmpd_material");
-  RNA_def_property_enum_items(prop, admmmaterial_type_items);
+  RNA_def_property_enum_items(prop, admmpd_material_items);
   RNA_def_property_ui_text(prop, "Material", "Elastic material model");
+  RNA_def_property_update(prop, 0, "rna_softbody_update");
+
+  prop = RNA_def_property(srna, "admmpd_loglevel", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "admmpd_loglevel");
+  RNA_def_property_enum_items(prop, admmpd_loglevel_items);
+  RNA_def_property_ui_text(prop, "Log Level", "Terminal ouput verbosity");
+  RNA_def_property_update(prop, 0, "rna_softbody_update");
+
+  prop = RNA_def_property(srna, "admmpd_linsolver", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "admmpd_linsolver");
+  RNA_def_property_enum_items(prop, admmpd_linsolver_items);
+  RNA_def_property_ui_text(prop, "Linear Solver", "Solver used for global step");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   prop = RNA_def_property(srna, "admmpd_embed_res", PROP_INT, PROP_NONE);

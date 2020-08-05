@@ -10,11 +10,12 @@
 #include <thread>
 #include <vector>
 #include <set>
-
-// TODO template type for float/double
+#include <Discregrid/All>
 
 namespace admmpd {
+
 template <typename T> using RowSparseMatrix = Eigen::SparseMatrix<T,Eigen::RowMajor>;
+typedef Discregrid::CubicLagrangeDiscreteGrid SDFType;
 
 #define MESHTYPE_EMBEDDED 0
 #define MESHTYPE_TET 1
@@ -29,8 +30,29 @@ template <typename T> using RowSparseMatrix = Eigen::SparseMatrix<T,Eigen::RowMa
 #define ELASTIC_NH 1 // NeoHookean
 #define ELASTIC_NUM 2
 
+#define SOLVERSTATE_INIT 0
+#define SOLVERSTATE_SOLVE 1
+#define SOLVERSTATE_INIT_SOLVE 2
+#define SOLVERSTATE_LOCAL_STEP 3
+#define SOLVERSTATE_GLOBAL_STEP 4
+#define SOLVERSTATE_COLLISION_UPDATE 5
+#define SOLVERSTATE_TEST_CONVERGED 6
+#define SOLVERSTATE_NUM 7
+
+#define LOGLEVEL_NONE 0
+#define LOGLEVEL_LOW 1
+#define LOGLEVEL_DEBUG 2
+#define LOGLEVEL_NUM 3
+
+#define LINSOLVER_LDLT 0 // Eigen's LDL^T
+#define LINSOLVER_PCG 1 // Precon. Conj. Grad.
+#define LINSOLVER_MCGS 2 // Multi-Color Gauss-Siedel
+#define LINSOLVER_NUM 3
+
 struct Options {
     double timestep_s;
+    int log_level;
+    int linsolver;
     int max_admm_iters;
     int max_cg_iters;
     int max_gs_iters;
@@ -49,6 +71,8 @@ struct Options {
     Eigen::Vector3d grav;
     Options() :
         timestep_s(1.0/24.0),
+        log_level(LOGLEVEL_NONE),
+        linsolver(LINSOLVER_PCG),
         max_admm_iters(30),
         max_cg_iters(10),
         max_gs_iters(100),
@@ -81,15 +105,16 @@ struct SolverData {
     RowSparseMatrix<double> DtW2; // D'W'W
     RowSparseMatrix<double> A; // M + DtW'WD
     RowSparseMatrix<double> W; // weight matrix
-
     double A_diag_max; // Max coeff of diag of A
-    RowSparseMatrix<double> A3_plus_PtP; // A + pk PtP replicated
-	Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > ldlt_A3;
 
-    RowSparseMatrix<double> P; // pin constraint Px=q (P.cols=3n)
-    Eigen::VectorXd q; // pin constraint rhs
-    RowSparseMatrix<double> C; // collision constraints Cx=d (C.cols=3n)
-    Eigen::VectorXd d; // collision constraints rhs
+//  RowSparseMatrix<double> A3_plus_PtP; // A + pk PtP replicated
+//	Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > ldlt_A3;
+
+//    std::set<int> pin_inds; // indices of the pinned surface verts
+//    RowSparseMatrix<double> P; // pin constraint Px=q (P.cols=3n)
+//    Eigen::VectorXd q; // pin constraint rhs
+//    RowSparseMatrix<double> C; // collision constraints Cx=d (C.cols=3n)
+//    Eigen::VectorXd d; // collision constraints rhs
 
     // Set in append_energies:
     std::vector<std::set<int> > energies_graph; // per-vertex adjacency list (graph)

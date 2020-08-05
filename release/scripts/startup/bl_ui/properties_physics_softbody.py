@@ -413,10 +413,12 @@ class PHYSICS_PT_softbody_solver(PhysicButtonsPanel, Panel):
 
             col = flow.column(align=True)
             col.prop(softbody, "admmpd_init_mode")
+            col.prop(softbody, "admmpd_linsolver")
             col.prop(softbody, "admmpd_substeps")
             col.prop(softbody, "admmpd_max_admm_iters")
             col.prop(softbody, "admmpd_converge_eps")
             col.prop(softbody, "admmpd_gravity")
+            col.prop(softbody, "admmpd_loglevel")
 
 class PHYSICS_PT_softbody_solver_diagnostics(PhysicButtonsPanel, Panel):
     bl_label = "Diagnostics"

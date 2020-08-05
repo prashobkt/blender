@@ -229,7 +229,9 @@ typedef struct SoftBody {
   float admmpd_goalstiff; // 0 to 1
   float admmpd_floor_z; // floor position
   float admmpd_gravity; // in m/s^2
-  int admmpd_pad;
+  int admmpd_loglevel; // 0=none, 1=low, 2=high
+  int admmpd_linsolver; // global step
+  int admmpd_pad; // padding
 
 
   char _pad;

@@ -6,6 +6,7 @@
 #include "admmpd_collision.h"
 #include "admmpd_linsolve.h"
 #include "admmpd_geom.h"
+#include "admmpd_timer.h"
 
 #include <Eigen/Geometry>
 #include <Eigen/Sparse>
@@ -21,6 +22,23 @@
 namespace admmpd {
 using namespace Eigen;
 
+// Basic timer manager class
+class SolverLog {
+protected:
+	std::unordered_map<int,double> elapsed_ms;
+	std::unordered_map<int,MicroTimer> curr_timer;
+	double m_log_level;
+public:
+	double &log_level() { return m_log_level; }
+	void reset();
+	void start_state(int state);
+	double stop_state(int state); // ret time elapsed
+	std::string state_string(int state);
+	std::string to_string();
+};
+static SolverLog solverlog;
+
+// Throws an exception for a given function with message
 static inline void throw_err(const std::string &f, const std::string &m)
 {
 	throw std::runtime_error("Solver::"+f+": "+m);
@@ -31,6 +49,10 @@ bool Solver::init(
     const Options *options,
     SolverData *data)
 {
+	solverlog.reset();
+	solverlog.log_level() = options->log_level;
+	solverlog.start_state(SOLVERSTATE_INIT);
+
 	BLI_assert(data != NULL);
 	BLI_assert(options != NULL);
 	BLI_assert(mesh != NULL);
@@ -53,10 +75,28 @@ bool Solver::init(
 	mesh->compute_masses(&data->x, options->density_kgm3, data->m);
 	init_matrices(mesh,options,data);
 
+	switch (options->linsolver)
+	{
+		default: {
+			throw_err("init","unknown linsolver");
+		} break;
+		case LINSOLVER_LDLT: {
+			linsolver = std::make_unique<LDLT>();
+		} break;
+		case LINSOLVER_PCG: {
+			linsolver = std::make_unique<ConjugateGradients>();
+		} break;
+		case LINSOLVER_MCGS: {
+			linsolver = std::make_unique<LDLT>(); // TODO
+		} break;
+	}
+
 	int ne = data->indices.size();
 	int nx = data->x.rows();
-	printf("Solver::init:\n\tNum energy terms: %d\n\tNum verts: %d\n",ne,nx);
+	if (options->log_level >= LOGLEVEL_LOW)
+		printf("Solver::init:\n\tNum energy terms: %d\n\tNum verts: %d\n",ne,nx);
 
+	solverlog.stop_state(SOLVERSTATE_INIT);
 	return true;
 } // end init
 
@@ -66,42 +106,56 @@ int Solver::solve(
 	SolverData *data,
 	Collision *collision)
 {
-	BLI_assert(data != NULL);
+	solverlog.log_level() = options->log_level;
+	solverlog.start_state(SOLVERSTATE_SOLVE);
+
+	BLI_assert(mesh != NULL);
 	BLI_assert(options != NULL);
+	BLI_assert(data != NULL);
+	BLI_assert(LINSOLVER_LDLT);
 	BLI_assert(data->x.cols() == 3);
 	BLI_assert(data->x.rows() > 0);
 	BLI_assert(options->max_admm_iters > 0);
-
-	update_pin_matrix(mesh,options,data); // P,q
-	update_global_matrix(options,data); // A+PtP
-
-	ConjugateGradients cg;
-	cg.init_solve(options,data);
 	double dt = options->timestep_s;
+
+	// If doing CCD, we can do broad phase collision here
+	// and shrink the time step.
 
 	// Init the solve which computes
 	// quantaties like M_xbar and makes sure
 	// the variables are sized correctly.
+	solverlog.start_state(SOLVERSTATE_INIT_SOLVE);
 	init_solve(mesh,options,data,collision);
+	linsolver->init_solve(mesh,options,collision,data);
+	solverlog.stop_state(SOLVERSTATE_INIT_SOLVE);
 
 	// Begin solver loop
 	int iters = 0;
 	for (; iters < options->max_admm_iters; ++iters)
 	{
 		// Update ADMM z/u
+		solverlog.start_state(SOLVERSTATE_LOCAL_STEP);
 		solve_local_step(options,data);
+		solverlog.stop_state(SOLVERSTATE_LOCAL_STEP);
 
 		// Collision detection and linearization
+		solverlog.start_state(SOLVERSTATE_COLLISION_UPDATE);
 		update_collisions(options,data,collision);
+		solverlog.stop_state(SOLVERSTATE_COLLISION_UPDATE);
 
 		// Solve Ax=b s.t. Px=q and Cx=d
+		solverlog.start_state(SOLVERSTATE_GLOBAL_STEP);
 		data->x_prev = data->x;
-		cg.solve(options,data,collision);
+		linsolver->solve(mesh,options,collision,data);
+		solverlog.stop_state(SOLVERSTATE_GLOBAL_STEP);
 
 		// Check convergence
 		if (options->min_res>0)
 		{
-			if (residual_norm(options,data) < options->min_res)
+			solverlog.start_state(SOLVERSTATE_TEST_CONVERGED);
+			bool converged = residual_norm(options,data) <= options->min_res;
+			solverlog.stop_state(SOLVERSTATE_TEST_CONVERGED);
+			if (converged)
 				break;
 		}
 
@@ -110,6 +164,11 @@ int Solver::solve(
 	// Update velocity (if not static solve)
 	if (dt > 0.0)
 		data->v.noalias() = (data->x-data->x_start)*(1.0/dt);
+
+	solverlog.stop_state(SOLVERSTATE_SOLVE);
+
+	if (options->log_level >= LOGLEVEL_DEBUG)
+		printf("Timings:\n%s", solverlog.to_string().c_str());
 
 	return iters;
 } // end solve
@@ -135,7 +194,6 @@ void Solver::init_solve(
 	BLI_assert(options != NULL);
 	int nx = data->x.rows();
 	BLI_assert(nx > 0);
-	(void)(collision);
 
 	if (data->M_xbar.rows() != nx)
 		data->M_xbar.resize(nx,3);
@@ -227,31 +285,6 @@ void Solver::update_collisions(
 	collision->update_bvh(&data->x_start, &data->x, false);
 	collision->detect(options, &data->x_start, &data->x);
 
-	std::vector<double> d_coeffs;
-	std::vector<Eigen::Triplet<double> > trips;
-
-	// TODO collision detection
-	collision->linearize(
-		&data->x,
-		&trips,
-		&d_coeffs);
-
-	// Check number of constraints.
-	// If no constraints, clear Jacobian.
-	int nx = data->x.rows();
-	int nc = d_coeffs.size();
-	if (nc==0)
-	{
-		data->d.setZero();
-		data->C.setZero();
-		return;
-	}
-
-	// Otherwise update the data.
-	data->d = Map<VectorXd>(d_coeffs.data(), d_coeffs.size());
-	data->C.resize(nc,nx*3);
-	data->C.setFromTriplets(trips.begin(),trips.end());
-
 } // end update constraints
 
 void Solver::init_matrices(
@@ -264,6 +297,11 @@ void Solver::init_matrices(
 	int nx = data->x.rows();
 	BLI_assert(nx > 0);
 	BLI_assert(data->x.cols() == 3);
+
+	double dt = options->timestep_s;
+	double dt2 = dt*dt;
+	if (dt2 < 0) // static solve
+		dt2 = 1.0;
 
 	// Allocate per-vertex data
 	data->x_start = data->x;
@@ -289,20 +327,19 @@ void Solver::init_matrices(
 	update_weight_matrix(options,data,n_row_D);
 	RowSparseMatrix<double> W2 = data->W*data->W;
 
-	// Constraint data
-	data->C.resize(1,nx*3);
-	data->d = VectorXd::Zero(1);
-	data->P.resize(1,nx*3);
-	data->q = VectorXd::Zero(1);
-
 	// Mass weighted Laplacian
 	data->D.resize(n_row_D,nx);
 	data->D.setFromTriplets(trips.begin(), trips.end());
 	data->DtW2 = data->D.transpose() * W2;
-	update_global_matrix(options,data);
-
-	// Perform factorization
-	data->ldlt_A3.compute(data->A3_plus_PtP);
+	data->A = data->DtW2 * data->D;
+	data->A_diag_max = 0;
+	for (int i=0; i<nx; ++i)
+	{
+		data->A.coeffRef(i,i) += data->m[i]/dt2;
+		double Aii = data->A.coeff(i,i);
+		if (Aii > data->A_diag_max)
+			data->A_diag_max = Aii;
+	}
 
 	// ADMM dual/lagrange
 	data->z.resize(n_row_D,3);
@@ -335,72 +372,6 @@ void Solver::update_weight_matrix(
 			data->W.coeffRef(idx[0]+j,idx[0]+j) = data->weights[i];
 	}
 	data->W.finalize();
-}
-
-void Solver::update_pin_matrix(
-	const Mesh *mesh,
-	const Options *options,
-	SolverData *data)
-{
-	(void)(options);
-	int nx = data->x.rows();
-	if (nx==0)
-		return;
-
-	// Create pin constraint matrix
-	std::vector<Triplet<double> > trips;
-	std::vector<double> q_coeffs;
-	mesh->linearize_pins(trips, q_coeffs);
-
-	if (q_coeffs.size()==0)
-	{ // no springs
-		data->P.resize(1,nx*3);
-		data->P.setZero();
-		data->q = VectorXd::Zero(1);
-	}
-	else
-	{ // Scale stiffness by A diagonal max
-		int np = q_coeffs.size();
-		data->P.resize(np,nx*3);
-		data->P.setFromTriplets(trips.begin(), trips.end());
-		data->q = Map<VectorXd>(q_coeffs.data(), q_coeffs.size());
-	}
-}
-
-void Solver::update_global_matrix(
-	const Options *options,
-	SolverData *data)
-{
-	int nx = data->x.rows();
-
-	if (data->DtW2.rows() != data->x.rows())
-		throw_err("update_global_matrix","bad matrix dim");
-	
-	if (data->m.rows() != data->x.rows())
-		throw_err("update_global_matrix","no masses");
-
-	if (data->P.cols() != nx*3)
-		throw_err("update_global_matrix","no pin matrix");
-
-	double dt = options->timestep_s;
-	double dt2 = dt*dt;
-	if (dt2 < 0) // static solve
-		dt2 = 1.0;
-
-	data->A = data->DtW2 * data->D;
-	data->A_diag_max = 0;
-	for (int i=0; i<nx; ++i)
-	{
-		data->A.coeffRef(i,i) += data->m[i]/dt2;
-		double Aii = data->A.coeff(i,i);
-		if (Aii>data->A_diag_max)
-			data->A_diag_max = Aii;
-	}
-
-	SparseMatrix<double> A3;
-	geom::make_n3<double>(data->A,A3);
-	double pk = options->mult_pk * data->A_diag_max;
-	data->A3_plus_PtP = A3 + pk * data->P.transpose()*data->P;
 }
 
 void Solver::append_energies(
@@ -522,5 +493,82 @@ void Solver::append_energies(
 	}
 
 } // end append energies
+
+void SolverLog::reset()
+{
+	curr_timer.clear();
+	elapsed_ms.clear();
+}
+
+void SolverLog::start_state(int state)
+{
+	if (m_log_level <= LOGLEVEL_NONE)
+		return;
+
+	if (m_log_level >= LOGLEVEL_DEBUG)
+		printf("Starting state %s\n",state_string(state).c_str());
+
+	if (curr_timer.count(state)==0)
+	{
+		elapsed_ms[state] = 0;
+		curr_timer[state] = MicroTimer();
+		return;
+	}
+	curr_timer[state].reset();
+}
+
+// Returns time elapsed
+double SolverLog::stop_state(int state)
+{
+	if (m_log_level <= LOGLEVEL_NONE)
+		return 0;
+
+	if (m_log_level >= LOGLEVEL_DEBUG)
+		printf("Stopping state %s\n",state_string(state).c_str());
+
+	if (curr_timer.count(state)==0)
+	{
+		elapsed_ms[state] = 0;
+		curr_timer[state] = MicroTimer();
+		return 0;
+	}
+	double dt = curr_timer[state].elapsed_ms();
+	elapsed_ms[state] += dt;
+	return dt;
+}
+
+std::string SolverLog::state_string(int state)
+{
+	std::string str = "unknown";
+	switch (state)
+	{
+		default: break;
+		case SOLVERSTATE_INIT: str="init"; break;
+		case SOLVERSTATE_SOLVE: str="solve"; break;
+		case SOLVERSTATE_INIT_SOLVE: str="init_solve"; break;
+		case SOLVERSTATE_LOCAL_STEP: str="local_step"; break;
+		case SOLVERSTATE_GLOBAL_STEP: str="global_step"; break;
+		case SOLVERSTATE_COLLISION_UPDATE: str="collision_update"; break;
+		case SOLVERSTATE_TEST_CONVERGED: str="test_converged"; break;
+	}
+	return str;
+}
+
+std::string SolverLog::to_string()
+{
+	// Sort by largest time
+	auto sort_ms = [](const std::pair<int, double> &a, const std::pair<int, double> &b)
+		{ return (a.second > b.second); };
+	std::vector<std::pair<double, int> > ms(elapsed_ms.begin(), elapsed_ms.end());
+	std::sort(ms.begin(), ms.end(), sort_ms);
+
+	// Concat string
+	std::stringstream ss;
+	int n_timers = ms.size();
+	for (int i=0; i<n_timers; ++i)
+		ss << state_string(ms[i].first) << ": " << ms[i].second << "ms" << std::endl;
+
+	return ss.str();
+}
 
 } // namespace admmpd

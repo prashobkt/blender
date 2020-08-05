@@ -7,7 +7,6 @@
 #include "admmpd_types.h"
 #include "admmpd_bvh.h"
 #include <unordered_map>
-#include <Discregrid/All>
 
 namespace admmpd {
 
@@ -15,8 +14,11 @@ class Mesh {
 public:
 	typedef Discregrid::CubicLagrangeDiscreteGrid SDFType;
 
+    // Returns meshtype (see admmpd_types)
     virtual int type() const = 0;
 
+    // Copy buffers to internal data, 
+    // calculates BVH/SDF, etc...
     virtual bool create(
         const float *verts, // size nv*3
         int nv,
@@ -60,14 +62,18 @@ public:
     virtual void set_pin(
         int idx,
         const Eigen::Vector3d &p,
-        const Eigen::Vector3d &k) = 0;
+        double k) = 0;
 
     virtual void clear_pins() = 0;
 
     // Px=q with stiffnesses baked in
-    virtual void linearize_pins(
+    // Returns true if P (but not q) has changed from last
+    // call to linearize_pins.
+    virtual bool linearize_pins(
         std::vector<Eigen::Triplet<double> > &trips,
-        std::vector<double> &q) const = 0;
+        std::vector<double> &q,
+        std::set<int> &pin_inds,
+        bool replicate) const = 0;
 
 }; // class Mesh
 
@@ -78,10 +84,11 @@ protected:
     Eigen::MatrixXi lat_T, emb_F;
     Eigen::VectorXi emb_v_to_tet; // maps embedded vert to tet
     Eigen::MatrixXd emb_barys; // barycoords of the embedding
-    std::unordered_map<int,Eigen::Vector3d> emb_pin_k;
+    std::unordered_map<int,double> emb_pin_k;
     std::unordered_map<int,Eigen::Vector3d> emb_pin_pos;
     admmpd::AABBTree<double,3> emb_rest_facet_tree;
     std::shared_ptr<SDFType> emb_sdf;
+    mutable bool P_updated; // set to false on linearize_pins
 
     bool compute_embedding();
 
@@ -129,18 +136,21 @@ public:
     void set_pin(
         int idx,
         const Eigen::Vector3d &p,
-        const Eigen::Vector3d &k);
+        double k);
 
     void clear_pins()
     {
+        if (emb_pin_pos.size()) { P_updated=true; }
         emb_pin_k.clear();
         emb_pin_pos.clear();
     }
 
     // Px=q with stiffnesses baked in
-    void linearize_pins(
+    bool linearize_pins(
         std::vector<Eigen::Triplet<double> > &trips,
-        std::vector<double> &q) const;
+        std::vector<double> &q,
+        std::set<int> &pin_inds,
+        bool replicate) const;
 
 }; // class EmbeddedMesh
 
@@ -150,10 +160,11 @@ protected:
     Eigen::MatrixXd V0; // rest verts
     Eigen::MatrixXi F; // surface faces
     Eigen::MatrixXi T; // tets
-    std::unordered_map<int,Eigen::Vector3d> pin_k;
+    std::unordered_map<int,double> pin_k;
     std::unordered_map<int,Eigen::Vector3d> pin_pos;
     admmpd::AABBTree<double,3> rest_facet_tree;
     std::shared_ptr<SDFType> rest_sdf;
+    mutable bool P_updated; // set to false on linearize_pins
 
 public:
 
@@ -188,17 +199,21 @@ public:
     void set_pin(
         int idx,
         const Eigen::Vector3d &p,
-        const Eigen::Vector3d &k);
+        double k);
 
     void clear_pins()
     {
+        if (pin_pos.size()) { P_updated=true; }
         pin_k.clear();
         pin_pos.clear();
     }
 
-    void linearize_pins(
+    // pin_inds refers to the index of the embedded vertex
+    bool linearize_pins(
         std::vector<Eigen::Triplet<double> > &trips,
-        std::vector<double> &q) const;
+        std::vector<double> &q,
+        std::set<int> &pin_inds,
+        bool replicate) const;
 
 }; // class TetMesh
 
@@ -207,8 +222,9 @@ protected:
     Eigen::MatrixXi F;
     Eigen::MatrixXd V0;
     std::unordered_map<int,Eigen::Vector3d> pin_pos;
-    std::unordered_map<int,Eigen::Vector3d> pin_k;
+    std::unordered_map<int,double> pin_k;
     admmpd::AABBTree<double,3> rest_facet_tree;
+    mutable bool P_updated; // set to false on linearize_pins
 
 public:
 
@@ -245,17 +261,20 @@ public:
     void set_pin(
         int idx,
         const Eigen::Vector3d &p,
-        const Eigen::Vector3d &k);
+        double k);
 
     void clear_pins() {
+        if (pin_pos.size()) { P_updated=true; }
         pin_pos.clear();
         pin_k.clear();
     }
 
     // Px=q with stiffnesses baked in
-    void linearize_pins(
+    bool linearize_pins(
         std::vector<Eigen::Triplet<double> > &trips,
-        std::vector<double> &q) const;
+        std::vector<double> &q,
+        std::set<int> &pin_inds,
+        bool replicate) const;
 
 }; // class TriangleMesh
 

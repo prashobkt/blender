@@ -3142,7 +3142,7 @@ SoftBody *sbNew(Scene *scene)
   sb->admmpd_self_collision = 0;
   sb->admmpd_material = ADMMPD_MATERIAL_ARAP;
   sb->admmpd_embed_res = 3;
-  sb->admmpd_converge_eps = 1e-6;
+  sb->admmpd_converge_eps = 1e-4;
   sb->admmpd_youngs_exp = 6;
   sb->admmpd_poisson = 0.399;
   sb->admmpd_density_kgm3 = 1522;
@@ -3150,6 +3150,8 @@ SoftBody *sbNew(Scene *scene)
   sb->admmpd_goalstiff = 0.7;
   sb->admmpd_floor_z = -999;
   sb->admmpd_gravity = -9.8;
+  sb->admmpd_loglevel = 0; // none
+  sb->admmpd_linsolver = 1; // PCG
 
   sb->mediafrict = 0.5f;
   sb->nodemass = 1.0f;

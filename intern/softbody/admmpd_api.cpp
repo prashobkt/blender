@@ -44,10 +44,14 @@
 
 struct ADMMPDInternalData
 {
-  std::unique_ptr<admmpd::Options> options;
-  std::unique_ptr<admmpd::SolverData> data;
+  // init_mesh:
   std::unique_ptr<admmpd::Collision> collision;
   std::shared_ptr<admmpd::Mesh> mesh; // collision stores a ptr
+  // init_solver:
+  std::unique_ptr<admmpd::Options> options;
+  std::unique_ptr<admmpd::SolverData> data;
+  std::unique_ptr<admmpd::Solver> solver;
+  int substeps;
 };
 
 
@@ -58,29 +62,57 @@ static inline void strcpy_error(ADMMPDInterfaceData *iface, const std::string &s
   str.copy(iface->last_error, len);
 }
 
-static inline void options_from_object(Object *ob, admmpd::Options *op)
+static inline void options_from_object(
+  Object *ob,
+  admmpd::Options *op,
+  bool &reset_mesh,
+  bool &reset_solver)
 {
+  reset_mesh = false;
+  reset_solver = false;
+
   SoftBody *sb = ob->soft;
   if (sb==NULL)
     return;
 
-  // Set options
+  // Set options that don't require a re-initialization
   op->max_admm_iters = std::max(1,sb->admmpd_max_admm_iters);
   op->min_res = std::max(0.f,sb->admmpd_converge_eps);
   op->mult_pk = std::max(0.f,std::min(1.f,sb->admmpd_goalstiff));
   op->mult_ck = std::max(0.f,std::min(1.f,sb->admmpd_collisionstiff));
-  op->density_kgm3 = std::max(1.f,sb->admmpd_density_kgm3);
-  op->youngs = std::pow(10.f, std::max(0.f,sb->admmpd_youngs_exp));
-  op->poisson = std::max(0.f,std::min(0.499f,sb->admmpd_poisson));
   op->floor = sb->admmpd_floor_z;
   op->self_collision = sb->admmpd_self_collision;
-  op->grav[2] = sb->admmpd_gravity;
+  op->log_level = std::max(0, std::min(LOGLEVEL_NUM-1, sb->admmpd_loglevel));
+  op->grav = Eigen::Vector3d(0,0,sb->admmpd_gravity);
 
-  switch(sb->admmpd_material)
-  {
-    default:
-    case ADMMPD_MATERIAL_ARAP:{ op->elastic_material=ELASTIC_ARAP; }break;
-    case ADMMPD_MATERIAL_NH:{ op->elastic_material=ELASTIC_NH; }break;
+  const double diffeps = 1e-10;
+
+  // Options that cause considerable change in
+  // precomupted variables:
+  if (std::abs(op->density_kgm3 - sb->admmpd_density_kgm3)>diffeps) {
+    op->density_kgm3 = std::max(1.f,sb->admmpd_density_kgm3);
+    reset_solver = true;
+  }
+  double new_youngs = std::pow(10.f, std::max(0.f,sb->admmpd_youngs_exp));
+  if (std::abs(op->youngs - new_youngs)>diffeps) {
+    op->density_kgm3 = new_youngs;
+    reset_solver = true;
+  }
+  if (std::abs(op->poisson - sb->admmpd_poisson)>diffeps) {
+    op->poisson = std::max(0.f,std::min(0.499f,sb->admmpd_poisson));
+    reset_solver = true;
+  }
+  if (std::abs(op->poisson - sb->admmpd_poisson)>diffeps) {
+    op->poisson = std::max(0.f,std::min(0.499f,sb->admmpd_poisson));
+    reset_solver = true;
+  }
+  if (op->linsolver != sb->admmpd_linsolver) {
+    op->linsolver = std::max(0, std::min(LINSOLVER_NUM-1, sb->admmpd_linsolver));
+    reset_solver = true;
+  }
+  if (op->elastic_material != sb->admmpd_material) {
+    op->elastic_material = std::max(0, std::min(ELASTIC_NUM-1, sb->admmpd_material));
+    reset_solver = true;
   }
 }
 
@@ -141,6 +173,7 @@ void admmpd_dealloc(ADMMPDInterfaceData *iface)
   {
     iface->idata->options.reset();
     iface->idata->data.reset();
+    iface->idata->solver.reset();
     iface->idata->collision.reset();
     iface->idata->mesh.reset();
   }
@@ -266,9 +299,27 @@ static inline int admmpd_init_as_cloth(ADMMPDInterfaceData *iface, Object *ob, f
   return 1;
 }
 
+// Given the mesh, options, and data, initializes the solver
+static inline int admmpd_reinit_solver(ADMMPDInterfaceData *iface)
+{
+  try
+  {
+    iface->idata->solver->init(
+      iface->idata->mesh.get(),
+      iface->idata->options.get(),
+      iface->idata->data.get());
+  }
+  catch(const std::exception &e)
+  {
+    strcpy_error(iface, e.what());
+    return 0;
+  }
+  return 1;
+}
+
+
 int admmpd_init(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3], int mode)
 {
-
   if (iface==NULL || ob==NULL)
   {
     strcpy_error(iface, "NULL input");
@@ -285,14 +336,17 @@ int admmpd_init(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3], i
   // Delete any existing data
   admmpd_dealloc(iface);
 
-  // Generate solver data
+  // Generate solver data if it doesn't exist
   iface->idata = new ADMMPDInternalData();
+  iface->idata->substeps = std::max(1,sb->admmpd_substeps);
+  iface->idata->solver = std::make_unique<admmpd::Solver>();
   iface->idata->options = std::make_unique<admmpd::Options>();
   iface->idata->data = std::make_unique<admmpd::SolverData>();
   float fps = std::min(1000.f,std::max(1.f,iface->in_framerate));
   admmpd::Options *op = iface->idata->options.get();
   op->timestep_s = (1.0/fps) / float(std::max(1,sb->admmpd_substeps));
-  options_from_object(ob,op);
+  bool renew_mesh, renew_solver;
+  options_from_object(ob,op,renew_mesh,renew_solver);
 
   // Initialize the mesh
   try
@@ -323,21 +377,12 @@ int admmpd_init(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3], i
   }
 
   // Initialize the solver
-  try
-  {
-    admmpd::Solver().init(
-      iface->idata->mesh.get(),
-      iface->idata->options.get(),
-      iface->idata->data.get());
-  }
-  catch(const std::exception &e)
-  {
-    strcpy_error(iface, e.what());
+  if (!admmpd_reinit_solver(iface))
     return 0;
-  }
 
   return 1;
 }
+
 
 void admmpd_copy_from_bodypoint(ADMMPDInterfaceData *iface, const BodyPoint *pts)
 {
@@ -389,12 +434,11 @@ void admmpd_update_goals(
 
     for (int i=0; i<nv; ++i)
     {
-      if (goal_k[i] <= 0.f)
-        continue;
-
-      Eigen::Vector3d ki = Eigen::Vector3d::Ones() * goal_k[i];
+      // We want to call set_pin for every vertex, even
+      // if stiffness is zero. This allows us to animate pins on/off
+      // without calling Mesh::clear_pins().
       Eigen::Vector3d qi(goal_pos[i*3+0], goal_pos[i*3+1], goal_pos[i*3+2]);
-      iface->idata->mesh->set_pin(i,qi,ki);
+      iface->idata->mesh->set_pin(i,qi,goal_k[i]);
     }
 }
 
@@ -445,21 +489,30 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob)
     return 0;
   }
 
-  if (!iface->idata || !iface->idata->options || !iface->idata->data)
+  if (!iface->idata || !iface->idata->options ||
+    !iface->idata->data || !iface->idata->solver)
   {
     strcpy_error(iface, "NULL internal data");
     return 0;
   }
 
-  // TODO: update certain options that can be
-  // changed after initialization
+// TODO: Figure this out
+//  bool renew_mesh = false;
+//  bool renew_solver = false;
+//  options_from_object(
+//    ob,
+//    iface->idata->options.get(),
+//    renew_mesh,
+//    renew_solver);
+//  if (renew_solver)
+//    admmpd_reinit_solver(iface);
 
   try
   {
-    int substeps = std::max(1,ob->soft->admmpd_substeps);
+    int substeps = std::max(1,iface->idata->substeps);
     for (int i=0; i<substeps; ++i)
     {
-      admmpd::Solver().solve(
+      iface->idata->solver->solve(
         iface->idata->mesh.get(),
         iface->idata->options.get(),
         iface->idata->data.get(),

@@ -70,6 +70,7 @@ bool EmbeddedMesh::create(
 	const unsigned int *tets, // ignored
 	int nt)
 {
+	P_updated = true;
 	if (nv<=0 || verts == nullptr)
 		return false;
 	if (nf<=0 || faces == nullptr)
@@ -108,8 +109,8 @@ bool EmbeddedMesh::create(
 		box.extend(box.max()+Vector3d::Ones()*1e-4);
 	}
 
-std::cout << "T CREATE BOXES: " << t.elapsed_ms() << std::endl;
-t.reset();
+//	std::cout << "T CREATE BOXES: " << t.elapsed_ms() << std::endl;
+	t.reset();
 
  	// Create the signed distance field for inside/outside tests
 	{
@@ -127,8 +128,8 @@ t.reset();
 		emb_sdf->addFunction(func, false);
 	}
 
-std::cout << "T SDF: " << t.elapsed_ms() << std::endl;
-t.reset();
+//	std::cout << "T SDF: " << t.elapsed_ms() << std::endl;
+	t.reset();
 
 	// Create a tree of the facets
 	emb_rest_facet_tree.init(emb_leaves);
@@ -137,8 +138,8 @@ t.reset();
 	Octree<double,3> octree;
 	octree.init(&emb_V0,&emb_F,options.max_subdiv_levels);
 
-std::cout << "T OCTREE AND BVH TREE INIT: " << t.elapsed_ms() << std::endl;
-t.reset();
+//	std::cout << "T OCTREE AND BVH TREE INIT: " << t.elapsed_ms() << std::endl;
+	t.reset();
 
 	emb_v_to_tet.resize(nv);
 	emb_v_to_tet.array() = -1;
@@ -159,8 +160,8 @@ t.reset();
 		lat_tets);
 	geom::merge_close_vertices(lat_verts,lat_tets);
 
-std::cout << "T GATHER TETS: " << t.elapsed_ms() << std::endl;
-t.reset();
+//	std::cout << "T GATHER TETS: " << t.elapsed_ms() << std::endl;
+	t.reset();
 
 	int nlv = lat_verts.size();
 	lat_V0.resize(nlv,3);
@@ -180,8 +181,8 @@ t.reset();
 
 	compute_embedding();
 
-std::cout << "T COMPUTE EMBEDDING: " << t.elapsed_ms() << std::endl;
-t.reset();
+//	std::cout << "T COMPUTE EMBEDDING: " << t.elapsed_ms() << std::endl;
+	t.reset();
 
 	// Verify embedding is correct
 	for (int i=0; i<nv; ++i)
@@ -371,32 +372,41 @@ void EmbeddedMesh::compute_masses(
 void EmbeddedMesh::set_pin(
 	int idx,
 	const Eigen::Vector3d &p,
-	const Eigen::Vector3d &k)
+    double k)
 {
-	if (idx<0 || idx>=emb_V0.rows())
-		return;
+	std::unordered_map<int,double>::const_iterator it = emb_pin_k.find(idx);
+	if (it == emb_pin_k.end()) { P_updated = true; }
+	else if (k != it->second) { P_updated = true; }
 
-	if (k.maxCoeff()<=0)
+	// Remove pin
+	if (k <= 1e-5)
+	{
+		emb_pin_k.erase(idx);
+		emb_pin_pos.erase(idx);
 		return;
+	}
 
 	emb_pin_k[idx] = k;
 	emb_pin_pos[idx] = p;
 }
 
-void EmbeddedMesh::linearize_pins(
+bool EmbeddedMesh::linearize_pins(
 	std::vector<Eigen::Triplet<double> > &trips,
-	std::vector<double> &q) const
+	std::vector<double> &q,
+	std::set<int> &pin_inds,
+    bool replicate) const
 {
 	int np = emb_pin_k.size();
 	trips.reserve((int)trips.size() + np*3*4);
 	q.reserve((int)q.size() + np*3);
 
-	std::unordered_map<int,Eigen::Vector3d>::const_iterator it_k = emb_pin_k.begin();
+	std::unordered_map<int,double>::const_iterator it_k = emb_pin_k.begin();
 	for (; it_k != emb_pin_k.end(); ++it_k)
 	{
 		int emb_idx = it_k->first;
+		pin_inds.emplace(emb_idx);
 		const Vector3d &qi = emb_pin_pos.at(emb_idx);
-		const Vector3d &ki = it_k->second;
+		const double &ki = it_k->second;
 
 		int tet_idx = emb_v_to_tet[emb_idx];
 		RowVector4d bary = emb_barys.row(emb_idx);
@@ -405,11 +415,23 @@ void EmbeddedMesh::linearize_pins(
 		for (int i=0; i<3; ++i)
 		{
 			int p_idx = q.size();
-			q.emplace_back(qi[i]*ki[i]);
-			for (int j=0; j<4; ++j)
-				trips.emplace_back(p_idx, tet[j]*3+i, bary[j]*ki[i]);
+			q.emplace_back(qi[i]*ki);
+			if (replicate)
+			{
+				for (int j=0; j<4; ++j)
+					trips.emplace_back(p_idx, tet[j]*3+i, bary[j]*ki);
+			}
+			else if (i==0)
+			{
+				for (int j=0; j<4; ++j)
+					trips.emplace_back(p_idx/3, tet[j], bary[j]*ki);	
+			}
 		}
 	}
+
+	bool has_P_updated = P_updated;
+	P_updated = false;
+	return has_P_updated;
 }
 
 bool TetMesh::create(
@@ -420,6 +442,7 @@ bool TetMesh::create(
 	const unsigned int *tets, // size nt*4
 	int nt) // must be > 0
 {
+	P_updated = true;
 	if (nv<=0 || verts == nullptr)
 		return false;
 	if (nf<=0 || faces == nullptr)
@@ -518,36 +541,59 @@ void TetMesh::compute_masses(
 void TetMesh::set_pin(
 	int idx,
 	const Eigen::Vector3d &p,
-	const Eigen::Vector3d &k)
+    double k)
 {
-	if (k.maxCoeff() <= 0)
+	std::unordered_map<int,double>::const_iterator it = pin_k.find(idx);
+	if (it == pin_k.end()) { P_updated = true; }
+	else if (k != it->second) { P_updated = true; }
+
+	// Remove pin
+	if (k <= 1e-5)
+	{
+		pin_k.erase(idx);
+		pin_pos.erase(idx);
 		return;
+	}
 
 	pin_k[idx] = k;
 	pin_pos[idx] = p;
 }
 
-void TetMesh::linearize_pins(
+bool TetMesh::linearize_pins(
 	std::vector<Eigen::Triplet<double> > &trips,
-	std::vector<double> &q) const
+	std::vector<double> &q,
+	std::set<int> &pin_inds,
+    bool replicate) const
 {
 	int np = pin_k.size();
 	trips.reserve((int)trips.size() + np*3);
 	q.reserve((int)q.size() + np*3);
 
-	std::unordered_map<int,Eigen::Vector3d>::const_iterator it_k = pin_k.begin();
+	std::unordered_map<int,double>::const_iterator it_k = pin_k.begin();
 	for (; it_k != pin_k.end(); ++it_k)
 	{
 		int idx = it_k->first;
+		pin_inds.emplace(idx);
 		const Vector3d &qi = pin_pos.at(idx);
-		const Vector3d &ki = it_k->second;
+		const double &ki = it_k->second;
 		for (int i=0; i<3; ++i)
 		{
 			int p_idx = q.size();
-			q.emplace_back(qi[i]*ki[i]);
-			trips.emplace_back(p_idx, idx*3+i, ki[i]);
+			q.emplace_back(qi[i]*ki);
+			if (replicate)
+			{
+				trips.emplace_back(p_idx, idx*3+i, ki);
+			}
+			else if (i==0)
+			{
+				trips.emplace_back(p_idx/3, idx, ki);	
+			}
 		}
 	}
+
+	bool has_P_updated = P_updated;
+	P_updated = false;
+	return has_P_updated;
 }
 
 bool TriangleMesh::create(
@@ -558,6 +604,7 @@ bool TriangleMesh::create(
 	const unsigned int *tets,
 	int nt)
 {
+	P_updated = true;
 	(void)(tets); (void)(nt);
 	if (nv<=0 || verts == nullptr)
 		return false;
@@ -617,33 +664,59 @@ void TriangleMesh::compute_masses(
 void TriangleMesh::set_pin(
 	int idx,
 	const Eigen::Vector3d &p,
-	const Eigen::Vector3d &k)
+    double k)
 {
+	std::unordered_map<int,double>::const_iterator it = pin_k.find(idx);
+	if (it == pin_k.end()) { P_updated = true; }
+	else if (k != it->second) { P_updated = true; }
+
+	// Remove pin if effectively zero
+	if (k <= 1e-5)
+	{
+		pin_k.erase(idx);
+		pin_pos.erase(idx);
+		return;
+	}
+
 	pin_pos[idx] = p;
 	pin_k[idx] = k;
 }
 
-void TriangleMesh::linearize_pins(
+bool TriangleMesh::linearize_pins(
 	std::vector<Eigen::Triplet<double> > &trips,
-	std::vector<double> &q) const
+	std::vector<double> &q,
+	std::set<int> &pin_inds,
+    bool replicate) const
 {
 	int np = pin_k.size();
 	trips.reserve((int)trips.size() + np*3);
 	q.reserve((int)q.size() + np*3);
 
-	std::unordered_map<int,Eigen::Vector3d>::const_iterator it_k = pin_k.begin();
+	std::unordered_map<int,double>::const_iterator it_k = pin_k.begin();
 	for (; it_k != pin_k.end(); ++it_k)
 	{
 		int idx = it_k->first;
+		pin_inds.emplace(idx);
 		const Vector3d &qi = pin_pos.at(idx);
-		const Vector3d &ki = it_k->second;
+		const double &ki = it_k->second;
 		for (int i=0; i<3; ++i)
 		{
 			int p_idx = q.size();
-			q.emplace_back(qi[i]*ki[i]);
-			trips.emplace_back(p_idx, idx*3+i, ki[i]);
+			q.emplace_back(qi[i]*ki);
+			if (replicate)
+			{
+				trips.emplace_back(p_idx, idx*3+i, ki);
+			}
+			else if (i==0)
+			{
+				trips.emplace_back(p_idx/3, idx, ki);	
+			}
 		}
 	}
+
+	bool has_P_updated = P_updated;
+	P_updated = false;
+	return has_P_updated;
 }
 
 } // namespace admmpd

@@ -25,8 +25,6 @@ struct VFCollisionPair {
 
 class Collision {
 public:
-	typedef Discregrid::CubicLagrangeDiscreteGrid SDFType;
-
     struct ObstacleData {
         bool has_obs() const { return F.rows()>0; }
         Eigen::MatrixXd V;
@@ -65,11 +63,12 @@ public:
         const unsigned int *faces,
         int nf);
 
-    // Linearize the constraints about x and return Jacobian.
+    // Linearizes active collision pairs about x
+    // for the constraint Cx=d
     virtual void linearize(
         const Eigen::MatrixXd *x,
     	std::vector<Eigen::Triplet<double> > *trips,
-		std::vector<double> *d) = 0;
+		std::vector<double> *d) const = 0;
 
     // Given a point and a mesh, perform
     // discrete collision detection.
@@ -79,6 +78,7 @@ public:
         const Eigen::Vector3d &pt_t1,
         const ObstacleData *obs) const;
 
+    // Perform self collision detection
     virtual std::pair<bool,VFCollisionPair>
     detect_against_self(
         int pt_idx,
@@ -101,13 +101,13 @@ public:
 
     void graph(
         std::vector<std::set<int> > &g);
-    
+
     // Linearizes the collision pairs about x
-    // for the constraint Kx=l
+    // for the constraint Cx=d
     void linearize(
         const Eigen::MatrixXd *x,
     	std::vector<Eigen::Triplet<double> > *trips,
-		std::vector<double> *d);
+		std::vector<double> *d) const;
 
     // Updates the tetmesh BVH for self collisions.
     void update_bvh(

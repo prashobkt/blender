@@ -459,7 +459,7 @@ void EmbeddedMeshCollision::graph(
 void EmbeddedMeshCollision::linearize(
 	const Eigen::MatrixXd *x,
 	std::vector<Eigen::Triplet<double> > *trips,
-	std::vector<double> *d)
+	std::vector<double> *d) const
 {
 	BLI_assert(x != NULL);
 	BLI_assert(x->cols() == 3);
@@ -475,7 +475,7 @@ void EmbeddedMeshCollision::linearize(
 	for (int i=0; i<np; ++i)
 	{
 		const Vector2i &pair_idx = vf_pairs[i];
-		VFCollisionPair &pair = per_vertex_pairs[pair_idx[0]][pair_idx[1]];
+		const VFCollisionPair &pair = per_vertex_pairs[pair_idx[0]][pair_idx[1]];
 		int emb_p_idx = pair.p_idx;
 //		Vector3d p_pt = meshdata.mesh->get_mapped_facet_vertex(x,emb_p_idx);
 
