@@ -493,7 +493,7 @@ static void write_file_line_fn(CLogStringBuf *cstr,
 }
 
 /** Clog version of BLI_addtail (to avoid making dependency) */
-static void CLG_report_append(CLG_LogRecordList *listbase, CLG_LogRecord *link)
+static void CLG_record_append(CLG_LogRecordList *listbase, CLG_LogRecord *link)
 {
 
   if (link == NULL) {
@@ -549,7 +549,7 @@ void CLG_log_str(CLG_LogType *lg,
 
   CLG_LogRecord *log_record = clog_log_record_init(
       lg, severity, verbosity, file_line, fn, message);
-  CLG_report_append(&(lg->ctx->log_records), log_record);
+  CLG_record_append(&(lg->ctx->log_records), log_record);
 
   if (lg->ctx->callbacks.backtrace_fn) {
     clg_ctx_backtrace(lg->ctx);
@@ -602,7 +602,8 @@ void CLG_logf(CLG_LogType *lg,
 
   CLG_LogRecord *log_record = clog_log_record_init(
       lg, severity, verbosity, file_line, fn, message);
-  CLG_report_append(&(lg->ctx->log_records), log_record);
+  CLG_record_append(&(lg->ctx->log_records), log_record);
+  MEM_freeN(message);
 
   clg_str_append(&cstr, "\n");
 
