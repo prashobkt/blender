@@ -406,7 +406,7 @@ CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
                                     unsigned short verbosity,
                                     const char *file_line,
                                     const char *function,
-                                    char *message)
+                                    const char *message)
 {
   CLG_LogRecord *log_record = MEM_callocN(sizeof(*log_record), "ClogRecord");
   log_record->type = type;
@@ -416,7 +416,10 @@ CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
   log_record->timestamp = clg_timestamp_ticks_get() - type->ctx->timestamp_tick_start;
   log_record->file_line = file_line;
   log_record->function = function;
-  log_record->message = message;
+
+  char *_message = MEM_callocN(strlen(message) + 1, __func__);
+  strcpy(_message, message);
+  log_record->message = _message;
   return log_record;
 }
 

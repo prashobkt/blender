@@ -141,7 +141,7 @@ typedef struct CLG_LogRecord {
   uint64_t timestamp;
   const char *file_line;
   const char *function;
-  const char *message;
+  char *message;
 } CLG_LogRecord;
 
 /** clog version of ListBase */
@@ -169,7 +169,7 @@ CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
                                     unsigned short verbosity,
                                     const char *file_line,
                                     const char *function,
-                                    char *message);
+                                    const char *message);
 void clog_log_record_free(CLG_LogRecord *log_record);
 
 /* Main initializer and distructor (per session, not logger). */
