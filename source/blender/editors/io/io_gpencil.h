@@ -26,6 +26,7 @@
 
 struct wmOperatorType;
 
-void WM_OT_gpencil_export(struct wmOperatorType *ot);
+void WM_OT_gpencil_export_svg(struct wmOperatorType *ot);
+void WM_OT_gpencil_export_storyboard(struct wmOperatorType *ot);
 
 #endif /* __IO_GPENCIL_H__ */

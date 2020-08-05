@@ -443,6 +443,16 @@ class TOPBAR_MT_file_import(Menu):
             self.layout.operator("wm.alembic_import", text="Alembic (.abc)")
 
 
+class TOPBAR_MT_file_gpencil_export(Menu):
+    bl_idname = "TOPBAR_MT_file_gpencil_export"
+    bl_label = "Grease Pencil"
+    bl_owner_use_filter = False
+
+    def draw(self, context):
+        self.layout.operator("wm.gpencil_export_svg", text="Scalable Vector Graphics (.svg)")
+        self.layout.operator("wm.gpencil_export_storyboard", text="Storyboard (.svg)")
+
+
 class TOPBAR_MT_file_export(Menu):
     bl_idname = "TOPBAR_MT_file_export"
     bl_label = "Export"
@@ -457,7 +467,8 @@ class TOPBAR_MT_file_export(Menu):
         if bpy.app.build_options.usd:
             self.layout.operator(
                 "wm.usd_export", text="Universal Scene Description (.usd, .usdc, .usda)")
-        self.layout.operator("wm.gpencil_export", text="Grease Pencil (.svg)")
+
+        self.layout.menu("TOPBAR_MT_file_gpencil_export")
 
 
 class TOPBAR_MT_file_external_data(Menu):
@@ -818,6 +829,7 @@ classes = (
     TOPBAR_MT_file_defaults,
     TOPBAR_MT_templates_more,
     TOPBAR_MT_file_import,
+    TOPBAR_MT_file_gpencil_export,
     TOPBAR_MT_file_export,
     TOPBAR_MT_file_external_data,
     TOPBAR_MT_file_cleanup,
