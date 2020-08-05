@@ -24,15 +24,20 @@ import sys
 import bpy
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from modules.mesh_test import ModifierTest, FluidSpec
+from modules.mesh_test import ModifierTest, ModifierSpec
 
 
 def main():
     test = [
         #
+        # ["FluidLiquid", "test", "exp",
+        #  [FluidSpec('fluid_liquid', 'FLUID', 'DOMAIN', {'domain_type': 'LIQUID', 'use_mesh': True, 'cache_type': 'ALL',
+        #                                        'cache_frame_end': 20}, 20)]],
+
         ["FluidLiquid", "test", "exp",
-         [FluidSpec('fluid_liquid', 'FLUID', 'DOMAIN', {'domain_type': 'LIQUID', 'use_mesh': True, 'cache_type': 'ALL',
-                                               'cache_frame_end': 20}, 20)]],
+         [ModifierSpec('fluid_liquid', 'FLUID', {'fluid_type': 'DOMAIN', 'domain_settings': {'domain_type': 'LIQUID', 'use_mesh': True, 'cache_type': 'ALL',
+                                                                                           'cache_frame_end': 20}})]],
+
     ]
     fluid_test = ModifierTest(test)
 

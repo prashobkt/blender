@@ -278,7 +278,7 @@ class MeshTest:
         """
         self.operations_stack.append(modifier_spec)
         if self.verbose:
-            print("Added modififier {}".format(modifier_spec))
+            print("Added modifier {}".format(modifier_spec))
 
     def add_operator(self, operator_spec: OperatorSpec):
         """
@@ -323,6 +323,43 @@ class MeshTest:
         """
         return self._test_updated
 
+    def _set_parameters_util(self, modifier, modifier_parameters, settings):
+        """
+        Doing a depth first traversal of the modifier parameters and setting their values.
+        """
+        if not isinstance(modifier_parameters, dict):
+            param_setting = None
+            for i, setting in enumerate(settings):
+                if i == len(settings)-1:
+                    setattr(modifier, setting, modifier_parameters)
+                else:
+                    try:
+                        param_setting = getattr(modifier, setting)
+                        modifier = param_setting
+                    except AttributeError:
+                        # Clean up first
+                        bpy.ops.object.delete()
+                        raise AttributeError("Modifier '{}' has no parameter named '{}'".
+                                             format(modifier.name, setting))
+
+                settings.pop()
+                return
+
+        for key in modifier_parameters:
+            settings.append(key)
+            self._set_parameters_util(modifier, modifier_parameters[key], settings)
+
+        if len(settings) != 0:
+            settings.pop()
+
+    def set_parameters(self, modifier, modifier_parameters):
+        """
+        Outer interface for _set_parameters_util
+        """
+        settings = []
+        modifier_copy = modifier
+        self._set_parameters_util(modifier_copy, modifier_parameters, settings)
+
     def _add_modifier(self, test_object, modifier_spec: ModifierSpec):
         """
         Add modifier to object and apply (if modifier_spec.apply_modifier is True)
@@ -335,17 +372,8 @@ class MeshTest:
             print("Created modifier '{}' of type '{}'.".
                   format(modifier_spec.modifier_name, modifier_spec.modifier_type))
 
-        for param_name in modifier_spec.modifier_parameters:
-            try:
-                setattr(modifier, param_name, modifier_spec.modifier_parameters[param_name])
-                if self.verbose:
-                    print("\t set parameter '{}' with value '{}'".
-                          format(param_name, modifier_spec.modifier_parameters[param_name]))
-            except AttributeError:
-                # Clean up first
-                bpy.ops.object.delete()
-                raise AttributeError("Modifier '{}' has no parameter named '{}'".
-                                     format(modifier_spec.modifier_type, param_name))
+        self.set_parameters(test_object.modifiers[modifier_spec.modifier_name],
+                                modifier_spec.modifier_parameters)
 
     def _apply_modifier(self, test_object, modifier_name):
         # Modifier automatically gets applied when converting from Curve to Mesh.
