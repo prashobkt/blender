@@ -1648,6 +1648,7 @@ static void finish_patch_cell_graph(const Mesh &tm,
       std::cout << "\n";
     }
   }
+  /* For nested components, merge their ambient cell with the nearest containing cell. */
   Vector<int> outer_components;
   for (int comp : comp_cont.index_range()) {
     if (comp_cont[comp].size() == 0) {
@@ -1669,6 +1670,7 @@ static void finish_patch_cell_graph(const Mesh &tm,
       merge_cells(cont_cell, comp_ambient, cinfo, pinfo);
     }
   }
+  /* For outer components (not nested in any other component), merge their ambient cells. */
   if (outer_components.size() > 1) {
     int merged_ambient = ambient_cell[outer_components[0]];
     for (int i = 1; i < outer_components.size(); ++i) {
@@ -1677,7 +1679,7 @@ static void finish_patch_cell_graph(const Mesh &tm,
                   << "'s ambient cell=" << ambient_cell[outer_components[i]] << " to cell "
                   << merged_ambient << "\n";
       }
-      merge_cells(merged_ambient, outer_components[i], cinfo, pinfo);
+      merge_cells(merged_ambient, ambient_cell[outer_components[i]], cinfo, pinfo);
     }
   }
   if (dbg_level > 0) {

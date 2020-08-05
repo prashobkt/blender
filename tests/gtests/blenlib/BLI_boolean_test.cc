@@ -328,6 +328,38 @@ TEST(boolean_trimesh, TetInsideTetTrimesh)
   }
 }
 
+TEST(boolean_trimesh, TetBesideTetTrimesh)
+{
+  const char *spec = R"(8 8
+  0 0 0
+  2 0 0
+  1 2 0
+  1 1 2
+  3 0 0
+  5 0 0
+  4 2 0
+  4 1 2
+  0 2 1
+  0 1 3
+  1 2 3
+  2 0 3
+  4 6 5
+  4 5 7
+  5 6 7
+  6 4 7
+  )";
+
+  MeshBuilder mb(spec);
+  Mesh out = boolean_trimesh(
+      mb.mesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
+  out.populate_vert();
+  EXPECT_EQ(out.vert_size(), 8);
+  EXPECT_EQ(out.face_size(), 8);
+  if (DO_OBJ) {
+    write_obj_mesh(out, "tetbesidetet_tm");
+  }
+}
+
 TEST(boolean_polymesh, TetTet)
 {
   const char *spec = R"(8 8
