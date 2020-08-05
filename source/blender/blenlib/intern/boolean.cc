@@ -777,16 +777,22 @@ static int sort_tris_class(const Face &tri, const Face &tri0, const Edge e)
   return ans;
 }
 
+constexpr int EXTRA_TRI_INDEX = INT_MAX;
+
 /* To ensure consistent ordering of coplanar triangles if they happen to be sorted around
  * more than one edge, sort the triangle indices in g (in place) by their index -- but also apply
  * a sign to the index: positive if the triangle has edge e in the same orientation,
  * otherwise negative.
  */
-static void sort_by_signed_triangle_index(Vector<int> &g, const Edge e, const Mesh &tm)
+static void sort_by_signed_triangle_index(Vector<int> &g,
+                                          const Edge e,
+                                          const Mesh &tm,
+                                          Facep extra_tri)
 {
   Array<int> signed_g(g.size());
   for (int i : g.index_range()) {
-    const Face &tri = *tm.face(g[i]);
+
+    const Face &tri = g[i] == EXTRA_TRI_INDEX ? *extra_tri : *tm.face(g[i]);
     bool rev;
     find_flap_vert(tri, e, &rev);
     signed_g[i] = rev ? -g[i] : g[i];
@@ -797,8 +803,6 @@ static void sort_by_signed_triangle_index(Vector<int> &g, const Edge e, const Me
     g[i] = abs(signed_g[i]);
   }
 }
-
-constexpr int EXTRA_TRI_INDEX = INT_MAX;
 
 /*
  * Sort the triangles tris, which all share edge e, as they appear
@@ -873,13 +877,13 @@ static Array<int> sort_tris_around_edge(const Mesh &tm,
     std::cout << "g4 = " << g4 << "\n";
   }
   if (g1.size() > 1) {
-    sort_by_signed_triangle_index(g1, e, tm);
+    sort_by_signed_triangle_index(g1, e, tm, extra_tri);
     if (dbg_level > 1) {
       std::cout << "g1 sorted: " << g1 << "\n";
     }
   }
   if (g2.size() > 1) {
-    sort_by_signed_triangle_index(g2, e, tm);
+    sort_by_signed_triangle_index(g2, e, tm, extra_tri);
     if (dbg_level > 1) {
       std::cout << "g2 sorted: " << g2 << "\n";
     }
