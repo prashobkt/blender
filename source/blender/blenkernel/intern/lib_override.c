@@ -1516,7 +1516,7 @@ void BKE_lib_override_library_main_update(Main *bmain)
  */
 
 /** Initialize an override storage. */
-OverrideLibraryStorage *BKE_lib_override_library_operations_store_initialize(void)
+OverrideLibraryStorage *BKE_lib_override_library_operations_store_init(void)
 {
   return BKE_main_new();
 }
