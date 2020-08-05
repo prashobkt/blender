@@ -264,8 +264,8 @@ def main():
          [ModifierSpec('laplaciansmooth', 'LAPLACIANSMOOTH', {'lambda_factor': 12, 'lambda_border': 12})]],
 
         # Not reproducible anymore
-        # ["WavePlane", "testObjPlaneWave", "expObjPlaneWave",
-        #  [ModifierSpec('wave', 'WAVE', {})]],
+        ["WavePlane", "testObjPlaneWave", "expObjPlaneWave",
+         [ModifierSpec('wave', 'WAVE', {})]],
 
         #############################################
         # CURVES Generate Modifiers
