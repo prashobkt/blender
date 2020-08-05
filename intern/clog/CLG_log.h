@@ -182,6 +182,8 @@ char *CLG_file_output_path_get(void);
 void CLG_file_output_path_set(const char *value);
 bool CLG_output_use_basename_get(void);
 void CLG_output_use_basename_set(int value);
+bool CLG_always_show_warnings_get(void);
+void CLG_always_show_warnings_set(bool value);
 bool CLG_output_use_timestamp_get(void);
 void CLG_output_use_timestamp_set(int value);
 void CLG_fatal_fn_set(void (*fatal_fn)(void *file_handle));
@@ -216,7 +218,9 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
   ((clg_ref)->type ? (clg_ref)->type : (CLG_logref_init(clg_ref), (clg_ref)->type))
 
 #define CLOG_CHECK_IN_USE(clg_ref) \
-  ((void)CLOG_ENSURE(clg_ref), ((clg_ref)->force_enable || (clg_ref)->type->flag & CLG_FLAG_USE))
+  ((void)CLOG_ENSURE(clg_ref), \
+   ((clg_ref)->force_enable || CLG_always_show_warnings_get() || \
+    (clg_ref)->type->flag & CLG_FLAG_USE))
 
 #ifdef DEBUG
 /** same as CLOG_CHECK_IN_USE, but will be automatically disable in release build */
@@ -241,7 +245,11 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #define CLOG_AT_SEVERITY(clg_ref, severity, log_level, ...) \
   { \
     CLG_LogType *_lg_ty = CLOG_ENSURE(clg_ref); \
-    if ((clg_ref)->force_enable) { \
+    if (CLG_always_show_warnings_get() && severity >= CLG_SEVERITY_WARN) { \
+      CLG_logf( \
+          _lg_ty, severity, log_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, __VA_ARGS__); \
+    } \
+    else if ((clg_ref)->force_enable) { \
       CLG_logf( \
           _lg_ty, severity, log_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, __VA_ARGS__); \
     } \
@@ -268,7 +276,10 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #define CLOG_STR_AT_SEVERITY(clg_ref, severity, log_level, str) \
   { \
     CLG_LogType *_lg_ty = CLOG_ENSURE(clg_ref); \
-    if ((clg_ref)->force_enable) { \
+    if (CLG_always_show_warnings_get() && severity >= CLG_SEVERITY_WARN) { \
+      CLG_log_str(_lg_ty, severity, log_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, str); \
+    } \
+    else if ((clg_ref)->force_enable) { \
       CLG_log_str(_lg_ty, severity, log_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, str); \
     } \
     else if ((_lg_ty->flag & CLG_FLAG_USE) && severity >= _lg_ty->severity_level) { \
@@ -290,7 +301,12 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
 #define CLOG_STR_AT_SEVERITY_N(clg_ref, severity, log_level, str) \
   { \
     CLG_LogType *_lg_ty = CLOG_ENSURE(clg_ref); \
-    if ((clg_ref)->force_enable) { \
+    if (CLG_always_show_warnings_get() && severity >= CLG_SEVERITY_WARN) { \
+      const char *_str = str; \
+      CLG_log_str(_lg_ty, severity, log_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, _str); \
+      MEM_freeN((void *)_str); \
+    } \
+    else if ((clg_ref)->force_enable) { \
       const char *_str = str; \
       CLG_log_str(_lg_ty, severity, log_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, _str); \
       MEM_freeN((void *)_str); \

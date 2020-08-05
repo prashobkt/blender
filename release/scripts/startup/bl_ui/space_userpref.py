@@ -659,6 +659,7 @@ class USERPREF_PT_system_logging(SystemPanel, CenterAlignMixIn, Panel):
         col.active = system.log_severity in {'LOG_VERBOSE', 'LOG_DEBUG'}
         col.prop(system, "log_level")
 
+        layout.prop(system, "log_always_show_warnings")
         layout.prop(system, "log_use_basename")
         layout.prop(system, "log_use_timestamp")
 

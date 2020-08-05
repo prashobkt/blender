@@ -107,6 +107,7 @@ typedef struct CLogContext {
   } callbacks;
 
   bool use_stdout;
+  bool always_show_warnings;
   /** used only is use_stdout is false */
   char output_file_path[256];
 } CLogContext;
@@ -692,6 +693,17 @@ static void CLG_ctx_output_use_basename_set(CLogContext *ctx, int value)
   ctx->use_basename = (bool)value;
 }
 
+/** always show Fatals, Errors and Warnings, regardless if log is in use */
+static bool CLG_ctx_always_show_warnings_get(CLogContext *ctx)
+{
+  return ctx->always_show_warnings;
+}
+
+static void CLG_ctx_always_show_warnings_set(CLogContext *ctx, bool value)
+{
+  ctx->always_show_warnings = value;
+}
+
 static bool CLG_ctx_output_use_timestamp_get(CLogContext *ctx)
 {
   return ctx->use_timestamp;
@@ -835,6 +847,7 @@ static CLogContext *CLG_ctx_init(void)
   ctx->default_type.severity_level = CLG_SEVERITY_WARN;
   ctx->default_type.level = 0;
   ctx->use_stdout = true;
+  ctx->always_show_warnings = true;
 
   /* enable all loggers by default */
   CLG_ctx_type_filter_include(ctx, "*", strlen("*"));
@@ -924,6 +937,16 @@ bool CLG_output_use_basename_get()
 void CLG_output_use_basename_set(int value)
 {
   CLG_ctx_output_use_basename_set(g_ctx, value);
+}
+
+bool CLG_always_show_warnings_get()
+{
+  return CLG_ctx_always_show_warnings_get(g_ctx);
+}
+
+void CLG_always_show_warnings_set(bool value)
+{
+  CLG_ctx_always_show_warnings_set(g_ctx, value);
 }
 
 bool CLG_output_use_timestamp_get()

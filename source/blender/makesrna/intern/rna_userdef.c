@@ -1150,6 +1150,15 @@ static void rna_clog_log_use_basename_set(PointerRNA *UNUSED(ptr), int value)
   CLG_output_use_basename_set(value);
 }
 
+static bool rna_clog_log_always_show_warnings_get(PointerRNA *UNUSED(ptr))
+{
+  return CLG_always_show_warnings_get();
+}
+
+static void rna_clog_log_always_show_warnings_set(PointerRNA *UNUSED(ptr), int value)
+{
+  CLG_always_show_warnings_set(value);
+}
 static bool rna_clog_log_use_timestamp_get(PointerRNA *UNUSED(ptr))
 {
   return CLG_output_use_timestamp_get();
@@ -5811,6 +5820,14 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   RNA_def_property_boolean_funcs(
       prop, "rna_clog_log_use_basename_get", "rna_clog_log_use_basename_set");
   RNA_def_property_ui_text(prop, "Use Basename", "Show only filename instead of full filepath");
+
+  prop = RNA_def_property(srna, "log_always_show_warnings", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_funcs(
+      prop, "rna_clog_log_always_show_warnings_get", "rna_clog_log_always_show_warnings_set");
+  RNA_def_property_ui_text(
+      prop,
+      "Always Show Errors and Warnings",
+      "Show messages with severity Fatal, Error and Warning regardless if log is enabled");
 
   prop = RNA_def_property(srna, "log_use_timestamp", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(
