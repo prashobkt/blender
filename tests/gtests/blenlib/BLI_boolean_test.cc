@@ -17,7 +17,7 @@
 
 namespace blender::meshintersect {
 
-constexpr bool DO_OBJ = true;
+constexpr bool DO_OBJ = false;
 
 /* Build and hold a Mesh from a string spec. Also hold and own resources used by Mesh. */
 class MeshBuilder {
@@ -729,6 +729,77 @@ TEST(boolean_polymesh, CubeCyl4)
   EXPECT_EQ(out.face_size(), 20);
   if (DO_OBJ) {
     write_obj_mesh(out, "cubecyl4");
+  }
+}
+
+TEST(boolean_polymesh, CubeCubesubdivDiff)
+{
+  /* A cube intersected by a subdivided cube that intersects first cubes edges exactly. */
+  const char *spec = R"(26 22
+  2 1/3 2
+  2 -1/3 2
+  2 -1/3 0
+  2 1/3 0
+  0 -1/3 2
+  0 1/3 2
+  0 1/3 0
+  0 -1/3 0
+  1 1/3 2
+  1 -1/3 2
+  1 1/3 0
+  1 -1/3 0
+  0 -1/3 1
+  0 1/3 1
+  2 1/3 1
+  2 -1/3 1
+  1 1/3 1
+  1 -1/3 1
+  -1 -1 -1
+  -1 -1 1
+  -1 1 -1
+  -1 1 1
+  1 -1 -1
+  1 -1 1
+  1 1 -1
+  1 1 1
+  17 9 4 12
+  13 6 7 12
+  15 2 3 14
+  11 7 6 10
+  16 13 5 8
+  9 1 0 8
+  4 9 8 5
+  14 16 8 0
+  2 11 10 3
+  15 1 9 17
+  2 15 17 11
+  3 10 16 14
+  10 6 13 16
+  1 15 14 0
+  5 13 12 4
+  11 17 12 7
+  19 21 20 18
+  21 25 24 20
+  25 23 22 24
+  23 19 18 22
+  18 20 24 22
+  23 25 21 19
+  )";
+
+  MeshBuilder mb(spec);
+  Mesh out = boolean_mesh(
+      mb.mesh,
+      BOOLEAN_DIFFERENCE,
+      2,
+      [](int t) { return t < 16 ? 1 : 0; },
+      false,
+      nullptr,
+      &mb.arena);
+  out.populate_vert();
+  EXPECT_EQ(out.vert_size(), 16);
+  EXPECT_EQ(out.face_size(), 10);
+  if (DO_OBJ) {
+    write_obj_mesh(out, "cubecubesubdivdiff");
   }
 }
 

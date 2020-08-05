@@ -2476,6 +2476,7 @@ static Vector<Facep> merge_tris_for_face(Vector<int> tris,
         Face tryface({tri1[i1], tri1[i2], tri1[i0], tri2[j2]}, -1, -1, {}, {});
         if (tryface.cyclic_equal(*in_face)) {
           if (dbg_level > 0) {
+            std::cout << "inface = " << in_face << "\n";
             std::cout << "quad recovery worked\n";
           }
           ans.append(in_face);
@@ -2761,6 +2762,21 @@ Mesh boolean_trimesh(Mesh &tm_in,
   return tm_out;
 }
 
+static void dump_test_spec(Mesh &pm)
+{
+  std::cout << "test spec = " << pm.vert_size() << " " << pm.face_size() << "\n";
+  for (Vertp v : pm.vertices()) {
+    std::cout << v->co_exact[0] << " " << v->co_exact[1] << " " << v->co_exact[2] << " # "
+              << v->co[0] << " " << v->co[1] << " " << v->co[2] << "\n";
+  }
+  for (Facep f : pm.faces()) {
+    for (Vertp fv : *f) {
+      std::cout << pm.lookup_vert(fv) << " ";
+    }
+    std::cout << "\n";
+  }
+}
+
 /* Do the boolean operation op on the polygon mesh pm_in.
  * See the header file for a complete description.
  */
@@ -2780,6 +2796,9 @@ Mesh boolean_mesh(Mesh &pm,
     if (dbg_level > 1) {
       write_obj_mesh(pm, "boolean_mesh_in");
       std::cout << pm;
+      if (dbg_level > 2) {
+        dump_test_spec(pm);
+      }
     }
   }
   Mesh *tm_in = pm_triangulated;

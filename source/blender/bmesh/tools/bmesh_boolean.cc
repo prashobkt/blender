@@ -118,6 +118,19 @@ static bool bmvert_attached_to_wire(const BMVert *bmv)
   return BM_vert_is_wire(bmv);
 }
 
+static bool face_has_verts_in_order(BMesh *bm, BMFace *bmf, const BMVert *v1, const BMVert *v2)
+{
+  BMIter liter;
+  BMLoop *l = static_cast<BMLoop *>(BM_iter_new(&liter, bm, BM_LOOPS_OF_FACE, bmf));
+  while (l != NULL) {
+    if (l->v == v1 && l->next->v == v2) {
+      return true;
+    }
+    l = static_cast<BMLoop *>(BM_iter_step(&liter));
+  }
+  return false;
+}
+
 /* Use the unused _BM_ELEM_TAG_ALT bmflag to mark geometry we will keep. */
 constexpr uint KEEP_FLAG = (1 << 6);
 
@@ -219,7 +232,10 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
       face_bmverts[i] = new_bmvs[v_index];
     }
     BMFace *bmf = BM_face_exists(face_bmverts.data(), flen);
-    if (bmf != NULL) {
+    /* BM_face_exists checks if the face exists with the vertices in either order.
+     * We can only reuse the face if the orientations are the same.
+     */
+    if (bmf != NULL && face_has_verts_in_order(bm, bmf, face_bmverts[0], face_bmverts[1])) {
       BM_elem_flag_enable(bmf, KEEP_FLAG);
     }
     else {
