@@ -17,7 +17,7 @@
 
 namespace blender::meshintersect {
 
-constexpr bool DO_OBJ = false;
+constexpr bool DO_OBJ = true;
 
 /* Build and hold a Mesh from a string spec. Also hold and own resources used by Mesh. */
 class MeshBuilder {
@@ -153,6 +153,56 @@ TEST(boolean_trimesh, TetTetTrimesh)
   EXPECT_EQ(out2.face_size(), 16);
   if (DO_OBJ) {
     write_obj_mesh(out2, "tettet_union_tm");
+  }
+
+  MeshBuilder mb3(spec);
+  Mesh out3 = boolean_trimesh(
+      mb3.mesh, BOOLEAN_UNION, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb3.arena);
+  out3.populate_vert();
+  EXPECT_EQ(out3.vert_size(), 10);
+  EXPECT_EQ(out3.face_size(), 16);
+  if (DO_OBJ) {
+    write_obj_mesh(out3, "tettet_union_binary_tm");
+  }
+
+  MeshBuilder mb4(spec);
+  Mesh out4 = boolean_trimesh(
+      mb4.mesh, BOOLEAN_UNION, 2, [](int t) { return t < 4 ? 0 : 1; }, true, &mb4.arena);
+  out4.populate_vert();
+  EXPECT_EQ(out4.vert_size(), 10);
+  EXPECT_EQ(out4.face_size(), 16);
+  if (DO_OBJ) {
+    write_obj_mesh(out4, "tettet_union_binary_self_tm");
+  }
+
+  MeshBuilder mb5(spec);
+  Mesh out5 = boolean_trimesh(
+      mb5.mesh, BOOLEAN_ISECT, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb5.arena);
+  out5.populate_vert();
+  EXPECT_EQ(out5.vert_size(), 4);
+  EXPECT_EQ(out5.face_size(), 4);
+  if (DO_OBJ) {
+    write_obj_mesh(out5, "tettet_intersect_binary_tm");
+  }
+
+  MeshBuilder mb6(spec);
+  Mesh out6 = boolean_trimesh(
+      mb6.mesh, BOOLEAN_DIFFERENCE, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb6.arena);
+  out6.populate_vert();
+  EXPECT_EQ(out6.vert_size(), 6);
+  EXPECT_EQ(out6.face_size(), 8);
+  if (DO_OBJ) {
+    write_obj_mesh(out6, "tettet_difference_binary_tm");
+  }
+
+  MeshBuilder mb7(spec);
+  Mesh out7 = boolean_trimesh(
+      mb7.mesh, BOOLEAN_DIFFERENCE, 2, [](int t) { return t < 4 ? 1 : 0; }, false, &mb7.arena);
+  out7.populate_vert();
+  EXPECT_EQ(out7.vert_size(), 8);
+  EXPECT_EQ(out7.face_size(), 12);
+  if (DO_OBJ) {
+    write_obj_mesh(out7, "tettet_difference_rev_binary_tm");
   }
 }
 
