@@ -1428,6 +1428,7 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
   if (draw_velocity) {
     const bool use_needle = (fds->vector_draw_type == VECTOR_DRAW_NEEDLE);
     const bool use_mac = (fds->vector_draw_type == VECTOR_DRAW_MAC);
+    const bool cell_centered = (fds->vector_draw_grid_type == VECTOR_DRAW_GRID_FORCE);
     int line_count = 1;
     if (use_needle) {
       line_count = 6;
@@ -1455,6 +1456,7 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
     DRW_shgroup_uniform_ivec3_copy(grp, "adaptiveCellOffset", fds->res_min);
     DRW_shgroup_uniform_int_copy(grp, "sliceAxis", slice_axis);
     DRW_shgroup_uniform_bool_copy(grp, "scaleWithMagnitude", fds->vector_scale_with_magnitude);
+    DRW_shgroup_uniform_bool_copy(grp, "isCellCentered", cell_centered);
     DRW_shgroup_call_procedural_lines(grp, ob, line_count);
   }
 

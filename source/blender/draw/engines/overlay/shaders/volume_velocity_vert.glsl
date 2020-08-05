@@ -6,6 +6,7 @@ uniform float displaySize = 1.0;
 uniform float slicePosition;
 uniform int sliceAxis; /* -1 is no slice, 0 is X, 1 is Y, 2 is Z. */
 uniform bool scaleWithMagnitude = false;
+uniform bool isCellCentered = false;
 
 /* FluidDomainSettings.cell_size */
 uniform vec3 cellSize;
@@ -69,6 +70,47 @@ mat3 rotation_from_vector(vec3 v)
   return mat3(T, B, N);
 }
 
+vec3 get_vector(ivec3 cell_co)
+{
+  vec3 vector;
+
+  vector.x = texelFetch(velocityX, cell_co, 0).r;
+  vector.y = texelFetch(velocityY, cell_co, 0).r;
+  vector.z = texelFetch(velocityZ, cell_co, 0).r;
+
+  return vector;
+}
+
+/* interpolate MAC information for cell-centered vectors */
+vec3 get_vector_centered(ivec3 cell_co)
+{
+  vec3 vector;
+
+  vector.x = 0.5 * (texelFetch(velocityX, cell_co, 0).r +
+                    texelFetch(velocityX, ivec3(cell_co.x + 1, cell_co.yz), 0).r);
+  vector.y = 0.5 * (texelFetch(velocityY, cell_co, 0).r +
+                    texelFetch(velocityY, ivec3(cell_co.x, cell_co.y + 1, cell_co.z), 0).r);
+  vector.z = 0.5 * (texelFetch(velocityZ, cell_co, 0).r +
+                    texelFetch(velocityZ, ivec3(cell_co.xy, cell_co.z + 1), 0).r);
+
+  return vector;
+}
+
+/* interpolate cell-centered information for MAC vectors */
+vec3 get_vector_mac(ivec3 cell_co)
+{
+  vec3 vector;
+
+  vector.x = 0.5 * (texelFetch(velocityX, ivec3(cell_co.x - 1, cell_co.yz), 0).r +
+                    texelFetch(velocityX, cell_co, 0).r);
+  vector.y = 0.5 * (texelFetch(velocityY, ivec3(cell_co.x, cell_co.y - 1, cell_co.z), 0).r +
+                    texelFetch(velocityY, cell_co, 0).r);
+  vector.z = 0.5 * (texelFetch(velocityZ, ivec3(cell_co.xy, cell_co.z - 1), 0).r +
+                    texelFetch(velocityZ, cell_co, 0).r);
+
+  return vector;
+}
+
 void main()
 {
 #ifdef USE_NEEDLE
@@ -104,13 +146,11 @@ void main()
 
   vec3 pos = domainOriginOffset + cellSize * (vec3(cell_co + adaptiveCellOffset) + 0.5);
 
-  vec3 velocity;
-  velocity.x = texelFetch(velocityX, cell_co, 0).r;
-  velocity.y = texelFetch(velocityY, cell_co, 0).r;
-  velocity.z = texelFetch(velocityZ, cell_co, 0).r;
+  vec3 vector;
 
 #ifdef USE_MAC
   vec3 color;
+  vector = (isCellCentered) ? get_vector_mac(cell_co) : get_vector(cell_co);
 
   switch (gl_VertexID % 6) {
     case 0: /* tail of X component */
@@ -118,7 +158,7 @@ void main()
       color = vec3(1.0, 0.0, 0.0); /* red */
       break;
     case 1: /* head of X component */
-      pos.x += (-0.5 + velocity.x * displaySize) * cellSize.x;
+      pos.x += (-0.5 + vector.x * displaySize) * cellSize.x;
       color = vec3(1.0, 1.0, 0.0); /* yellow */
       break;
     case 2: /* tail of Y component */
@@ -126,7 +166,7 @@ void main()
       color = vec3(0.0, 1.0, 0.0); /* green */
       break;
     case 3: /* head of Y component */
-      pos.y += (-0.5 + velocity.y * displaySize) * cellSize.y;
+      pos.y += (-0.5 + vector.y * displaySize) * cellSize.y;
       color = vec3(1.0, 1.0, 0.0); /* yellow */
       break;
     case 4: /* tail of Z component */
@@ -134,25 +174,27 @@ void main()
       color = vec3(0.0, 0.0, 1.0); /* blue */
       break;
     case 5: /* head of Z component */
-      pos.z += (-0.5 + velocity.z * displaySize) * cellSize.z;
+      pos.z += (-0.5 + vector.z * displaySize) * cellSize.z;
       color = vec3(1.0, 1.0, 0.0); /* yellow */
       break;
   }
 
   finalColor = vec4(color, 1.0);
 #else
-  finalColor = vec4(weight_to_color(length(velocity)), 1.0);
+  vector = (isCellCentered) ? get_vector(cell_co) : get_vector_centered(cell_co);
+
+  finalColor = vec4(weight_to_color(length(vector)), 1.0);
 
   float vector_length = 1.0;
 
   if (scaleWithMagnitude) {
-    vector_length = length(velocity);
+    vector_length = length(vector);
   }
-  else if (length(velocity) == 0.0) {
+  else if (length(vector) == 0.0) {
     vector_length = 0.0;
   }
 
-  mat3 rot_mat = rotation_from_vector(velocity);
+  mat3 rot_mat = rotation_from_vector(vector);
 
 #  ifdef USE_NEEDLE
   vec3 rotated_pos = rot_mat * corners[indices[gl_VertexID % 12]];
