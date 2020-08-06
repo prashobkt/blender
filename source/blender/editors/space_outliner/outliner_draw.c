@@ -2522,7 +2522,7 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
           data.drag_parent = (data.drag_id && te->parent) ? TREESTORE(te->parent)->id : NULL;
         }
 
-        data.icon = ICON_GROUP;
+        data.icon = ICON_OUTLINER_COLLECTION;
         break;
       }
       case TSE_GP_LAYER: {
