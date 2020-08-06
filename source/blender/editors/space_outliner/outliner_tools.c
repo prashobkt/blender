@@ -2519,129 +2519,116 @@ static int outliner_operator_menu(bContext *C, const char *opname)
 }
 
 static int do_outliner_operation_event(
-    bContext *C, ARegion *region, SpaceOutliner *soops, TreeElement *te, const float mval[2])
+    bContext *C, ReportList *reports, ARegion *region, SpaceOutliner *soops, TreeElement *te)
 {
-  ReportList *reports = CTX_wm_reports(C); /* XXX... */
+  int scenelevel = 0, objectlevel = 0, idlevel = 0, datalevel = 0;
+  TreeStoreElem *tselem = TREESTORE(te);
 
-  if (mval[1] > te->ys && mval[1] < te->ys + UI_UNIT_Y) {
-    int scenelevel = 0, objectlevel = 0, idlevel = 0, datalevel = 0;
-    TreeStoreElem *tselem = TREESTORE(te);
+  /* select object that's clicked on and popup context menu */
+  if (!(tselem->flag & TSE_SELECTED)) {
 
-    /* select object that's clicked on and popup context menu */
-    if (!(tselem->flag & TSE_SELECTED)) {
-
-      if (outliner_flag_is_any_test(&soops->tree, TSE_SELECTED, 1)) {
-        outliner_flag_set(&soops->tree, TSE_SELECTED, 0);
-      }
-
-      tselem->flag |= TSE_SELECTED;
-
-      /* Only redraw, don't rebuild here because TreeElement pointers will
-       * become invalid and operations will crash. */
-      ED_region_tag_redraw_no_rebuild(region);
-      ED_outliner_select_sync_from_outliner(C, soops);
+    if (outliner_flag_is_any_test(&soops->tree, TSE_SELECTED, 1)) {
+      outliner_flag_set(&soops->tree, TSE_SELECTED, 0);
     }
 
-    set_operation_types(soops, &soops->tree, &scenelevel, &objectlevel, &idlevel, &datalevel);
+    tselem->flag |= TSE_SELECTED;
 
-    if (scenelevel) {
-      if (objectlevel || datalevel || idlevel) {
-        BKE_report(reports, RPT_WARNING, "Mixed selection");
-        return OPERATOR_CANCELLED;
-      }
-      return outliner_operator_menu(C, "OUTLINER_OT_scene_operation");
-    }
-    if (objectlevel) {
-      WM_menu_name_call(C, "OUTLINER_MT_object", WM_OP_INVOKE_REGION_WIN);
-      return OPERATOR_FINISHED;
-    }
-    if (idlevel) {
-      if (idlevel == -1 || datalevel) {
-        BKE_report(reports, RPT_WARNING, "Mixed selection");
-        return OPERATOR_CANCELLED;
-      }
-
-      switch (idlevel) {
-        case ID_GR:
-          WM_menu_name_call(C, "OUTLINER_MT_collection", WM_OP_INVOKE_REGION_WIN);
-          return OPERATOR_FINISHED;
-          break;
-        case ID_LI:
-          return outliner_operator_menu(C, "OUTLINER_OT_lib_operation");
-          break;
-        default:
-          return outliner_operator_menu(C, "OUTLINER_OT_id_operation");
-          break;
-      }
-    }
-    else if (datalevel) {
-      if (datalevel == -1) {
-        BKE_report(reports, RPT_WARNING, "Mixed selection");
-        return OPERATOR_CANCELLED;
-      }
-      if (datalevel == TSE_ANIM_DATA) {
-        return outliner_operator_menu(C, "OUTLINER_OT_animdata_operation");
-      }
-      if (datalevel == TSE_DRIVER_BASE) {
-        /* do nothing... no special ops needed yet */
-        return OPERATOR_CANCELLED;
-      }
-      if (datalevel == TSE_LAYER_COLLECTION) {
-        WM_menu_name_call(C, "OUTLINER_MT_collection", WM_OP_INVOKE_REGION_WIN);
-        return OPERATOR_FINISHED;
-      }
-      if (ELEM(datalevel, TSE_SCENE_COLLECTION_BASE, TSE_VIEW_COLLECTION_BASE)) {
-        WM_menu_name_call(C, "OUTLINER_MT_collection_new", WM_OP_INVOKE_REGION_WIN);
-        return OPERATOR_FINISHED;
-      }
-      if (datalevel == TSE_ID_BASE) {
-        /* do nothing... there are no ops needed here yet */
-        return 0;
-      }
-      if (datalevel == TSE_CONSTRAINT) {
-        return outliner_operator_menu(C, "OUTLINER_OT_constraint_operation");
-      }
-      if (datalevel == TSE_MODIFIER) {
-        return outliner_operator_menu(C, "OUTLINER_OT_modifier_operation");
-      }
-      return outliner_operator_menu(C, "OUTLINER_OT_data_operation");
-    }
-
-    return 0;
+    /* Only redraw, don't rebuild here because TreeElement pointers will
+     * become invalid and operations will crash. */
+    ED_region_tag_redraw_no_rebuild(region);
+    ED_outliner_select_sync_from_outliner(C, soops);
   }
 
-  for (te = te->subtree.first; te; te = te->next) {
-    int retval = do_outliner_operation_event(C, region, soops, te, mval);
-    if (retval) {
-      return retval;
+  set_operation_types(soops, &soops->tree, &scenelevel, &objectlevel, &idlevel, &datalevel);
+
+  if (scenelevel) {
+    if (objectlevel || datalevel || idlevel) {
+      BKE_report(reports, RPT_WARNING, "Mixed selection");
+      return OPERATOR_CANCELLED;
     }
+    return outliner_operator_menu(C, "OUTLINER_OT_scene_operation");
+  }
+  if (objectlevel) {
+    WM_menu_name_call(C, "OUTLINER_MT_object", WM_OP_INVOKE_REGION_WIN);
+    return OPERATOR_FINISHED;
+  }
+  if (idlevel) {
+    if (idlevel == -1 || datalevel) {
+      BKE_report(reports, RPT_WARNING, "Mixed selection");
+      return OPERATOR_CANCELLED;
+    }
+
+    switch (idlevel) {
+      case ID_GR:
+        WM_menu_name_call(C, "OUTLINER_MT_collection", WM_OP_INVOKE_REGION_WIN);
+        return OPERATOR_FINISHED;
+        break;
+      case ID_LI:
+        return outliner_operator_menu(C, "OUTLINER_OT_lib_operation");
+        break;
+      default:
+        return outliner_operator_menu(C, "OUTLINER_OT_id_operation");
+        break;
+    }
+  }
+  else if (datalevel) {
+    if (datalevel == -1) {
+      BKE_report(reports, RPT_WARNING, "Mixed selection");
+      return OPERATOR_CANCELLED;
+    }
+    if (datalevel == TSE_ANIM_DATA) {
+      return outliner_operator_menu(C, "OUTLINER_OT_animdata_operation");
+    }
+    if (datalevel == TSE_DRIVER_BASE) {
+      /* do nothing... no special ops needed yet */
+      return OPERATOR_CANCELLED;
+    }
+    if (datalevel == TSE_LAYER_COLLECTION) {
+      WM_menu_name_call(C, "OUTLINER_MT_collection", WM_OP_INVOKE_REGION_WIN);
+      return OPERATOR_FINISHED;
+    }
+    if (ELEM(datalevel, TSE_SCENE_COLLECTION_BASE, TSE_VIEW_COLLECTION_BASE)) {
+      WM_menu_name_call(C, "OUTLINER_MT_collection_new", WM_OP_INVOKE_REGION_WIN);
+      return OPERATOR_FINISHED;
+    }
+    if (datalevel == TSE_ID_BASE) {
+      /* do nothing... there are no ops needed here yet */
+      return 0;
+    }
+    if (datalevel == TSE_CONSTRAINT) {
+      return outliner_operator_menu(C, "OUTLINER_OT_constraint_operation");
+    }
+    if (datalevel == TSE_MODIFIER) {
+      return outliner_operator_menu(C, "OUTLINER_OT_modifier_operation");
+    }
+    return outliner_operator_menu(C, "OUTLINER_OT_data_operation");
   }
 
   return 0;
 }
 
-static int outliner_operation(bContext *C, wmOperator *UNUSED(op), const wmEvent *event)
+static int outliner_operation(bContext *C, wmOperator *op, const wmEvent *event)
 {
   ARegion *region = CTX_wm_region(C);
   SpaceOutliner *soops = CTX_wm_space_outliner(C);
   uiBut *but = UI_context_active_but_get(C);
-  TreeElement *te;
-  float fmval[2];
+  float view_mval[2];
 
   if (but) {
     UI_but_tooltip_timer_remove(C, but);
   }
 
-  UI_view2d_region_to_view(&region->v2d, event->mval[0], event->mval[1], &fmval[0], &fmval[1]);
+  UI_view2d_region_to_view(
+      &region->v2d, event->mval[0], event->mval[1], &view_mval[0], &view_mval[1]);
 
-  for (te = soops->tree.first; te; te = te->next) {
-    int retval = do_outliner_operation_event(C, region, soops, te, fmval);
-    if (retval) {
-      return retval;
-    }
+  TreeElement *hovered_te = outliner_find_item_at_y(soops, &soops->tree, view_mval[1]);
+  if (!hovered_te) {
+    /* Let this fall through to 'OUTLINER_MT_context_menu'. */
+    return OPERATOR_PASS_THROUGH;
   }
 
-  /* Let this fall through to 'OUTLINER_MT_context_menu'. */
+  return do_outliner_operation_event(C, op->reports, region, soops, hovered_te);
+
   return OPERATOR_PASS_THROUGH;
 }
 
