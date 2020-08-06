@@ -241,7 +241,6 @@ class OUTLINER_MT_collection(Menu):
             layout.menu("OUTLINER_MT_collection_view_layer", icon='RENDERLAYERS')
             layout.separator()
 
-            layout.label(text="Color Tag")
             row = layout.row(align=True)
             row.operator_enum("outliner.collection_color_tag_set", "color", icon_only=True)
 
