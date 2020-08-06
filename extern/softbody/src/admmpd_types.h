@@ -41,8 +41,9 @@ typedef Discregrid::CubicLagrangeDiscreteGrid SDFType;
 
 #define LOGLEVEL_NONE 0
 #define LOGLEVEL_LOW 1
-#define LOGLEVEL_DEBUG 2
-#define LOGLEVEL_NUM 3
+#define LOGLEVEL_HIGH 2
+#define LOGLEVEL_DEBUG 3
+#define LOGLEVEL_NUM 4
 
 #define LINSOLVER_LDLT 0 // Eigen's LDL^T
 #define LINSOLVER_PCG 1 // Precon. Conj. Grad.
@@ -73,7 +74,7 @@ struct Options {
         timestep_s(1.0/24.0),
         log_level(LOGLEVEL_NONE),
         linsolver(LINSOLVER_PCG),
-        max_admm_iters(30),
+        max_admm_iters(20),
         max_cg_iters(10),
         max_gs_iters(100),
         max_threads(-1),
@@ -106,16 +107,6 @@ struct SolverData {
     RowSparseMatrix<double> A; // M + DtW'WD
     RowSparseMatrix<double> W; // weight matrix
     double A_diag_max; // Max coeff of diag of A
-
-//  RowSparseMatrix<double> A3_plus_PtP; // A + pk PtP replicated
-//	Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > ldlt_A3;
-
-//    std::set<int> pin_inds; // indices of the pinned surface verts
-//    RowSparseMatrix<double> P; // pin constraint Px=q (P.cols=3n)
-//    Eigen::VectorXd q; // pin constraint rhs
-//    RowSparseMatrix<double> C; // collision constraints Cx=d (C.cols=3n)
-//    Eigen::VectorXd d; // collision constraints rhs
-
     // Set in append_energies:
     std::vector<std::set<int> > energies_graph; // per-vertex adjacency list (graph)
 	std::vector<Eigen::Vector3i> indices; // per-energy index into D (row, num rows, type)

@@ -65,12 +65,8 @@ static inline void strcpy_error(ADMMPDInterfaceData *iface, const std::string &s
 static inline void options_from_object(
   Object *ob,
   admmpd::Options *op,
-  bool &reset_mesh,
-  bool &reset_solver)
+  bool skip_require_reset)
 {
-  reset_mesh = false;
-  reset_solver = false;
-
   SoftBody *sb = ob->soft;
   if (sb==NULL)
     return;
@@ -84,35 +80,15 @@ static inline void options_from_object(
   op->self_collision = sb->admmpd_self_collision;
   op->log_level = std::max(0, std::min(LOGLEVEL_NUM-1, sb->admmpd_loglevel));
   op->grav = Eigen::Vector3d(0,0,sb->admmpd_gravity);
+  op->max_threads = sb->admmpd_maxthreads;
 
-  const double diffeps = 1e-10;
-
-  // Options that cause considerable change in
-  // precomupted variables:
-  if (std::abs(op->density_kgm3 - sb->admmpd_density_kgm3)>diffeps) {
+  if (!skip_require_reset)
+  {
     op->density_kgm3 = std::max(1.f,sb->admmpd_density_kgm3);
-    reset_solver = true;
-  }
-  double new_youngs = std::pow(10.f, std::max(0.f,sb->admmpd_youngs_exp));
-  if (std::abs(op->youngs - new_youngs)>diffeps) {
-    op->density_kgm3 = new_youngs;
-    reset_solver = true;
-  }
-  if (std::abs(op->poisson - sb->admmpd_poisson)>diffeps) {
+    op->youngs = std::pow(10.f, std::max(0.f,sb->admmpd_youngs_exp));
     op->poisson = std::max(0.f,std::min(0.499f,sb->admmpd_poisson));
-    reset_solver = true;
-  }
-  if (std::abs(op->poisson - sb->admmpd_poisson)>diffeps) {
-    op->poisson = std::max(0.f,std::min(0.499f,sb->admmpd_poisson));
-    reset_solver = true;
-  }
-  if (op->linsolver != sb->admmpd_linsolver) {
     op->linsolver = std::max(0, std::min(LINSOLVER_NUM-1, sb->admmpd_linsolver));
-    reset_solver = true;
-  }
-  if (op->elastic_material != sb->admmpd_material) {
     op->elastic_material = std::max(0, std::min(ELASTIC_NUM-1, sb->admmpd_material));
-    reset_solver = true;
   }
 }
 
@@ -302,6 +278,13 @@ static inline int admmpd_init_as_cloth(ADMMPDInterfaceData *iface, Object *ob, f
 // Given the mesh, options, and data, initializes the solver
 static inline int admmpd_reinit_solver(ADMMPDInterfaceData *iface)
 {
+  if (!iface) { return 0; }
+  if (!iface->idata) { return 0; }
+  if (!iface->idata->solver) { return 0; }
+  if (!iface->idata->mesh) { return 0; }
+  if (!iface->idata->options) { return 0; }
+  if (!iface->idata->data) { return 0; }
+
   try
   {
     iface->idata->solver->init(
@@ -315,6 +298,25 @@ static inline int admmpd_reinit_solver(ADMMPDInterfaceData *iface)
     return 0;
   }
   return 1;
+}
+
+int admmpd_needs_reinit(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3], int mode)
+{
+  // Only return true if we need to RE-init the solver on topology change.
+  if (!iface) { return 0; }
+  if (!ob) { return 0; }
+  Mesh *me = (Mesh*)ob->data;
+  if (!me) { return 0; }
+  if (!iface->idata) { return 0; }
+  if (!iface->idata->mesh) { return 0; }
+  if (!iface->idata->data) { return 0; }
+  
+  // Has the defo verts changed?
+  if (iface->out_totverts != iface->idata->data->x.rows()) { return 1; }
+  int n_facet_verts = iface->idata->mesh->rest_facet_verts()->rows();
+  if ( n_facet_verts != me->totvert ) { return 1; }
+
+  return 0;
 }
 
 
@@ -345,8 +347,7 @@ int admmpd_init(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3], i
   float fps = std::min(1000.f,std::max(1.f,iface->in_framerate));
   admmpd::Options *op = iface->idata->options.get();
   op->timestep_s = (1.0/fps) / float(std::max(1,sb->admmpd_substeps));
-  bool renew_mesh, renew_solver;
-  options_from_object(ob,op,renew_mesh,renew_solver);
+  options_from_object(ob,op,false);
 
   // Initialize the mesh
   try
@@ -496,16 +497,10 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob)
     return 0;
   }
 
-// TODO: Figure this out
-//  bool renew_mesh = false;
-//  bool renew_solver = false;
-//  options_from_object(
-//    ob,
-//    iface->idata->options.get(),
-//    renew_mesh,
-//    renew_solver);
-//  if (renew_solver)
-//    admmpd_reinit_solver(iface);
+  options_from_object(
+    ob,
+    iface->idata->options.get(),
+    true);
 
   try
   {

@@ -194,6 +194,8 @@ typedef struct SBVertex {
   float vec[4];
 } SBVertex;
 
+typedef struct ADMMPDInterfaceData ADMMPDInterfaceData;
+
 /* Container for data that is shared among CoW copies.
  *
  * This is placed in a separate struct so that values can be changed
@@ -201,9 +203,9 @@ typedef struct SBVertex {
 typedef struct SoftBody_Shared {
   struct PointCache *pointcache;
   struct ListBase ptcaches;
+  struct ADMMPDInterfaceData *admmpd_data;
 } SoftBody_Shared;
 
-typedef struct ADMMPDInterfaceData ADMMPDInterfaceData;
 typedef struct SoftBody {
   /* dynamic data */
   int totpoint, totspring;
@@ -213,7 +215,6 @@ typedef struct SoftBody {
   struct BodySpring *bspring;
 
   /* ADMM-PD settings */
-  struct ADMMPDInterfaceData *admmpd;
   int solver_mode; // 0=legacy, 1=admmpd
   int admmpd_init_mode; // 0=embedded, 1=tetgen
   int admmpd_substeps; // break time step into smaller bits
@@ -229,9 +230,10 @@ typedef struct SoftBody {
   float admmpd_goalstiff; // 0 to 1
   float admmpd_floor_z; // floor position
   float admmpd_gravity; // in m/s^2
+  int admmpd_maxthreads; // -1 = auto
   int admmpd_loglevel; // 0=none, 1=low, 2=high
   int admmpd_linsolver; // global step
-  int admmpd_pad; // padding
+//  int admmpd_pad; // padding
 
 
   char _pad;
@@ -433,10 +435,6 @@ typedef struct SoftBody {
 /* sb->solver_mode */
 #define SOLVER_MODE_ADMMPD 0
 #define SOLVER_MODE_LEGACY 1
-
-/* sb->admmpd_material */
-#define ADMMPD_MATERIAL_ARAP 0 // As rigid as possible
-#define ADMMPD_MATERIAL_NH 1 // NeoHookean
 
 /* sb->admmpd_init_mode */
 #define ADMMPD_INIT_MODE_EMBEDDED 0

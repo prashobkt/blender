@@ -66,6 +66,7 @@ public:
     // Linearizes active collision pairs about x
     // for the constraint Cx=d
     virtual void linearize(
+        const Options *options,
         const Eigen::MatrixXd *x,
     	std::vector<Eigen::Triplet<double> > *trips,
 		std::vector<double> *d) const = 0;
@@ -105,6 +106,7 @@ public:
     // Linearizes the collision pairs about x
     // for the constraint Cx=d
     void linearize(
+        const Options *options,
         const Eigen::MatrixXd *x,
     	std::vector<Eigen::Triplet<double> > *trips,
 		std::vector<double> *d) const;

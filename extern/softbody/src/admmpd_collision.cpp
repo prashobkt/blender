@@ -457,6 +457,7 @@ void EmbeddedMeshCollision::graph(
 } // end graph
 
 void EmbeddedMeshCollision::linearize(
+	const Options *options,
 	const Eigen::MatrixXd *x,
 	std::vector<Eigen::Triplet<double> > *trips,
 	std::vector<double> *d) const
@@ -471,6 +472,7 @@ void EmbeddedMeshCollision::linearize(
 	//int nx = x->rows();
 	d->reserve((int)d->size() + np);
 	trips->reserve((int)trips->size() + np*3*4);
+	double eta = std::max(0.0,options->collision_thickness);
 
 	for (int i=0; i<np; ++i)
 	{
@@ -490,7 +492,7 @@ void EmbeddedMeshCollision::linearize(
 			int tet_idx = meshdata.mesh->emb_vtx_to_tet()->operator[](emb_p_idx);
 			RowVector4i tet = meshdata.mesh->prims()->row(tet_idx);
 			int c_idx = d->size();
-			d->emplace_back(pair.q_n.dot(pair.q_pt));
+			d->emplace_back(pair.q_n.dot(pair.q_pt) + eta);
 			for (int j=0; j<4; ++j)
 			{
 				trips->emplace_back(c_idx, tet[j]*3+0, bary[j]*pair.q_n[0]);
@@ -505,7 +507,7 @@ void EmbeddedMeshCollision::linearize(
 		else
 		{
 			int c_idx = d->size();
-			d->emplace_back(0);
+			d->emplace_back(eta);
 
 			// Compute the normal in the deformed space
 			RowVector3i q_face = meshdata.mesh->facets()->row(pair.q_idx);

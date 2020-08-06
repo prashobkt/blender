@@ -110,8 +110,7 @@ void LDLT::solve(
 	{
 		std::vector<double> d_coeffs;
 		std::vector<Eigen::Triplet<double> > trips;
-		collision->linearize(&data->x, &trips, &d_coeffs);
-
+		collision->linearize(options, &data->x, &trips, &d_coeffs);
 		int nc = d_coeffs.size();
 		if (nc>0)
 		{
@@ -237,7 +236,7 @@ void ConjugateGradients::solve(
 	{
 		std::vector<double> d_coeffs;
 		std::vector<Eigen::Triplet<double> > trips;
-		collision->linearize(&data->x, &trips, &d_coeffs);
+		collision->linearize(options, &data->x, &trips, &d_coeffs);
 		int nc = d_coeffs.size();
 		if (nc>0)
 		{
@@ -305,11 +304,11 @@ void ConjugateGradients::apply_preconditioner(
 	Eigen::MatrixXd &x,
 	const Eigen::MatrixXd &b)
 {
+	x = m_ldlt->cholesky()->solve(b);
+/*
 	BLI_assert(b.cols()==3);
 	if (x.rows() != b.rows())
 		x.resize(b.rows(),3);
-
-	//x = m_ldlt->cholesky()->solve(b);
 
 	Cholesky *chol = m_ldlt->cholesky();
 	const auto & linsolve = [&x,&b,&chol](int col)
@@ -327,6 +326,7 @@ void ConjugateGradients::apply_preconditioner(
 		if (pool[i].joinable())
 			pool[i].join();
 	}
+*/
 }
 
 #if 0

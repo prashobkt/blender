@@ -44,6 +44,9 @@ typedef struct ADMMPDInterfaceData {
 // SoftBody bodypoint (contains pos,vec)
 typedef struct BodyPoint BodyPoint;
 
+// Do we need to reinitialize the data due to a topology change?
+int admmpd_needs_reinit(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3], int mode);
+
 // Clears all solver data and ADMMPDInterfaceData
 void admmpd_dealloc(ADMMPDInterfaceData*);
 

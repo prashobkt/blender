@@ -27,9 +27,9 @@ class SolverLog {
 protected:
 	std::unordered_map<int,double> elapsed_ms;
 	std::unordered_map<int,MicroTimer> curr_timer;
-	double m_log_level;
+	int m_log_level; // copied from options
 public:
-	double &log_level() { return m_log_level; }
+	int &log_level() { return m_log_level; }
 	void reset();
 	void start_state(int state);
 	double stop_state(int state); // ret time elapsed
@@ -56,6 +56,11 @@ bool Solver::init(
 	BLI_assert(data != NULL);
 	BLI_assert(options != NULL);
 	BLI_assert(mesh != NULL);
+
+    data->energies_graph.clear();
+	data->indices.clear();
+	data->rest_volumes.clear();
+	data->weights.clear();
 
 	switch (mesh->type())
 	{
@@ -167,7 +172,7 @@ int Solver::solve(
 
 	solverlog.stop_state(SOLVERSTATE_SOLVE);
 
-	if (options->log_level >= LOGLEVEL_DEBUG)
+	if (options->log_level >= LOGLEVEL_HIGH)
 		printf("Timings:\n%s", solverlog.to_string().c_str());
 
 	return iters;
@@ -502,7 +507,7 @@ void SolverLog::reset()
 
 void SolverLog::start_state(int state)
 {
-	if (m_log_level <= LOGLEVEL_NONE)
+	if (m_log_level < LOGLEVEL_HIGH)
 		return;
 
 	if (m_log_level >= LOGLEVEL_DEBUG)
@@ -520,7 +525,7 @@ void SolverLog::start_state(int state)
 // Returns time elapsed
 double SolverLog::stop_state(int state)
 {
-	if (m_log_level <= LOGLEVEL_NONE)
+	if (m_log_level < LOGLEVEL_HIGH)
 		return 0;
 
 	if (m_log_level >= LOGLEVEL_DEBUG)
