@@ -137,6 +137,10 @@ static void lineart_render_line_cut(LineartRenderBuffer *rb,
     return;
   }
 
+  if (LRT_DOUBLE_CLOSE_ENOUGH(start, 1) || LRT_DOUBLE_CLOSE_ENOUGH(end, 0)) {
+    return;
+  }
+
   if (start != start) {
     start = 0;
   }
@@ -376,6 +380,15 @@ static void lineart_occlusion_single_line(LineartRenderBuffer *rb,
                                                            &l,
                                                            &r)) {
         lineart_render_line_cut(rb, rl, l, r);
+        if (G.debug_value == 4000 && (rl->flags & LRT_EDGE_FLAG_EDGE_MARK)) {
+          printf("l,r %f %f   against %s(%d)   this rl is from %s(%d)\n",
+                 l,
+                 r,
+                 ((Object *)rt->base.rl[0]->object_ref)->id.name,
+                 rt->base.rl[0]->object_ref,
+                 ((Object *)rl->object_ref)->id.name,
+                 rl->object_ref);
+        }
         if (rl->min_occ > rb->max_occlusion_level) {
           return; /* No need to caluclate any longer. */
         }
