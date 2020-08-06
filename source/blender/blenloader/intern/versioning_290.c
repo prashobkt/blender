@@ -463,5 +463,17 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
+
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
+          if (space->spacetype == SPACE_OUTLINER) {
+            SpaceOutliner *space_outliner = (SpaceOutliner *)space;
+
+            space_outliner->flag |= SO_MODE_COLUMN;
+          }
+        }
+      }
+    }
   }
 }
