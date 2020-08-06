@@ -102,6 +102,12 @@ enum {
 /** \name Space Info
  * \{ */
 
+/* SpaceInfo.filter_* */
+typedef struct SpaceInfoFilter {
+  struct SpaceInfoFilter *next, *prev;
+  char str_filter[256];
+} SpaceInfoFilter;
+
 /* Info Header */
 typedef struct SpaceInfo {
   SpaceLink *next, *prev;
@@ -116,22 +122,67 @@ typedef struct SpaceInfo {
   int active_report_index;
   char search_string[64];
   char view;
-  char _pad1[7];
+  char use_match_case;
+  //  char use_search_glob;  // it can be default
+  char use_log_message_new_line;
+  char _pad1[5];
+
   /* reports that were converted from CLOG */
   ReportList *active_reports;
-  // int clog_show;
+
+  int log_format;
+  char use_short_file_line;
+  /** for boolean properties use_log_*_filter */
+  char use_log_filter;
+  char _pad2[2];
+
+  int log_severity_mask;
+  int filter_log_level;
+
+  ListBase filter_log_file_line;
+  ListBase filter_log_type;
+  ListBase filter_log_function;
 } SpaceInfo;
 
+/* SpaceInfo.use_log_filter */
+typedef enum eSpaceInfo_UseLogFilter {
+  INFO_FILTER_LOG_LEVEL = (1 << 0),
+  INFO_FILTER_FILE_LINE = (1 << 1),
+  INFO_FILTER_LOG_TYPE = (1 << 2),
+  INFO_FILTER_LOG_FUNCTION = (1 << 3),
+} eSpaceInfo_FilterMode;
+
+/* SpaceInfo.view */
 typedef enum eSpaceInfo_View {
   INFO_VIEW_REPORTS,
   INFO_VIEW_CLOG,
 } eSpaceInfo_View;
 
-/* SpaceInfo.clog_show */
-typedef enum eSpaceInfo_ClogShow {
-  INFO_CLOG_SHOW_TIMESTAMP = (1 << 0),
-  // ...
-} eSpaceInfo_ClogShow;
+/* SpaceInfo.log_severity_mask, keep in sync with CLG_Severity */
+typedef enum eSpaceInfo_LogSeverityMask {
+  INFO_CLOG_SEVERITY_DEBUG = (1 << 0),
+  INFO_CLOG_SEVERITY_VERBOSE = (1 << 1),
+  INFO_CLOG_SEVERITY_INFO = (1 << 2),
+  INFO_CLOG_SEVERITY_WARN = (1 << 3),
+  INFO_CLOG_SEVERITY_ERROR = (1 << 4),
+  INFO_CLOG_SEVERITY_FATAL = (1 << 5),
+} eSpaceInfo_LogSeverityMask;
+
+#define INFO_CLOG_SEVERITY_MASK_ALL \
+  INFO_CLOG_SEVERITY_DEBUG | INFO_CLOG_SEVERITY_VERBOSE | INFO_CLOG_SEVERITY_INFO | \
+      INFO_CLOG_SEVERITY_WARN | INFO_CLOG_SEVERITY_ERROR | INFO_CLOG_SEVERITY_FATAL
+
+/* SpaceInfo.log_format */
+typedef enum eSpaceInfo_logFormat {
+  INFO_LOG_SHOW_TIMESTAMP = (1 << 0),
+  INFO_LOG_SHOW_LOG_TYPE = (1 << 1),
+  INFO_LOG_SHOW_LEVEL = (1 << 2),
+  INFO_LOG_SHOW_FILE_LINE = (1 << 3),
+  INFO_LOG_SHOW_FUNCTION = (1 << 4),
+} eSpaceInfo_logFormat;
+
+#define INFO_LOG_FORMAT_DEFAULT \
+  INFO_LOG_SHOW_LEVEL | INFO_LOG_SHOW_FILE_LINE | INFO_LOG_SHOW_FUNCTION
 
 /** \} */
 

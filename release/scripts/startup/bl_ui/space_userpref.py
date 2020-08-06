@@ -647,6 +647,14 @@ class USERPREF_PT_system_video_sequencer(SystemPanel, CenterAlignMixIn, Panel):
 class USERPREF_PT_system_logging(SystemPanel, CenterAlignMixIn, Panel):
     bl_label = "Log & Debug"
 
+    def draw_header_preset(self, _context):
+        layout = self.layout
+        # TODO (grzelins) this is mocap:
+        layout.operator("preferences.studiolight_install", icon='IMPORT', text="Save*").type = 'WORLD'
+        layout.operator("preferences.studiolight_install", icon='IMPORT', text="Restore Default").type = 'WORLD'
+        layout.operator("preferences.studiolight_install", icon='PRESET', text="")
+        layout.separator()
+
     def draw_centered(self, context, layout):
         prefs = context.preferences
         system = prefs.system

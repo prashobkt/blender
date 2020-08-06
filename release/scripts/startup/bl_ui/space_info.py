@@ -31,6 +31,7 @@ class INFO_HT_header(Header):
         INFO_MT_editor_menus.draw_collapsible(context, layout)
         row = layout.row(align=True)
         row.prop(sinfo, "filter_text", text="")
+        row.prop(sinfo, "use_match_case", icon="SMALL_CAPS", text="")
         layout.separator_spacer()
 
         layout.separator_spacer()
@@ -138,10 +139,46 @@ class INFO_PT_report_type_visibility(Panel):
 
         sinfo = context.space_data
 
-        layout.label(text="Report Types Visibility")
-        col = layout.column(align=True)
-        col.prop(sinfo, "report_mask")
-        layout.separator()
+        if sinfo.view == 'REPORTS':
+            layout.label(text="Report Types Visibility")
+            col = layout.column(align=True)
+            col.prop(sinfo, "report_mask")
+            layout.separator()
+        else:
+            layout.label(text="Filter Log Severity")
+            col = layout.column(align=True)
+            col.prop(sinfo, "log_severity_mask")
+            layout.separator()
+
+            box = layout.box()
+            row = box.row(align=True)
+            row.prop(sinfo, "use_log_file_line_filter", text="")
+            row.label(text="Filter File Line")
+            row.operator("preferences.autoexec_path_add", text="", icon='ADD', emboss=False)
+
+            box = layout.box()
+            row = box.row(align=True)
+            row.prop(sinfo, "use_log_type_filter", text="")
+            row.label(text="Filter Log Type")
+            row.operator("preferences.autoexec_path_add", text="", icon='ADD', emboss=False)
+
+            box = layout.box()
+            row = box.row(align=True)
+            row.prop(sinfo, "use_log_function_filter", text="")
+            row.label(text="Filter Log Function")
+            row.operator("preferences.autoexec_path_add", text="", icon='ADD', emboss=False)
+
+            # col = layout.column(align=True)
+            row = layout.row(align=True)
+            row.prop(sinfo, "use_log_level_filter", text="")
+            row.active = sinfo.use_log_level_filter
+            row.prop(sinfo, "filter_log_level", text="Max verbosity")
+
+            layout.label(text="Log Printing")
+            col = layout.column()
+            col.prop(sinfo, "log_format")
+            col.prop(sinfo, "use_short_file_line")
+            col.prop(sinfo, "use_log_message_new_line", text="Message In New Line")
 
 
 classes = (

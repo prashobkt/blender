@@ -6012,6 +6012,28 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Filter Report Type", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
+  static const EnumPropertyItem rna_enum_clog_filter_severity_items[] = {
+      {INFO_CLOG_SEVERITY_DEBUG,
+       "LOG_DEBUG",
+       ICON_SYSTEM,
+       "Debug",
+       "Only available in debug builds"},
+      {INFO_CLOG_SEVERITY_VERBOSE, "LOG_VERBOSE", ICON_PROPERTIES, "Verbose", ""},
+      {INFO_CLOG_SEVERITY_INFO, "LOG_INFO", ICON_INFO, "Info", ""},
+      {INFO_CLOG_SEVERITY_WARN, "LOG_WARN", ICON_ERROR, "Warning", ""},
+      {INFO_CLOG_SEVERITY_ERROR, "LOG_ERROR", ICON_CANCEL, "Error", ""},
+      {INFO_CLOG_SEVERITY_FATAL, "LOG_FATAL", ICON_X, "Fatal", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  prop = RNA_def_property(srna, "log_severity_mask", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "log_severity_mask");
+  RNA_def_property_enum_items(prop, rna_enum_clog_filter_severity_items);
+  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
+  RNA_def_property_enum_default(prop, INFO_CLOG_SEVERITY_MASK_ALL);
+  RNA_def_property_ui_text(prop, "Filter Log Severity", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+
   prop = RNA_def_property(srna, "filter_text", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "search_string");
   RNA_def_property_ui_text(prop, "Log Filter", "Live filtering string");
@@ -6019,14 +6041,71 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_property_ui_icon(prop, ICON_VIEWZOOM, 0);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
 
-  static const EnumPropertyItem view_type_items[] = {
+  prop = RNA_def_property(srna, "use_short_file_line", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "use_short_file_line", true);
+  RNA_def_property_ui_text(prop, "Shorten File Path", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+
+  prop = RNA_def_property(srna, "use_match_case", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "use_match_case", true);
+  RNA_def_property_ui_text(prop, "Match Case", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+
+  prop = RNA_def_property(srna, "use_log_level_filter", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "use_log_filter", INFO_FILTER_LOG_LEVEL);
+  RNA_def_property_ui_text(prop, "Use Log Level Filter", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+
+  prop = RNA_def_property(srna, "use_log_file_line_filter", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "use_log_filter", INFO_FILTER_FILE_LINE);
+  RNA_def_property_ui_text(prop, "Use Log File Line Filter", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+
+  prop = RNA_def_property(srna, "use_log_type_filter", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "use_log_filter", INFO_FILTER_LOG_TYPE);
+  RNA_def_property_ui_text(prop, "Use Log Type Filter", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+
+  prop = RNA_def_property(srna, "use_log_function_filter", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "use_log_filter", INFO_FILTER_LOG_FUNCTION);
+  RNA_def_property_ui_text(prop, "Use Log Function Filter", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+
+  prop = RNA_def_property(srna, "use_log_message_new_line", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "use_log_message_new_line", true);
+  RNA_def_property_ui_text(prop, "Print Log Message In New Line", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+
+  prop = RNA_def_property(srna, "filter_log_level", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "filter_log_level");
+  RNA_def_property_ui_text(prop, "Filter Log Level", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+
+  static const EnumPropertyItem rna_enum_log_format_items[] = {
+      {INFO_LOG_SHOW_TIMESTAMP, "SHOW_TIMESTAMP", 0, "Show Timestamp", ""},
+      {INFO_LOG_SHOW_LOG_TYPE, "SHOW_LOG_TYPE", 0, "Show Log Type", ""},
+      {INFO_LOG_SHOW_LEVEL, "SHOW_LEVEL", 0, "Show Level", ""},
+      {INFO_LOG_SHOW_FILE_LINE, "SHOW_FILE_LINE", 0, "Show File with Line Number", ""},
+      {INFO_LOG_SHOW_FUNCTION, "SHOW_FUNCTION", 0, "Show Function Name", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  prop = RNA_def_property(srna, "log_format", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "log_format");
+  RNA_def_property_enum_items(prop, rna_enum_log_format_items);
+  RNA_def_property_ui_text(prop, "Log Printing format", "");
+  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
+  RNA_def_property_enum_default(prop, INFO_LOG_FORMAT_DEFAULT);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+
+  static const EnumPropertyItem rna_enum_view_type_items[] = {
       {INFO_VIEW_REPORTS, "REPORTS", 0, "Reports", ""},
       {INFO_VIEW_CLOG, "CLOGS", 0, "Logs", ""},
       {0, NULL, 0, NULL, NULL},
   };
   prop = RNA_def_property(srna, "view", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "view");
-  RNA_def_property_enum_items(prop, view_type_items);
+  RNA_def_property_enum_items(prop, rna_enum_view_type_items);
   RNA_def_property_ui_text(prop, "View reports or logs", "");
   RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_CHANGE_REPORT_SOURCE, NULL);
