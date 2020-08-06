@@ -2086,6 +2086,11 @@ static LineartRenderLine *lineart_triangle_generate_intersection_line_only(
   result->r = r;
   result->tl = rt;
   result->tr = testing;
+
+  /* Currently we can only store one object_ref. Todo in the future: allow selection of object
+   * pairs when using intersection lines. */
+  result->object_ref = rt->rl[0]->object_ref;
+
   LineartRenderLineSegment *rls = lineart_mem_aquire(&rb->render_data_pool,
                                                      sizeof(LineartRenderLineSegment));
   BLI_addtail(&result->segments, rls);
@@ -3633,9 +3638,6 @@ void ED_lineart_gpencil_generate_from_chain(Depsgraph *UNUSED(depsgraph),
 
     if (rlc->picked) {
       continue;
-    }
-    if (orig_ob && !rlc->object_ref) {
-      continue; /* intersection lines are all in the first collection running into here */
     }
     if (!(rlc->type & types)) {
       continue;

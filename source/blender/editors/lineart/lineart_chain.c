@@ -678,8 +678,9 @@ static LineartChainRegisterEntry *lineart_chain_get_closest_cre(LineartRenderBuf
     next_cre = cre->next;
     if (cre->rlc->object_ref != rlc->object_ref) {
       if (rb->fuzzy_everything || rb->fuzzy_intersections) {
-        /* if both have object_ref, then none is intersection line. */
-        if (cre->rlc->object_ref && rlc->object_ref) {
+        /* If none of those are intersection lines... */
+        if ((!(cre->rlc->type & LRT_EDGE_FLAG_INTERSECTION)) &&
+            (!(rlc->object_ref->type & LRT_EDGE_FLAG_INTERSECTION))) {
           continue; /* We don't want to chain along different objects at the moment. */
         }
       }
