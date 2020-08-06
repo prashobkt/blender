@@ -57,16 +57,18 @@ class ModifierSpec:
     Holds one modifier and its parameters.
     """
 
-    def __init__(self, modifier_name: str, modifier_type: str, modifier_parameters: dict):
+    def __init__(self, modifier_name: str, modifier_type: str, modifier_parameters: dict, frame_end=0):
         """
         Constructs a modifier spec.
         :param modifier_name: str - name of object modifier, e.g. "myFirstSubsurfModif"
         :param modifier_type: str - type of object modifier, e.g. "SUBSURF"
         :param modifier_parameters: dict - {name : val} dictionary giving modifier parameters, e.g. {"quality" : 4}
+        :param frame_end:int - frame at which simulation needs to be baked or modifier needs to be applied.
         """
         self.modifier_name = modifier_name
         self.modifier_type = modifier_type
         self.modifier_parameters = modifier_parameters
+        self.frame_end = frame_end
 
     def __str__(self):
         return "Modifier: " + self.modifier_name + " of type " + self.modifier_type + \
@@ -323,34 +325,43 @@ class MeshTest:
         """
         return self._test_updated
 
-    def _set_parameters_util(self, modifier, modifier_parameters, settings):
+    def _set_parameters_util(self, modifier, modifier_parameters, nested_settings_path, modifier_name):
         """
         Doing a depth first traversal of the modifier parameters and setting their values.
+        :param: modifier: Of type modifier, its altered to become a setting in recursion
+        :param: modifier_parameters : dict, a simple/nested dictionary of modifier parameters.
+        :param: nested_settings_path : list(stack): helps in tracing path to each node.
         """
         if not isinstance(modifier_parameters, dict):
             param_setting = None
-            for i, setting in enumerate(settings):
-                if i == len(settings)-1:
+            for i, setting in enumerate(nested_settings_path):
+                # We want to set the attribute only when we have reached the last setting
+                # Applying of intermediate settings is meaningless.
+                if i == len(nested_settings_path)-1:
                     setattr(modifier, setting, modifier_parameters)
                 else:
                     try:
                         param_setting = getattr(modifier, setting)
-                        modifier = param_setting
+                        if setting == "canvas_surfaces":
+                            modifier = param_setting.active
+                        else:
+                            modifier = param_setting
                     except AttributeError:
                         # Clean up first
                         bpy.ops.object.delete()
                         raise AttributeError("Modifier '{}' has no parameter named '{}'".
-                                             format(modifier.name, setting))
+                                             format(modifier_name, setting))
 
-                settings.pop()
-                return
+            # It pops the current node before moving on to its sibling.
+            nested_settings_path.pop()
+            return
 
         for key in modifier_parameters:
-            settings.append(key)
-            self._set_parameters_util(modifier, modifier_parameters[key], settings)
+            nested_settings_path.append(key)
+            self._set_parameters_util(modifier, modifier_parameters[key], nested_settings_path, modifier_name)
 
-        if len(settings) != 0:
-            settings.pop()
+        if len(nested_settings_path) != 0:
+            nested_settings_path.pop()
 
     def set_parameters(self, modifier, modifier_parameters):
         """
@@ -358,7 +369,8 @@ class MeshTest:
         """
         settings = []
         modifier_copy = modifier
-        self._set_parameters_util(modifier_copy, modifier_parameters, settings)
+        modifier_name = modifier.name
+        self._set_parameters_util(modifier_copy, modifier_parameters, settings, modifier_name)
 
     def _add_modifier(self, test_object, modifier_spec: ModifierSpec):
         """
@@ -366,34 +378,57 @@ class MeshTest:
         :param test_object: bpy.types.Object - Blender object to apply modifier on.
         :param modifier_spec: ModifierSpec - ModifierSpec object with parameters
         """
+        bakers_list = ['CLOTH', 'SOFT_BODY', 'DYNAMIC_PAINT', 'FLUID']
+        scene = bpy.context.scene
+        scene.frame_set(0)
         modifier = test_object.modifiers.new(modifier_spec.modifier_name,
                                              modifier_spec.modifier_type)
         if self.verbose:
             print("Created modifier '{}' of type '{}'.".
                   format(modifier_spec.modifier_name, modifier_spec.modifier_type))
 
-        self.set_parameters(test_object.modifiers[modifier_spec.modifier_name],
-                                modifier_spec.modifier_parameters)
+        # Special case for Dynamic Paint, need to toggle Canvas on.
+        if modifier.type == "DYNAMIC_PAINT":
+            bpy.ops.dpaint.type_toggle(type='CANVAS')
+
+        self.set_parameters(modifier, modifier_spec.modifier_parameters)
+
+        if modifier.type in bakers_list:
+            self._bake_current_simulation(test_object, modifier.type, modifier.name, modifier_spec.frame_end)
+
+        scene.frame_set(modifier_spec.frame_end)
 
     def _apply_modifier(self, test_object, modifier_name):
         # Modifier automatically gets applied when converting from Curve to Mesh.
         if test_object.type == 'CURVE':
             bpy.ops.object.convert(target='MESH')
-
         elif test_object.type == 'MESH':
             bpy.ops.object.modifier_apply(modifier=modifier_name)
-
         else:
             raise Exception("This object type is not yet supported!")
 
     def _bake_current_simulation(self, obj, test_mod_type, test_mod_name, frame_end):
+        override_setting = None
         for scene in bpy.data.scenes:
             for modifier in obj.modifiers:
-                if modifier.type == test_mod_type:
+                if modifier.type == 'FLUID':
+                    bpy.ops.fluid.bake_all()
+                    break
+
+                elif modifier.type == 'CLOTH' or modifier.type == 'SOFT_BODY':
                     obj.modifiers[test_mod_name].point_cache.frame_end = frame_end
-                    override = {'scene': scene, 'active_object': obj, 'point_cache': modifier.point_cache}
+                    override_setting = modifier.point_cache
+                    override = {'scene': scene, 'active_object': obj, 'point_cache': override_setting}
                     bpy.ops.ptcache.bake(override, bake=True)
                     break
+
+                elif modifier.type == 'DYNAMIC_PAINT':
+                    dp_setting = modifier.canvas_settings.canvas_surfaces.active
+                    override_setting = dp_setting.point_cache
+                    override = {'scene': scene, 'active_object': obj, 'point_cache': override_setting}
+                    bpy.ops.ptcache.bake(override, bake=True)
+                    break
+
 
     def _apply_physics_settings(self, test_object, physics_spec: PhysicsSpec):
         """
@@ -785,6 +820,7 @@ class OperatorTest:
             if self.verbose:
                 print()
                 print("Running test {}...".format(index))
+                print("Test name {}\n".format(test_name))
             success = self.run_test(test_name)
 
             if not success:
@@ -904,7 +940,8 @@ class ModifierTest:
             test_name = self.modifier_tests[index][0]
             if self.verbose:
                 print()
-                print("Running test {}...\n".format(index))
+                print("Running test {}...".format(index))
+                print("Test name {}\n".format(test_name))
             success = self.run_test(test_name)
 
             if not success:
@@ -1006,7 +1043,8 @@ class DeformModifierTest:
             test_name = self.deform_tests[index].test_name
             if self.verbose:
                 print()
-                print("Running test {}...\n".format(index))
+                print("Running test {}...".format(index))
+                print("Test name {}\n".format(test_name))
             success = self.run_test(test_name)
 
             if not success:
