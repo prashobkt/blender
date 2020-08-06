@@ -1851,7 +1851,6 @@ static void outliner_buttons(const bContext *C,
                              const float restrict_column_width,
                              TreeElement *te)
 {
-  SpaceOutliner *soops = CTX_wm_space_outliner(C);
   uiBut *bt;
   TreeStoreElem *tselem;
   int spx, dx, len;
@@ -1877,10 +1876,6 @@ static void outliner_buttons(const bContext *C,
   }
 
   spx = te->xs + 1.8f * UI_UNIT_X;
-  if ((tselem->type == TSE_LAYER_COLLECTION) &&
-      (soops->show_restrict_flags & SO_RESTRICT_ENABLE)) {
-    spx += UI_UNIT_X;
-  }
   dx = region->v2d.cur.xmax - (spx + restrict_column_width + 0.2f * UI_UNIT_X);
 
   bt = uiDefBut(block,
