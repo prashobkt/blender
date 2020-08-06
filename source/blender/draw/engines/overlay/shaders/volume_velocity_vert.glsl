@@ -16,6 +16,10 @@ uniform vec3 domainOriginOffset;
 uniform ivec3 adaptiveCellOffset;
 
 #ifdef USE_MAC
+uniform bool drawMACX;
+uniform bool drawMACY;
+uniform bool drawMACZ;
+
 out vec4 finalColor;
 #else
 flat out vec4 finalColor;
@@ -154,27 +158,27 @@ void main()
 
   switch (gl_VertexID % 6) {
     case 0: /* tail of X component */
-      pos.x += -0.5 * cellSize.x;
+      pos.x += (drawMACX) ? -0.5 * cellSize.x : 0.0;
       color = vec3(1.0, 0.0, 0.0); /* red */
       break;
     case 1: /* head of X component */
-      pos.x += (-0.5 + vector.x * displaySize) * cellSize.x;
+      pos.x += (drawMACX) ? (-0.5 + vector.x * displaySize) * cellSize.x : 0.0;
       color = vec3(1.0, 1.0, 0.0); /* yellow */
       break;
     case 2: /* tail of Y component */
-      pos.y += -0.5 * cellSize.y;
+      pos.y += (drawMACY) ? -0.5 * cellSize.y : 0.0;
       color = vec3(0.0, 1.0, 0.0); /* green */
       break;
     case 3: /* head of Y component */
-      pos.y += (-0.5 + vector.y * displaySize) * cellSize.y;
+      pos.y += (drawMACY) ? (-0.5 + vector.y * displaySize) * cellSize.y : 0.0;
       color = vec3(1.0, 1.0, 0.0); /* yellow */
       break;
     case 4: /* tail of Z component */
-      pos.z += -0.5 * cellSize.z;
+      pos.z += (drawMACZ) ? -0.5 * cellSize.z : 0.0;
       color = vec3(0.0, 0.0, 1.0); /* blue */
       break;
     case 5: /* head of Z component */
-      pos.z += (-0.5 + vector.z * displaySize) * cellSize.z;
+      pos.z += (drawMACZ) ? (-0.5 + vector.z * displaySize) * cellSize.z : 0.0;
       color = vec3(1.0, 1.0, 0.0); /* yellow */
       break;
   }

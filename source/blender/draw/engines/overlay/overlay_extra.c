@@ -1428,6 +1428,9 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
   if (draw_velocity) {
     const bool use_needle = (fds->vector_draw_type == VECTOR_DRAW_NEEDLE);
     const bool use_mac = (fds->vector_draw_type == VECTOR_DRAW_MAC);
+    const bool draw_mac_x = (fds->vector_draw_mac_components & VECTOR_DRAW_MAC_X);
+    const bool draw_mac_y = (fds->vector_draw_mac_components & VECTOR_DRAW_MAC_Y);
+    const bool draw_mac_z = (fds->vector_draw_mac_components & VECTOR_DRAW_MAC_Z);
     const bool cell_centered = (fds->vector_draw_grid_type == VECTOR_DRAW_GRID_FORCE);
     int line_count = 1;
     if (use_needle) {
@@ -1457,6 +1460,13 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
     DRW_shgroup_uniform_int_copy(grp, "sliceAxis", slice_axis);
     DRW_shgroup_uniform_bool_copy(grp, "scaleWithMagnitude", fds->vector_scale_with_magnitude);
     DRW_shgroup_uniform_bool_copy(grp, "isCellCentered", cell_centered);
+
+    if (use_mac) {
+      DRW_shgroup_uniform_bool_copy(grp, "drawMACX", draw_mac_x);
+      DRW_shgroup_uniform_bool_copy(grp, "drawMACY", draw_mac_y);
+      DRW_shgroup_uniform_bool_copy(grp, "drawMACZ", draw_mac_z);
+    }
+
     DRW_shgroup_call_procedural_lines(grp, ob, line_count);
   }
 
