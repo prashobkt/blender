@@ -918,14 +918,25 @@ static eOLDrawState tree_element_active_psys(bContext *C,
 }
 
 static int tree_element_active_constraint(bContext *C,
-                                          Scene *UNUSED(scene),
-                                          ViewLayer *UNUSED(sl),
-                                          TreeElement *UNUSED(te),
+                                          Scene *scene,
+                                          ViewLayer *view_layer,
+                                          TreeElement *te,
                                           TreeStoreElem *tselem,
                                           const eOLSetState set)
 {
   if (set != OL_SETSEL_NONE) {
     Object *ob = (Object *)tselem->id;
+
+    /* Activate the parent bone if this is a bone constraint. */
+    te = te->parent;
+    while (te) {
+      tselem = TREESTORE(te);
+      if (tselem->type == TSE_POSE_CHANNEL) {
+        tree_element_active_posechannel(C, scene, view_layer, ob, te, tselem, set, false);
+        return OL_DRAWSEL_NONE;
+      }
+      te = te->parent;
+    }
 
     WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT, ob);
   }
@@ -1153,6 +1164,7 @@ eOLDrawState tree_element_type_active(bContext *C,
     case TSE_POSE_CHANNEL:
       return tree_element_active_posechannel(
           C, tvc->scene, tvc->view_layer, tvc->ob_pose, te, tselem, set, recursive);
+    case TSE_CONSTRAINT_BASE:
     case TSE_CONSTRAINT:
       return tree_element_active_constraint(C, tvc->scene, tvc->view_layer, te, tselem, set);
     case TSE_R_LAYER:
