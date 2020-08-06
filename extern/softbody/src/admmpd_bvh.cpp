@@ -10,6 +10,26 @@
 namespace admmpd {
 
 template <typename T, int DIM>
+AABBTree<T,DIM>::AABBTree(const AABBTree<T,DIM> &other_tree)
+{
+    m_root = std::make_shared<Node>();
+    std::function<void(const Node*, Node*)> copy_children;
+    copy_children = [&copy_children](const Node *src, Node *dest)->void
+    {
+        if (src==nullptr)
+        {
+            dest = nullptr;
+            return;
+        }
+        dest->aabb = src->aabb;
+        dest->prims = src->prims;
+        copy_children(dest->left, src->left);
+        copy_children(dest->right, src->right);
+    };
+    copy_children(other_tree.m_root.get(), m_root.get());
+}
+
+template <typename T, int DIM>
 void AABBTree<T,DIM>::clear()
 {
     m_root = std::make_shared<Node>();

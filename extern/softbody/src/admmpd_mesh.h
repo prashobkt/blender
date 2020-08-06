@@ -12,8 +12,6 @@ namespace admmpd {
 
 class Mesh {
 public:
-	typedef Discregrid::CubicLagrangeDiscreteGrid SDFType;
-
     // Returns meshtype (see admmpd_types)
     virtual int type() const = 0;
 
@@ -35,7 +33,7 @@ public:
     virtual const Eigen::MatrixXd *rest_prim_verts() const = 0;
     virtual const Eigen::MatrixXi *facets() const = 0;
     virtual const Eigen::MatrixXd *rest_facet_verts() const = 0;
-    virtual const std::shared_ptr<SDFType> rest_facet_sdf() const = 0;
+    virtual const SDFType *rest_facet_sdf() const = 0;
 
     // Maps primitive vertex to facet vertex. For standard tet meshes
     // it's just one-to-one, but embedded meshes use bary weighting.
@@ -87,7 +85,7 @@ protected:
     std::unordered_map<int,double> emb_pin_k;
     std::unordered_map<int,Eigen::Vector3d> emb_pin_pos;
     admmpd::AABBTree<double,3> emb_rest_facet_tree;
-    std::shared_ptr<SDFType> emb_sdf;
+    SDFType emb_sdf;
     mutable bool P_updated; // set to false on linearize_pins
 
     bool compute_embedding();
@@ -118,8 +116,8 @@ public:
     const Eigen::MatrixXd *rest_facet_verts() const { return &emb_V0; }
     const Eigen::VectorXi *emb_vtx_to_tet() const { return &emb_v_to_tet; }
     const Eigen::MatrixXd *emb_barycoords() const { return &emb_barys; }
-    const std::shared_ptr<SDFType> rest_facet_sdf() const { return emb_sdf; }
-    const admmpd::AABBTree<double,3> &emb_rest_tree() const { return emb_rest_facet_tree; }
+    const SDFType *rest_facet_sdf() const { return &emb_sdf; }
+    const admmpd::AABBTree<double,3> *emb_rest_tree() const { return &emb_rest_facet_tree; }
 
     Eigen::Vector3d get_mapped_facet_vertex(
         const Eigen::MatrixXd *prim_verts,
@@ -163,7 +161,7 @@ protected:
     std::unordered_map<int,double> pin_k;
     std::unordered_map<int,Eigen::Vector3d> pin_pos;
     admmpd::AABBTree<double,3> rest_facet_tree;
-    std::shared_ptr<SDFType> rest_sdf;
+    SDFType rest_sdf;
     mutable bool P_updated; // set to false on linearize_pins
 
 public:
@@ -182,7 +180,7 @@ public:
     const Eigen::MatrixXd *rest_facet_verts() const { return &V0; }
     const Eigen::MatrixXi *prims() const { return &T; }
     const Eigen::MatrixXd *rest_prim_verts() const { return &V0; }
-    const std::shared_ptr<SDFType> rest_facet_sdf() const { return rest_sdf; }
+    const SDFType *rest_facet_sdf() const { return &rest_sdf; }
 
     Eigen::Vector3d get_mapped_facet_vertex(
         const Eigen::MatrixXd *prim_verts,
@@ -242,7 +240,7 @@ public:
     const Eigen::MatrixXd *rest_prim_verts() const { return nullptr; }
     const Eigen::MatrixXi *facets() const { return &F; }
     const Eigen::MatrixXd *rest_facet_verts() const { return &V0; }
-    const std::shared_ptr<SDFType> rest_facet_sdf() const { return nullptr; }
+    const SDFType *rest_facet_sdf() const { return nullptr; }
 
     Eigen::Vector3d get_mapped_facet_vertex(
         const Eigen::MatrixXd *prim_verts,

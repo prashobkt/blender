@@ -67,6 +67,9 @@ extern void sbObjectStep(struct Depsgraph *depsgraph,
 /* makes totally fresh start situation, resets time */
 extern void sbObjectToSoftbody(struct Object *ob);
 
+/* copies external solver data from src to dest */
+extern void sbExternalSolverCopy(struct SoftBody *sb_dest, const struct SoftBody *sb_src);
+
 /* links the softbody module to a 'test for Interrupt' function */
 /* pass NULL to unlink again */
 extern void sbSetInterruptCallBack(int (*f)(void));

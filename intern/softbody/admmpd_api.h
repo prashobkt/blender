@@ -58,6 +58,10 @@ void admmpd_dealloc(ADMMPDInterfaceData*);
 // Returns 1 on success, 0 on failure
 int admmpd_init(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3], int mode);
 
+// Copies internal data from src to dst
+// Assumes dest is not NULL
+void admmpd_copy(ADMMPDInterfaceData *dest, const ADMMPDInterfaceData *src);
+
 // Copies BodyPoint data (from SoftBody)
 // to internal vertex position and velocity
 void admmpd_copy_from_bodypoint(ADMMPDInterfaceData*, const BodyPoint *pts);

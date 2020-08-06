@@ -5,16 +5,17 @@
 #define ADMMPD_TYPES_H_
 
 #include <Eigen/Geometry>
-#include <Eigen/Sparse>
 #include <Eigen/SparseCholesky>
 #include <thread>
 #include <vector>
 #include <set>
-#include <Discregrid/All>
+#include <Discregrid/All> // SDF
+#include "admmpd_bvh.h"
 
 namespace admmpd {
 
 template <typename T> using RowSparseMatrix = Eigen::SparseMatrix<T,Eigen::RowMajor>;
+typedef Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > Cholesky;
 typedef Discregrid::CubicLagrangeDiscreteGrid SDFType;
 
 #define MESHTYPE_EMBEDDED 0
@@ -92,7 +93,8 @@ struct Options {
         {}
 };
 
-struct SolverData {
+class SolverData {
+public:
     Eigen::MatrixXd x; // vertices, n x 3
     Eigen::MatrixXd v; // velocity, n x 3
     Eigen::MatrixXd x_start; // x at t=0 (and goal if k>0), n x 3
@@ -112,6 +114,27 @@ struct SolverData {
 	std::vector<Eigen::Vector3i> indices; // per-energy index into D (row, num rows, type)
 	std::vector<double> rest_volumes; // per-energy rest volume
 	std::vector<double> weights; // per-energy weights
+    struct LinSolveData {
+        LinSolveData() : last_pk(0) {}
+        LinSolveData(const LinSolveData &src); // see comments below
+        mutable std::unique_ptr<Cholesky> ldlt_A_PtP;
+        double last_pk; // buffered to flag P update
+        Eigen::MatrixXd rhs; // Mxbar + DtW2(z-u) + Ptq + Ctd
+        Eigen::MatrixXd Ptq;
+        Eigen::MatrixXd Ctd;
+        Eigen::SparseMatrix<double> A_PtP;
+        Eigen::SparseMatrix<double> A_PtP_3; // replicated
+        RowSparseMatrix<double> A_PtP_CtC_3;
+        Eigen::MatrixXd r;
+        Eigen::MatrixXd z;
+        Eigen::MatrixXd p;
+        Eigen::VectorXd p3;
+        Eigen::MatrixXd Ap;
+    } ls;
+    struct CollisionData {
+        std::vector<Eigen::AlignedBox<double,3> > prim_boxes;
+        AABBTree<double,3> prim_tree;
+    } col;
 };
 
 static inline int get_max_threads(const Options *options)
@@ -119,6 +142,28 @@ static inline int get_max_threads(const Options *options)
     if (options->max_threads > 0)
         return options->max_threads;
     return std::max(1,(int)std::thread::hardware_concurrency()-1);
+}
+
+// Copying the LinSolveData is a special operation.
+// Basically everything can be copied easily except the
+// Cholesky decomp (the one thing we want to avoid recomputing).
+// Because of this, we "move" the copied SolverData's ptr
+// to the new copy, thus setting src's ptr to null. 
+inline SolverData::LinSolveData::LinSolveData(const LinSolveData &src)
+{
+    this->last_pk = src.last_pk;
+    this->rhs = src.rhs;
+    this->Ptq = src.Ptq;
+    this->Ctd = src.Ctd;
+    this->A_PtP = src.A_PtP;
+    this->A_PtP_3 = src.A_PtP_3;
+    this->A_PtP_CtC_3 = src.A_PtP_CtC_3;
+    this->r = src.r;
+    this->z = src.z;
+    this->p = src.p;
+    this->p3 = src.p3;
+    this->Ap = src.Ap;
+    this->ldlt_A_PtP = std::move(src.ldlt_A_PtP);
 }
 
 } // namespace admmpd

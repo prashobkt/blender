@@ -12,9 +12,6 @@
 namespace admmpd {
 
 class Solver {
-protected:
-    std::unique_ptr<LinearSolver> linsolver;
-
 public:
     // Initialies solver data. If a per-vertex
     // variable is resized it is initialized to zero.
@@ -35,7 +32,6 @@ public:
         Collision *collision);
 
 protected:
-
     // Returns the combined residual norm
     double residual_norm(
         const Options *options,
@@ -51,6 +47,7 @@ protected:
     // Performs collision detection
     // and updates C, d
     void update_collisions(
+        const Mesh *mesh,
         const Options *options,
         SolverData *data,
         Collision *collision);
@@ -59,6 +56,12 @@ protected:
 	void solve_local_step(
         const Options *options,
         SolverData *data);
+
+    void solve_global_step(
+        const Mesh *mesh,
+        const Options *options,
+        SolverData *data,
+        Collision *collision);
 
     // Called once at start of simulation.
     // Computes constant quantities

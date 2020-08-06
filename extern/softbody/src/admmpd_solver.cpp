@@ -6,7 +6,7 @@
 #include "admmpd_collision.h"
 #include "admmpd_linsolve.h"
 #include "admmpd_geom.h"
-#include "admmpd_timer.h"
+#include "admmpd_log.h"
 
 #include <Eigen/Geometry>
 #include <Eigen/Sparse>
@@ -22,22 +22,6 @@
 namespace admmpd {
 using namespace Eigen;
 
-// Basic timer manager class
-class SolverLog {
-protected:
-	std::unordered_map<int,double> elapsed_ms;
-	std::unordered_map<int,MicroTimer> curr_timer;
-	int m_log_level; // copied from options
-public:
-	int &log_level() { return m_log_level; }
-	void reset();
-	void start_state(int state);
-	double stop_state(int state); // ret time elapsed
-	std::string state_string(int state);
-	std::string to_string();
-};
-static SolverLog solverlog;
-
 // Throws an exception for a given function with message
 static inline void throw_err(const std::string &f, const std::string &m)
 {
@@ -49,9 +33,8 @@ bool Solver::init(
     const Options *options,
     SolverData *data)
 {
-	solverlog.reset();
-	solverlog.log_level() = options->log_level;
-	solverlog.start_state(SOLVERSTATE_INIT);
+	Logger log(options->log_level);
+	log.start_state(SOLVERSTATE_INIT);
 
 	BLI_assert(data != NULL);
 	BLI_assert(options != NULL);
@@ -80,28 +63,15 @@ bool Solver::init(
 	mesh->compute_masses(&data->x, options->density_kgm3, data->m);
 	init_matrices(mesh,options,data);
 
-	switch (options->linsolver)
-	{
-		default: {
-			throw_err("init","unknown linsolver");
-		} break;
-		case LINSOLVER_LDLT: {
-			linsolver = std::make_unique<LDLT>();
-		} break;
-		case LINSOLVER_PCG: {
-			linsolver = std::make_unique<ConjugateGradients>();
-		} break;
-		case LINSOLVER_MCGS: {
-			linsolver = std::make_unique<LDLT>(); // TODO
-		} break;
-	}
-
 	int ne = data->indices.size();
 	int nx = data->x.rows();
 	if (options->log_level >= LOGLEVEL_LOW)
 		printf("Solver::init:\n\tNum energy terms: %d\n\tNum verts: %d\n",ne,nx);
 
-	solverlog.stop_state(SOLVERSTATE_INIT);
+	log.stop_state(SOLVERSTATE_INIT);
+	if (options->log_level >= LOGLEVEL_HIGH)
+		printf("Timings:\n%s", log.to_string().c_str());
+
 	return true;
 } // end init
 
@@ -111,13 +81,12 @@ int Solver::solve(
 	SolverData *data,
 	Collision *collision)
 {
-	solverlog.log_level() = options->log_level;
-	solverlog.start_state(SOLVERSTATE_SOLVE);
+	Logger log(options->log_level);
+	log.start_state(SOLVERSTATE_SOLVE);
 
 	BLI_assert(mesh != NULL);
 	BLI_assert(options != NULL);
 	BLI_assert(data != NULL);
-	BLI_assert(LINSOLVER_LDLT);
 	BLI_assert(data->x.cols() == 3);
 	BLI_assert(data->x.rows() > 0);
 	BLI_assert(options->max_admm_iters > 0);
@@ -129,37 +98,35 @@ int Solver::solve(
 	// Init the solve which computes
 	// quantaties like M_xbar and makes sure
 	// the variables are sized correctly.
-	solverlog.start_state(SOLVERSTATE_INIT_SOLVE);
+	log.start_state(SOLVERSTATE_INIT_SOLVE);
 	init_solve(mesh,options,data,collision);
-	linsolver->init_solve(mesh,options,collision,data);
-	solverlog.stop_state(SOLVERSTATE_INIT_SOLVE);
+	log.stop_state(SOLVERSTATE_INIT_SOLVE);
 
 	// Begin solver loop
 	int iters = 0;
 	for (; iters < options->max_admm_iters; ++iters)
 	{
 		// Update ADMM z/u
-		solverlog.start_state(SOLVERSTATE_LOCAL_STEP);
+		log.start_state(SOLVERSTATE_LOCAL_STEP);
 		solve_local_step(options,data);
-		solverlog.stop_state(SOLVERSTATE_LOCAL_STEP);
+		log.stop_state(SOLVERSTATE_LOCAL_STEP);
 
 		// Collision detection and linearization
-		solverlog.start_state(SOLVERSTATE_COLLISION_UPDATE);
-		update_collisions(options,data,collision);
-		solverlog.stop_state(SOLVERSTATE_COLLISION_UPDATE);
+		log.start_state(SOLVERSTATE_COLLISION_UPDATE);
+		update_collisions(mesh,options,data,collision);
+		log.stop_state(SOLVERSTATE_COLLISION_UPDATE);
 
 		// Solve Ax=b s.t. Px=q and Cx=d
-		solverlog.start_state(SOLVERSTATE_GLOBAL_STEP);
-		data->x_prev = data->x;
-		linsolver->solve(mesh,options,collision,data);
-		solverlog.stop_state(SOLVERSTATE_GLOBAL_STEP);
+		log.start_state(SOLVERSTATE_GLOBAL_STEP);
+		solve_global_step(mesh,options,data,collision);
+		log.stop_state(SOLVERSTATE_GLOBAL_STEP);
 
 		// Check convergence
 		if (options->min_res>0)
 		{
-			solverlog.start_state(SOLVERSTATE_TEST_CONVERGED);
+			log.start_state(SOLVERSTATE_TEST_CONVERGED);
 			bool converged = residual_norm(options,data) <= options->min_res;
-			solverlog.stop_state(SOLVERSTATE_TEST_CONVERGED);
+			log.stop_state(SOLVERSTATE_TEST_CONVERGED);
 			if (converged)
 				break;
 		}
@@ -170,10 +137,10 @@ int Solver::solve(
 	if (dt > 0.0)
 		data->v.noalias() = (data->x-data->x_start)*(1.0/dt);
 
-	solverlog.stop_state(SOLVERSTATE_SOLVE);
+	log.stop_state(SOLVERSTATE_SOLVE);
 
 	if (options->log_level >= LOGLEVEL_HIGH)
-		printf("Timings:\n%s", solverlog.to_string().c_str());
+		printf("Timings:\n%s", log.to_string().c_str());
 
 	return iters;
 } // end solve
@@ -194,7 +161,6 @@ void Solver::init_solve(
 	SolverData *data,
 	Collision *collision)
 {
-	(void)(mesh);
 	BLI_assert(data != NULL);
 	BLI_assert(options != NULL);
 	int nx = data->x.rows();
@@ -220,14 +186,30 @@ void Solver::init_solve(
 
 	if (collision)
 	{
-		bool sort_tree = true;
-		collision->update_bvh(&data->x_start, &data->x, sort_tree);
+		// Sorts BVH tree
+		collision->update_bvh(mesh, options, data, &data->x_start, &data->x, true);
 	}
 
 	// ADMM variables
 	data->Dx.noalias() = data->D * data->x;
 	data->z = data->Dx;
 	data->u.setZero();
+
+	switch (options->linsolver)
+	{
+		default: {
+			throw_err("init","unknown linsolver");
+		} break;
+		case LINSOLVER_LDLT: {
+			LDLT().init_solve(mesh,options,collision,data);
+		} break;
+		case LINSOLVER_PCG: {
+			ConjugateGradients().init_solve(mesh,options,collision,data);
+		} break;
+		case LINSOLVER_MCGS: { // TODO
+			LDLT().init_solve(mesh,options,collision,data);
+		} break;
+	}
 
 } // end init solve
 
@@ -276,7 +258,32 @@ void Solver::solve_local_step(
 
 } // end local step
 
+void Solver::solve_global_step(
+	const Mesh *mesh,
+	const Options *options,
+	SolverData *data,
+	Collision *collision)
+{
+	data->x_prev = data->x;
+	switch (options->linsolver)
+	{
+		default: {
+			throw_err("init","unknown linsolver");
+		} break;
+		case LINSOLVER_LDLT: {
+			LDLT().solve(mesh,options,collision,data);
+		} break;
+		case LINSOLVER_PCG: {
+			ConjugateGradients().solve(mesh,options,collision,data);
+		} break;
+		case LINSOLVER_MCGS: { // TODO
+			LDLT().solve(mesh,options,collision,data);
+		} break;
+	}
+}
+
 void Solver::update_collisions(
+	const Mesh *mesh,
 	const Options *options,
 	SolverData *data,
 	Collision *collision)
@@ -287,8 +294,10 @@ void Solver::update_collisions(
 	if (collision==NULL)
 		return;
 
-	collision->update_bvh(&data->x_start, &data->x, false);
-	collision->detect(options, &data->x_start, &data->x);
+	// Update bounding boxes but don't sort tree
+	collision->update_bvh(mesh, options, data, &data->x_start, &data->x, false);
+	// Detect collisions and store collision pairs
+	collision->detect(mesh, options, data, &data->x_start, &data->x);
 
 } // end update constraints
 
@@ -302,6 +311,8 @@ void Solver::init_matrices(
 	int nx = data->x.rows();
 	BLI_assert(nx > 0);
 	BLI_assert(data->x.cols() == 3);
+
+	data->ls.last_pk = -1;
 
 	double dt = options->timestep_s;
 	double dt2 = dt*dt;
@@ -498,82 +509,5 @@ void Solver::append_energies(
 	}
 
 } // end append energies
-
-void SolverLog::reset()
-{
-	curr_timer.clear();
-	elapsed_ms.clear();
-}
-
-void SolverLog::start_state(int state)
-{
-	if (m_log_level < LOGLEVEL_HIGH)
-		return;
-
-	if (m_log_level >= LOGLEVEL_DEBUG)
-		printf("Starting state %s\n",state_string(state).c_str());
-
-	if (curr_timer.count(state)==0)
-	{
-		elapsed_ms[state] = 0;
-		curr_timer[state] = MicroTimer();
-		return;
-	}
-	curr_timer[state].reset();
-}
-
-// Returns time elapsed
-double SolverLog::stop_state(int state)
-{
-	if (m_log_level < LOGLEVEL_HIGH)
-		return 0;
-
-	if (m_log_level >= LOGLEVEL_DEBUG)
-		printf("Stopping state %s\n",state_string(state).c_str());
-
-	if (curr_timer.count(state)==0)
-	{
-		elapsed_ms[state] = 0;
-		curr_timer[state] = MicroTimer();
-		return 0;
-	}
-	double dt = curr_timer[state].elapsed_ms();
-	elapsed_ms[state] += dt;
-	return dt;
-}
-
-std::string SolverLog::state_string(int state)
-{
-	std::string str = "unknown";
-	switch (state)
-	{
-		default: break;
-		case SOLVERSTATE_INIT: str="init"; break;
-		case SOLVERSTATE_SOLVE: str="solve"; break;
-		case SOLVERSTATE_INIT_SOLVE: str="init_solve"; break;
-		case SOLVERSTATE_LOCAL_STEP: str="local_step"; break;
-		case SOLVERSTATE_GLOBAL_STEP: str="global_step"; break;
-		case SOLVERSTATE_COLLISION_UPDATE: str="collision_update"; break;
-		case SOLVERSTATE_TEST_CONVERGED: str="test_converged"; break;
-	}
-	return str;
-}
-
-std::string SolverLog::to_string()
-{
-	// Sort by largest time
-	auto sort_ms = [](const std::pair<int, double> &a, const std::pair<int, double> &b)
-		{ return (a.second > b.second); };
-	std::vector<std::pair<double, int> > ms(elapsed_ms.begin(), elapsed_ms.end());
-	std::sort(ms.begin(), ms.end(), sort_ms);
-
-	// Concat string
-	std::stringstream ss;
-	int n_timers = ms.size();
-	for (int i=0; i<n_timers; ++i)
-		ss << state_string(ms[i].first) << ": " << ms[i].second << "ms" << std::endl;
-
-	return ss.str();
-}
 
 } // namespace admmpd

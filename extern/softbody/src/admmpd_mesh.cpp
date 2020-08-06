@@ -120,12 +120,12 @@ bool EmbeddedMesh::create(
 		domain.min() -= 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
 		std::array<unsigned int, 3> resolution;
 		resolution[0] = 30; resolution[1] = 30; resolution[2] = 30;
-		emb_sdf = std::make_shared<SDFType>(Discregrid::CubicLagrangeDiscreteGrid(domain, resolution));
+		emb_sdf = Discregrid::CubicLagrangeDiscreteGrid(domain, resolution);
 		auto func = Discregrid::DiscreteGrid::ContinuousFunction{};
 		func = [&md](Eigen::Vector3d const& xi) {
 			return md.signedDistanceCached(xi);
 		};
-		emb_sdf->addFunction(func, false);
+		emb_sdf.addFunction(func, false);
 	}
 
 //	std::cout << "T SDF: " << t.elapsed_ms() << std::endl;
@@ -155,7 +155,7 @@ bool EmbeddedMesh::create(
 		&emb_F,
 		&emb_v_to_tet,
 		&emb_barys,
-		emb_sdf.get(),
+		&emb_sdf,
 		lat_verts,
 		lat_tets);
 	geom::merge_close_vertices(lat_verts,lat_tets);

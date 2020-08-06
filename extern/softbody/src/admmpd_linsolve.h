@@ -28,19 +28,7 @@ public:
 
 class LDLT : public LinearSolver
 {
-protected:
-	typedef Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > Cholesky;
-	std::unique_ptr<Cholesky> m_ldlt_A_PtP;
-	double last_pk;
-
-	Eigen::MatrixXd m_rhs;
-	Eigen::MatrixXd m_Ptq;
-	Eigen::SparseMatrix<double> m_A_PtP;
-	Eigen::SparseMatrix<double> m_A_PtP_3; // replicated
-
 public:
-	LDLT();
-
 	// Factors the matrix on any change to P
 	void init_solve(
         const Mesh *mesh,
@@ -54,19 +42,12 @@ public:
         const Options *options,
 		const Collision *collision, // may be null
         SolverData *data);
-
-	Cholesky *cholesky() { return m_ldlt_A_PtP.get(); }
-	const Eigen::SparseMatrix<double> *A_PtP() { return &m_A_PtP; }
-	const Eigen::SparseMatrix<double> *A_PtP_3() { return &m_A_PtP_3; }
-	const Eigen::MatrixXd *Ptq() { return &m_Ptq; }
 };
 
 // Preconditioned Conjugate Gradients
 class ConjugateGradients : public LinearSolver
 {
 public:
-	ConjugateGradients();
-
 	void init_solve(
         const Mesh *mesh,
         const Options *options,
@@ -80,35 +61,9 @@ public:
         SolverData *data);
 
 	void apply_preconditioner(
+		SolverData *data,
 		Eigen::MatrixXd &x,
 		const Eigen::MatrixXd &b);
-
-protected:
-	typedef Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > Cholesky;
-
-	// If true, factor A + PtP on a call
-	// to init_solve if P has changed.
-	// If false, just A is factored which will
-	// result in more PCG iterations.
-	bool factor_A_PtP;
-	double last_pk; // last pin stiffness on init_solve
-
-	std::unique_ptr<LDLT> m_ldlt;
-	Eigen::MatrixXd rhs; // Mxbar + DtW2(z-u) + Ptq + Ctd
-	Eigen::MatrixXd Ctd;
-	Eigen::MatrixXd r;
-	Eigen::MatrixXd z;
-	Eigen::MatrixXd p;
-	Eigen::VectorXd p3;
-	Eigen::MatrixXd Ap;
-
-//	Eigen::MatrixXd x3; // x flattened
-//	Eigen::MatrixXd r; // residual
-//	Eigen::MatrixXd z; // auxilary
-//	Eigen::MatrixXd p; // direction
-//	Eigen::MatrixXd Ap; // A3_PtP_CtC * p
-	Eigen::MatrixXd thread_x, thread_b;
-	RowSparseMatrix<double> A3_PtP_CtC;
 };
 
 #if 0

@@ -44,6 +44,8 @@ set(SRC
 	src/admmpd_linsolve.cpp
 	src/admmpd_solver.h
 	src/admmpd_solver.cpp
+	src/admmpd_log.h
+	src/admmpd_log.cpp
 	src/admmpd_mesh.h
 	src/admmpd_mesh.cpp
 	src/admmpd_timer.h

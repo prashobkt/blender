@@ -18,6 +18,11 @@ protected:
 	typedef Eigen::AlignedBox<T,DIM> AABB;
 	typedef Eigen::Matrix<T,DIM,1> VecType;
 public:
+	AABBTree() {}
+
+	// Performs a deep copy of another tree
+	AABBTree(const AABBTree<T,DIM> &other_tree);
+
 	// Removes all BVH data
 	void clear();
 
@@ -47,14 +52,12 @@ public:
 		AABB aabb;
 		Node *left, *right;
 		std::vector<int> prims;
-		VecType normal;
-		T angle;
 		bool is_leaf() const { return prims.size()>0; }
 		Node() : left(nullptr), right(nullptr) {}
 		~Node()
 		{
-			if(left){ delete left; }
-			if(right){ delete right; }
+			if (left) { delete left; }
+			if (right) { delete right; }
 		}
 	};
 

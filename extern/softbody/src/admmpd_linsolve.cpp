@@ -21,10 +21,6 @@ static inline void throw_err(const std::string &f, const std::string &m)
 	throw std::runtime_error("LinearSolver::"+f+": "+m);
 }
 
-LDLT::LDLT() :
-	last_pk(-1)
-	{}
-
 void LDLT::init_solve(
 	const Mesh *mesh,
 	const Options *options,
@@ -32,7 +28,9 @@ void LDLT::init_solve(
 	SolverData *data)
 {
 	(void)(collision);
-	int nx = std::max((int)data->x.rows(),1);
+	int nx = data->x.rows();
+	if (nx==0)
+		throw_err("init_solve","no vertices");
 
 	// Get the P matrix
 	std::set<int> pin_inds;
@@ -44,21 +42,23 @@ void LDLT::init_solve(
 	// If we've changed the stiffness but not the pins,
 	// the P matrix is still changing
 	double pk = options->mult_pk * data->A_diag_max;
-	if (std::abs(pk-last_pk) > 1e-8 && trips.size()>0)
+	if (std::abs(pk-data->ls.last_pk) > 1e-8 && trips.size()>0)
 		new_P = true;
 
 	// Compute P
-	last_pk = pk;
+	data->ls.last_pk = pk;
 	int np = q_coeffs.size();
 	SparseMatrix<double> P;
 	MatrixXd q;
-	if (m_Ptq.rows() != nx) { m_Ptq.resize(nx,3); }
+	if (data->ls.Ptq.rows() != nx)
+		data->ls.Ptq.resize(nx,3);
+
 	if (np==0)
 	{ // no springs
 		P.resize(1,nx);
 		P.setZero();
 		q = MatrixXd::Zero(1,3);
-		m_Ptq.setZero();
+		data->ls.Ptq.setZero();
 	}
 	else
 	{
@@ -71,25 +71,28 @@ void LDLT::init_solve(
 			q(i,1) = q_coeffs[i*3+1];
 			q(i,2) = q_coeffs[i*3+2];
 		}
-		m_Ptq = pk * P.transpose() * q;
+		data->ls.Ptq = pk * P.transpose() * q;
 	}
 
 	// Compute A + P'P and factorize:
 	// 1) A not computed
 	// 2) P has changed
 	// 3) factorization not set
-	if (m_A_PtP.nonZeros()==0 || new_P || !m_ldlt_A_PtP)
+	if ( !data->ls.ldlt_A_PtP ||
+		data->ls.A_PtP.nonZeros()==0 ||
+		new_P)
 	{
-		if (!m_ldlt_A_PtP)
-			m_ldlt_A_PtP = std::make_unique<Cholesky>();
+		if (!data->ls.ldlt_A_PtP)
+			data->ls.ldlt_A_PtP = std::make_unique<Cholesky>();
 
-		m_A_PtP = SparseMatrix<double>(data->A) + pk * P.transpose()*P;
-		m_ldlt_A_PtP->compute(m_A_PtP);
-		if(m_ldlt_A_PtP->info() != Eigen::Success) {
+		data->ls.A_PtP = SparseMatrix<double>(data->A) + pk * P.transpose()*P;
+		data->ls.ldlt_A_PtP->compute(data->ls.A_PtP);
+		if(data->ls.ldlt_A_PtP->info() != Eigen::Success)
 			throw_err("init_solve","facorization failed");
-		}
-		geom::make_n3<double>(m_A_PtP,m_A_PtP_3); // replicate
+
+		geom::make_n3<double>(data->ls.A_PtP,data->ls.A_PtP_3); // replicate
 	}
+
 } // end init solve
 
 void LDLT::solve(
@@ -98,10 +101,12 @@ void LDLT::solve(
 	const Collision *collision,
 	SolverData *data)
 {
-	if (!m_ldlt_A_PtP)
-		throw_err("solve","you must call init_solve before solve");
+	int nx = data->x.rows();
+	if (nx==0)
+		throw_err("solve","no vertices");
 
-	int nx = std::max((int)data->x.rows(),1);
+	if (!data->ls.ldlt_A_PtP)
+		init_solve(mesh,options,collision,data);
 
 	// Linearize collision constraints
 	RowSparseMatrix<double> C;
@@ -110,7 +115,7 @@ void LDLT::solve(
 	{
 		std::vector<double> d_coeffs;
 		std::vector<Eigen::Triplet<double> > trips;
-		collision->linearize(options, &data->x, &trips, &d_coeffs);
+		collision->linearize(mesh, options, data, &data->x, &trips, &d_coeffs);
 		int nc = d_coeffs.size();
 		if (nc>0)
 		{
@@ -121,40 +126,38 @@ void LDLT::solve(
 	}
 
 	// Compute RHS
-	m_rhs.noalias() = data->M_xbar + data->DtW2*(data->z-data->u) + m_Ptq;
+	data->ls.rhs.noalias() =
+		data->M_xbar +
+		data->DtW2*(data->z-data->u) +
+		data->ls.Ptq;
 
 	// If there are no collision constraints,
 	// we can use our initial factorization.
 	if (C.nonZeros()==0)
 	{
-		data->x.noalias() = m_ldlt_A_PtP->solve(m_rhs);
+		data->x.noalias() = data->ls.ldlt_A_PtP->solve(data->ls.rhs);
 		return;
 	}
 
 	// Otherwise we have to solve the full system:
 	// (A + PtP + CtC) x = b + Ptq + Ctd
 	double ck = options->mult_ck * data->A_diag_max;
-	SparseMatrix<double> A3 = m_A_PtP_3 + ck * C.transpose()*C;
-	VectorXd Ctd = ck * C.transpose() * d;
+	data->ls.A_PtP_CtC_3 = data->ls.A_PtP_3 + ck * C.transpose()*C;
+	Vector3d Ctd3 = ck * C.transpose() * d;
 	VectorXd rhs3(nx*3);
 	for (int i=0; i<nx; ++i)
 	{
 		rhs3.segment<3>(i*3) =
-			m_rhs.row(i).transpose() +
-			Ctd.segment<3>(i*3);
+			data->ls.rhs.row(i).transpose() +
+			Ctd3.segment<3>(i*3);
 	}
 
-	Cholesky ldlt_full(A3);
+	Cholesky ldlt_full(data->ls.A_PtP_CtC_3);
 	VectorXd x3 = ldlt_full.solve(rhs3);
 	for (int i=0; i<nx; ++i)
 		data->x.row(i) = x3.segment<3>(i*3);
 
 } // end solve
-
-ConjugateGradients::ConjugateGradients() :
-	factor_A_PtP(true),
-	last_pk(-1)
-	{}
 
 void ConjugateGradients::init_solve(
 	const Mesh *mesh,
@@ -163,25 +166,20 @@ void ConjugateGradients::init_solve(
 	SolverData *data)
 {
 	int nx = data->x.rows();
-	if (nx==0) { return; }
-
-	if (!factor_A_PtP)
-		throw_err("init_solve","todo: not factor A+P'P");
-
-	if (!m_ldlt)
-		m_ldlt = std::make_unique<LDLT>();
+	if (nx==0)
+		throw_err("init_solve","no vertices");
 
 	// We'll just use our LDLT implementation
 	// to decide when to refactor the matrix
-	m_ldlt->init_solve(mesh,options,collision,data);
-
-	rhs.resize(nx,3);
-	Ctd.resize(nx,3);
-	r.resize(nx,3);
-	z.resize(nx,3);
-	p.resize(nx,3);
-	p3.resize(nx*3);
-	Ap.resize(nx,3);
+	data->ls.Ptq.resize(nx,3);
+	LDLT().init_solve(mesh,options,collision,data);
+	data->ls.rhs.resize(nx,3);
+	data->ls.Ctd.resize(nx,3);
+	data->ls.r.resize(nx,3);
+	data->ls.z.resize(nx,3);
+	data->ls.p.resize(nx,3);
+	data->ls.p3.resize(nx*3);
+	data->ls.Ap.resize(nx,3);
 }
 
 void ConjugateGradients::solve(
@@ -190,6 +188,18 @@ void ConjugateGradients::solve(
 	const Collision *collision,
 	SolverData *data)
 {
+	int nx = data->x.rows();
+	if (nx==0)
+		throw_err("solve","no vertices");
+
+	if (!data->ls.ldlt_A_PtP)
+		init_solve(mesh,options,collision,data);
+
+	BLI_assert(data != NULL);
+	BLI_assert(options != NULL);
+	BLI_assert(nx > 0);
+	BLI_assert(data->ls.Ptq.rows()==nx);
+
 	auto map_vector_to_matrix = [](const VectorXd &x3, MatrixXd &x)
 	{
 		int nx = x3.rows()/3;
@@ -221,14 +231,6 @@ void ConjugateGradients::solve(
 		return sum;
 	};
 
-	BLI_assert(data != NULL);
-	BLI_assert(options != NULL);
-	int nx = data->x.rows();
-	BLI_assert(nx > 0);
-
-	if (!m_ldlt)
-		throw_err("solve","you must call init_solve before solve");
-
 	// Linearize collision constraints
 	RowSparseMatrix<double> C;
 	VectorXd d;
@@ -236,7 +238,7 @@ void ConjugateGradients::solve(
 	{
 		std::vector<double> d_coeffs;
 		std::vector<Eigen::Triplet<double> > trips;
-		collision->linearize(options, &data->x, &trips, &d_coeffs);
+		collision->linearize(mesh,options,data,&data->x,&trips,&d_coeffs);
 		int nc = d_coeffs.size();
 		if (nc>0)
 		{
@@ -247,35 +249,45 @@ void ConjugateGradients::solve(
 	}
 
 	// Compute RHS
-	rhs.noalias() = data->M_xbar + data->DtW2*(data->z-data->u) + *m_ldlt->Ptq();
+	data->ls.rhs.noalias() =
+		data->M_xbar +
+		data->DtW2*(data->z-data->u) +
+		data->ls.Ptq;
 
 	// If there are no collision constraints,
 	// we can use our initial factorization.
 	if (C.nonZeros()==0)
 	{
-		data->x.noalias() = m_ldlt->cholesky()->solve(rhs);
+		data->x.noalias() = data->ls.ldlt_A_PtP->solve(data->ls.rhs);
 		return;
 	}
 
 	// Otherwise we have to replicate the system
 	// (A + PtP + CtC) x = Mxbar + DtW2(z-u) + Ptq
 	double ck = options->mult_ck * data->A_diag_max;
-	A3_PtP_CtC = *m_ldlt->A_PtP_3() + ck * C.transpose()*C;
-	map_vector_to_matrix(ck*C.transpose()*d, Ctd);
-	rhs.noalias() += Ctd;
+	data->ls.A_PtP_CtC_3 = data->ls.A_PtP_3 + ck * C.transpose()*C;
+	map_vector_to_matrix(ck*C.transpose()*d, data->ls.Ctd);
+	data->ls.rhs.noalias() += data->ls.Ctd;
+
+	// Grab refs for convenience
+	Eigen::MatrixXd &r = data->ls.r;
+	Eigen::MatrixXd &z = data->ls.z;
+	Eigen::MatrixXd &p = data->ls.p;
+	Eigen::VectorXd &p3 = data->ls.p3;
+	Eigen::MatrixXd &Ap = data->ls.Ap;
 
 	VectorXd x3;
 	map_matrix_to_vector(data->x, x3);
 	MatrixXd tmp_mtx;
-	map_vector_to_matrix(A3_PtP_CtC*x3, tmp_mtx);
-	r.noalias() = rhs - tmp_mtx; // b-Ax
-	apply_preconditioner(z,r);
+	map_vector_to_matrix(data->ls.A_PtP_CtC_3*x3, tmp_mtx);
+	r.noalias() = data->ls.rhs - tmp_mtx; // b-Ax
+	apply_preconditioner(data,z,r);
 	p = z;
 	map_matrix_to_vector(p,p3);
 
 	for (int iter=0; iter<options->max_cg_iters; ++iter)
 	{
-		map_vector_to_matrix(A3_PtP_CtC*p3, Ap);
+		map_vector_to_matrix(data->ls.A_PtP_CtC_3*p3, Ap);
 		double p_dot_Ap = mat_inner(p,Ap);
 		if (p_dot_Ap==0.0)
 			break;
@@ -291,7 +303,7 @@ void ConjugateGradients::solve(
 		if (r_norm < 1e-4)
 			break;
 
-		apply_preconditioner(z,r);
+		apply_preconditioner(data,z,r);
 		double zk1_dot_rk1 = mat_inner(z,r);
 		double beta = zk1_dot_rk1 / zk_dot_rk;
 		p = z + beta*p;
@@ -301,16 +313,18 @@ void ConjugateGradients::solve(
 } // end ConjugateGradients solve
 
 void ConjugateGradients::apply_preconditioner(
+	SolverData *data,
 	Eigen::MatrixXd &x,
 	const Eigen::MatrixXd &b)
 {
-	x = m_ldlt->cholesky()->solve(b);
+	x = data->ls.ldlt_A_PtP->solve(b);
+//	x = m_ldlt.cholesky()->solve(b);
 /*
 	BLI_assert(b.cols()==3);
 	if (x.rows() != b.rows())
 		x.resize(b.rows(),3);
 
-	Cholesky *chol = m_ldlt->cholesky();
+	Cholesky *chol = m_ldlt.cholesky();
 	const auto & linsolve = [&x,&b,&chol](int col)
 	{
 		if (col < 0 || col > 2) { return; }
