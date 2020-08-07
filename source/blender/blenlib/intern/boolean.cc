@@ -2227,7 +2227,7 @@ static std::ostream &operator<<(std::ostream &os, const FaceMergeState &fms)
 
 static void init_face_merge_state(FaceMergeState *fms, const Vector<int> &tris, const Mesh &tm)
 {
-  const int dbg_level = 0;
+  constexpr int dbg_level = 0;
   /* Reserve enough faces and edges so that neither will have to resize. */
   fms->face.reserve(tris.size() + 1);
   fms->edge.reserve((3 * tris.size()));
@@ -2246,11 +2246,18 @@ static void init_face_merge_state(FaceMergeState *fms, const Vector<int> &tris, 
     mf.vert.append(tri[2]);
     mf.orig = tri.orig;
     int f = static_cast<int>(fms->face.append_and_get_index(mf));
+    if (dbg_level > 1) {
+      std::cout << "appended MergeFace for tri at f = " << f << "\n";
+    }
     for (int i = 0; i < 3; ++i) {
       int inext = (i + 1) % 3;
       MergeEdge new_me(mf.vert[i], mf.vert[inext]);
       std::pair<int, int> canon_vs(new_me.v1->id, new_me.v2->id);
       int me_index = fms->edge_map.lookup_default(canon_vs, -1);
+      if (dbg_level > 1) {
+        std::cout << "new_me = canon_vs = " << new_me.v1 << ", " << new_me.v2 << "\n";
+        std::cout << "me_index lookup = " << me_index << "\n";
+      }
       if (me_index == -1) {
         double3 vec = new_me.v2->co - new_me.v1->co;
         new_me.len_squared = vec.length_squared();
@@ -2260,22 +2267,48 @@ static void init_face_merge_state(FaceMergeState *fms, const Vector<int> &tris, 
         fms->edge.append(new_me);
         me_index = static_cast<int>(fms->edge.size()) - 1;
         fms->edge_map.add_new(canon_vs, me_index);
+        if (dbg_level > 1) {
+          std::cout << "added new me with me_index = " << me_index << "\n";
+          std::cout << "  len_squared = " << new_me.len_squared << "  orig = " << new_me.orig
+                    << ", is_intersect" << new_me.is_intersect
+                    << ", dissolvable = " << new_me.dissolvable << "\n";
+        }
       }
       MergeEdge &me = fms->edge[me_index];
+      if (dbg_level > 1) {
+        std::cout << "retrieved me at index " << me_index << ":\n";
+        std::cout << "  v1 = " << me.v1 << " v2 = " << me.v2 << "\n";
+        std::cout << "  dis = " << me.dissolvable << " int = " << me.is_intersect << "\n";
+        std::cout << "  left_face = " << me.left_face << " right_face = " << me.right_face << "\n";
+      }
       if (me.dissolvable && tri.edge_orig[i] != NO_INDEX) {
+        if (dbg_level > 1) {
+          std::cout << "reassigning orig to " << tri.edge_orig[i] << ", dissolvable = false\n";
+        }
         me.dissolvable = false;
         me.orig = tri.edge_orig[i];
       }
       if (me.dissolvable && tri.is_intersect[i]) {
+        if (dbg_level > 1) {
+          std::cout << "reassigning dissolvable = false, is_intersect = true\n";
+        }
         me.dissolvable = false;
         me.is_intersect = true;
       }
       /* This face is left or right depending on orientation of edge. */
       if (me.v1 == mf.vert[i]) {
+        if (dbg_level > 1) {
+          std::cout << "me.v1 == mf.vert[i] so set edge[" << me_index << "].left_face = " << f
+                    << "\n";
+        }
         BLI_assert(me.left_face == -1);
         fms->edge[me_index].left_face = f;
       }
       else {
+        if (dbg_level > 1) {
+          std::cout << "me.v1 != mf.vert[i] so set edge[" << me_index << "].right_face = " << f
+                    << "\n";
+        }
         BLI_assert(me.right_face == -1);
         fms->edge[me_index].right_face = f;
       }
