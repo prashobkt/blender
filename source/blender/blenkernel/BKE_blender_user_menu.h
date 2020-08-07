@@ -30,7 +30,11 @@ struct bUserMenu;
 struct bUserMenuItem;
 
 void BKE_blender_user_menu_free_list(struct ListBase *lb);
-
+void BKE_blender_user_menus_group_idname_update(struct bUserMenusGroup *umg);
+void BKE_blender_user_menus_group_idname_update_keymap(struct wmWindowManager *wm,
+                                                       char *old,
+                                                       char *new);
+struct bUserMenusGroup *BKE_blender_user_menus_group_find(struct ListBase *lb, char *idname);
 struct bUserMenu *BKE_blender_user_menu_find(struct ListBase *lb,
                                              char space_type,
                                              const char *context);

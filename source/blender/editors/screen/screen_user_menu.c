@@ -192,6 +192,9 @@ void ED_screen_user_menu_item_add_operator(ListBase *lb,
     STRNCPY(umi_op->item.ui_name, ui_name);
   }
   STRNCPY(umi_op->op_idname, ot->idname);
+  umi_op->ptr = NULL;
+  umi_op->prop = NULL;
+  WM_operator_properties_alloc(&(umi_op->ptr), &(umi_op->prop), ot->idname);
   umi_op->prop = prop ? IDP_CopyProperty(prop) : NULL;
 }
 

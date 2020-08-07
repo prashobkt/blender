@@ -1138,6 +1138,11 @@ static bUserMenu *rna_UserDef_usermenus_get_current(UserDef *userdef, bool ensur
   return NULL;
 }*/
 
+static bUserMenusGroup *rna_UserDef_usermenus_get_group(UserDef *userdef, const char *idname)
+{
+  return BKE_blender_user_menus_group_find(&userdef->user_menus, idname);
+}
+
 static void rna_UserDef_usermenus_set_group(UserDef *userdef, bUserMenusGroup *umg)
 {
   userdef->runtime.umg_select = umg;
@@ -1147,6 +1152,7 @@ static void rna_UserDef_usermenus_add_group(UserDef *userdef)
 {
   bUserMenusGroup *umg = MEM_mallocN(sizeof(*umg), __func__);
   STRNCPY(umg->name, "new menu");
+  BKE_blender_user_menus_group_idname_update(umg);
   umg->pie = false;
   BLI_listbase_clear(&umg->menus);
   BLI_addtail(&userdef->user_menus, umg);
@@ -1495,6 +1501,20 @@ static PointerRNA rna_UserDef_usermenus_item_op_prop_get(PointerRNA *ptr)
 
   /*return rna_pointer_inherit_refine(ptr, &RNA_OperatorProperties, op->properties); */
   return PointerRNA_NULL;
+}
+
+static void rna_UserDef_usermenus_group_idname_set(Main *bmain,
+                                                   Scene *UNUSED(scene),
+                                                   PointerRNA *ptr)
+{
+  bUserMenusGroup *umg = (bUserMenusGroup *)ptr->data;
+  char *name = umg->name;
+  char old[64] = {NULL};
+
+  STRNCPY(old, umg->idname);
+  BKE_blender_user_menus_group_idname_update(umg);
+  BKE_blender_user_menus_group_idname_update_keymap(bmain->wm.first, old, umg->idname);
+  printf("%s\n", umg->idname);
 }
 
 static void rna_UserDef_usermenus_item_op_get(PointerRNA *ptr, char *value)
@@ -6442,8 +6462,6 @@ static void rna_def_userdef_usermenus_items_subtypes(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
-  FunctionRNA *func;
-  PropertyRNA *parm;
 
   /* operator item */
   srna = RNA_def_struct(brna, "um_item_op", NULL);
@@ -6669,6 +6687,12 @@ static void rna_def_userdef_usermenusgroup(BlenderRNA *brna)
   RNA_def_property_string_sdna(prop, NULL, "name");
   RNA_def_property_ui_text(prop, "Name", "Name of the user menu group");
   RNA_def_struct_name_property(srna, prop);
+  RNA_def_property_update(prop, 0, "rna_UserDef_usermenus_group_idname_set");
+
+  prop = RNA_def_property(srna, "idname", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "idname");
+  RNA_def_property_ui_text(prop, "ID Name", "ID Name of the user menu group");
+  RNA_def_struct_name_property(srna, prop);
 
   prop = RNA_def_property(srna, "is_pie", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "pie", 0);
@@ -6756,6 +6780,12 @@ static void rna_def_userdef_usermenus_editor(BlenderRNA *brna)
   RNA_def_function_ui_description(func, "get active user menu");
   parm = RNA_def_boolean(func, "ensure", false, "ensure", "create the menu if don't exist");
   parm = RNA_def_pointer(func, "current_menu", "UserMenu", "", "the menu");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "get_group", "rna_UserDef_usermenus_get_group");
+  RNA_def_function_ui_description(func, "get user menus group by idname");
+  parm = RNA_def_string(func, "idname", NULL, 0, "ID name", "ID name of the group");
+  parm = RNA_def_pointer(func, "menu", "UserMenusGroup", "", "the menu group");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "set_group", "rna_UserDef_usermenus_set_group");

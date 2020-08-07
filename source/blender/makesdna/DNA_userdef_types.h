@@ -523,7 +523,8 @@ typedef struct bUserMenusGroup {
   /* bUserMenu */
   struct ListBase menus;
   char pie;
-  char name[32];
+  char idname[64];
+  char name[64];
   char _pad0[7];
 } bUserMenusGroup;
 

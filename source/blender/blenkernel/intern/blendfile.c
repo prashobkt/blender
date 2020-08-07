@@ -618,6 +618,7 @@ UserDef *BKE_blendfile_userdef_from_defaults(void)
   {
     bUserMenusGroup *umg = MEM_mallocN(sizeof(*umg), __func__);
     STRNCPY(umg->name, "Quick Favorites");
+    STRNCPY(umg->idname, "USER_MT_QUICK_FAVORITES");
     umg->pie = false;
     umg->prev = NULL;
     umg->next = NULL;

@@ -2625,7 +2625,7 @@ class WM_OT_call_user_menu(Operator):
     bl_idname = "wm.call_user_menu"
     bl_label = "display user menu"
 
-    index: bpy.props.IntProperty()
+    name: StringProperty()
 
     def execute(self, context):
         return {'FINISHED'}
@@ -2633,7 +2633,7 @@ class WM_OT_call_user_menu(Operator):
     def draw_menu(self, menu, context):
         prefs = context.preferences
         um = prefs.user_menus
-        umg = um.menus[self.index]
+        umg = um.get_group(idname=self.name)
 
         layout = menu.layout
         if umg.is_pie:
@@ -2644,7 +2644,7 @@ class WM_OT_call_user_menu(Operator):
         prefs = context.preferences
         um = prefs.user_menus
         wm = context.window_manager
-        umg = um.menus[self.index]
+        umg = um.get_group(idname=self.name)
 
         if umg.is_pie:
             wm.popup_menu_pie(draw_func=self.draw_menu, title=umg.name, event=event)

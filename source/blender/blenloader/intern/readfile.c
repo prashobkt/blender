@@ -114,6 +114,7 @@
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_armature.h"
+#include "BKE_blender_user_menu.h"
 #include "BKE_brush.h"
 #include "BKE_collection.h"
 #include "BKE_colortools.h"
@@ -155,6 +156,8 @@
 #include "BKE_sound.h"
 #include "BKE_volume.h"
 #include "BKE_workspace.h"
+
+#include "BKE_blender_user_menu.h"
 
 #include "DRW_engine.h"
 
@@ -9813,6 +9816,7 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   LISTBASE_FOREACH (bUserMenusGroup *, umg, &user->user_menus) {
     BLI_listbase_clear(&umg->menus);
     BLO_read_list(reader, &umg->menus);
+    BKE_blender_user_menus_group_idname_update(umg);
     LISTBASE_FOREACH (bUserMenu *, um, &umg->menus) {
       BLI_listbase_clear(&um->items);
       BLO_read_list(reader, &um->items);

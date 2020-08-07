@@ -37,22 +37,22 @@ def _indented_layout(layout, level):
     col = split.column()
     return col
 
-def get_keymap(context, index, ensure):
+def get_keymap(context, idname, ensure):
     prefs = context.preferences
     um = prefs.user_menus
 
-    if index < 0:
-        index = menu_id(context, um.active_group)
+    if not idname:
+        idname = um.active_group.idname
 
     for km in context.window_manager.keyconfigs.user.keymaps:
         for kmi in km.keymap_items:
             if kmi.idname == "wm.call_user_menu":
-                if kmi.properties.index == index:
+                if kmi.properties.name == idname:
                     return kmi
     if ensure:
         km = context.window_manager.keyconfigs.user.keymaps['Window']
         kmi = km.keymap_items.new("wm.call_user_menu",'NONE', 'ANY', shift=False, ctrl=False, alt=False)
-        kmi.properties.index = index
+        kmi.properties.idname = idname
         kmi.active = True
         return kmi
 
@@ -205,7 +205,7 @@ def draw_user_menu_preference(context, layout):
     prefs = context.preferences
     um = prefs.user_menus
     umg = um.active_group
-    kmi = get_keymap(context, -1, False)
+    kmi = get_keymap(context, None, False)
     map_type = None
 
     box = layout.box()

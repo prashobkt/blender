@@ -26,8 +26,12 @@
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
+#include "BLI_string_utils.h"
 
 #include "DNA_userdef_types.h"
+#include "DNA_windowmanager_types.h"
+
+#include "RNA_access.h"
 
 #include "BKE_blender_user_menu.h"
 #include "BKE_idprop.h"
@@ -44,6 +48,56 @@ void BKE_blender_user_menu_free_list(ListBase *lb)
     MEM_freeN(um);
   }
   BLI_listbase_clear(lb);
+}
+
+bUserMenusGroup *BKE_blender_user_menus_group_find(ListBase *lb, char *idname)
+{
+  LISTBASE_FOREACH (bUserMenusGroup *, umg, lb) {
+    if ((STREQ(idname, umg->idname))) {
+      return umg;
+    }
+  }
+  return NULL;
+}
+
+void BKE_blender_user_menus_group_idname_update(bUserMenusGroup *umg)
+{
+  char name[64];
+
+  STRNCPY(umg->idname, "USER_MT_");
+  STRNCPY(name, umg->name);
+  for (int i = 0; name[i]; i++) {
+    if (name[i] == ' ')
+      name[i] = '_';
+    if (name[i] >= 'a' && name[i] <= 'z')
+      name[i] += 'A' - 'a';
+  }
+  strcat(umg->idname, name);
+  BLI_uniquename(&U.user_menus,
+                 umg,
+                 umg->idname,
+                 '_',
+                 offsetof(bUserMenusGroup, idname),
+                 sizeof(umg->idname));
+}
+
+void BKE_blender_user_menus_group_idname_update_keymap(wmWindowManager *wm, char *old, char *new)
+{
+  wmKeyConfig *kc;
+  wmKeyMap *km;
+
+  for (kc = wm->keyconfigs.first; kc; kc = kc->next) {
+    for (km = kc->keymaps.first; km; km = km->next) {
+      wmKeyMapItem *kmi;
+      for (kmi = km->items.first; kmi; kmi = kmi->next) {
+        if (STREQ(kmi->idname, "WM_OT_call_user_menu")) {
+          IDProperty *idp = IDP_GetPropertyFromGroup(kmi->properties, "name");
+          char *index = IDP_String(idp);
+          printf("%s\n", index);
+        }
+      }
+    }
+  }
 }
 
 /** \} */
