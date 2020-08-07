@@ -558,15 +558,3 @@ ReportList *clog_to_report_list(SpaceInfo *sinfo)
   }
   return reports;
 }
-/* TODO (grzelins) add formatting options for log
-static void clog_timestamp_to_char()
-{
-  const uint64_t timestamp = 0;  // clg_timestamp_ticks_get() - type->ctx->timestamp_tick_start;
-  char timestamp_str[64];
-  const uint timestamp_len = snprintf(timestamp_str,
-                                      sizeof(timestamp_str),
-                                      "%" PRIu64 ".%03u ",
-                                      timestamp / 1000,
-                                      (uint)(timestamp % 1000));
-}
-*/
