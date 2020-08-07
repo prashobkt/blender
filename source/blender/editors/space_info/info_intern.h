@@ -58,7 +58,7 @@ void info_textview_main(const struct SpaceInfo *sinfo,
                         const struct ReportList *reports);
 
 /* info_report.c */
-ReportList *clog_to_report_list(void);
+ReportList *clog_to_report_list(struct SpaceInfo *sinfo);
 int info_report_mask(const struct SpaceInfo *sinfo);
 bool info_filter_text(const Report *report, const char *search_string);
 void INFO_OT_select_pick(struct wmOperatorType *ot); /* report selection */

@@ -117,7 +117,7 @@ static void info_report_source_update(wmWindowManager *wm, SpaceInfo *sinfo)
     }
     case INFO_VIEW_CLOG: {
       if (sinfo->active_reports == &wm->reports) {
-        sinfo->active_reports = clog_to_report_list();
+        sinfo->active_reports = clog_to_report_list(sinfo);
       }
       break;
     }
@@ -135,7 +135,7 @@ static void info_init(struct wmWindowManager *wm, ScrArea *area)
         break;
       }
       case INFO_VIEW_CLOG: {
-        sinfo->active_reports = clog_to_report_list();
+        sinfo->active_reports = clog_to_report_list(sinfo);
         break;
       }
     }

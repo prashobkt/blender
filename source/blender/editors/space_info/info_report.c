@@ -482,7 +482,7 @@ void INFO_OT_report_copy(wmOperatorType *ot)
 }
 
 /** Return newly allocated ReportList created from log records */
-ReportList *clog_to_report_list()
+ReportList *clog_to_report_list(SpaceInfo *sinfo)
 {
   ReportList *reports = MEM_mallocN(sizeof(*reports), "ClogConvertedToReportList");
   BKE_reports_init(reports, 0);
@@ -496,15 +496,39 @@ ReportList *clog_to_report_list()
 
   while (log) {
     DynStr *dynStr = BLI_dynstr_new();
-    /* TODO (grzelins) implement formatting filters */
-    BLI_dynstr_append(dynStr, clg_severity_as_text(log->severity));
-    BLI_dynstr_append(dynStr, " (");
-    BLI_dynstr_append(dynStr, log->type->identifier);
-    BLI_dynstr_append(dynStr, "): ");
-    BLI_dynstr_append(dynStr, log->file_line);
-    BLI_dynstr_append(dynStr, " ");
-    BLI_dynstr_append(dynStr, log->function);
-    BLI_dynstr_append(dynStr, ":\n");
+    if (sinfo->log_format & INFO_LOG_SHOW_TIMESTAMP) {
+      char timestamp_str[64];
+      const uint64_t timestamp = log->timestamp;
+      snprintf(timestamp_str,
+               sizeof(timestamp_str),
+               "%" PRIu64 ".%03u ",
+               timestamp / 1000,
+               (uint)(timestamp % 1000));
+      BLI_dynstr_appendf(dynStr, "%s", timestamp_str);
+    }
+    if (sinfo->log_format & INFO_LOG_SHOW_LEVEL) {
+      if (log->severity <= CLG_SEVERITY_VERBOSE) {
+        BLI_dynstr_appendf(dynStr, "%s:%u ", clg_severity_as_text(log->severity), log->verbosity);
+      }
+      else {
+        BLI_dynstr_appendf(dynStr, "%s ", clg_severity_as_text(log->severity));
+      }
+    }
+    if (sinfo->log_format & INFO_LOG_SHOW_LOG_TYPE) {
+      BLI_dynstr_appendf(dynStr, "(%s) ", log->type->identifier);
+    }
+    if (sinfo->log_format & INFO_LOG_SHOW_FILE_LINE) {
+      const char *file_line = (sinfo->use_short_file_line) ? BLI_path_basename(log->file_line) :
+                                                             log->file_line;
+      BLI_dynstr_appendf(dynStr, "%s ", file_line);
+    }
+    if (sinfo->log_format & INFO_LOG_SHOW_FUNCTION) {
+      BLI_dynstr_appendf(dynStr, "%s ", log->function);
+    }
+    if (sinfo->log_format & sinfo->use_log_message_new_line) {
+      BLI_dynstr_append(dynStr, "\n");
+    }
+
     BLI_dynstr_append(dynStr, log->message);
     char *cstr = BLI_dynstr_get_cstring(dynStr);
     Report *report;
