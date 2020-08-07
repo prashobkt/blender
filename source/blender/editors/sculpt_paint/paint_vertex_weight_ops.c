@@ -272,9 +272,7 @@ static int weight_sample_invoke(bContext *C, wmOperator *op, const wmEvent *even
 
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void PAINT_OT_weight_sample(wmOperatorType *ot)
@@ -541,9 +539,7 @@ static int weight_paint_set_exec(bContext *C, wmOperator *op)
     ED_region_tag_redraw(CTX_wm_region(C)); /* XXX - should redraw all 3D views */
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void PAINT_OT_weight_set(wmOperatorType *ot)
@@ -815,7 +811,7 @@ static int paint_weight_gradient_exec(bContext *C, wmOperator *op)
     VPaint *wp = ts->wpaint;
     struct Brush *brush = BKE_paint_brush(&wp->paint);
 
-    BKE_curvemapping_initialize(brush->curve);
+    BKE_curvemapping_init(brush->curve);
 
     data.brush = brush;
     data.weightpaint = BKE_brush_weight_get(scene, brush);

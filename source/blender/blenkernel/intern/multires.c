@@ -175,7 +175,7 @@ static BLI_bitmap *multires_mdisps_upsample_hidden(BLI_bitmap *lo_hidden,
   return subd;
 }
 
-static BLI_bitmap *multires_mdisps_downsample_hidden(BLI_bitmap *old_hidden,
+static BLI_bitmap *multires_mdisps_downsample_hidden(const BLI_bitmap *old_hidden,
                                                      int old_level,
                                                      int new_level)
 {
@@ -241,7 +241,7 @@ static void multires_mdisps_subdivide_hidden(MDisps *md, int new_level)
   md->hidden = subd;
 }
 
-static MDisps *multires_mdisps_initialize_hidden(Mesh *me, int level)
+static MDisps *multires_mdisps_init_hidden(Mesh *me, int level)
 {
   MDisps *mdisps = CustomData_add_layer(&me->ldata, CD_MDISPS, CD_CALLOC, NULL, me->totloop);
   int gridsize = BKE_ccg_gridsize(level);
@@ -868,7 +868,7 @@ static void multires_subdivide_legacy(
 
   mdisps = CustomData_get_layer(&me->ldata, CD_MDISPS);
   if (!mdisps) {
-    mdisps = multires_mdisps_initialize_hidden(me, totlvl);
+    mdisps = multires_mdisps_init_hidden(me, totlvl);
   }
 
   if (mdisps->disps && !updateblock && lvl != 0) {

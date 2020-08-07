@@ -20,8 +20,7 @@
  *
  * */
 
-#ifndef __BLI_MATH_GEOM_H__
-#define __BLI_MATH_GEOM_H__
+#pragma once
 
 /** \file
  * \ingroup bli
@@ -454,11 +453,11 @@ bool isect_ray_seg_v2(const float ray_origin[2],
                       float *r_lambda,
                       float *r_u);
 
-bool isect_ray_seg_v3(const float ray_origin[3],
-                      const float ray_direction[3],
-                      const float v0[3],
-                      const float v1[3],
-                      float *r_lambda);
+bool isect_ray_line_v3(const float ray_origin[3],
+                       const float ray_direction[3],
+                       const float v0[3],
+                       const float v1[3],
+                       float *r_lambda);
 
 /* point in polygon */
 bool isect_point_poly_v2(const float pt[2],
@@ -671,6 +670,13 @@ void projmat_dimensions(const float projmat[4][4],
                         float *r_top,
                         float *r_near,
                         float *r_far);
+void projmat_dimensions_db(const float projmat[4][4],
+                           double *r_left,
+                           double *r_right,
+                           double *r_bottom,
+                           double *r_top,
+                           double *r_near,
+                           double *r_far);
 
 void projmat_from_subregion(const float projmat[4][4],
                             const int win_size[2],
@@ -818,5 +824,3 @@ float cubic_tangent_factor_circle_v3(const float tan_l[3], const float tan_r[3])
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __BLI_MATH_GEOM_H__ */

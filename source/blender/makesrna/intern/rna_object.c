@@ -174,7 +174,7 @@ static const EnumPropertyItem parent_type_items[] = {
 
 #define INSTANCE_ITEMS_SHARED \
   {0, "NONE", 0, "None", ""}, \
-      {OB_DUPLIVERTS, "VERTS", 0, "Verts", "Instantiate child objects on all vertices"}, \
+      {OB_DUPLIVERTS, "VERTS", 0, "Vertices", "Instantiate child objects on all vertices"}, \
   { \
     OB_DUPLIFACES, "FACES", 0, "Faces", "Instantiate child objects on all faces" \
   }
@@ -191,6 +191,12 @@ static const EnumPropertyItem instance_items[] = {
 #ifdef RNA_RUNTIME
 static EnumPropertyItem instance_items_nogroup[] = {
     INSTANCE_ITEMS_SHARED,
+    {0, NULL, 0, NULL, NULL},
+};
+
+static EnumPropertyItem instance_items_pointcloud[] = {
+    {0, "NONE", 0, "None", ""},
+    {OB_DUPLIVERTS, "POINTS", 0, "Points", "Instantiate child objects on all points"},
     {0, NULL, 0, NULL, NULL},
 };
 #endif
@@ -706,6 +712,9 @@ static const EnumPropertyItem *rna_Object_instance_type_itemf(bContext *UNUSED(C
 
   if (ob->type == OB_EMPTY) {
     item = instance_items;
+  }
+  else if (ob->type == OB_POINTCLOUD) {
+    item = instance_items_pointcloud;
   }
   else {
     item = instance_items_nogroup;
@@ -1579,7 +1588,8 @@ static void rna_Object_modifier_remove(Object *object,
                                        PointerRNA *md_ptr)
 {
   ModifierData *md = md_ptr->data;
-  if (ED_object_modifier_remove(reports, CTX_data_main(C), object, md) == false) {
+  if (ED_object_modifier_remove(reports, CTX_data_main(C), CTX_data_scene(C), object, md) ==
+      false) {
     /* error is already set */
     return;
   }
@@ -1591,7 +1601,7 @@ static void rna_Object_modifier_remove(Object *object,
 
 static void rna_Object_modifier_clear(Object *object, bContext *C)
 {
-  ED_object_modifier_clear(CTX_data_main(C), object);
+  ED_object_modifier_clear(CTX_data_main(C), CTX_data_scene(C), object);
 
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER | NA_REMOVED, object);
 }
@@ -3241,7 +3251,7 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
   prop = RNA_def_property(srna, "show_in_front", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "dtx", OB_DRAWXRAY);
+  RNA_def_property_boolean_sdna(prop, NULL, "dtx", OB_DRAW_IN_FRONT);
   RNA_def_property_ui_text(prop, "In Front", "Make the object draw in front of others");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_GPencil_update");
 

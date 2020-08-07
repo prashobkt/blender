@@ -183,7 +183,7 @@ class CLIP_HT_header(Header):
                 r = active_object.reconstruction
 
                 if r.is_valid and sc.view == 'CLIP':
-                    layout.label(text="Solve error: %.4f" %
+                    layout.label(text="Solve error: %.2f px" %
                                  (r.average_error))
 
                 row = layout.row()
@@ -741,7 +741,7 @@ class CLIP_PT_track(CLIP_PT_tracking_panel, Panel):
         layout.prop(act_track, "weight_stab")
 
         if act_track.has_bundle:
-            label_text = "Average Error: %.4f" % (act_track.average_error)
+            label_text = "Average Error: %.2f px" % (act_track.average_error)
             layout.label(text=label_text)
 
         layout.use_property_split = False
@@ -1238,7 +1238,7 @@ class CLIP_MT_view_zoom(Menu):
 
             layout.operator(
                 "clip.view_zoom_ratio",
-                text=iface_(f"Zoom {a:d}:{b:d}"),
+                text=iface_("Zoom %d:%d") % (a, b),
                 translate=False,
             ).ratio = a / b
 

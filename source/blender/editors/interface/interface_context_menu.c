@@ -407,7 +407,7 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
                    "'%s').label",
                    idname);
           char *expr_result = NULL;
-          if (BPY_execute_string_as_string(C, expr_imports, expr, true, &expr_result)) {
+          if (BPY_execute_string_as_string(C, expr_imports, expr, __func__, &expr_result)) {
             STRNCPY(drawstr, expr_result);
             MEM_freeN(expr_result);
           }
@@ -560,7 +560,8 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
     const bool is_array_component = (is_array && but->rnaindex != -1);
     const bool is_whole_array = (is_array && but->rnaindex == -1);
 
-    const uint override_status = RNA_property_override_library_status(ptr, prop, -1);
+    const uint override_status = RNA_property_override_library_status(
+        CTX_data_main(C), ptr, prop, -1);
     const bool is_overridable = (override_status & RNA_OVERRIDE_STATUS_OVERRIDABLE) != 0;
 
     /* Set the (button_pointer, button_prop)

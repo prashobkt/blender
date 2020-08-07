@@ -30,7 +30,7 @@
 #   build_deps 2015 x64 / build_deps 2015 x86
 #
 # MAC OS X USAGE:
-#   Install with homebrew: brew install cmake autoconf automake libtool yasm nasm
+#   Install with homebrew: brew install cmake autoconf automake libtool yasm nasm bison
 #   Run "make deps" from main Blender directory
 #
 # LINUX USAGE:
@@ -76,6 +76,7 @@ include(cmake/llvm.cmake)
 include(cmake/clang.cmake)
 if(APPLE)
   include(cmake/openmp.cmake)
+  include(cmake/nasm.cmake)
 endif()
 include(cmake/openimageio.cmake)
 include(cmake/tiff.cmake)
@@ -93,9 +94,11 @@ if(UNIX)
 else()
   include(cmake/pugixml.cmake)
 endif()
-include(cmake/ispc.cmake)
-include(cmake/openimagedenoise.cmake)
-include(cmake/embree.cmake)
+if((NOT APPLE) OR ("${CMAKE_OSX_ARCHITECTURES}" STREQUAL "x86_64"))
+  include(cmake/ispc.cmake)
+  include(cmake/openimagedenoise.cmake)
+  include(cmake/embree.cmake)
+endif()
 if(NOT APPLE)
   include(cmake/xr_openxr.cmake)
 endif()
@@ -114,6 +117,7 @@ if(WIN32)
 endif()
 
 if(NOT WIN32 OR ENABLE_MINGW64)
+  include(cmake/gmp.cmake)
   include(cmake/openjpeg.cmake)
   if(NOT WIN32 OR BUILD_MODE STREQUAL Release)
     if(WIN32)

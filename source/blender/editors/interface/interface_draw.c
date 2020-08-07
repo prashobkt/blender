@@ -773,9 +773,8 @@ void ui_draw_but_IMAGE(ARegion *UNUSED(region),
                    (float)rect->ymin,
                    ibuf->x,
                    ibuf->y,
-                   GL_RGBA,
-                   GL_UNSIGNED_BYTE,
-                   GL_NEAREST,
+                   GPU_RGBA8,
+                   false,
                    ibuf->rect,
                    1.0f,
                    1.0f,
@@ -867,7 +866,7 @@ static void histogram_draw_one(float r,
   }
 
   GPU_line_smooth(true);
-  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
+  GPU_blend_set_func_separate(GPU_SRC_ALPHA, GPU_ONE, GPU_ONE, GPU_ONE);
 
   immUniformColor4fv(color);
 
@@ -1168,7 +1167,7 @@ void ui_draw_but_WAVEFORM(ARegion *UNUSED(region),
   }
 
   if (scopes->ok && scopes->waveform_1 != NULL) {
-    glBlendFunc(GL_ONE, GL_ONE);
+    GPU_blend_set_func(GPU_ONE, GPU_ONE);
     GPU_point_size(1.0);
 
     /* LUMA (1 channel) */
@@ -1468,7 +1467,7 @@ void ui_draw_but_VECTORSCOPE(ARegion *UNUSED(region),
     /* pixel point cloud */
     float col[3] = {alpha, alpha, alpha};
 
-    glBlendFunc(GL_ONE, GL_ONE);
+    GPU_blend_set_func(GPU_ONE, GPU_ONE);
     GPU_point_size(1.0);
 
     GPU_matrix_push();
@@ -1783,8 +1782,7 @@ void ui_draw_but_UNITVEC(uiBut *but, const uiWidgetColors *wcol, const rcti *rec
   UI_draw_roundbox_3ub_alpha(
       true, rect->xmin, rect->ymin, rect->xmax, rect->ymax, 5.0f, wcol->inner, 255);
 
-  glCullFace(GL_BACK);
-  glEnable(GL_CULL_FACE);
+  GPU_face_culling(GPU_CULL_BACK);
 
   /* setup lights */
   ui_but_v3_get(but, light);
@@ -1809,7 +1807,7 @@ void ui_draw_but_UNITVEC(uiBut *but, const uiWidgetColors *wcol, const rcti *rec
   GPU_batch_draw(sphere);
 
   /* restore */
-  glDisable(GL_CULL_FACE);
+  GPU_face_culling(GPU_CULL_NONE);
 
   /* AA circle */
   GPUVertFormat *format = immVertexFormat();
@@ -2258,12 +2256,12 @@ void ui_draw_but_CURVEPROFILE(ARegion *region,
   /* Also add the last points on the right and bottom edges to close off the fill polygon. */
   bool add_left_tri = profile->view_rect.xmin < 0.0f;
   bool add_bottom_tri = profile->view_rect.ymin < 0.0f;
-  uint tot_points = (uint)PROF_N_TABLE(profile->path_len) + 1 + add_left_tri + add_bottom_tri;
+  uint tot_points = (uint)PROF_TABLE_LEN(profile->path_len) + 1 + add_left_tri + add_bottom_tri;
   uint tot_triangles = tot_points - 2;
 
   /* Create array of the positions of the table's points. */
   float(*table_coords)[2] = MEM_mallocN(sizeof(*table_coords) * tot_points, "table x coords");
-  for (i = 0; i < (uint)PROF_N_TABLE(profile->path_len);
+  for (i = 0; i < (uint)PROF_TABLE_LEN(profile->path_len);
        i++) { /* Only add the points from the table here. */
     table_coords[i][0] = pts[i].x;
     table_coords[i][1] = pts[i].y;
@@ -2546,9 +2544,8 @@ void ui_draw_but_TRACKPREVIEW(ARegion *UNUSED(region),
                        rect.ymin + 1,
                        drawibuf->x,
                        drawibuf->y,
-                       GL_RGBA,
-                       GL_UNSIGNED_BYTE,
-                       GL_LINEAR,
+                       GPU_RGBA8,
+                       true,
                        drawibuf->rect,
                        1.0f,
                        1.0f,

@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BLI_TIMEIT_HH__
-#define __BLI_TIMEIT_HH__
+#pragma once
 
 #include <chrono>
 #include <iostream>
@@ -23,8 +22,7 @@
 
 #include "BLI_sys_types.h"
 
-namespace blender {
-namespace Timeit {
+namespace blender::timeit {
 
 using Clock = std::chrono::steady_clock;
 using TimePoint = Clock::time_point;
@@ -54,9 +52,6 @@ class ScopedTimer {
   }
 };
 
-}  // namespace Timeit
-}  // namespace blender
+}  // namespace blender::timeit
 
-#define SCOPED_TIMER(name) blender::Timeit::ScopedTimer scoped_timer(name)
-
-#endif /* __BLI_TIMEIT_HH__ */
+#define SCOPED_TIMER(name) blender::timeit::ScopedTimer scoped_timer(name)

@@ -246,7 +246,11 @@ static int palette_color_add_exec(bContext *C, wmOperator *UNUSED(op))
   color = BKE_palette_color_add(palette);
   palette->active_color = BLI_listbase_count(&palette->colors) - 1;
 
-  if (ELEM(mode, PAINT_MODE_TEXTURE_3D, PAINT_MODE_TEXTURE_2D, PAINT_MODE_VERTEX)) {
+  if (ELEM(mode,
+           PAINT_MODE_TEXTURE_3D,
+           PAINT_MODE_TEXTURE_2D,
+           PAINT_MODE_VERTEX,
+           PAINT_MODE_SCULPT)) {
     copy_v3_v3(color->rgb, BKE_brush_color_get(scene, brush));
     color->value = 0.0;
   }
@@ -695,14 +699,12 @@ static Brush *brush_tool_toggle(Main *bmain, Paint *paint, Brush *brush_orig, co
 
     return br;
   }
-  else if (brush_orig->toggle_brush) {
+  if (brush_orig->toggle_brush) {
     /* if current brush is using the desired tool, try to toggle
      * back to the previously selected brush. */
     return brush_orig->toggle_brush;
   }
-  else {
-    return NULL;
-  }
+  return NULL;
 }
 
 static bool brush_generic_tool_set(bContext *C,
@@ -751,9 +753,7 @@ static bool brush_generic_tool_set(bContext *C,
 
     return true;
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 static const ePaintMode brush_select_paint_modes[] = {
@@ -1356,6 +1356,7 @@ void ED_operatortypes_paint(void)
   /* paint masking */
   WM_operatortype_append(PAINT_OT_mask_flood_fill);
   WM_operatortype_append(PAINT_OT_mask_lasso_gesture);
+  WM_operatortype_append(PAINT_OT_mask_box_gesture);
 }
 
 void ED_keymap_paint(wmKeyConfig *keyconf)

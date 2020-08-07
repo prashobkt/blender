@@ -17,8 +17,7 @@
  * All rights reserved.
  */
 
-#ifndef __BLI_THREADS_H__
-#define __BLI_THREADS_H__
+#pragma once
 
 /** \file
  * \ingroup bli
@@ -107,7 +106,7 @@ typedef uint32_t SpinLock;
 #elif defined(__APPLE__)
 typedef ThreadMutex SpinLock;
 #elif defined(_MSC_VER)
-typedef volatile int SpinLock;
+typedef volatile unsigned int SpinLock;
 #else
 typedef pthread_spinlock_t SpinLock;
 #endif
@@ -204,6 +203,4 @@ void BLI_thread_put_thread_on_fast_node(void);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

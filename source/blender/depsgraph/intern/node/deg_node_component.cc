@@ -72,7 +72,7 @@ bool ComponentNode::OperationIDKey::operator==(const OperationIDKey &other) cons
   return (opcode == other.opcode) && (STREQ(name, other.name)) && (name_tag == other.name_tag);
 }
 
-uint32_t ComponentNode::OperationIDKey::hash() const
+uint64_t ComponentNode::OperationIDKey::hash() const
 {
   const int opcode_as_int = static_cast<int>(opcode);
   return BLI_ghashutil_combine_hash(
@@ -98,9 +98,7 @@ void ComponentNode::init(const ID * /*id*/, const char * /*subdata*/)
 ComponentNode::~ComponentNode()
 {
   clear_operations();
-  if (operations_map != nullptr) {
-    delete operations_map;
-  }
+  delete operations_map;
 }
 
 string ComponentNode::identifier() const

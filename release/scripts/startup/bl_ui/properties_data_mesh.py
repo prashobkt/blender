@@ -346,9 +346,11 @@ class DATA_PT_shape_keys(MeshButtonsPanel, Panel):
 
         enable_edit = ob.mode != 'EDIT'
         enable_edit_value = False
+        enable_pin = False
 
-        if ob.show_only_shape_key is False:
-            if enable_edit or (ob.type == 'MESH' and ob.use_shape_key_edit_mode):
+        if enable_edit or (ob.use_shape_key_edit_mode and ob.type == 'MESH'):
+            enable_pin = True
+            if ob.show_only_shape_key:
                 enable_edit_value = True
 
         row = layout.row()
@@ -386,7 +388,7 @@ class DATA_PT_shape_keys(MeshButtonsPanel, Panel):
             sub = row.row(align=True)
             sub.label()  # XXX, for alignment only
             subsub = sub.row(align=True)
-            subsub.active = enable_edit_value
+            subsub.active = enable_pin
             subsub.prop(ob, "show_only_shape_key", text="")
             sub.prop(ob, "use_shape_key_edit_mode", text="")
 
@@ -464,6 +466,10 @@ class DATA_PT_sculpt_vertex_colors(MeshButtonsPanel, Panel):
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
+    @classmethod
+    def poll(cls, context):
+        return context.preferences.experimental.use_sculpt_vertex_colors
+
     def draw(self, context):
         layout = self.layout
 
@@ -508,7 +514,8 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
             col.prop(mesh, "use_remesh_preserve_volume", text="Volume")
             col.prop(mesh, "use_remesh_preserve_paint_mask", text="Paint Mask")
             col.prop(mesh, "use_remesh_preserve_sculpt_face_sets", text="Face Sets")
-            col.prop(mesh, "use_remesh_preserve_vertex_colors", text="Vertex Colors")
+            if context.preferences.experimental.use_sculpt_vertex_colors:
+                col.prop(mesh, "use_remesh_preserve_vertex_colors", text="Vertex Colors")
 
             col.operator("object.voxel_remesh", text="Voxel Remesh")
         else:

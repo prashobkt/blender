@@ -22,6 +22,7 @@
 
 #include "DRW_render.h"
 
+#include "GPU_matrix.h"
 #include "GPU_shader.h"
 #include "GPU_texture.h"
 
@@ -30,8 +31,6 @@
 #include "BKE_colorband.h"
 #include "BKE_global.h"
 #include "BKE_object.h"
-
-#include "BIF_glutil.h"
 
 #include "draw_common.h"
 
@@ -280,7 +279,7 @@ DRWView *DRW_view_create_with_zoffset(const DRWView *parent_view,
     viewdist = 1.0f / max_ff(fabsf(winmat[0][0]), fabsf(winmat[1][1]));
   }
 
-  winmat[3][2] -= bglPolygonOffsetCalc((float *)winmat, viewdist, offset);
+  winmat[3][2] -= GPU_polygon_offset_calc(winmat, viewdist, offset);
 
   return DRW_view_create_sub(parent_view, viewmat, winmat);
 }
@@ -456,11 +455,11 @@ bool DRW_object_is_flat(Object *ob, int *r_axis)
     *r_axis = 0;
     return true;
   }
-  else if (dim[1] == 0.0f) {
+  if (dim[1] == 0.0f) {
     *r_axis = 1;
     return true;
   }
-  else if (dim[2] == 0.0f) {
+  if (dim[2] == 0.0f) {
     *r_axis = 2;
     return true;
   }

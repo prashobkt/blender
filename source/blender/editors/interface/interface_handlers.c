@@ -47,6 +47,7 @@
 
 #include "PIL_time.h"
 
+#include "BKE_animsys.h"
 #include "BKE_blender_undo.h"
 #include "BKE_brush.h"
 #include "BKE_colorband.h"
@@ -1393,6 +1394,9 @@ static void ui_multibut_states_apply(bContext *C, uiHandleButtonData *data, uiBl
 
 static bool ui_drag_toggle_but_is_supported(const uiBut *but)
 {
+  if (but->flag & UI_BUT_DISABLED) {
+    return false;
+  }
   if (ui_but_is_bool(but)) {
     return true;
   }
@@ -1764,21 +1768,21 @@ static void ui_selectcontext_apply(bContext *C,
       RNA_property_int_range(&but->rnapoin, prop, &min.i, &max.i);
     }
     else if (rna_type == PROP_ENUM) {
-      /* not a delta infact */
+      /* Not a delta in fact. */
       delta.i = RNA_property_enum_get(&but->rnapoin, prop);
     }
     else if (rna_type == PROP_BOOLEAN) {
       if (is_array) {
-        /* not a delta infact */
+        /* Not a delta in fact. */
         delta.b = RNA_property_boolean_get_index(&but->rnapoin, prop, index);
       }
       else {
-        /* not a delta infact */
+        /* Not a delta in fact. */
         delta.b = RNA_property_boolean_get(&but->rnapoin, prop);
       }
     }
     else if (rna_type == PROP_POINTER) {
-      /* not a delta infact */
+      /* Not a delta in fact. */
       delta.p = RNA_property_pointer_get(&but->rnapoin, prop);
     }
 
@@ -2376,7 +2380,7 @@ static void ui_but_paste_numeric_value(bContext *C,
 {
   double value;
 
-  if (ui_but_string_set_eval_num(C, but, buf_paste, &value)) {
+  if (ui_but_string_eval_number(C, but, buf_paste, &value)) {
     button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
     data->value = value;
     ui_but_string_set(C, but, buf_paste);
@@ -4401,7 +4405,7 @@ static int ui_do_but_TEX(
       if (ELEM(event->type, EVT_PADENTER, EVT_RETKEY) && (!UI_but_is_utf8(but))) {
         /* pass - allow filesel, enter to execute */
       }
-      else if (but->dt == UI_EMBOSS_NONE && !event->ctrl) {
+      else if (but->emboss == UI_EMBOSS_NONE && !event->ctrl) {
         /* pass */
       }
       else {
@@ -7142,7 +7146,7 @@ static int ui_do_but_CURVEPROFILE(
         dist_min_sq = square_f(U.dpi_fac * 8.0f); /* 8 pixel radius from each table point. */
 
         /* Loop through the path's high resolution table and find what's near the click. */
-        for (int i = 1; i <= PROF_N_TABLE(profile->path_len); i++) {
+        for (int i = 1; i <= PROF_TABLE_LEN(profile->path_len); i++) {
           copy_v2_v2(f_xy_prev, f_xy);
           BLI_rctf_transform_pt_v(&but->rect, &profile->view_rect, f_xy, &table[i].x);
 
@@ -8009,6 +8013,9 @@ static void button_activate_init(bContext *C,
 {
   uiHandleButtonData *data;
 
+  /* Only ever one active button! */
+  BLI_assert(ui_region_find_active_but(region) == NULL);
+
   /* setup struct */
   data = MEM_callocN(sizeof(uiHandleButtonData), "uiHandleButtonData");
   data->wm = CTX_wm_manager(C);
@@ -8420,6 +8427,9 @@ void UI_context_update_anim_flag(const bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
   ARegion *region = CTX_wm_region(C);
+  struct Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
+      depsgraph, (scene) ? scene->r.cfra : 0.0f);
   uiBlock *block;
   uiBut *but, *activebut;
 
@@ -8429,8 +8439,8 @@ void UI_context_update_anim_flag(const bContext *C)
 
     for (block = region->uiblocks.first; block; block = block->next) {
       for (but = block->buttons.first; but; but = but->next) {
-        ui_but_anim_flag(but, (scene) ? scene->r.cfra : 0.0f);
-        ui_but_override_flag(but);
+        ui_but_anim_flag(but, &anim_eval_context);
+        ui_but_override_flag(CTX_data_main(C), but);
         if (UI_but_is_decorator(but)) {
           ui_but_anim_decorate_update_from_flag((uiButDecorator *)but);
         }
@@ -8908,6 +8918,11 @@ static int ui_handle_button_event(bContext *C, const wmEvent *event, uiBut *but)
 
     /* for jumping to the next button with tab while text editing */
     if (post_but) {
+      /* The post_but still has previous ranges (without the changes in active button considered),
+       * needs refreshing the ranges. */
+      ui_but_range_set_soft(post_but);
+      ui_but_range_set_hard(post_but);
+
       button_activate_init(C, region, post_but, post_type);
     }
     else if (!((event->type == EVT_BUT_CANCEL) && (event->val == 1))) {
@@ -8947,11 +8962,11 @@ static int ui_handle_list_event(bContext *C, const wmEvent *event, ARegion *regi
   my = event->y;
   ui_window_to_block(region, listbox->block, &mx, &my);
 
-  /* convert pan to scrollwheel */
+  /* Convert pan to scroll-wheel. */
   if (type == MOUSEPAN) {
     ui_pan_to_scroll(event, &type, &val);
 
-    /* if type still is mousepan, we call it handled, since delta-y accumulate */
+    /* If type still is mouse-pan, we call it handled, since delta-y accumulate. */
     /* also see wm_event_system.c do_wheel_ui hack */
     if (type == MOUSEPAN) {
       retval = WM_UI_HANDLER_BREAK;
@@ -9678,7 +9693,7 @@ static int ui_handle_menu_event(bContext *C,
             int type = event->type;
             int val = event->val;
 
-            /* convert pan to scrollwheel */
+            /* Convert pan to scroll-wheel. */
             if (type == MOUSEPAN) {
               ui_pan_to_scroll(event, &type, &val);
             }
@@ -9703,7 +9718,7 @@ static int ui_handle_menu_event(bContext *C,
         case EVT_PAGEDOWNKEY:
         case EVT_HOMEKEY:
         case EVT_ENDKEY:
-          /* arrowkeys: only handle for block_loop blocks */
+          /* Arrow-keys: only handle for block_loop blocks. */
           if (IS_EVENT_MOD(event, shift, ctrl, alt, oskey)) {
             /* pass */
           }
@@ -9711,7 +9726,7 @@ static int ui_handle_menu_event(bContext *C,
             int type = event->type;
             int val = event->val;
 
-            /* convert pan to scrollwheel */
+            /* Convert pan to scroll-wheel. */
             if (type == MOUSEPAN) {
               ui_pan_to_scroll(event, &type, &val);
             }

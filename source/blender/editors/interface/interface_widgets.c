@@ -53,6 +53,7 @@
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
+#include "GPU_platform.h"
 #include "GPU_state.h"
 
 #ifdef WITH_INPUT_IME
@@ -1208,6 +1209,26 @@ void UI_widgetbase_draw_cache_end(void)
   GPU_blend(false);
 }
 
+/* Disable cached/instanced drawing and enforce single widget drawing pipeline.
+ * Works around interface artifacts happening on certain driver and hardware
+ * configurations. */
+static bool draw_widgetbase_batch_skip_draw_cache(void)
+{
+  /* MacOS is known to have issues on Mac Mini and MacBook Pro with Intel Iris GPU.
+   * For example, T78307. */
+  if (GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_MAC, GPU_DRIVER_ANY)) {
+    return true;
+  }
+
+  /* There are also reports that some AMD and Mesa driver configuration suffer from the
+   * same issue, T78803. */
+  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_UNIX, GPU_DRIVER_OPENSOURCE)) {
+    return true;
+  }
+
+  return false;
+}
+
 static void draw_widgetbase_batch(uiWidgetBase *wtb)
 {
   wtb->uniform_params.tria_type = wtb->tria1.type;
@@ -1216,7 +1237,7 @@ static void draw_widgetbase_batch(uiWidgetBase *wtb)
   copy_v2_v2(wtb->uniform_params.tria1_center, wtb->tria1.center);
   copy_v2_v2(wtb->uniform_params.tria2_center, wtb->tria2.center);
 
-  if (g_widget_base_batch.enabled) {
+  if (g_widget_base_batch.enabled && !draw_widgetbase_batch_skip_draw_cache()) {
     g_widget_base_batch.params[g_widget_base_batch.count] = wtb->uniform_params;
     g_widget_base_batch.count++;
 
@@ -1335,7 +1356,7 @@ static void widget_draw_preview(BIFIconID icon, float alpha, const rcti *rect)
 
 static int ui_but_draw_menu_icon(const uiBut *but)
 {
-  return (but->flag & UI_BUT_ICON_SUBMENU) && (but->dt == UI_EMBOSS_PULLDOWN);
+  return (but->flag & UI_BUT_ICON_SUBMENU) && (but->emboss == UI_EMBOSS_PULLDOWN);
 }
 
 /* icons have been standardized... and this call draws in untransformed coordinates */
@@ -1380,7 +1401,7 @@ static void widget_draw_icon(
     }
   }
   else if (ELEM(but->type, UI_BTYPE_BUT, UI_BTYPE_DECORATOR)) {
-    if (but->flag & UI_BUT_DISABLED) {
+    if (but->flag & (UI_BUT_DISABLED | UI_BUT_INACTIVE)) {
       alpha *= 0.5f;
     }
   }
@@ -1396,7 +1417,7 @@ static void widget_draw_icon(
           but->str && but->str[0] == '\0') {
         xs = rect->xmin + 2.0f * ofs;
       }
-      else if (but->dt == UI_EMBOSS_NONE || but->type == UI_BTYPE_LABEL) {
+      else if (but->emboss == UI_EMBOSS_NONE || but->type == UI_BTYPE_LABEL) {
         xs = rect->xmin + 2.0f * ofs;
       }
       else {
@@ -1515,7 +1536,7 @@ static void ui_text_clip_right_ex(const uiFontStyle *fstyle,
     l_end = BLF_width_to_strlen(fstyle->uifont_id, str, max_len, okwidth - sep_strwidth, &tmp);
     memcpy(str + l_end, sep, sep_len + 1); /* +1 for trailing '\0'. */
     if (r_final_len) {
-      *r_final_len = (size_t)(l_end + sep_len);
+      *r_final_len = (size_t)(l_end) + sep_len;
     }
   }
 }
@@ -2354,7 +2375,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
       /* pass (even if its a menu toolbar) */
     }
     else if (ui_block_is_pie_menu(but->block)) {
-      if (but->dt == UI_EMBOSS_RADIAL) {
+      if (but->emboss == UI_EMBOSS_RADIAL) {
         rect->xmin += 0.3f * U.widget_unit;
       }
     }
@@ -2382,7 +2403,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
     }
     else if (but->flag & UI_BUT_DRAG_MULTI) {
       bool text_is_edited = ui_but_drag_multi_edit_get(but) != NULL;
-      if (text_is_edited) {
+      if (text_is_edited || (but->drawflag & UI_BUT_TEXT_LEFT)) {
         rect->xmin += text_padding;
       }
     }
@@ -2601,18 +2622,19 @@ static void widget_state_numslider(uiWidgetType *wt, int state, int drawflag)
 /* labels use theme colors for text */
 static void widget_state_option_menu(uiWidgetType *wt, int state, int drawflag)
 {
-  bTheme *btheme = UI_GetTheme(); /* XXX */
+  const bTheme *btheme = UI_GetTheme();
 
-  /* call this for option button */
+  const uiWidgetColors *old_wcol = wt->wcol_theme;
+  uiWidgetColors wcol_menu_option = *wt->wcol_theme;
+
+  /* Override the checkbox theme colors to use the menu-back text colors. */
+  copy_v3_v3_uchar(wcol_menu_option.text, btheme->tui.wcol_menu_back.text);
+  copy_v3_v3_uchar(wcol_menu_option.text_sel, btheme->tui.wcol_menu_back.text_sel);
+  wt->wcol_theme = &wcol_menu_option;
+
   widget_state(wt, state, drawflag);
 
-  /* if not selected we get theme from menu back */
-  if (state & UI_SELECT) {
-    copy_v3_v3_uchar(wt->wcol.text, btheme->tui.wcol_menu_back.text_sel);
-  }
-  else {
-    copy_v3_v3_uchar(wt->wcol.text, btheme->tui.wcol_menu_back.text);
-  }
+  wt->wcol_theme = old_wcol;
 }
 
 static void widget_state_nothing(uiWidgetType *wt, int UNUSED(state), int UNUSED(drawflag))
@@ -4483,7 +4505,7 @@ void ui_draw_but(const bContext *C, struct ARegion *region, uiStyle *style, uiBu
   uiWidgetType *wt = NULL;
 
   /* handle menus separately */
-  if (but->dt == UI_EMBOSS_PULLDOWN) {
+  if (but->emboss == UI_EMBOSS_PULLDOWN) {
     switch (but->type) {
       case UI_BTYPE_LABEL:
         widget_draw_text_icon(&style->widgetlabel, &tui->wcol_menu_back, but, rect);
@@ -4496,7 +4518,7 @@ void ui_draw_but(const bContext *C, struct ARegion *region, uiStyle *style, uiBu
         break;
     }
   }
-  else if (but->dt == UI_EMBOSS_NONE) {
+  else if (but->emboss == UI_EMBOSS_NONE) {
     /* "nothing" */
     switch (but->type) {
       case UI_BTYPE_LABEL:
@@ -4507,11 +4529,11 @@ void ui_draw_but(const bContext *C, struct ARegion *region, uiStyle *style, uiBu
         break;
     }
   }
-  else if (but->dt == UI_EMBOSS_RADIAL) {
+  else if (but->emboss == UI_EMBOSS_RADIAL) {
     wt = widget_type(UI_WTYPE_MENU_ITEM_RADIAL);
   }
   else {
-    BLI_assert(but->dt == UI_EMBOSS);
+    BLI_assert(but->emboss == UI_EMBOSS);
 
     switch (but->type) {
       case UI_BTYPE_LABEL:
@@ -4588,7 +4610,7 @@ void ui_draw_but(const bContext *C, struct ARegion *region, uiStyle *style, uiBu
           if ((but->drawflag & (UI_BUT_TEXT_LEFT | UI_BUT_TEXT_RIGHT)) == 0) {
             but->drawflag |= UI_BUT_TEXT_LEFT;
           }
-          /* widget_optionbut() carefully sets the text rectangle for fine tuned paddings. If the
+          /* #widget_optionbut() carefully sets the text rectangle for fine tuned paddings. If the
            * text drawing were to add its own padding, DPI and zoom factor would be applied twice
            * in the final padding, so it's difficult to control it. */
           but->drawflag |= UI_BUT_NO_TEXT_PADDING;
@@ -4761,7 +4783,7 @@ void ui_draw_but(const bContext *C, struct ARegion *region, uiStyle *style, uiBu
     }
 
     if (state & (UI_BUT_DISABLED | UI_BUT_INACTIVE)) {
-      if (but->dt != UI_EMBOSS_PULLDOWN) {
+      if (but->emboss != UI_EMBOSS_PULLDOWN) {
         disabled = true;
       }
     }

@@ -57,6 +57,7 @@
 #include "DNA_packedFile_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
+#include "DNA_simulation_types.h"
 #include "DNA_world_types.h"
 
 #include "BLI_blenlib.h"
@@ -64,7 +65,7 @@
 #include "BLI_mempool.h"
 #include "BLI_system.h"
 #include "BLI_threads.h"
-#include "BLI_timecode.h" /* for stamp timecode format */
+#include "BLI_timecode.h" /* For stamp time-code format. */
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -89,7 +90,6 @@
 
 #include "RE_pipeline.h"
 
-#include "GPU_draw.h"
 #include "GPU_texture.h"
 
 #include "BLI_sys_types.h"  // for intptr_t support
@@ -195,24 +195,24 @@ static void image_foreach_cache(ID *id,
       .offset_in_ID = offsetof(Image, cache),
       .cache_v = image->cache,
   };
-  function_callback(id, &key, (void **)&image->cache, user_data);
+  function_callback(id, &key, (void **)&image->cache, 0, user_data);
 
   for (int eye = 0; eye < 2; eye++) {
     for (int a = 0; a < TEXTARGET_COUNT; a++) {
       key.offset_in_ID = offsetof(Image, gputexture[a][eye]);
       key.cache_v = image->gputexture[a][eye];
-      function_callback(id, &key, (void **)&image->gputexture[a][eye], user_data);
+      function_callback(id, &key, (void **)&image->gputexture[a][eye], 0, user_data);
     }
   }
 
   key.offset_in_ID = offsetof(Image, rr);
   key.cache_v = image->rr;
-  function_callback(id, &key, (void **)&image->rr, user_data);
+  function_callback(id, &key, (void **)&image->rr, 0, user_data);
 
   LISTBASE_FOREACH (RenderSlot *, slot, &image->renderslots) {
     key.offset_in_ID = (size_t)BLI_ghashutil_strhash_p(slot->name);
     key.cache_v = slot->render;
-    function_callback(id, &key, (void **)&slot->render, user_data);
+    function_callback(id, &key, (void **)&slot->render, 0, user_data);
   }
 }
 
@@ -392,7 +392,7 @@ void BKE_image_free_buffers_ex(Image *ima, bool do_lock)
     ima->rr = NULL;
   }
 
-  GPU_free_image(ima);
+  BKE_image_free_gputextures(ima);
 
   LISTBASE_FOREACH (ImageTile *, tile, &ima->tiles) {
     tile->ok = IMA_OK;
@@ -3240,6 +3240,12 @@ static void image_walk_id_all_users(
       if (scene->nodetree && scene->use_nodes && !skip_nested_nodes) {
         image_walk_ntree_all_users(scene->nodetree, &scene->id, customdata, callback);
       }
+      break;
+    }
+    case ID_SIM: {
+      Simulation *simulation = (Simulation *)id;
+      image_walk_ntree_all_users(simulation->nodetree, &simulation->id, customdata, callback);
+      break;
     }
     default:
       break;
@@ -3344,8 +3350,7 @@ static void image_free_tile(Image *ima, ImageTile *tile)
   for (int i = 0; i < TEXTARGET_COUNT; i++) {
     /* Only two textures depends on all tiles, so if this is a secondary tile we can keep the other
      * two. */
-    if (tile != ima->tiles.first &&
-        !(ELEM(i, TEXTARGET_TEXTURE_2D_ARRAY, TEXTARGET_TEXTURE_TILE_MAPPING))) {
+    if (tile != ima->tiles.first && !(ELEM(i, TEXTARGET_2D_ARRAY, TEXTARGET_TILE_MAPPING))) {
       continue;
     }
 
@@ -3622,13 +3627,13 @@ ImageTile *BKE_image_add_tile(struct Image *ima, int tile_number, const char *la
 
   for (int eye = 0; eye < 2; eye++) {
     /* Reallocate GPU tile array. */
-    if (ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY][eye] != NULL) {
-      GPU_texture_free(ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY][eye]);
-      ima->gputexture[TEXTARGET_TEXTURE_2D_ARRAY][eye] = NULL;
+    if (ima->gputexture[TEXTARGET_2D_ARRAY][eye] != NULL) {
+      GPU_texture_free(ima->gputexture[TEXTARGET_2D_ARRAY][eye]);
+      ima->gputexture[TEXTARGET_2D_ARRAY][eye] = NULL;
     }
-    if (ima->gputexture[TEXTARGET_TEXTURE_TILE_MAPPING][eye] != NULL) {
-      GPU_texture_free(ima->gputexture[TEXTARGET_TEXTURE_TILE_MAPPING][eye]);
-      ima->gputexture[TEXTARGET_TEXTURE_TILE_MAPPING][eye] = NULL;
+    if (ima->gputexture[TEXTARGET_TILE_MAPPING][eye] != NULL) {
+      GPU_texture_free(ima->gputexture[TEXTARGET_TILE_MAPPING][eye]);
+      ima->gputexture[TEXTARGET_TILE_MAPPING][eye] = NULL;
     }
   }
 
@@ -3937,7 +3942,7 @@ static void image_create_multilayer(Image *ima, ImBuf *ibuf, int framenr)
 #endif /* WITH_OPENEXR */
 
 /* common stuff to do with images after loading */
-static void image_initialize_after_load(Image *ima, ImageUser *iuser, ImBuf *UNUSED(ibuf))
+static void image_init_after_load(Image *ima, ImageUser *iuser, ImBuf *UNUSED(ibuf))
 {
   /* Preview is NULL when it has never been used as an icon before.
    * Never handle previews/icons outside of main thread. */
@@ -4040,11 +4045,11 @@ static ImBuf *load_sequence_single(
       }
     }
     else {
-      image_initialize_after_load(ima, iuser, ibuf);
+      image_init_after_load(ima, iuser, ibuf);
       *r_assign = true;
     }
 #else
-    image_initialize_after_load(ima, iuser, ibuf);
+    image_init_after_load(ima, iuser, ibuf);
     *r_assign = true;
 #endif
   }
@@ -4149,7 +4154,7 @@ static ImBuf *image_load_sequence_multilayer(Image *ima, ImageUser *iuser, int e
 
       BKE_imbuf_stamp_info(ima->rr, ibuf);
 
-      image_initialize_after_load(ima, iuser, ibuf);
+      image_init_after_load(ima, iuser, ibuf);
       image_assign_ibuf(ima, ibuf, iuser ? iuser->multi_index : 0, entry);
     }
     // else printf("pass not found\n");
@@ -4213,7 +4218,7 @@ static ImBuf *load_movie_single(Image *ima, ImageUser *iuser, int frame, const i
     ibuf = IMB_makeSingleUser(IMB_anim_absolute(ia->anim, fra, IMB_TC_RECORD_RUN, IMB_PROXY_NONE));
 
     if (ibuf) {
-      image_initialize_after_load(ima, iuser, ibuf);
+      image_init_after_load(ima, iuser, ibuf);
     }
     else {
       tile->ok = 0;
@@ -4358,12 +4363,12 @@ static ImBuf *load_image_single(Image *ima,
     else
 #endif
     {
-      image_initialize_after_load(ima, iuser, ibuf);
+      image_init_after_load(ima, iuser, ibuf);
       *r_assign = true;
 
       /* make packed file for autopack */
       if ((has_packed == false) && (G.fileflags & G_FILE_AUTOPACK)) {
-        ImagePackedFile *imapf = MEM_mallocN(sizeof(ImagePackedFile), "Image Packefile");
+        ImagePackedFile *imapf = MEM_mallocN(sizeof(ImagePackedFile), "Image Pack-file");
         BLI_addtail(&ima->packedfiles, imapf);
 
         STRNCPY(imapf->filepath, filepath);
@@ -4472,7 +4477,7 @@ static ImBuf *image_get_ibuf_multilayer(Image *ima, ImageUser *iuser)
     if (rpass) {
       ibuf = IMB_allocImBuf(ima->rr->rectx, ima->rr->recty, 32, 0);
 
-      image_initialize_after_load(ima, iuser, ibuf);
+      image_init_after_load(ima, iuser, ibuf);
 
       ibuf->rect_float = rpass->rect;
       ibuf->flags |= IB_rectfloat;
@@ -5213,24 +5218,32 @@ int BKE_image_user_frame_get(const ImageUser *iuser, int cfra, bool *r_is_in_ran
 void BKE_image_user_frame_calc(Image *ima, ImageUser *iuser, int cfra)
 {
   if (iuser) {
-    bool is_in_range;
-    const int framenr = BKE_image_user_frame_get(iuser, cfra, &is_in_range);
+    if (ima && BKE_image_is_animated(ima)) {
+      /* Compute current frame for animated image. */
+      bool is_in_range;
+      const int framenr = BKE_image_user_frame_get(iuser, cfra, &is_in_range);
 
-    if (is_in_range) {
-      iuser->flag |= IMA_USER_FRAME_IN_RANGE;
+      if (is_in_range) {
+        iuser->flag |= IMA_USER_FRAME_IN_RANGE;
+      }
+      else {
+        iuser->flag &= ~IMA_USER_FRAME_IN_RANGE;
+      }
+
+      iuser->framenr = framenr;
     }
     else {
-      iuser->flag &= ~IMA_USER_FRAME_IN_RANGE;
+      /* Set fixed frame number for still image. */
+      iuser->framenr = 0;
+      iuser->flag |= IMA_USER_FRAME_IN_RANGE;
     }
 
-    iuser->framenr = framenr;
-
-    if (ima && BKE_image_is_animated(ima) && ima->gpuframenr != framenr) {
+    if (ima && ima->gpuframenr != iuser->framenr) {
       /* Note: a single texture and refresh doesn't really work when
        * multiple image users may use different frames, this is to
        * be improved with perhaps a GPU texture cache. */
       ima->gpuflag |= IMA_GPU_REFRESH;
-      ima->gpuframenr = framenr;
+      ima->gpuframenr = iuser->framenr;
     }
 
     if (iuser->ok == 0) {

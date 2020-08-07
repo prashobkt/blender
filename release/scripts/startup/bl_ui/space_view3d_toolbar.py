@@ -208,6 +208,10 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
         row = layout.row(align=True, heading="Transform")
         row.prop(tool_settings, "use_transform_correct_face_attributes")
 
+        row = layout.row(align=True)
+        row.active = tool_settings.use_transform_correct_face_attributes
+        row.prop(tool_settings, "use_transform_correct_keep_connected")
+
         row = layout.row(heading="Mirror")
         sub = row.row(align=True)
         sub.prop(mesh, "use_mirror_x", text="X", toggle=True)
@@ -737,7 +741,8 @@ class VIEW3D_PT_sculpt_dyntopo(Panel, View3DPaintPanel):
 
     @classmethod
     def poll(cls, context):
-        return (context.sculpt_object and context.tool_settings.sculpt)
+        paint_settings = cls.paint_settings(context)
+        return (context.sculpt_object and context.tool_settings.sculpt and paint_settings)
 
     def draw_header(self, context):
         is_popover = self.is_popover
@@ -811,7 +816,8 @@ class VIEW3D_PT_sculpt_voxel_remesh(Panel, View3DPaintPanel):
         col.prop(mesh, "use_remesh_preserve_volume", text="Volume")
         col.prop(mesh, "use_remesh_preserve_paint_mask", text="Paint Mask")
         col.prop(mesh, "use_remesh_preserve_sculpt_face_sets", text="Face Sets")
-        col.prop(mesh, "use_remesh_preserve_vertex_colors", text="Vertex Colors")
+        if context.preferences.experimental.use_sculpt_vertex_colors:
+            col.prop(mesh, "use_remesh_preserve_vertex_colors", text="Vertex Colors")
 
 
         layout.operator("object.voxel_remesh", text="Remesh")
@@ -1369,6 +1375,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):
     bl_parent_id = 'VIEW3D_PT_tools_grease_pencil_brush_settings'
     bl_category = "Tool"
     bl_options = {'DEFAULT_CLOSED'}
+    bl_ui_units_x = 12
 
     @classmethod
     def poll(cls, context):
@@ -1387,6 +1394,9 @@ class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):
 
         col = layout.column(align=True)
         if brush is not None:
+            col.prop(gp_settings, "brush_draw_mode")
+            col.separator()
+
             if brush.gpencil_tool != 'FILL':
                 col.prop(gp_settings, "input_samples")
                 col.separator()
@@ -1415,11 +1425,22 @@ class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):
                 row = col.row(align=True)
                 row.prop(gp_settings, "fill_draw_mode", text="Boundary")
                 row.prop(gp_settings, "show_fill_boundary", text="", icon='GRID')
+
+                col.separator()
+                row = col.row(align=True)
+                row.prop(gp_settings, "fill_layer_mode", text="Layers")
+
                 col.separator()
                 col.prop(gp_settings, "fill_factor", text="Resolution")
                 if gp_settings.fill_draw_mode != 'STROKE':
-                    col.prop(gp_settings, "show_fill", text="Ignore Transparent Strokes")
-                    col.prop(gp_settings, "fill_threshold", text="Threshold")
+                    col = layout.column(align=False, heading="Ignore Transparent")
+                    col.use_property_decorate = False
+                    row = col.row(align=True)
+                    sub = row.row(align=True)
+                    sub.prop(gp_settings, "show_fill", text="")
+                    sub = sub.row(align=True)
+                    sub.active = gp_settings.show_fill
+                    sub.prop(gp_settings, "fill_threshold", text="")
 
 
 class VIEW3D_PT_tools_grease_pencil_brush_stroke(Panel, View3DPanel):

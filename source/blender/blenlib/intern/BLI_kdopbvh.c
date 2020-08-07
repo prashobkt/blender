@@ -169,6 +169,12 @@ typedef struct BVHNearestProjectedData {
 
 } BVHNearestProjectedData;
 
+typedef struct BVHIntersectPlaneData {
+  const BVHTree *tree;
+  float plane[4];
+  struct BLI_Stack *intersect; /* Store indexes. */
+} BVHIntersectPlaneData;
+
 /** \} */
 
 /**
@@ -278,28 +284,19 @@ static BVHNode *bvh_medianof3(BVHNode **a, int lo, int mid, int hi, int axis)
     if ((a[hi])->bv[axis] < (a[mid])->bv[axis]) {
       return a[mid];
     }
-    else {
-      if ((a[hi])->bv[axis] < (a[lo])->bv[axis]) {
-        return a[hi];
-      }
-      else {
-        return a[lo];
-      }
+    if ((a[hi])->bv[axis] < (a[lo])->bv[axis]) {
+      return a[hi];
     }
+    return a[lo];
   }
-  else {
-    if ((a[hi])->bv[axis] < (a[mid])->bv[axis]) {
-      if ((a[hi])->bv[axis] < (a[lo])->bv[axis]) {
-        return a[lo];
-      }
-      else {
-        return a[hi];
-      }
+
+  if ((a[hi])->bv[axis] < (a[mid])->bv[axis]) {
+    if ((a[hi])->bv[axis] < (a[lo])->bv[axis]) {
+      return a[lo];
     }
-    else {
-      return a[mid];
-    }
+    return a[hi];
   }
+  return a[mid];
 }
 
 /**
@@ -416,18 +413,12 @@ static char get_largest_axis(const float *bv)
     if (middle_point[0] > middle_point[2]) {
       return 1; /* max x axis */
     }
-    else {
-      return 5; /* max z axis */
-    }
+    return 5; /* max z axis */
   }
-  else {
-    if (middle_point[1] > middle_point[2]) {
-      return 3; /* max y axis */
-    }
-    else {
-      return 5; /* max z axis */
-    }
+  if (middle_point[1] > middle_point[2]) {
+    return 3; /* max y axis */
   }
+  return 5; /* max z axis */
 }
 
 /**
@@ -613,13 +604,11 @@ static int implicit_leafs_index(const BVHBuildHelper *data, const int depth, con
   if (min_leaf_index <= data->remain_leafs) {
     return min_leaf_index;
   }
-  else if (data->leafs_per_child[depth]) {
+  if (data->leafs_per_child[depth]) {
     return data->totleafs -
            (data->branches_on_level[depth - 1] - child_index) * data->leafs_per_child[depth];
   }
-  else {
-    return data->remain_leafs;
-  }
+  return data->remain_leafs;
 }
 
 /**
@@ -1393,6 +1382,71 @@ BVHTreeOverlap *BLI_bvhtree_overlap(
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name BLI_bvhtree_intersect_plane
+ * \{ */
+
+static bool tree_intersect_plane_test(const float *bv, const float plane[4])
+{
+  /* TODO(germano): Support other kdop geometries. */
+  const float bb_min[3] = {bv[0], bv[2], bv[4]};
+  const float bb_max[3] = {bv[1], bv[3], bv[5]};
+  float bb_near[3], bb_far[3];
+  aabb_get_near_far_from_plane(plane, bb_min, bb_max, bb_near, bb_far);
+  if ((plane_point_side_v3(plane, bb_near) > 0.0f) !=
+      (plane_point_side_v3(plane, bb_far) > 0.0f)) {
+    return true;
+  }
+
+  return false;
+}
+
+static void bvhtree_intersect_plane_dfs_recursive(BVHIntersectPlaneData *__restrict data,
+                                                  const BVHNode *node)
+{
+  if (tree_intersect_plane_test(node->bv, data->plane)) {
+    /* check if node is a leaf */
+    if (!node->totnode) {
+      int *intersect = BLI_stack_push_r(data->intersect);
+      *intersect = node->index;
+    }
+    else {
+      for (int j = 0; j < data->tree->tree_type; j++) {
+        if (node->children[j]) {
+          bvhtree_intersect_plane_dfs_recursive(data, node->children[j]);
+        }
+      }
+    }
+  }
+}
+
+int *BLI_bvhtree_intersect_plane(BVHTree *tree, float plane[4], uint *r_intersect_tot)
+{
+  int *intersect = NULL;
+  size_t total = 0;
+
+  if (tree->totleaf) {
+    BVHIntersectPlaneData data;
+    data.tree = tree;
+    copy_v4_v4(data.plane, plane);
+    data.intersect = BLI_stack_new(sizeof(int), __func__);
+
+    BVHNode *root = tree->nodes[tree->totleaf];
+    bvhtree_intersect_plane_dfs_recursive(&data, root);
+
+    total = BLI_stack_count(data.intersect);
+    if (total) {
+      intersect = MEM_mallocN(sizeof(int) * total, __func__);
+      BLI_stack_pop_n(data.intersect, intersect, (uint)total);
+    }
+    BLI_stack_free(data.intersect);
+  }
+  *r_intersect_tot = (uint)total;
+  return intersect;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name BLI_bvhtree_find_nearest
  * \{ */
 
@@ -1597,10 +1651,8 @@ static bool dfs_find_duplicate_fast_dfs(BVHNearestData *data, BVHNode *node)
         data->callback(data->userdata, node->index, data->co, &data->nearest);
         return (data->nearest.dist_sq < dist_sq);
       }
-      else {
-        data->nearest.index = node->index;
-        return true;
-      }
+      data->nearest.index = node->index;
+      return true;
     }
   }
   else {
@@ -1734,9 +1786,7 @@ static float fast_ray_nearest_hit(const BVHRayCastData *data, const BVHNode *nod
       (t1x > data->hit.dist || t1y > data->hit.dist || t1z > data->hit.dist)) {
     return FLT_MAX;
   }
-  else {
-    return max_fff(t1x, t1y, t1z);
-  }
+  return max_fff(t1x, t1y, t1z);
 }
 
 static void dfs_raycast(BVHRayCastData *data, BVHNode *node)
@@ -2283,26 +2333,25 @@ static bool bvhtree_walk_dfs_recursive(BVHTree_WalkData *walk_data, const BVHNod
     return walk_data->walk_leaf_cb(
         (const BVHTreeAxisRange *)node->bv, node->index, walk_data->userdata);
   }
-  else {
-    /* First pick the closest node to recurse into */
-    if (walk_data->walk_order_cb(
-            (const BVHTreeAxisRange *)node->bv, node->main_axis, walk_data->userdata)) {
-      for (int i = 0; i != node->totnode; i++) {
-        if (walk_data->walk_parent_cb((const BVHTreeAxisRange *)node->children[i]->bv,
-                                      walk_data->userdata)) {
-          if (!bvhtree_walk_dfs_recursive(walk_data, node->children[i])) {
-            return false;
-          }
+
+  /* First pick the closest node to recurse into */
+  if (walk_data->walk_order_cb(
+          (const BVHTreeAxisRange *)node->bv, node->main_axis, walk_data->userdata)) {
+    for (int i = 0; i != node->totnode; i++) {
+      if (walk_data->walk_parent_cb((const BVHTreeAxisRange *)node->children[i]->bv,
+                                    walk_data->userdata)) {
+        if (!bvhtree_walk_dfs_recursive(walk_data, node->children[i])) {
+          return false;
         }
       }
     }
-    else {
-      for (int i = node->totnode - 1; i >= 0; i--) {
-        if (walk_data->walk_parent_cb((const BVHTreeAxisRange *)node->children[i]->bv,
-                                      walk_data->userdata)) {
-          if (!bvhtree_walk_dfs_recursive(walk_data, node->children[i])) {
-            return false;
-          }
+  }
+  else {
+    for (int i = node->totnode - 1; i >= 0; i--) {
+      if (walk_data->walk_parent_cb((const BVHTreeAxisRange *)node->children[i]->bv,
+                                    walk_data->userdata)) {
+        if (!bvhtree_walk_dfs_recursive(walk_data, node->children[i])) {
+          return false;
         }
       }
     }

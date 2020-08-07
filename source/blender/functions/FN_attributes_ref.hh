@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __FN_ATTRIBUTES_REF_HH__
-#define __FN_ATTRIBUTES_REF_HH__
+#pragma once
 
 /** \file
  * \ingroup fn
@@ -50,12 +49,12 @@ class AttributesInfoBuilder : NonCopyable, NonMovable {
   AttributesInfoBuilder() = default;
   ~AttributesInfoBuilder();
 
-  template<typename T> void add(StringRef name, const T &default_value)
+  template<typename T> bool add(StringRef name, const T &default_value)
   {
-    this->add(name, CPPType::get<T>(), (const void *)&default_value);
+    return this->add(name, CPPType::get<T>(), (const void *)&default_value);
   }
 
-  void add(StringRef name, const CPPType &type, const void *default_value = nullptr);
+  bool add(StringRef name, const CPPType &type, const void *default_value = nullptr);
 };
 
 /**
@@ -65,7 +64,7 @@ class AttributesInfoBuilder : NonCopyable, NonMovable {
 class AttributesInfo : NonCopyable, NonMovable {
  private:
   LinearAllocator<> allocator_;
-  Map<StringRefNull, uint> index_by_name_;
+  Map<StringRefNull, int> index_by_name_;
   Vector<StringRefNull> name_by_index_;
   Vector<const CPPType *> type_by_index_;
   Vector<void *> defaults_;
@@ -75,7 +74,7 @@ class AttributesInfo : NonCopyable, NonMovable {
   AttributesInfo(const AttributesInfoBuilder &builder);
   ~AttributesInfo();
 
-  uint size() const
+  int size() const
   {
     return name_by_index_.size();
   }
@@ -85,17 +84,17 @@ class AttributesInfo : NonCopyable, NonMovable {
     return name_by_index_.index_range();
   }
 
-  StringRefNull name_of(uint index) const
+  StringRefNull name_of(int index) const
   {
     return name_by_index_[index];
   }
 
-  uint index_of(StringRef name) const
+  int index_of(StringRef name) const
   {
     return index_by_name_.lookup_as(name);
   }
 
-  const void *default_of(uint index) const
+  const void *default_of(int index) const
   {
     return defaults_[index];
   }
@@ -105,7 +104,7 @@ class AttributesInfo : NonCopyable, NonMovable {
     return this->default_of(this->index_of(name));
   }
 
-  template<typename T> const T &default_of(uint index) const
+  template<typename T> const T &default_of(int index) const
   {
     BLI_assert(type_by_index_[index]->is<T>());
     return *(T *)defaults_[index];
@@ -116,7 +115,7 @@ class AttributesInfo : NonCopyable, NonMovable {
     return this->default_of<T>(this->index_of(name));
   }
 
-  const CPPType &type_of(uint index) const
+  const CPPType &type_of(int index) const
   {
     return *type_by_index_[index];
   }
@@ -133,7 +132,7 @@ class AttributesInfo : NonCopyable, NonMovable {
 
   int try_index_of(StringRef name) const
   {
-    return (int)index_by_name_.lookup_default_as(name, -1);
+    return index_by_name_.lookup_default_as(name, -1);
   }
 
   int try_index_of(StringRef name, const CPPType &type) const
@@ -142,7 +141,7 @@ class AttributesInfo : NonCopyable, NonMovable {
     if (index == -1) {
       return -1;
     }
-    else if (this->type_of((uint)index) == type) {
+    else if (this->type_of(index) == type) {
       return index;
     }
     else {
@@ -161,8 +160,10 @@ class MutableAttributesRef {
   Span<void *> buffers_;
   IndexRange range_;
 
+  friend class AttributesRef;
+
  public:
-  MutableAttributesRef(const AttributesInfo &info, Span<void *> buffers, uint size)
+  MutableAttributesRef(const AttributesInfo &info, Span<void *> buffers, int64_t size)
       : MutableAttributesRef(info, buffers, IndexRange(size))
   {
   }
@@ -172,9 +173,14 @@ class MutableAttributesRef {
   {
   }
 
-  uint size() const
+  int64_t size() const
   {
     return range_.size();
+  }
+
+  IndexRange index_range() const
+  {
+    return IndexRange(this->size());
   }
 
   const AttributesInfo &info() const
@@ -182,7 +188,7 @@ class MutableAttributesRef {
     return *info_;
   }
 
-  GMutableSpan get(uint index) const
+  GMutableSpan get(int index) const
   {
     const CPPType &type = info_->type_of(index);
     void *ptr = POINTER_OFFSET(buffers_[index], type.size() * range_.start());
@@ -194,7 +200,7 @@ class MutableAttributesRef {
     return this->get(info_->index_of(name));
   }
 
-  template<typename T> MutableSpan<T> get(uint index) const
+  template<typename T> MutableSpan<T> get(int index) const
   {
     BLI_assert(info_->type_of(index).is<T>());
     return MutableSpan<T>((T *)buffers_[index] + range_.start(), range_.size());
@@ -212,7 +218,7 @@ class MutableAttributesRef {
       return {};
     }
     else {
-      return this->get((uint)index);
+      return this->get(index);
     }
   }
 
@@ -222,8 +228,8 @@ class MutableAttributesRef {
     if (index == -1) {
       return {};
     }
-    else if (info_->type_of((uint)index).is<T>()) {
-      return this->get<T>((uint)index);
+    else if (info_->type_of(index).is<T>()) {
+      return this->get<T>(index);
     }
     else {
       return {};
@@ -235,12 +241,101 @@ class MutableAttributesRef {
     return this->slice(range.start(), range.size());
   }
 
-  MutableAttributesRef slice(uint start, uint size) const
+  MutableAttributesRef slice(int64_t start, int64_t size) const
   {
     return MutableAttributesRef(*info_, buffers_, range_.slice(start, size));
   }
 };
 
-}  // namespace blender::fn
+class AttributesRef {
+ private:
+  const AttributesInfo *info_;
+  Span<const void *> buffers_;
+  IndexRange range_;
 
-#endif /* __FN_ATTRIBUTES_REF_HH__ */
+ public:
+  AttributesRef(const AttributesInfo &info, Span<const void *> buffers, int64_t size)
+      : AttributesRef(info, buffers, IndexRange(size))
+  {
+  }
+
+  AttributesRef(const AttributesInfo &info, Span<const void *> buffers, IndexRange range)
+      : info_(&info), buffers_(buffers), range_(range)
+  {
+  }
+
+  AttributesRef(MutableAttributesRef attributes)
+      : info_(attributes.info_), buffers_(attributes.buffers_), range_(attributes.range_)
+  {
+  }
+
+  int64_t size() const
+  {
+    return range_.size();
+  }
+
+  const AttributesInfo &info() const
+  {
+    return *info_;
+  }
+
+  GSpan get(int index) const
+  {
+    const CPPType &type = info_->type_of(index);
+    const void *ptr = POINTER_OFFSET(buffers_[index], type.size() * range_.start());
+    return GSpan(type, ptr, range_.size());
+  }
+
+  GSpan get(StringRef name) const
+  {
+    return this->get(info_->index_of(name));
+  }
+
+  template<typename T> Span<T> get(int index) const
+  {
+    BLI_assert(info_->type_of(index).is<T>());
+    return Span<T>((T *)buffers_[index] + range_.start(), range_.size());
+  }
+
+  template<typename T> Span<T> get(StringRef name) const
+  {
+    return this->get<T>(info_->index_of(name));
+  }
+
+  std::optional<GSpan> try_get(StringRef name, const CPPType &type) const
+  {
+    int64_t index = info_->try_index_of(name, type);
+    if (index == -1) {
+      return {};
+    }
+    else {
+      return this->get(index);
+    }
+  }
+
+  template<typename T> std::optional<Span<T>> try_get(StringRef name) const
+  {
+    int index = info_->try_index_of(name);
+    if (index == -1) {
+      return {};
+    }
+    else if (info_->type_of(index).is<T>()) {
+      return this->get<T>(index);
+    }
+    else {
+      return {};
+    }
+  }
+
+  AttributesRef slice(IndexRange range) const
+  {
+    return this->slice(range.start(), range.size());
+  }
+
+  AttributesRef slice(int64_t start, int64_t size) const
+  {
+    return AttributesRef(*info_, buffers_, range_.slice(start, size));
+  }
+};
+
+}  // namespace blender::fn

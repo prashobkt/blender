@@ -13,8 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
-#ifndef __BKE_BLENDER_VERSION_H__
-#define __BKE_BLENDER_VERSION_H__
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,7 +31,7 @@ extern "C" {
  */
 
 /* Blender major and minor version. */
-#define BLENDER_VERSION 290
+#define BLENDER_VERSION 291
 /* Blender patch version for bugfix releases. */
 #define BLENDER_VERSION_PATCH 0
 /** Blender release cycle stage: alpha/beta/rc/release. */
@@ -40,7 +39,7 @@ extern "C" {
 
 /* Blender file format version. */
 #define BLENDER_FILE_VERSION BLENDER_VERSION
-#define BLENDER_FILE_SUBVERSION 5
+#define BLENDER_FILE_SUBVERSION 0
 
 /* Minimum Blender version that supports reading file written with the current
  * version. Older Blender versions will test this and show a warning if the file
@@ -54,5 +53,3 @@ const char *BKE_blender_version_string(void);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __BKE_BLENDER_VERSION_H__ */

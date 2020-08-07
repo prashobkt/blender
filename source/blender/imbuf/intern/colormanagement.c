@@ -698,7 +698,7 @@ void colormanagement_init(void)
     OCIO_configRelease(config);
   }
 
-  /* If there're no valid display/views, use fallback mode. */
+  /* If there are no valid display/views, use fallback mode. */
   if (global_tot_display == 0 || global_tot_view == 0) {
     printf("Color management: no displays/views in the config, using fallback mode instead\n");
 
@@ -1456,6 +1456,11 @@ bool IMB_colormanagement_space_name_is_data(const char *name)
   return (colorspace && colorspace->is_data);
 }
 
+const float *IMB_colormangement_get_xyz_to_rgb()
+{
+  return &imbuf_xyz_to_rgb[0][0];
+}
+
 /*********************** Threaded display buffer transform routines *************************/
 
 typedef struct DisplayBufferThread {
@@ -1718,7 +1723,7 @@ static void *do_display_buffer_apply_thread(void *handle_v)
 }
 
 static void display_buffer_apply_threaded(ImBuf *ibuf,
-                                          float *buffer,
+                                          const float *buffer,
                                           unsigned char *byte_buffer,
                                           float *display_buffer,
                                           unsigned char *display_buffer_byte,
@@ -3953,7 +3958,7 @@ static void curve_mapping_to_ocio_settings(CurveMapping *curve_mapping,
 {
   int i;
 
-  BKE_curvemapping_initialize(curve_mapping);
+  BKE_curvemapping_init(curve_mapping);
   BKE_curvemapping_premultiply(curve_mapping, false);
   BKE_curvemapping_table_RGBA(
       curve_mapping, &curve_mapping_settings->lut, &curve_mapping_settings->lut_size);

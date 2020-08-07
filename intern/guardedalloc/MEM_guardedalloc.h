@@ -211,6 +211,10 @@ extern size_t (*MEM_get_peak_memory)(void) ATTR_WARN_UNUSED_RESULT;
 extern const char *(*MEM_name_ptr)(void *vmemh);
 #endif
 
+/** This should be called as early as possible in the program. When it has been called, information
+ * about memory leaks will be printed on exit. */
+void MEM_init_memleak_detection(void);
+
 /* Switch allocator to slower but fully guarded mode. */
 void MEM_use_guarded_allocator(void);
 
@@ -243,6 +247,11 @@ void MEM_use_guarded_allocator(void);
     void *operator new(size_t /*count*/, void *ptr) \
     { \
       return ptr; \
+    } \
+    /* This is the matching delete operator to the placement-new operator above. Both parameters \
+     * will have the same value. Without this, we get the warning C4291 on windows. */ \
+    void operator delete(void * /*ptr_to_free*/, void * /*ptr*/) \
+    { \
     }
 
 /* Needed when type includes a namespace, then the namespace should not be

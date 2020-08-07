@@ -54,6 +54,7 @@
 #include "BLI_ghash.h"
 #include "BLI_memarena.h"
 #include "BLI_sys_types.h" /* for intptr_t support */
+#include "BLI_system.h"    /* for 'BLI_system_backtrace' stub. */
 #include "BLI_utildefines.h"
 
 #include "dna_utils.h"
@@ -98,6 +99,7 @@ static const char *includefiles[] = {
     "DNA_sdna_types.h",
     "DNA_fileglobal_types.h",
     "DNA_sequence_types.h",
+    "DNA_session_uuid_types.h",
     "DNA_effect_types.h",
     "DNA_outliner_types.h",
     "DNA_sound_types.h",
@@ -1530,12 +1532,21 @@ int main(int argc, char **argv)
 
 #endif /* if 0 */
 
-/* even though DNA supports, 'long' shouldn't be used since it can be either 32 or 64bit,
- * use int or int64_t instead.
+/**
+ * Disable types:
+ *
+ * - 'long': even though DNA supports, 'long' shouldn't be used since it can be either 32 or 64bit,
+ *   use int, int32_t or int64_t instead.
+ * - 'int8_t': as DNA doesn't yet support 'signed char' types,
+ *   all char types are assumed to be unsigned.
+ *   We should be able to support this, it's just not something which has been added yet.
+ *
  * Only valid use would be as a runtime variable if an API expected a long,
- * but so far we dont have this happening. */
+ * but so far we don't have this happening.
+ */
 #ifdef __GNUC__
 #  pragma GCC poison long
+#  pragma GCC poison int8_t
 #endif
 
 #include "DNA_ID.h"
@@ -1592,6 +1603,7 @@ int main(int argc, char **argv)
 #include "DNA_screen_types.h"
 #include "DNA_sdna_types.h"
 #include "DNA_sequence_types.h"
+#include "DNA_session_uuid_types.h"
 #include "DNA_shader_fx_types.h"
 #include "DNA_simulation_types.h"
 #include "DNA_sound_types.h"

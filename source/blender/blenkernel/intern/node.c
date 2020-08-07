@@ -61,6 +61,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
+#include "BKE_simulation.h"
 
 #include "BLI_ghash.h"
 #include "BLI_threads.h"
@@ -315,6 +316,33 @@ static void node_foreach_id(ID *id, LibraryForeachIDData *data)
   }
 }
 
+static void node_foreach_cache(ID *id,
+                               IDTypeForeachCacheFunctionCallback function_callback,
+                               void *user_data)
+{
+  bNodeTree *nodetree = (bNodeTree *)id;
+  IDCacheKey key = {
+      .id_session_uuid = id->session_uuid,
+      .offset_in_ID = offsetof(bNodeTree, previews),
+      .cache_v = nodetree->previews,
+  };
+
+  /* TODO, see also `direct_link_nodetree()` in readfile.c. */
+#if 0
+  function_callback(id, &key, (void **)&nodetree->previews, 0, user_data);
+#endif
+
+  if (nodetree->type == NTREE_COMPOSIT) {
+    for (bNode *node = nodetree->nodes.first; node; node = node->next) {
+      if (node->type == CMP_NODE_MOVIEDISTORTION) {
+        key.offset_in_ID = (size_t)BLI_ghashutil_strhash_p(node->name);
+        key.cache_v = node->storage;
+        function_callback(id, &key, (void **)&node->storage, 0, user_data);
+      }
+    }
+  }
+}
+
 IDTypeInfo IDType_ID_NT = {
     .id_code = ID_NT,
     .id_filter = FILTER_ID_NT,
@@ -330,6 +358,7 @@ IDTypeInfo IDType_ID_NT = {
     .free_data = ntree_free_data,
     .make_local = NULL,
     .foreach_id = node_foreach_id,
+    .foreach_cache = node_foreach_cache,
 };
 
 static void node_add_sockets_from_type(bNodeTree *ntree, bNode *node, bNodeType *ntype)
@@ -817,12 +846,12 @@ static void socket_id_user_increment(bNodeSocket *sock)
   switch ((eNodeSocketDatatype)sock->type) {
     case SOCK_OBJECT: {
       bNodeSocketValueObject *default_value = sock->default_value;
-      id_us_plus(&default_value->value->id);
+      id_us_plus((ID *)default_value->value);
       break;
     }
     case SOCK_IMAGE: {
       bNodeSocketValueImage *default_value = sock->default_value;
-      id_us_plus(&default_value->value->id);
+      id_us_plus((ID *)default_value->value);
       break;
     }
     case SOCK_FLOAT:
@@ -2465,6 +2494,7 @@ ID *BKE_node_tree_find_owner_ID(Main *bmain, struct bNodeTree *ntree)
                        &bmain->textures,
                        &bmain->scenes,
                        &bmain->linestyles,
+                       &bmain->simulations,
                        NULL};
 
   for (int i = 0; lists[i] != NULL; i++) {
@@ -3609,6 +3639,16 @@ void ntreeUpdateAllUsers(Main *main, ID *ngroup)
   FOREACH_NODETREE_END;
 }
 
+static void ntreeUpdateSimulationDependencies(Main *main, bNodeTree *simulation_ntree)
+{
+  FOREACH_NODETREE_BEGIN (main, ntree, owner_id) {
+    if (GS(owner_id->name) == ID_SIM && ntree == simulation_ntree) {
+      BKE_simulation_update_dependencies((Simulation *)owner_id, main);
+    }
+  }
+  FOREACH_NODETREE_END;
+}
+
 void ntreeUpdateTree(Main *bmain, bNodeTree *ntree)
 {
   bNode *node;
@@ -3651,7 +3691,6 @@ void ntreeUpdateTree(Main *bmain, bNodeTree *ntree)
     ntreeInterfaceTypeUpdate(ntree);
   }
 
-  /* XXX hack, should be done by depsgraph!! */
   if (bmain) {
     ntreeUpdateAllUsers(bmain, &ntree->id);
   }
@@ -3665,6 +3704,11 @@ void ntreeUpdateTree(Main *bmain, bNodeTree *ntree)
 
     /* check link validity */
     ntree_validate_links(ntree);
+  }
+
+  if (bmain != NULL && ntree->typeinfo == ntreeType_Simulation &&
+      (ntree->id.flag & LIB_EMBEDDED_DATA)) {
+    ntreeUpdateSimulationDependencies(bmain, ntree);
   }
 
   /* clear update flags */
@@ -4308,6 +4352,8 @@ static void registerSimulationNodes(void)
   register_node_type_sim_emit_particles();
   register_node_type_sim_time();
   register_node_type_sim_particle_attribute();
+  register_node_type_sim_age_reached_event();
+  register_node_type_sim_kill_particle();
 }
 
 static void registerFunctionNodes(void)
@@ -4317,6 +4363,8 @@ static void registerFunctionNodes(void)
   register_node_type_fn_switch();
   register_node_type_fn_group_instance_id();
   register_node_type_fn_combine_strings();
+  register_node_type_fn_object_transforms();
+  register_node_type_fn_random_float();
 }
 
 void init_nodesystem(void)

@@ -18,8 +18,7 @@
  * \ingroup DNA
  */
 
-#ifndef __DNA_MODIFIER_TYPES_H__
-#define __DNA_MODIFIER_TYPES_H__
+#pragma once
 
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
@@ -155,6 +154,7 @@ typedef enum {
   /* DEPRECATED, ONLY USED FOR DO-VERSIONS */
   eSubsurfModifierFlag_SubsurfUv_DEPRECATED = (1 << 3),
   eSubsurfModifierFlag_UseCrease = (1 << 4),
+  eSubsurfModifierFlag_UseCustomNormals = (1 << 5),
 } SubsurfModifierFlag;
 
 typedef enum {
@@ -409,7 +409,9 @@ typedef struct BevelModifierData {
   short miter_outer;
   /** The method to use for creating >2-way intersections */
   short vmesh_method;
-  char _pad0[2];
+  /** Whether to affect vertices or edges. */
+  char affect_type;
+  char _pad;
   /** Controls profile shape (0->1, .5 is round). */
   float profile;
   /** if the MOD_BEVEL_ANGLE is set,
@@ -428,7 +430,9 @@ typedef struct BevelModifierData {
 
 /* BevelModifierData->flags and BevelModifierData->lim_flags */
 enum {
-  MOD_BEVEL_VERT = (1 << 1),
+#ifdef DNA_DEPRECATED_ALLOW
+  MOD_BEVEL_VERT_DEPRECATED = (1 << 1),
+#endif
   MOD_BEVEL_INVERT_VGROUP = (1 << 2),
   MOD_BEVEL_ANGLE = (1 << 3),
   MOD_BEVEL_WEIGHT = (1 << 4),
@@ -487,6 +491,12 @@ enum {
 enum {
   MOD_BEVEL_VMESH_ADJ = 0,
   MOD_BEVEL_VMESH_CUTOFF = 1,
+};
+
+/* BevelModifier->affect_type */
+enum {
+  MOD_BEVEL_AFFECT_VERTICES = 0,
+  MOD_BEVEL_AFFECT_EDGES = 1,
 };
 
 typedef struct FluidModifierData {
@@ -1016,6 +1026,7 @@ typedef enum {
   /* DEPRECATED, only used for versioning. */
   eMultiresModifierFlag_PlainUv_DEPRECATED = (1 << 1),
   eMultiresModifierFlag_UseCrease = (1 << 2),
+  eMultiresModifierFlag_UseCustomNormals = (1 << 3),
 } MultiresModifierFlag;
 
 /* DEPRECATED, only used for versioning. */
@@ -1265,7 +1276,11 @@ typedef struct OceanModifierData {
   struct Ocean *ocean;
   struct OceanCache *oceancache;
 
+  /** Render resolution. */
   int resolution;
+  /** Viewport resolution for the non-render case. */
+  int viewport_resolution;
+
   int spatial_size;
 
   float wind_velocity;
@@ -1281,8 +1296,6 @@ typedef struct OceanModifierData {
   float chop_amount;
   float foam_coverage;
   float time;
-
-  char _pad1[4];
 
   /* Spectrum being used. */
   int spectrum;
@@ -2040,6 +2053,10 @@ enum {
   MOD_NORMALEDIT_MIX_MUL = 3,
 };
 
+typedef struct MeshCacheVertexVelocity {
+  float vel[3];
+} MeshCacheVertexVelocity;
+
 typedef struct MeshSeqCacheModifierData {
   ModifierData modifier;
 
@@ -2048,11 +2065,31 @@ typedef struct MeshSeqCacheModifierData {
   char object_path[1024];
 
   char read_flag;
-  char _pad[7];
+  char _pad[3];
+
+  float velocity_scale;
 
   /* Runtime. */
   struct CacheReader *reader;
   char reader_object_path[1024];
+
+  /* Vertex velocities read from the cache. The velocities are not automatically read during
+   * modifier execution, and therefore have to manually be read when needed. This is only used
+   * through the RNA for now. */
+  struct MeshCacheVertexVelocity *vertex_velocities;
+
+  /* The number of vertices of the Alembic mesh, set when the modifier is executed. */
+  int num_vertices;
+
+  /* Time (in frames or seconds) between two velocity samples. Automatically computed to
+   * scale the velocity vectors at render time for generating proper motion blur data. */
+  float velocity_delta;
+
+  /* Caches the scene time (in seconds) used to lookup data in the Alembic archive when the
+   * modifier was last executed. Used to access Alembic samples through the RNA. */
+  float last_lookup_time;
+
+  int _pad1;
 } MeshSeqCacheModifierData;
 
 /* MeshSeqCacheModifierData.read_flag */
@@ -2146,11 +2183,9 @@ typedef struct SimulationModifierData {
   ModifierData modifier;
 
   struct Simulation *simulation;
-  char data_path[64];
+  char *data_path;
 } SimulationModifierData;
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __DNA_MODIFIER_TYPES_H__ */

@@ -1618,6 +1618,18 @@ static int prev_adjacent_edge_point_index(const SubdivCCG *subdiv_ccg, const int
   return point_index - 1;
 }
 
+/* When the point index corresponds to a grid corner, returns the point index which corresponds to
+ * the corner of the adjacent grid, as the adjacent edge has two separate points for each grid
+ * corner at the middle of the edge. */
+static int adjacent_grid_corner_point_index_on_edge(const SubdivCCG *subdiv_ccg,
+                                                    const int point_index)
+{
+  if (point_index == subdiv_ccg->grid_size) {
+    return point_index - 1;
+  }
+  return point_index + 1;
+}
+
 /* Common implementation of neighbor calculation when input coordinate is at the edge between two
  * coarse faces, but is not at the coarse vertex. */
 static void neighbor_coords_edge_get(const SubdivCCG *subdiv_ccg,
@@ -1626,6 +1638,7 @@ static void neighbor_coords_edge_get(const SubdivCCG *subdiv_ccg,
                                      SubdivCCGNeighbors *r_neighbors)
 
 {
+  const bool is_corner = is_corner_grid_coord(subdiv_ccg, coord);
   const int adjacent_edge_index = adjacent_edge_index_from_coord(subdiv_ccg, coord);
   BLI_assert(adjacent_edge_index >= 0);
   BLI_assert(adjacent_edge_index < subdiv_ccg->num_adjacent_edges);
@@ -1633,15 +1646,27 @@ static void neighbor_coords_edge_get(const SubdivCCG *subdiv_ccg,
 
   /* 2 neighbor points along the edge, plus one inner point per every adjacent grid. */
   const int num_adjacent_faces = adjacent_edge->num_adjacent_faces;
-  subdiv_ccg_neighbors_init(
-      r_neighbors, num_adjacent_faces + 2, (include_duplicates) ? num_adjacent_faces - 1 : 0);
+  int num_duplicates = 0;
+  if (include_duplicates) {
+    num_duplicates += num_adjacent_faces - 1;
+    if (is_corner) {
+      /* When the coord is a grid corner, add an extra duplicate per adjacent grid in all adjacent
+       * faces to the edge. */
+      num_duplicates += num_adjacent_faces;
+    }
+  }
+  subdiv_ccg_neighbors_init(r_neighbors, num_adjacent_faces + 2, num_duplicates);
 
   const int point_index = adjacent_edge_point_index_from_coord(
       subdiv_ccg, coord, adjacent_edge_index);
+  const int point_index_duplicate = adjacent_grid_corner_point_index_on_edge(subdiv_ccg,
+                                                                             point_index);
+
   const int next_point_index = next_adjacent_edge_point_index(subdiv_ccg, point_index);
   const int prev_point_index = prev_adjacent_edge_point_index(subdiv_ccg, point_index);
 
-  for (int i = 0, duplicate_i = num_adjacent_faces; i < num_adjacent_faces; ++i) {
+  int duplicate_i = num_adjacent_faces;
+  for (int i = 0; i < num_adjacent_faces; ++i) {
     SubdivCCGCoord *boundary_coords = adjacent_edge->boundary_coords[i];
     /* One step into the grid from the edge for each adjacent face. */
     SubdivCCGCoord grid_coord = boundary_coords[point_index];
@@ -1657,7 +1682,15 @@ static void neighbor_coords_edge_get(const SubdivCCG *subdiv_ccg,
       r_neighbors->coords[duplicate_i + 2] = grid_coord;
       duplicate_i++;
     }
+
+    /* When it is a corner, add the duplicate of the adjacent grid in the same face. */
+    if (include_duplicates && is_corner) {
+      SubdivCCGCoord duplicate_corner_grid_coord = boundary_coords[point_index_duplicate];
+      r_neighbors->coords[duplicate_i + 2] = duplicate_corner_grid_coord;
+      duplicate_i++;
+    }
   }
+  BLI_assert(duplicate_i - num_adjacent_faces == num_duplicates);
 }
 
 /* The corner is at the middle of edge between faces. */
@@ -1832,6 +1865,72 @@ const int *BKE_subdiv_ccg_start_face_grid_index_ensure(SubdivCCG *subdiv_ccg)
 const int *BKE_subdiv_ccg_start_face_grid_index_get(const SubdivCCG *subdiv_ccg)
 {
   return subdiv_ccg->cache_.start_face_grid_index;
+}
+
+static void adjacet_vertices_index_from_adjacent_edge(const SubdivCCG *subdiv_ccg,
+                                                      const SubdivCCGCoord *coord,
+                                                      const MLoop *mloop,
+                                                      const MPoly *mpoly,
+                                                      int *r_v1,
+                                                      int *r_v2)
+{
+  const int grid_size_1 = subdiv_ccg->grid_size - 1;
+  const int poly_index = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, coord->grid_index);
+  const MPoly *p = &mpoly[poly_index];
+  *r_v1 = mloop[coord->grid_index].v;
+  if (coord->x == grid_size_1) {
+    const MLoop *next = ME_POLY_LOOP_NEXT(mloop, p, coord->grid_index);
+    *r_v2 = next->v;
+  }
+  if (coord->y == grid_size_1) {
+    const MLoop *prev = ME_POLY_LOOP_PREV(mloop, p, coord->grid_index);
+    *r_v2 = prev->v;
+  }
+}
+
+SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(const SubdivCCG *subdiv_ccg,
+                                                                     const SubdivCCGCoord *coord,
+                                                                     const MLoop *mloop,
+                                                                     const MPoly *mpoly,
+                                                                     int *r_v1,
+                                                                     int *r_v2)
+{
+
+  const int grid_size_1 = subdiv_ccg->grid_size - 1;
+  if (is_corner_grid_coord(subdiv_ccg, coord)) {
+    if (coord->x == 0 && coord->y == 0) {
+      /* Grid corner in the center of a poly. */
+      return SUBDIV_CCG_ADJACENT_NONE;
+    }
+    if (coord->x == grid_size_1 && coord->y == grid_size_1) {
+      /* Grid corner adjacent to a coarse mesh vertex. */
+      *r_v1 = *r_v2 = mloop[coord->grid_index].v;
+      return SUBDIV_CCG_ADJACENT_VERTEX;
+    }
+    /* Grid corner adjacent to the middle of a coarse mesh edge. */
+    adjacet_vertices_index_from_adjacent_edge(subdiv_ccg, coord, mloop, mpoly, r_v1, r_v2);
+    return SUBDIV_CCG_ADJACENT_EDGE;
+  }
+
+  if (is_boundary_grid_coord(subdiv_ccg, coord)) {
+    if (!is_inner_edge_grid_coordinate(subdiv_ccg, coord)) {
+      /* Grid boundary adjacent to a coarse mesh edge. */
+      adjacet_vertices_index_from_adjacent_edge(subdiv_ccg, coord, mloop, mpoly, r_v1, r_v2);
+      return SUBDIV_CCG_ADJACENT_EDGE;
+    }
+  }
+  return SUBDIV_CCG_ADJACENT_NONE;
+}
+
+void BKE_subdiv_ccg_grid_hidden_ensure(SubdivCCG *subdiv_ccg, int grid_index)
+{
+  if (subdiv_ccg->grid_hidden[grid_index] != NULL) {
+    return;
+  }
+
+  CCGKey key;
+  BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
+  subdiv_ccg->grid_hidden[grid_index] = BLI_BITMAP_NEW(key.grid_area, __func__);
 }
 
 /** \} */

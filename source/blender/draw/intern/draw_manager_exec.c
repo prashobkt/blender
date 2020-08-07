@@ -98,12 +98,7 @@ void drw_state_set(DRWState state)
   {
     int test;
     if ((test = CHANGED_TO(DRW_STATE_WRITE_DEPTH))) {
-      if (test == 1) {
-        glDepthMask(GL_TRUE);
-      }
-      else {
-        glDepthMask(GL_FALSE);
-      }
+      GPU_depth_mask(test == 1);
     }
   }
 
@@ -142,10 +137,10 @@ void drw_state_set(DRWState state)
     int test;
     if ((test = CHANGED_TO(DRW_STATE_WRITE_COLOR))) {
       if (test == 1) {
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        GPU_color_mask(true, true, true, true);
       }
       else {
-        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        GPU_color_mask(false, false, false, false);
       }
     }
   }
@@ -355,14 +350,10 @@ void drw_state_set(DRWState state)
     int test;
     if ((test = CHANGED_TO(DRW_STATE_CLIP_PLANES))) {
       if (test == 1) {
-        for (int i = 0; i < DST.view_active->clip_planes_len; i++) {
-          glEnable(GL_CLIP_DISTANCE0 + i);
-        }
+        GPU_clip_distances(DST.view_active->clip_planes_len);
       }
       else {
-        for (int i = 0; i < MAX_CLIP_PLANES; i++) {
-          glDisable(GL_CLIP_DISTANCE0 + i);
-        }
+        GPU_clip_distances(0);
       }
     }
   }
@@ -455,6 +446,7 @@ void DRW_state_reset(void)
   DRW_state_reset_ex(DRW_STATE_DEFAULT);
 
   GPU_texture_unbind_all();
+  GPU_uniformbuffer_unbind_all();
 
   /* Should stay constant during the whole rendering. */
   GPU_point_size(5);
@@ -526,7 +518,7 @@ static bool draw_culling_box_test(const float (*frustum_planes)[4], const BoundB
          * Go to next plane. */
         break;
       }
-      else if (v == 7) {
+      if (v == 7) {
         /* 8 points behind this plane. */
         return false;
       }
@@ -678,8 +670,7 @@ BLI_INLINE void draw_geometry_bind(DRWShadingGroup *shgroup, GPUBatch *geom)
 
   DST.batch = geom;
 
-  GPU_batch_program_set_no_use(
-      geom, GPU_shader_get_program(shgroup->shader), GPU_shader_get_interface(shgroup->shader));
+  GPU_batch_set_shader_no_bind(geom, shgroup->shader);
 
   geom->program_in_use = true; /* XXX hacking #GPUBatch */
 
@@ -782,10 +773,11 @@ static bool ubo_bindings_validate(DRWShadingGroup *shgroup)
       DRWPass *parent_pass = DRW_memblock_elem_from_handle(DST.vmempool->passes,
                                                            &shgroup->pass_handle);
 
-      printf("Pass : %s, Shader : %s, Block : %s\n",
+      printf("Pass : %s, Shader : %s, Block : %s, Binding %d\n",
              parent_pass->name,
              shgroup->shader->name,
-             blockname);
+             blockname,
+             binding);
     }
   }
 #  endif
@@ -1003,9 +995,8 @@ static void draw_call_single_do(DRWShadingGroup *shgroup,
       draw_select_buffer(shgroup, state, batch, &handle);
       return;
     }
-    else {
-      GPU_select_load_id(state->select_id);
-    }
+
+    GPU_select_load_id(state->select_id);
   }
 
   draw_geometry_execute(shgroup,
@@ -1115,6 +1106,7 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
       /* Unbinding can be costly. Skip in normal condition. */
       if (G.debug & G_DEBUG_GPU) {
         GPU_texture_unbind_all();
+        GPU_uniformbuffer_unbind_all();
       }
     }
     GPU_shader_bind(shgroup->shader);

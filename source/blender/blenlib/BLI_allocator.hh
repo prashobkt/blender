@@ -13,8 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
-#ifndef __BLI_ALLOCATOR_HH__
-#define __BLI_ALLOCATOR_HH__
+#pragma once
 
 /** \file
  * \ingroup bli
@@ -84,8 +83,8 @@ class RawAllocator {
     void *ptr = malloc(size + alignment + sizeof(MemHead));
     void *used_ptr = (void *)((uintptr_t)POINTER_OFFSET(ptr, alignment + sizeof(MemHead)) &
                               ~((uintptr_t)alignment - 1));
-    uint offset = (uint)((uintptr_t)used_ptr - (uintptr_t)ptr);
-    BLI_assert(offset >= sizeof(MemHead));
+    int offset = (int)((intptr_t)used_ptr - (intptr_t)ptr);
+    BLI_assert(offset >= (int)sizeof(MemHead));
     ((MemHead *)used_ptr - 1)->offset = (int)offset;
     return used_ptr;
   }
@@ -100,5 +99,3 @@ class RawAllocator {
 };
 
 }  // namespace blender
-
-#endif /* __BLI_ALLOCATOR_HH__ */

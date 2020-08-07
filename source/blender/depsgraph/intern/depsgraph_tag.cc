@@ -48,11 +48,8 @@
 #include "BKE_idtype.h"
 #include "BKE_node.h"
 #include "BKE_scene.h"
-#include "BKE_workspace.h"
-
-#define new new_
 #include "BKE_screen.h"
-#undef new
+#include "BKE_workspace.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_debug.h"
@@ -432,7 +429,7 @@ string stringify_update_bitfield(int flag)
   if (flag == 0) {
     return "LEGACY_0";
   }
-  string result = "";
+  string result;
   int current_flag = flag;
   /* Special cases to avoid ALL flags form being split into
    * individual bits. */
@@ -786,6 +783,7 @@ void DEG_graph_id_type_tag(Depsgraph *depsgraph, short id_type)
     DEG_graph_id_type_tag(depsgraph, ID_LA);
     DEG_graph_id_type_tag(depsgraph, ID_WO);
     DEG_graph_id_type_tag(depsgraph, ID_SCE);
+    DEG_graph_id_type_tag(depsgraph, ID_SIM);
   }
   const int id_type_index = BKE_idtype_idcode_to_index(id_type);
   deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(depsgraph);

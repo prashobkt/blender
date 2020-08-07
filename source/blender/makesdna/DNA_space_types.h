@@ -22,8 +22,7 @@
  * Structs for each of space type in the user interface.
  */
 
-#ifndef __DNA_SPACE_TYPES_H__
-#define __DNA_SPACE_TYPES_H__
+#pragma once
 
 #include "DNA_color_types.h" /* for Histogram */
 #include "DNA_defs.h"
@@ -1148,8 +1147,9 @@ typedef enum eSpaceImage_Flag {
   SI_FLAG_UNUSED_17 = (1 << 17), /* cleared */
   SI_FLAG_UNUSED_18 = (1 << 18), /* cleared */
 
-  /* this means that the image is drawn until it reaches the view edge,
-   * in the image view, it's unrelated to the 'tile' mode for texface
+  /**
+   * This means that the image is drawn until it reaches the view edge,
+   * in the image view, it's unrelated to UDIM tiles.
    */
   SI_DRAW_TILE = (1 << 19),
   SI_SMOOTH_UV = (1 << 20),
@@ -1734,5 +1734,3 @@ typedef enum eSpace_Type {
 #define IMG_SIZE_FALLBACK 256
 
 /** \} */
-
-#endif /* __DNA_SPACE_TYPES_H__ */

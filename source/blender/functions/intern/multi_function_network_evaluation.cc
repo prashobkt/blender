@@ -55,10 +55,10 @@ class MFNetworkEvaluationStorage {
   LinearAllocator<> allocator_;
   IndexMask mask_;
   Array<Value *> value_per_output_id_;
-  uint min_array_size_;
+  int64_t min_array_size_;
 
  public:
-  MFNetworkEvaluationStorage(IndexMask mask, uint max_socket_id);
+  MFNetworkEvaluationStorage(IndexMask mask, int socket_id_amount);
   ~MFNetworkEvaluationStorage();
 
   /* Add the values that have been provided by the caller of the multi-function network. */
@@ -106,30 +106,30 @@ MFNetworkEvaluator::MFNetworkEvaluator(Vector<const MFOutputSocket *> inputs,
   BLI_assert(outputs_.size() > 0);
   MFSignatureBuilder signature = this->get_builder("Function Tree");
 
-  for (auto socket : inputs_) {
+  for (const MFOutputSocket *socket : inputs_) {
     BLI_assert(socket->node().is_dummy());
 
     MFDataType type = socket->data_type();
     switch (type.category()) {
       case MFDataType::Single:
-        signature.single_input("Input", type.single_type());
+        signature.single_input(socket->name(), type.single_type());
         break;
       case MFDataType::Vector:
-        signature.vector_input("Input", type.vector_base_type());
+        signature.vector_input(socket->name(), type.vector_base_type());
         break;
     }
   }
 
-  for (auto socket : outputs_) {
+  for (const MFInputSocket *socket : outputs_) {
     BLI_assert(socket->node().is_dummy());
 
     MFDataType type = socket->data_type();
     switch (type.category()) {
       case MFDataType::Single:
-        signature.single_output("Output", type.single_type());
+        signature.single_output(socket->name(), type.single_type());
         break;
       case MFDataType::Vector:
-        signature.vector_output("Output", type.vector_base_type());
+        signature.vector_output(socket->name(), type.vector_base_type());
         break;
     }
   }
@@ -142,7 +142,7 @@ void MFNetworkEvaluator::call(IndexMask mask, MFParams params, MFContext context
   }
 
   const MFNetwork &network = outputs_[0]->node().network();
-  Storage storage(mask, network.max_socket_id());
+  Storage storage(mask, network.socket_id_amount());
 
   Vector<const MFInputSocket *> outputs_to_initialize_in_the_end;
 
@@ -155,8 +155,8 @@ void MFNetworkEvaluator::call(IndexMask mask, MFParams params, MFContext context
 BLI_NOINLINE void MFNetworkEvaluator::copy_inputs_to_storage(MFParams params,
                                                              Storage &storage) const
 {
-  for (uint input_index : inputs_.index_range()) {
-    uint param_index = input_index + 0;
+  for (int input_index : inputs_.index_range()) {
+    int param_index = input_index + 0;
     const MFOutputSocket &socket = *inputs_[input_index];
     switch (socket.data_type().category()) {
       case MFDataType::Single: {
@@ -178,8 +178,8 @@ BLI_NOINLINE void MFNetworkEvaluator::copy_outputs_to_storage(
     Storage &storage,
     Vector<const MFInputSocket *> &outputs_to_initialize_in_the_end) const
 {
-  for (uint output_index : outputs_.index_range()) {
-    uint param_index = output_index + inputs_.size();
+  for (int output_index : outputs_.index_range()) {
+    int param_index = output_index + inputs_.size();
     const MFInputSocket &socket = *outputs_[output_index];
     const MFOutputSocket &origin = *socket.origin();
 
@@ -219,8 +219,6 @@ BLI_NOINLINE void MFNetworkEvaluator::evaluate_network_to_compute_outputs(
     sockets_to_compute.push(socket->origin());
   }
 
-  Vector<const MFOutputSocket *, 32> missing_sockets;
-
   /* This is the main loop that traverses the MFNetwork. */
   while (!sockets_to_compute.is_empty()) {
     const MFOutputSocket &socket = *sockets_to_compute.peek();
@@ -232,20 +230,21 @@ BLI_NOINLINE void MFNetworkEvaluator::evaluate_network_to_compute_outputs(
     }
 
     BLI_assert(node.is_function());
-    BLI_assert(node.all_inputs_have_origin());
+    BLI_assert(!node.has_unlinked_inputs());
     const MFFunctionNode &function_node = node.as_function();
 
-    missing_sockets.clear();
-    function_node.foreach_origin_socket([&](const MFOutputSocket &origin) {
-      if (!storage.socket_is_computed(origin)) {
-        missing_sockets.append(&origin);
+    bool all_origins_are_computed = true;
+    for (const MFInputSocket *input_socket : function_node.inputs()) {
+      const MFOutputSocket *origin = input_socket->origin();
+      if (origin != nullptr) {
+        if (!storage.socket_is_computed(*origin)) {
+          sockets_to_compute.push(origin);
+          all_origins_are_computed = false;
+        }
       }
-    });
+    }
 
-    sockets_to_compute.push_multiple(missing_sockets);
-
-    bool all_inputs_are_computed = missing_sockets.size() == 0;
-    if (all_inputs_are_computed) {
+    if (all_origins_are_computed) {
       this->evaluate_function(global_context, function_node, storage);
       sockets_to_compute.pop();
     }
@@ -264,7 +263,7 @@ BLI_NOINLINE void MFNetworkEvaluator::evaluate_function(MFContext &global_contex
      * function only on a single element. This can avoid many duplicate computations. */
     MFParamsBuilder params{function, 1};
 
-    for (uint param_index : function.param_indices()) {
+    for (int param_index : function.param_indices()) {
       MFParamType param_type = function.param_type(param_index);
       switch (param_type.category()) {
         case MFParamType::SingleInput: {
@@ -313,7 +312,7 @@ BLI_NOINLINE void MFNetworkEvaluator::evaluate_function(MFContext &global_contex
   else {
     MFParamsBuilder params{function, storage.mask().min_array_size()};
 
-    for (uint param_index : function.param_indices()) {
+    for (int param_index : function.param_indices()) {
       MFParamType param_type = function.param_type(param_index);
       switch (param_type.category()) {
         case MFParamType::SingleInput: {
@@ -385,13 +384,13 @@ BLI_NOINLINE void MFNetworkEvaluator::initialize_remaining_outputs(
     MFParams params, Storage &storage, Span<const MFInputSocket *> remaining_outputs) const
 {
   for (const MFInputSocket *socket : remaining_outputs) {
-    uint param_index = inputs_.size() + outputs_.first_index_of(socket);
+    int param_index = inputs_.size() + outputs_.first_index_of(socket);
 
     switch (socket->data_type().category()) {
       case MFDataType::Single: {
         GVSpan values = storage.get_single_input__full(*socket);
         GMutableSpan output_values = params.uninitialized_single_output(param_index);
-        values.materialize_to_uninitialized(storage.mask(), output_values.buffer());
+        values.materialize_to_uninitialized(storage.mask(), output_values.data());
         break;
       }
       case MFDataType::Vector: {
@@ -507,9 +506,9 @@ struct OwnVectorValue : public Value {
 /** \name Storage methods
  * \{ */
 
-MFNetworkEvaluationStorage::MFNetworkEvaluationStorage(IndexMask mask, uint max_socket_id)
+MFNetworkEvaluationStorage::MFNetworkEvaluationStorage(IndexMask mask, int socket_id_amount)
     : mask_(mask),
-      value_per_output_id_(max_socket_id + 1, nullptr),
+      value_per_output_id_(socket_id_amount, nullptr),
       min_array_size_(mask.min_array_size())
 {
 }
@@ -525,11 +524,11 @@ MFNetworkEvaluationStorage::~MFNetworkEvaluationStorage()
       GMutableSpan span = value->span;
       const CPPType &type = span.type();
       if (value->is_single_allocated) {
-        type.destruct(span.buffer());
+        type.destruct(span.data());
       }
       else {
-        type.destruct_indices(span.buffer(), mask_);
-        MEM_freeN(span.buffer());
+        type.destruct_indices(span.data(), mask_);
+        MEM_freeN(span.data());
       }
     }
     else if (any_value->type == ValueType::OwnVector) {
@@ -635,11 +634,11 @@ void MFNetworkEvaluationStorage::finish_input_socket(const MFInputSocket &socket
         GMutableSpan span = value->span;
         const CPPType &type = span.type();
         if (value->is_single_allocated) {
-          type.destruct(span.buffer());
+          type.destruct(span.data());
         }
         else {
-          type.destruct_indices(span.buffer(), mask_);
-          MEM_freeN(span.buffer());
+          type.destruct_indices(span.data(), mask_);
+          MEM_freeN(span.data());
         }
         value_per_output_id_[origin.id()] = nullptr;
       }
@@ -792,7 +791,7 @@ GMutableSpan MFNetworkEvaluationStorage::get_mutable_single__full(const MFInputS
     BLI_assert(to_any_value->type == ValueType::OutputSingle);
     GMutableSpan span = ((OutputSingleValue *)to_any_value)->span;
     GVSpan virtual_span = this->get_single_input__full(input);
-    virtual_span.materialize_to_uninitialized(mask_, span.buffer());
+    virtual_span.materialize_to_uninitialized(mask_, span.data());
     return span;
   }
 
@@ -809,7 +808,7 @@ GMutableSpan MFNetworkEvaluationStorage::get_mutable_single__full(const MFInputS
   GVSpan virtual_span = this->get_single_input__full(input);
   void *new_buffer = MEM_mallocN_aligned(min_array_size_ * type.size(), type.alignment(), AT);
   GMutableSpan new_array_ref(type, new_buffer, min_array_size_);
-  virtual_span.materialize_to_uninitialized(mask_, new_array_ref.buffer());
+  virtual_span.materialize_to_uninitialized(mask_, new_array_ref.data());
 
   OwnSingleValue *new_value = allocator_.construct<OwnSingleValue>(
       new_array_ref, to.targets().size(), false);
@@ -954,7 +953,7 @@ GVSpan MFNetworkEvaluationStorage::get_single_input__full(const MFInputSocket &s
   if (any_value->type == ValueType::OwnSingle) {
     OwnSingleValue *value = (OwnSingleValue *)any_value;
     if (value->is_single_allocated) {
-      return GVSpan::FromSingle(value->span.type(), value->span.buffer(), min_array_size_);
+      return GVSpan::FromSingle(value->span.type(), value->span.data(), min_array_size_);
     }
     else {
       return value->span;

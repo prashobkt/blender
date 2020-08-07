@@ -22,8 +22,7 @@
  * \ingroup blenloader
  */
 
-#ifndef __READFILE_H__
-#define __READFILE_H__
+#pragma once
 
 #include "DNA_sdna_types.h"
 #include "DNA_space_types.h"
@@ -116,11 +115,6 @@ typedef struct FileData {
   struct OldNewMap *datamap;
   struct OldNewMap *globmap;
   struct OldNewMap *libmap;
-  struct OldNewMap *imamap;
-  struct OldNewMap *movieclipmap;
-  struct OldNewMap *scenemap;
-  struct OldNewMap *soundmap;
-  struct OldNewMap *volumemap;
   struct OldNewMap *packedmap;
   struct BLOCacheStorage *cache_storage;
 
@@ -154,16 +148,6 @@ FileData *blo_filedata_from_memfile(struct MemFile *memfile,
                                     struct ReportList *reports);
 
 void blo_clear_proxy_pointers_from_lib(struct Main *oldmain);
-void blo_make_image_pointer_map(FileData *fd, struct Main *oldmain);
-void blo_end_image_pointer_map(FileData *fd, struct Main *oldmain);
-void blo_make_scene_pointer_map(FileData *fd, struct Main *oldmain);
-void blo_end_scene_pointer_map(FileData *fd, struct Main *oldmain);
-void blo_make_movieclip_pointer_map(FileData *fd, struct Main *oldmain);
-void blo_end_movieclip_pointer_map(FileData *fd, struct Main *oldmain);
-void blo_make_sound_pointer_map(FileData *fd, struct Main *oldmain);
-void blo_end_sound_pointer_map(FileData *fd, struct Main *oldmain);
-void blo_make_volume_pointer_map(FileData *fd, struct Main *oldmain);
-void blo_end_volume_pointer_map(FileData *fd, struct Main *oldmain);
 void blo_make_packed_pointer_map(FileData *fd, struct Main *oldmain);
 void blo_end_packed_pointer_map(FileData *fd, struct Main *oldmain);
 void blo_add_library_pointer_map(ListBase *old_mainlist, FileData *fd);
@@ -214,5 +198,3 @@ void do_versions_after_linking_270(struct Main *bmain);
 void do_versions_after_linking_280(struct Main *bmain, struct ReportList *reports);
 void do_versions_after_linking_290(struct Main *bmain, struct ReportList *reports);
 void do_versions_after_linking_cycles(struct Main *bmain);
-
-#endif

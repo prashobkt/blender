@@ -25,6 +25,8 @@
 
 #include "DNA_node_types.h"
 
+#include "BLI_color.hh"
+#include "BLI_float3.hh"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_string.h"
@@ -32,12 +34,14 @@
 
 #include "BKE_lib_id.h"
 #include "BKE_node.h"
+#include "BKE_persistent_data_handle.hh"
 
 #include "RNA_access.h"
 #include "RNA_types.h"
 
 #include "MEM_guardedalloc.h"
 
+#include "NOD_node_tree_multi_function.hh"
 #include "NOD_socket.h"
 
 struct bNodeSocket *node_add_socket_from_template(struct bNodeTree *ntree,
@@ -352,6 +356,54 @@ void node_socket_copy_default_value(bNodeSocket *to, const bNodeSocket *from)
   to->flag |= (from->flag & SOCK_HIDE_VALUE);
 }
 
+void node_socket_skip_reroutes(
+    ListBase *links, bNode *node, bNodeSocket *socket, bNode **r_node, bNodeSocket **r_socket)
+{
+  const int loop_limit = 100; /* Limit in case there is a connection cycle. */
+
+  if (socket->in_out == SOCK_IN) {
+    bNodeLink *first_link = (bNodeLink *)links->first;
+
+    for (int i = 0; node->type == NODE_REROUTE && i < loop_limit; i++) {
+      bNodeLink *link = first_link;
+
+      for (; link; link = link->next) {
+        if (link->fromnode == node && link->tonode != node) {
+          break;
+        }
+      }
+
+      if (link) {
+        node = link->tonode;
+        socket = link->tosock;
+      }
+      else {
+        break;
+      }
+    }
+  }
+  else {
+    for (int i = 0; node->type == NODE_REROUTE && i < loop_limit; i++) {
+      bNodeSocket *input = (bNodeSocket *)node->inputs.first;
+
+      if (input && input->link) {
+        node = input->link->fromnode;
+        socket = input->link->fromsock;
+      }
+      else {
+        break;
+      }
+    }
+  }
+
+  if (r_node) {
+    *r_node = node;
+  }
+  if (r_socket) {
+    *r_socket = socket;
+  }
+}
+
 static void standard_node_socket_interface_init_socket(bNodeTree *UNUSED(ntree),
                                                        bNodeSocket *stemp,
                                                        bNode *UNUSED(node),
@@ -510,39 +562,162 @@ static bNodeSocketType *make_socket_type_control_flow(int type)
   return stype;
 }
 
+static bNodeSocketType *make_socket_type_bool()
+{
+  bNodeSocketType *socktype = make_standard_socket_type(SOCK_BOOLEAN, PROP_NONE);
+  socktype->get_mf_data_type = []() { return blender::fn::MFDataType::ForSingle<bool>(); };
+  socktype->expand_in_mf_network = [](blender::nodes::SocketMFNetworkBuilder &builder) {
+    bool value = builder.socket_default_value<bNodeSocketValueBoolean>()->value;
+    builder.set_constant_value(value);
+  };
+  return socktype;
+}
+
+static bNodeSocketType *make_socket_type_float(PropertySubType subtype)
+{
+  bNodeSocketType *socktype = make_standard_socket_type(SOCK_FLOAT, subtype);
+  socktype->get_mf_data_type = []() { return blender::fn::MFDataType::ForSingle<float>(); };
+  socktype->expand_in_mf_network = [](blender::nodes::SocketMFNetworkBuilder &builder) {
+    float value = builder.socket_default_value<bNodeSocketValueFloat>()->value;
+    builder.set_constant_value(value);
+  };
+  return socktype;
+}
+
+static bNodeSocketType *make_socket_type_int(PropertySubType subtype)
+{
+  bNodeSocketType *socktype = make_standard_socket_type(SOCK_INT, subtype);
+  socktype->get_mf_data_type = []() { return blender::fn::MFDataType::ForSingle<int>(); };
+  socktype->expand_in_mf_network = [](blender::nodes::SocketMFNetworkBuilder &builder) {
+    int value = builder.socket_default_value<bNodeSocketValueInt>()->value;
+    builder.set_constant_value(value);
+  };
+  return socktype;
+}
+
+static bNodeSocketType *make_socket_type_vector(PropertySubType subtype)
+{
+  bNodeSocketType *socktype = make_standard_socket_type(SOCK_VECTOR, subtype);
+  socktype->get_mf_data_type = []() {
+    return blender::fn::MFDataType::ForSingle<blender::float3>();
+  };
+  socktype->expand_in_mf_network = [](blender::nodes::SocketMFNetworkBuilder &builder) {
+    blender::float3 value = builder.socket_default_value<bNodeSocketValueVector>()->value;
+    builder.set_constant_value(value);
+  };
+  return socktype;
+}
+
+static bNodeSocketType *make_socket_type_rgba()
+{
+  bNodeSocketType *socktype = make_standard_socket_type(SOCK_RGBA, PROP_NONE);
+  socktype->get_mf_data_type = []() {
+    return blender::fn::MFDataType::ForSingle<blender::Color4f>();
+  };
+  socktype->expand_in_mf_network = [](blender::nodes::SocketMFNetworkBuilder &builder) {
+    blender::Color4f value = builder.socket_default_value<bNodeSocketValueRGBA>()->value;
+    builder.set_constant_value(value);
+  };
+  return socktype;
+}
+
+static bNodeSocketType *make_socket_type_string()
+{
+  bNodeSocketType *socktype = make_standard_socket_type(SOCK_STRING, PROP_NONE);
+  socktype->get_mf_data_type = []() { return blender::fn::MFDataType::ForSingle<std::string>(); };
+  socktype->expand_in_mf_network = [](blender::nodes::SocketMFNetworkBuilder &builder) {
+    std::string value = builder.socket_default_value<bNodeSocketValueString>()->value;
+    builder.set_constant_value(value);
+  };
+  return socktype;
+}
+
+class ObjectSocketMultiFunction : public blender::fn::MultiFunction {
+ private:
+  Object *object_;
+
+ public:
+  ObjectSocketMultiFunction(Object *object) : object_(object)
+  {
+    blender::fn::MFSignatureBuilder signature = this->get_builder("Object Socket");
+    signature.depends_on_context();
+    signature.single_output<blender::bke::PersistentObjectHandle>("Object");
+  }
+
+  void call(blender::IndexMask mask,
+            blender::fn::MFParams params,
+            blender::fn::MFContext context) const override
+  {
+    blender::MutableSpan output =
+        params.uninitialized_single_output<blender::bke::PersistentObjectHandle>(0, "Object");
+
+    /* Try to get a handle map, so that the object can be converted to a handle. */
+    const blender::bke::PersistentDataHandleMap *handle_map =
+        context.get_global_context<blender::bke::PersistentDataHandleMap>(
+            "PersistentDataHandleMap");
+
+    if (handle_map == nullptr) {
+      /* Return empty handles when there is no handle map. */
+      output.fill_indices(mask, blender::bke::PersistentObjectHandle());
+      return;
+    }
+
+    blender::bke::PersistentObjectHandle handle = handle_map->lookup(object_);
+    for (int64_t i : mask) {
+      output[i] = handle;
+    }
+  }
+};
+
+MAKE_CPP_TYPE(PersistentObjectHandle, blender::bke::PersistentObjectHandle);
+
+static bNodeSocketType *make_socket_type_object()
+{
+  bNodeSocketType *socktype = make_standard_socket_type(SOCK_OBJECT, PROP_NONE);
+  socktype->get_mf_data_type = []() {
+    /* Objects are not passed along as raw pointers, but as handles. */
+    return blender::fn::MFDataType::ForSingle<blender::bke::PersistentObjectHandle>();
+  };
+  socktype->expand_in_mf_network = [](blender::nodes::SocketMFNetworkBuilder &builder) {
+    Object *object = builder.socket_default_value<bNodeSocketValueObject>()->value;
+    builder.construct_generator_fn<ObjectSocketMultiFunction>(object);
+  };
+  return socktype;
+}
+
 void register_standard_node_socket_types(void)
 {
   /* draw callbacks are set in drawnode.c to avoid bad-level calls */
 
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_FLOAT, PROP_NONE));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_FLOAT, PROP_UNSIGNED));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_FLOAT, PROP_PERCENTAGE));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_FLOAT, PROP_FACTOR));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_FLOAT, PROP_ANGLE));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_FLOAT, PROP_TIME));
+  nodeRegisterSocketType(make_socket_type_float(PROP_NONE));
+  nodeRegisterSocketType(make_socket_type_float(PROP_UNSIGNED));
+  nodeRegisterSocketType(make_socket_type_float(PROP_PERCENTAGE));
+  nodeRegisterSocketType(make_socket_type_float(PROP_FACTOR));
+  nodeRegisterSocketType(make_socket_type_float(PROP_ANGLE));
+  nodeRegisterSocketType(make_socket_type_float(PROP_TIME));
 
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_INT, PROP_NONE));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_INT, PROP_UNSIGNED));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_INT, PROP_PERCENTAGE));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_INT, PROP_FACTOR));
+  nodeRegisterSocketType(make_socket_type_int(PROP_NONE));
+  nodeRegisterSocketType(make_socket_type_int(PROP_UNSIGNED));
+  nodeRegisterSocketType(make_socket_type_int(PROP_PERCENTAGE));
+  nodeRegisterSocketType(make_socket_type_int(PROP_FACTOR));
 
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_BOOLEAN, PROP_NONE));
+  nodeRegisterSocketType(make_socket_type_bool());
 
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_VECTOR, PROP_NONE));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_VECTOR, PROP_TRANSLATION));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_VECTOR, PROP_DIRECTION));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_VECTOR, PROP_VELOCITY));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_VECTOR, PROP_ACCELERATION));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_VECTOR, PROP_EULER));
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_VECTOR, PROP_XYZ));
+  nodeRegisterSocketType(make_socket_type_vector(PROP_NONE));
+  nodeRegisterSocketType(make_socket_type_vector(PROP_TRANSLATION));
+  nodeRegisterSocketType(make_socket_type_vector(PROP_DIRECTION));
+  nodeRegisterSocketType(make_socket_type_vector(PROP_VELOCITY));
+  nodeRegisterSocketType(make_socket_type_vector(PROP_ACCELERATION));
+  nodeRegisterSocketType(make_socket_type_vector(PROP_EULER));
+  nodeRegisterSocketType(make_socket_type_vector(PROP_XYZ));
 
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_RGBA, PROP_NONE));
+  nodeRegisterSocketType(make_socket_type_rgba());
 
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_STRING, PROP_NONE));
+  nodeRegisterSocketType(make_socket_type_string());
 
   nodeRegisterSocketType(make_standard_socket_type(SOCK_SHADER, PROP_NONE));
 
-  nodeRegisterSocketType(make_standard_socket_type(SOCK_OBJECT, PROP_NONE));
+  nodeRegisterSocketType(make_socket_type_object());
 
   nodeRegisterSocketType(make_standard_socket_type(SOCK_IMAGE, PROP_NONE));
 

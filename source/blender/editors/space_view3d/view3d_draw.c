@@ -36,6 +36,7 @@
 #include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_global.h"
+#include "BKE_image.h"
 #include "BKE_key.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
@@ -74,7 +75,6 @@
 
 #include "GPU_batch.h"
 #include "GPU_batch_presets.h"
-#include "GPU_draw.h"
 #include "GPU_framebuffer.h"
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -115,8 +115,8 @@ void ED_view3d_update_viewmat(Depsgraph *depsgraph,
                               const Scene *scene,
                               View3D *v3d,
                               ARegion *region,
-                              float viewmat[4][4],
-                              float winmat[4][4],
+                              const float viewmat[4][4],
+                              const float winmat[4][4],
                               const rcti *rect,
                               bool offscreen)
 {
@@ -197,8 +197,8 @@ static void view3d_main_region_setup_view(Depsgraph *depsgraph,
                                           Scene *scene,
                                           View3D *v3d,
                                           ARegion *region,
-                                          float viewmat[4][4],
-                                          float winmat[4][4],
+                                          const float viewmat[4][4],
+                                          const float winmat[4][4],
                                           const rcti *rect)
 {
   RegionView3D *rv3d = region->regiondata;
@@ -214,8 +214,8 @@ static void view3d_main_region_setup_offscreen(Depsgraph *depsgraph,
                                                const Scene *scene,
                                                View3D *v3d,
                                                ARegion *region,
-                                               float viewmat[4][4],
-                                               float winmat[4][4])
+                                               const float viewmat[4][4],
+                                               const float winmat[4][4])
 {
   RegionView3D *rv3d = region->regiondata;
   ED_view3d_update_viewmat(depsgraph, scene, v3d, region, viewmat, winmat, NULL, true);
@@ -353,8 +353,8 @@ void ED_view3d_draw_setup_view(const wmWindowManager *wm,
                                Scene *scene,
                                ARegion *region,
                                View3D *v3d,
-                               float viewmat[4][4],
-                               float winmat[4][4],
+                               const float viewmat[4][4],
+                               const float winmat[4][4],
                                const rcti *rect)
 {
   RegionView3D *rv3d = region->regiondata;
@@ -668,7 +668,8 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
 
   /* safety border */
   if (ca) {
-    immUniformThemeColorBlend(TH_VIEW_OVERLAY, TH_BACK, 0.25f);
+    GPU_blend(true);
+    immUniformThemeColorAlpha(TH_VIEW_OVERLAY, 0.75f);
 
     if (ca->dtx & CAM_DTX_CENTER) {
       float x3, y3;
@@ -778,6 +779,8 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
        * 2.0f round corner effect was nearly not visible anyway... */
       imm_draw_box_wire_2d(shdr_pos, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
     }
+
+    GPU_blend(false);
   }
 
   immUnbindProgram();
@@ -844,15 +847,8 @@ void ED_view3d_draw_depth(Depsgraph *depsgraph, ARegion *region, View3D *v3d, bo
   ED_view3d_draw_setup_view(
       G_MAIN->wm.first, NULL, depsgraph, scene, region, v3d, NULL, NULL, NULL);
 
-  GPU_clear(GPU_DEPTH_BIT);
-
-  if (RV3D_CLIPPING_ENABLED(v3d, rv3d)) {
-    ED_view3d_clipping_set(rv3d);
-  }
   /* get surface depth without bias */
   rv3d->rflag |= RV3D_ZOFFSET_DISABLED;
-
-  GPU_depth_test(true);
 
   /* Needed in cases the view-port isn't already setup. */
   WM_draw_region_viewport_ensure(region, SPACE_VIEW3D);
@@ -867,13 +863,7 @@ void ED_view3d_draw_depth(Depsgraph *depsgraph, ARegion *region, View3D *v3d, bo
 
   WM_draw_region_viewport_unbind(region);
 
-  if (RV3D_CLIPPING_ENABLED(v3d, rv3d)) {
-    ED_view3d_clipping_disable();
-  }
   rv3d->rflag &= ~RV3D_ZOFFSET_DISABLED;
-
-  /* Reset default for UI */
-  GPU_depth_test(false);
 
   U.glalphaclip = glalphaclip;
   v3d->flag = flag;
@@ -1085,7 +1075,7 @@ static void draw_rotation_guide(const RegionView3D *rv3d)
   GPU_blend(true);
   GPU_blend_set_func_separate(
       GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
-  glDepthMask(GL_FALSE); /* don't overwrite zbuf */
+  GPU_depth_mask(false); /* don't overwrite zbuf */
 
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
@@ -1175,7 +1165,7 @@ static void draw_rotation_guide(const RegionView3D *rv3d)
   immUnbindProgram();
 
   GPU_blend(false);
-  glDepthMask(GL_TRUE);
+  GPU_depth_mask(true);
 }
 #endif /* WITH_INPUT_NDOF */
 
@@ -1619,9 +1609,7 @@ RenderEngineType *ED_view3d_engine_type(const Scene *scene, int drawtype)
   if (drawtype == OB_MATERIAL && (type->flag & RE_USE_EEVEE_VIEWPORT)) {
     return RE_engines_find(RE_engine_id_BLENDER_EEVEE);
   }
-  else {
-    return type;
-  }
+  return type;
 }
 
 void view3d_main_region_draw(const bContext *C, ARegion *region)
@@ -1632,7 +1620,7 @@ void view3d_main_region_draw(const bContext *C, ARegion *region)
   view3d_draw_view(C, region);
 
   DRW_cache_free_old_batches(bmain);
-  GPU_free_images_old(bmain);
+  BKE_image_free_old_gputextures(bmain);
   GPU_pass_cache_garbage_collect();
 
   /* XXX This is in order to draw UI batches with the DRW
@@ -1655,7 +1643,7 @@ static void view3d_stereo3d_setup_offscreen(Depsgraph *depsgraph,
                                             const Scene *scene,
                                             View3D *v3d,
                                             ARegion *region,
-                                            float winmat[4][4],
+                                            const float winmat[4][4],
                                             const char *viewname)
 {
   /* update the viewport matrices with the new camera */
@@ -1682,8 +1670,8 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
                               ARegion *region,
                               int winx,
                               int winy,
-                              float viewmat[4][4],
-                              float winmat[4][4],
+                              const float viewmat[4][4],
+                              const float winmat[4][4],
                               bool is_image_render,
                               bool do_sky,
                               bool UNUSED(is_persp),
@@ -1714,10 +1702,15 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
   /* set flags */
   G.f |= G_FLAG_RENDER_VIEWPORT;
 
+  /* There are too many functions inside the draw manager that check the shading type,
+   * so use a temporary override instead. */
+  const eDrawType drawtype_orig = v3d->shading.type;
+  v3d->shading.type = drawtype;
+
   {
     /* free images which can have changed on frame-change
      * warning! can be slow so only free animated images - campbell */
-    GPU_free_images_anim(G.main); /* XXX :((( */
+    BKE_image_free_anim_gputextures(G.main); /* XXX :((( */
   }
 
   GPU_matrix_push_projection();
@@ -1754,6 +1747,7 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
 
   UI_Theme_Restore(&theme_state);
 
+  v3d->shading.type = drawtype_orig;
   G.f &= ~G_FLAG_RENDER_VIEWPORT;
 }
 
@@ -1768,8 +1762,8 @@ void ED_view3d_draw_offscreen_simple(Depsgraph *depsgraph,
                                      int winx,
                                      int winy,
                                      uint draw_flags,
-                                     float viewmat[4][4],
-                                     float winmat[4][4],
+                                     const float viewmat[4][4],
+                                     const float winmat[4][4],
                                      float clip_start,
                                      float clip_end,
                                      bool is_image_render,
@@ -1963,10 +1957,10 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
                            NULL);
 
   if (ibuf->rect_float) {
-    GPU_offscreen_read_pixels(ofs, GL_FLOAT, ibuf->rect_float);
+    GPU_offscreen_read_pixels(ofs, GPU_DATA_FLOAT, ibuf->rect_float);
   }
   else if (ibuf->rect) {
-    GPU_offscreen_read_pixels(ofs, GL_UNSIGNED_BYTE, ibuf->rect);
+    GPU_offscreen_read_pixels(ofs, GPU_DATA_UNSIGNED_BYTE, ibuf->rect);
   }
 
   /* unbind */
@@ -2116,27 +2110,6 @@ bool ED_view3d_clipping_test(const RegionView3D *rv3d, const float co[3], const 
   return view3d_clipping_test(co, is_local ? rv3d->clip_local : rv3d->clip);
 }
 
-void ED_view3d_clipping_set(RegionView3D *UNUSED(rv3d))
-{
-  for (uint a = 0; a < 6; a++) {
-    glEnable(GL_CLIP_DISTANCE0 + a);
-  }
-}
-
-/* Use these to temp disable/enable clipping when 'rv3d->rflag & RV3D_CLIPPING' is set. */
-void ED_view3d_clipping_disable(void)
-{
-  for (uint a = 0; a < 6; a++) {
-    glDisable(GL_CLIP_DISTANCE0 + a);
-  }
-}
-void ED_view3d_clipping_enable(void)
-{
-  for (uint a = 0; a < 6; a++) {
-    glEnable(GL_CLIP_DISTANCE0 + a);
-  }
-}
-
 /* *********************** backdraw for selection *************** */
 
 /**
@@ -2194,13 +2167,8 @@ static void view3d_opengl_read_Z_pixels(GPUViewport *viewport, rcti *rect, void 
   GPU_framebuffer_texture_attach(tmp_fb, dtxl->depth, 0, 0);
   GPU_framebuffer_bind(tmp_fb);
 
-  glReadPixels(rect->xmin,
-               rect->ymin,
-               BLI_rcti_size_x(rect),
-               BLI_rcti_size_y(rect),
-               GL_DEPTH_COMPONENT,
-               GL_FLOAT,
-               data);
+  GPU_framebuffer_read_depth(
+      tmp_fb, rect->xmin, rect->ymin, BLI_rcti_size_x(rect), BLI_rcti_size_y(rect), data);
 
   GPU_framebuffer_restore();
   GPU_framebuffer_free(tmp_fb);
@@ -2287,7 +2255,9 @@ void view3d_update_depths_rect(ARegion *region, ViewDepths *d, rcti *rect)
   if (d->damaged) {
     GPUViewport *viewport = WM_draw_region_get_viewport(region);
     view3d_opengl_read_Z_pixels(viewport, rect, d->depths);
-    glGetDoublev(GL_DEPTH_RANGE, d->depth_range);
+    /* Range is assumed to be this as they are never changed. */
+    d->depth_range[0] = 0.0;
+    d->depth_range[1] = 1.0;
     d->damaged = false;
   }
 }
@@ -2322,7 +2292,9 @@ void ED_view3d_depth_update(ARegion *region)
           .ymax = d->h,
       };
       view3d_opengl_read_Z_pixels(viewport, &r, d->depths);
-      glGetDoublev(GL_DEPTH_RANGE, d->depth_range);
+      /* Assumed to be this as they are never changed. */
+      d->depth_range[0] = 0.0;
+      d->depth_range[1] = 1.0;
       d->damaged = false;
     }
   }
@@ -2437,7 +2409,7 @@ struct RV3DMatrixStore *ED_view3d_mats_rv3d_backup(struct RegionView3D *rv3d)
   copy_m4_m4(rv3dmat->viewinv, rv3d->viewinv);
   copy_v4_v4(rv3dmat->viewcamtexcofac, rv3d->viewcamtexcofac);
   rv3dmat->pixsize = rv3d->pixsize;
-  return (void *)rv3dmat;
+  return rv3dmat;
 }
 
 void ED_view3d_mats_rv3d_restore(struct RegionView3D *rv3d, struct RV3DMatrixStore *rv3dmat_pt)

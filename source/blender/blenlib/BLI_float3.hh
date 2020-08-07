@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BLI_FLOAT3_HH__
-#define __BLI_FLOAT3_HH__
+#pragma once
 
 #include <iostream>
 
@@ -63,11 +62,12 @@ struct float3 {
     return {a.x + b.x, a.y + b.y, a.z + b.z};
   }
 
-  void operator+=(const float3 &b)
+  float3 &operator+=(const float3 &b)
   {
     this->x += b.x;
     this->y += b.y;
     this->z += b.z;
+    return *this;
   }
 
   friend float3 operator-(const float3 &a, const float3 &b)
@@ -80,25 +80,28 @@ struct float3 {
     return {-a.x, -a.y, -a.z};
   }
 
-  void operator-=(const float3 &b)
+  float3 &operator-=(const float3 &b)
   {
     this->x -= b.x;
     this->y -= b.y;
     this->z -= b.z;
+    return *this;
   }
 
-  void operator*=(float scalar)
+  float3 &operator*=(float scalar)
   {
     this->x *= scalar;
     this->y *= scalar;
     this->z *= scalar;
+    return *this;
   }
 
-  void operator*=(const float3 &other)
+  float3 &operator*=(const float3 &other)
   {
     this->x *= other.x;
     this->y *= other.y;
     this->z *= other.z;
+    return *this;
   }
 
   friend float3 operator*(const float3 &a, const float3 &b)
@@ -128,11 +131,32 @@ struct float3 {
     return stream;
   }
 
+  friend bool operator==(const float3 &a, const float3 &b)
+  {
+    return a.x == b.x && a.y == b.y && a.z == b.z;
+  }
+
+  friend bool operator!=(const float3 &a, const float3 &b)
+  {
+    return !(a == b);
+  }
+
   float normalize_and_get_length()
   {
     return normalize_v3(*this);
   }
 
+  /**
+   * Normalizes the vector in place.
+   */
+  void normalize()
+  {
+    normalize_v3(*this);
+  }
+
+  /**
+   * Returns a normalized vector. The original vector is not changed.
+   */
   float3 normalized() const
   {
     float3 result;
@@ -178,6 +202,14 @@ struct float3 {
     z = -z;
   }
 
+  uint64_t hash() const
+  {
+    uint64_t x1 = *(uint32_t *)&x;
+    uint64_t x2 = *(uint32_t *)&y;
+    uint64_t x3 = *(uint32_t *)&z;
+    return (x1 * 435109) ^ (x2 * 380867) ^ (x3 * 1059217);
+  }
+
   static float dot(const float3 &a, const float3 &b)
   {
     return a.x * b.x + a.y * b.y + a.z * b.z;
@@ -214,5 +246,3 @@ struct float3 {
 };
 
 }  // namespace blender
-
-#endif /* __BLI_FLOAT3_HH__ */

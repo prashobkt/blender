@@ -509,8 +509,8 @@ static void viewops_data_create(bContext *C,
 
         negate_v3_v3(my_origin, rv3d->ofs); /* ofs is flipped */
 
-        /* Set the dist value to be the distance from this 3d point this means youll
-         * always be able to zoom into it and panning wont go bad when dist was zero */
+        /* Set the dist value to be the distance from this 3d point this means you'll
+         * always be able to zoom into it and panning wont go bad when dist was zero. */
 
         /* remove dist value */
         upvec[0] = upvec[1] = 0;
@@ -1021,12 +1021,11 @@ static int viewrotate_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
     return OPERATOR_FINISHED;
   }
-  else {
-    /* add temp handler */
-    WM_event_add_modal_handler(C, op);
 
-    return OPERATOR_RUNNING_MODAL;
-  }
+  /* add temp handler */
+  WM_event_add_modal_handler(C, op);
+
+  return OPERATOR_RUNNING_MODAL;
 }
 
 static void viewrotate_cancel(bContext *C, wmOperator *op)
@@ -1848,12 +1847,11 @@ static int viewmove_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
     return OPERATOR_FINISHED;
   }
-  else {
-    /* add temp handler */
-    WM_event_add_modal_handler(C, op);
 
-    return OPERATOR_RUNNING_MODAL;
-  }
+  /* add temp handler */
+  WM_event_add_modal_handler(C, op);
+
+  return OPERATOR_RUNNING_MODAL;
 }
 
 static void viewmove_cancel(bContext *C, wmOperator *op)
@@ -2407,18 +2405,17 @@ static int viewzoom_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       viewops_data_free(C, op);
       return OPERATOR_FINISHED;
     }
-    else {
-      if (U.viewzoom == USER_ZOOM_CONT) {
-        /* needs a timer to continue redrawing */
-        vod->timer = WM_event_add_timer(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.01f);
-        vod->prev.time = PIL_check_seconds_timer();
-      }
 
-      /* add temp handler */
-      WM_event_add_modal_handler(C, op);
-
-      return OPERATOR_RUNNING_MODAL;
+    if (U.viewzoom == USER_ZOOM_CONT) {
+      /* needs a timer to continue redrawing */
+      vod->timer = WM_event_add_timer(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.01f);
+      vod->prev.time = PIL_check_seconds_timer();
     }
+
+    /* add temp handler */
+    WM_event_add_modal_handler(C, op);
+
+    return OPERATOR_RUNNING_MODAL;
   }
   return OPERATOR_FINISHED;
 }
@@ -2500,9 +2497,7 @@ static bool viewdolly_offset_lock_check(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_WARNING, "Cannot dolly when the view offset is locked");
     return true;
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 static void view_dolly_to_vector_3d(ARegion *region, float orig_ofs[3], float dvec[3], float dfac)
@@ -2726,12 +2721,10 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       viewops_data_free(C, op);
       return OPERATOR_FINISHED;
     }
-    else {
-      /* add temp handler */
-      WM_event_add_modal_handler(C, op);
 
-      return OPERATOR_RUNNING_MODAL;
-    }
+    /* add temp handler */
+    WM_event_add_modal_handler(C, op);
+    return OPERATOR_RUNNING_MODAL;
   }
   return OPERATOR_FINISHED;
 }
@@ -2952,6 +2945,9 @@ static int view3d_all_exec(bContext *C, wmOperator *op)
   }
 
   if (center) {
+    struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+    WM_msg_publish_rna_prop(mbus, &scene->id, &scene->cursor, View3DCursor, location);
+
     DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
   }
 
@@ -3170,9 +3166,8 @@ static int view_lock_clear_exec(bContext *C, wmOperator *UNUSED(op))
 
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+
+  return OPERATOR_CANCELLED;
 }
 
 void VIEW3D_OT_view_lock_clear(wmOperatorType *ot)
@@ -3228,9 +3223,8 @@ static int view_lock_to_active_exec(bContext *C, wmOperator *UNUSED(op))
 
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+
+  return OPERATOR_CANCELLED;
 }
 
 void VIEW3D_OT_view_lock_to_active(wmOperatorType *ot)
@@ -4500,10 +4494,9 @@ static int viewroll_exec(bContext *C, wmOperator *op)
     viewops_data_free(C, op);
     return OPERATOR_FINISHED;
   }
-  else {
-    viewops_data_free(C, op);
-    return OPERATOR_CANCELLED;
-  }
+
+  viewops_data_free(C, op);
+  return OPERATOR_CANCELLED;
 }
 
 static int viewroll_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -4535,12 +4528,10 @@ static int viewroll_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       viewops_data_free(C, op);
       return OPERATOR_FINISHED;
     }
-    else {
-      /* add temp handler */
-      WM_event_add_modal_handler(C, op);
 
-      return OPERATOR_RUNNING_MODAL;
-    }
+    /* add temp handler */
+    WM_event_add_modal_handler(C, op);
+    return OPERATOR_RUNNING_MODAL;
   }
   return OPERATOR_FINISHED;
 }
@@ -4755,9 +4746,8 @@ static Camera *background_image_camera_from_context(bContext *C)
     }
     return NULL;
   }
-  else {
-    return CTX_data_pointer_get_type(C, "camera", &RNA_Camera).data;
-  }
+
+  return CTX_data_pointer_get_type(C, "camera", &RNA_Camera).data;
 }
 
 static int background_image_add_exec(bContext *C, wmOperator *UNUSED(op))
@@ -4848,9 +4838,7 @@ static int background_image_remove_exec(bContext *C, wmOperator *op)
 
     return OPERATOR_FINISHED;
   }
-  else {
-    return OPERATOR_CANCELLED;
-  }
+  return OPERATOR_CANCELLED;
 }
 
 void VIEW3D_OT_background_image_remove(wmOperatorType *ot)
@@ -4880,7 +4868,9 @@ void VIEW3D_OT_background_image_remove(wmOperatorType *ot)
  * Draw border or toggle off.
  * \{ */
 
-static void calc_local_clipping(float clip_local[6][4], BoundBox *clipbb, float mat[4][4])
+static void calc_local_clipping(float clip_local[6][4],
+                                const BoundBox *clipbb,
+                                const float mat[4][4])
 {
   BoundBox clipbb_local;
   float imat[4][4];
@@ -4895,7 +4885,7 @@ static void calc_local_clipping(float clip_local[6][4], BoundBox *clipbb, float 
   ED_view3d_clipping_calc_from_boundbox(clip_local, &clipbb_local, is_negative_m4(mat));
 }
 
-void ED_view3d_clipping_local(RegionView3D *rv3d, float mat[4][4])
+void ED_view3d_clipping_local(RegionView3D *rv3d, const float mat[4][4])
 {
   if (rv3d->rflag & RV3D_CLIPPING) {
     calc_local_clipping(rv3d->clip_local, rv3d->clipbb, mat);
@@ -4933,9 +4923,7 @@ static int view3d_clipping_invoke(bContext *C, wmOperator *op, const wmEvent *ev
     rv3d->clipbb = NULL;
     return OPERATOR_FINISHED;
   }
-  else {
-    return WM_gesture_box_invoke(C, op, event);
-  }
+  return WM_gesture_box_invoke(C, op, event);
 }
 
 void VIEW3D_OT_clip_border(wmOperatorType *ot)

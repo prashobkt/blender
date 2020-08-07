@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __FN_MULTI_FUNCTION_HH__
-#define __FN_MULTI_FUNCTION_HH__
+#pragma once
 
 /** \file
  * \ingroup fn
@@ -45,6 +44,8 @@
  * 3. Override the `call` function.
  */
 
+#include "BLI_hash.hh"
+
 #include "FN_multi_function_context.hh"
 #include "FN_multi_function_params.hh"
 
@@ -61,17 +62,32 @@ class MultiFunction {
 
   virtual void call(IndexMask mask, MFParams params, MFContext context) const = 0;
 
+  virtual uint64_t hash() const
+  {
+    return DefaultHash<const MultiFunction *>{}(this);
+  }
+
+  virtual bool equals(const MultiFunction &UNUSED(other)) const
+  {
+    return false;
+  }
+
+  int param_amount() const
+  {
+    return signature_.param_types.size();
+  }
+
   IndexRange param_indices() const
   {
     return signature_.param_types.index_range();
   }
 
-  MFParamType param_type(uint param_index) const
+  MFParamType param_type(int param_index) const
   {
     return signature_.param_types[param_index];
   }
 
-  StringRefNull param_name(uint param_index) const
+  StringRefNull param_name(int param_index) const
   {
     return signature_.param_names[param_index];
   }
@@ -79,6 +95,11 @@ class MultiFunction {
   StringRefNull name() const
   {
     return signature_.function_name;
+  }
+
+  bool depends_on_context() const
+  {
+    return signature_.depends_on_context;
   }
 
   const MFSignature &signature() const
@@ -94,7 +115,7 @@ class MultiFunction {
   }
 };
 
-inline MFParamsBuilder::MFParamsBuilder(const class MultiFunction &fn, uint min_array_size)
+inline MFParamsBuilder::MFParamsBuilder(const class MultiFunction &fn, int64_t min_array_size)
     : MFParamsBuilder(fn.signature(), min_array_size)
 {
 }
@@ -102,5 +123,3 @@ inline MFParamsBuilder::MFParamsBuilder(const class MultiFunction &fn, uint min_
 extern const MultiFunction &dummy_multi_function;
 
 }  // namespace blender::fn
-
-#endif /* __FN_MULTI_FUNCTION_HH__ */

@@ -80,11 +80,9 @@
 //#define USE_MODIFIER_VALIDATE
 
 #ifdef USE_MODIFIER_VALIDATE
-#  define ASSERT_IS_VALID_DM(dm) (BLI_assert((dm == NULL) || (DM_is_valid(dm) == true)))
 #  define ASSERT_IS_VALID_MESH(mesh) \
     (BLI_assert((mesh == NULL) || (BKE_mesh_is_valid(mesh) == true)))
 #else
-#  define ASSERT_IS_VALID_DM(dm)
 #  define ASSERT_IS_VALID_MESH(mesh)
 #endif
 
@@ -424,15 +422,14 @@ int DM_release(DerivedMesh *dm)
 
     return 1;
   }
-  else {
-    CustomData_free_temporary(&dm->vertData, dm->numVertData);
-    CustomData_free_temporary(&dm->edgeData, dm->numEdgeData);
-    CustomData_free_temporary(&dm->faceData, dm->numTessFaceData);
-    CustomData_free_temporary(&dm->loopData, dm->numLoopData);
-    CustomData_free_temporary(&dm->polyData, dm->numPolyData);
 
-    return 0;
-  }
+  CustomData_free_temporary(&dm->vertData, dm->numVertData);
+  CustomData_free_temporary(&dm->edgeData, dm->numEdgeData);
+  CustomData_free_temporary(&dm->faceData, dm->numTessFaceData);
+  CustomData_free_temporary(&dm->loopData, dm->numLoopData);
+  CustomData_free_temporary(&dm->polyData, dm->numPolyData);
+
+  return 0;
 }
 
 void DM_DupPolys(DerivedMesh *source, DerivedMesh *target)
@@ -693,11 +690,9 @@ static float (*get_orco_coords(Object *ob, BMEditMesh *em, int layer, int *free)
     if (em) {
       return get_editbmesh_orco_verts(em);
     }
-    else {
-      return BKE_mesh_orco_verts_get(ob);
-    }
+    return BKE_mesh_orco_verts_get(ob);
   }
-  else if (layer == CD_CLOTH_ORCO) {
+  if (layer == CD_CLOTH_ORCO) {
     /* apply shape key for cloth, this should really be solved
      * by a more flexible customdata system, but not simple */
     if (!em) {
@@ -1060,9 +1055,7 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
         }
         continue;
       }
-      else {
-        BKE_modifier_set_error(md, "Sculpt: Hide, Mask and optimized display disabled");
-      }
+      BKE_modifier_set_error(md, "Sculpt: Hide, Mask and optimized display disabled");
     }
 
     if (need_mapping && !BKE_modifier_supports_mapping(md)) {
@@ -2361,32 +2354,6 @@ void DM_debug_print(DerivedMesh *dm)
   puts(str);
   fflush(stdout);
   MEM_freeN(str);
-}
-
-void DM_debug_print_cdlayers(CustomData *data)
-{
-  int i;
-  const CustomDataLayer *layer;
-
-  printf("{\n");
-
-  for (i = 0, layer = data->layers; i < data->totlayer; i++, layer++) {
-
-    const char *name = CustomData_layertype_name(layer->type);
-    const int size = CustomData_sizeof(layer->type);
-    const char *structname;
-    int structnum;
-    CustomData_file_write_info(layer->type, &structname, &structnum);
-    printf("        dict(name='%s', struct='%s', type=%d, ptr='%p', elem=%d, length=%d),\n",
-           name,
-           structname,
-           layer->type,
-           (const void *)layer->data,
-           size,
-           (int)(MEM_allocN_len(layer->data) / size));
-  }
-
-  printf("}\n");
 }
 
 bool DM_is_valid(DerivedMesh *dm)

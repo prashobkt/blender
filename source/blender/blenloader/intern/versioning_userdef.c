@@ -366,7 +366,7 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
   }
   if (!USER_VERSION_ATLEAST(250, 0)) {
     /* adjust grease-pencil distances */
-    userdef->gp_manhattendist = 1;
+    userdef->gp_manhattandist = 1;
     userdef->gp_euclideandist = 2;
 
     /* adjust default interpolation for new IPO-curves */
@@ -751,6 +751,10 @@ void BLO_version_defaults_userpref_blend(Main *bmain, UserDef *userdef)
     }
     /* Clear this deprecated flag. */
     userdef->transopts &= ~USER_DOTRANSLATE_DEPRECATED;
+  }
+
+  if (!USER_VERSION_ATLEAST(290, 7)) {
+    userdef->statusbar_flag = STATUSBAR_SHOW_VERSION;
   }
 
   /**

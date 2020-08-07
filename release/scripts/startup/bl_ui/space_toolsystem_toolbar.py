@@ -50,11 +50,14 @@ def generate_from_enum_ex(
         attr,
         cursor='DEFAULT',
         tooldef_keywords={},
+        exclude_filter = {}
 ):
     tool_defs = []
     for enum in type.bl_rna.properties[attr].enum_items_static:
         name = enum.name
         idname = enum.identifier
+        if idname in exclude_filter:
+            continue
         tool_defs.append(
             ToolDef.from_dict(
                 dict(
@@ -452,6 +455,11 @@ class _defs_view3d_add:
         row = layout.row()
         row.prop(props, "plane_axis", text="")
         row = layout.row()
+        row.scale_x = 0.8
+        row.label(text="Orientation:")
+        row = layout.row()
+        row.prop(props, "plane_orientation", text="")
+        row = layout.row()
         row.scale_x = 0.7
         row.prop(props, "plane_origin")
 
@@ -741,18 +749,22 @@ class _defs_edit_mesh:
 
             region_is_header = context.region.type == 'TOOL_HEADER'
 
+            edge_bevel = props.affect == 'EDGES'
+
             if not extra:
                 if region_is_header:
                     layout.prop(props, "offset_type", text="")
                 else:
+                    layout.row().prop(props, "affect", expand=True)
+                    layout.separator()
                     layout.prop(props, "offset_type")
 
                 layout.prop(props, "segments")
 
-                row = layout.row()
-                row.prop(props, "profile_type", text="" if region_is_header else None)
-                if props.profile_type == 'SUPERELLIPSE':
-                    layout.prop(props, "profile", text="Shape", slider=True)
+                if region_is_header:
+                    layout.prop(props, "affect", text="")
+
+                layout.prop(props, "profile", text="Shape", slider=True)
 
                 if region_is_header:
                     layout.popover("TOPBAR_PT_tool_settings_extra", text="...")
@@ -763,25 +775,35 @@ class _defs_edit_mesh:
                 layout.use_property_split = True
                 layout.use_property_decorate = False
 
-                if props.profile_type == 'CUSTOM':
-                    layout.prop(props, "profile", text="Miter Shape", slider=True)
+                layout.prop(props, "material")
 
                 col = layout.column()
-                col.prop(props, "vertex_only")
+                col.prop(props, "harden_normals")
                 col.prop(props, "clamp_overlap")
                 col.prop(props, "loop_slide")
-                col.prop(props, "harden_normals")
 
                 col = layout.column(heading="Mark")
+                col.active = edge_bevel
                 col.prop(props, "mark_seam", text="Seam")
                 col.prop(props, "mark_sharp", text="Sharp")
 
-                layout.prop(props, "material")
 
-                layout.prop(props, "miter_outer", text="Outer Miter")
-                layout.prop(props, "miter_inner", text="Inner Miter")
+                col = layout.column()
+                col.active = edge_bevel
+                col.prop(props, "miter_outer", text="Miter Outer")
+                col.prop(props, "miter_inner", text="Inner")
                 if props.miter_inner == 'ARC':
-                    layout.prop(props, "spread")
+                    col.prop(props, "spread")
+
+                layout.separator()
+
+                col = layout.column()
+                col.active = edge_bevel
+                col.prop(props, "vmesh_method", text="Intersections")
+
+                layout.prop(props, "face_strength_mode", text="Face Strength")
+
+                layout.prop(props, "profile_type")
 
                 if props.profile_type == 'CUSTOM':
                     tool_settings = context.tool_settings
@@ -1178,12 +1200,18 @@ class _defs_sculpt:
 
     @staticmethod
     def generate_from_brushes(context):
+        if bpy.context.preferences.experimental.use_sculpt_vertex_colors:
+            exclude_filter = {}
+        else:
+            exclude_filter = {'PAINT', 'SMEAR'}
+
         return generate_from_enum_ex(
             context,
             idname_prefix="builtin_brush.",
             icon_prefix="brush.sculpt.",
             type=bpy.types.Brush,
             attr="sculpt_tool",
+            exclude_filter = exclude_filter,
         )
 
     @ToolDef.from_fn
@@ -1229,6 +1257,8 @@ class _defs_sculpt:
                 layout.prop(props, "surface_smooth_current_vertex", expand=False)
             elif props.type == 'SHARPEN':
                 layout.prop(props, "sharpen_smooth_ratio", expand=False)
+                layout.prop(props, "sharpen_intensify_detail_strength", expand=False)
+                layout.prop(props, "sharpen_curvature_smooth_iterations", expand=False)
 
         return dict(
             idname="builtin.mesh_filter",
@@ -1248,6 +1278,7 @@ class _defs_sculpt:
             layout.prop(props, "cloth_mass")
             layout.prop(props, "cloth_damping")
             layout.prop(props, "use_face_sets")
+            layout.prop(props, "use_collisions")
 
         return dict(
             idname="builtin.cloth_filter",
@@ -1576,6 +1607,20 @@ class _defs_image_uv_select:
             keymap=(),
             draw_settings=draw_settings,
             draw_cursor=draw_cursor,
+        )
+
+
+class _defs_image_uv_edit:
+
+    @ToolDef.from_fn
+    def rip_region():
+        return dict(
+            idname="builtin.rip_region",
+            label="Rip Region",
+            icon="ops.mesh.rip",
+            # TODO: generic operator (UV version of `VIEW3D_GGT_tool_generic_handle_free`).
+            widget=None,
+            keymap=(),
         )
 
 
@@ -2173,6 +2218,8 @@ class IMAGE_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             *_tools_annotate,
             None,
+            _defs_image_uv_edit.rip_region,
+            None,
             lambda context: (
                 _defs_image_uv_sculpt.generate_from_brushes(context)
                 if _defs_image_generic.poll_uvedit(context)
@@ -2469,9 +2516,21 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             _defs_sculpt.mesh_filter,
             _defs_sculpt.cloth_filter,
-            _defs_sculpt.color_filter,
+            lambda context: (
+                (_defs_sculpt.color_filter,)
+                if context is None or (
+                        context.preferences.view.show_developer_ui and
+                        context.preferences.experimental.use_sculpt_vertex_colors)
+                else ()
+            ),
             None,
-            _defs_sculpt.mask_by_color,
+            lambda context: (
+                (_defs_sculpt.mask_by_color,)
+                if context is None or (
+                        context.preferences.view.show_developer_ui and
+                        context.preferences.experimental.use_sculpt_vertex_colors)
+                else ()
+            ),
             None,
             _defs_transform.translate,
             _defs_transform.rotate,

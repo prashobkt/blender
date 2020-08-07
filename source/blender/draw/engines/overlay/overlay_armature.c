@@ -178,6 +178,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
 
 #define BUF_INSTANCE DRW_shgroup_call_buffer_instance
 #define BUF_LINE(grp, format) DRW_shgroup_call_buffer(grp, format, GPU_PRIM_LINES)
+#define BUF_POINT(grp, format) DRW_shgroup_call_buffer(grp, format, GPU_PRIM_POINTS)
 
     {
       format = formats->instance_bone;
@@ -923,12 +924,11 @@ static float get_bone_wire_thickness(const ArmatureDrawContext *ctx, int bonefla
   if (ctx->const_color) {
     return ctx->const_wire;
   }
-  else if (boneflag & (BONE_DRAW_ACTIVE | BONE_SELECTED)) {
+  if (boneflag & (BONE_DRAW_ACTIVE | BONE_SELECTED)) {
     return 2.0f;
   }
-  else {
-    return 1.0f;
-  }
+
+  return 1.0f;
 }
 
 static const float *get_bone_wire_color(const ArmatureDrawContext *ctx,
@@ -2118,10 +2118,11 @@ static void armature_context_setup(ArmatureDrawContext *ctx,
                                    const bool do_envelope_dist,
                                    const bool is_edit_mode,
                                    const bool is_pose_mode,
-                                   float *const_color)
+                                   const float *const_color)
 {
   const bool is_object_mode = !do_envelope_dist;
-  const bool is_xray = (ob->dtx & OB_DRAWXRAY) != 0 || (pd->armature.do_pose_xray && is_pose_mode);
+  const bool is_xray = (ob->dtx & OB_DRAW_IN_FRONT) != 0 ||
+                       (pd->armature.do_pose_xray && is_pose_mode);
   const bool draw_as_wire = (ob->dt < OB_SOLID);
   const bool is_filled = (!pd->armature.transparent && !draw_as_wire) || !is_object_mode;
   const bool is_transparent = pd->armature.transparent || (draw_as_wire && !is_object_mode);
@@ -2217,13 +2218,13 @@ static bool POSE_is_driven_by_active_armature(Object *ob)
     }
     return is_active;
   }
-  else {
-    Object *ob_mesh_deform = BKE_modifiers_is_deformed_by_meshdeform(ob);
-    if (ob_mesh_deform) {
-      /* Recursive. */
-      return POSE_is_driven_by_active_armature(ob_mesh_deform);
-    }
+
+  Object *ob_mesh_deform = BKE_modifiers_is_deformed_by_meshdeform(ob);
+  if (ob_mesh_deform) {
+    /* Recursive. */
+    return POSE_is_driven_by_active_armature(ob_mesh_deform);
   }
+
   return false;
 }
 

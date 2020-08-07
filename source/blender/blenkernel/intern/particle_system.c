@@ -570,7 +570,7 @@ void psys_thread_context_free(ParticleThreadContext *ctx)
   }
 }
 
-static void initialize_particle_texture(ParticleSimulationData *sim, ParticleData *pa, int p)
+static void init_particle_texture(ParticleSimulationData *sim, ParticleData *pa, int p)
 {
   ParticleSystem *psys = sim->psys;
   ParticleSettings *part = psys->part;
@@ -595,7 +595,7 @@ static void initialize_particle_texture(ParticleSimulationData *sim, ParticleDat
 }
 
 /* set particle parameters that don't change during particle's life */
-void initialize_particle(ParticleSimulationData *sim, ParticleData *pa)
+void init_particle(ParticleSimulationData *sim, ParticleData *pa)
 {
   ParticleSettings *part = sim->psys->part;
   float birth_time = (float)(pa - sim->psys->particles) / (float)sim->psys->totpart;
@@ -629,7 +629,7 @@ static void initialize_all_particles(ParticleSimulationData *sim)
   LOOP_PARTICLES
   {
     if (!(emit_from_volume_grid && (pa->flag & PARS_UNEXIST) != 0)) {
-      initialize_particle(sim, pa);
+      init_particle(sim, pa);
     }
   }
 }
@@ -1092,7 +1092,7 @@ void reset_particle(ParticleSimulationData *sim, ParticleData *pa, float dtime, 
    * We could only do it now because we'll need to know coordinate
    * before sampling the texture.
    */
-  initialize_particle_texture(sim, pa, p);
+  init_particle_texture(sim, pa, p);
 
   if (part->phystype == PART_PHYS_BOIDS && pa->boid) {
     BoidParticle *bpa = pa->boid;
@@ -1939,7 +1939,7 @@ static void sphclassical_density_accum_cb(void *userdata,
     return;
   }
 
-  /* Smoothing factor. Utilise the Wendland kernel. gnuplot:
+  /* Smoothing factor. Utilize the Wendland kernel. gnuplot:
    *     q1(x) = (2.0 - x)**4 * ( 1.0 + 2.0 * x)
    *     plot [0:2] q1(x) */
   q = qfac / pow3f(pfr->h) * pow4f(2.0f - rij_h) * (1.0f + 2.0f * rij_h);
@@ -2054,7 +2054,7 @@ static void sphclassical_force_cb(void *sphdata_v,
 
     npressure = stiffness * (pow7f(npa->sphdensity / rest_density) - 1.0f);
 
-    /* First derivative of smoothing factor. Utilise the Wendland kernel.
+    /* First derivative of smoothing factor. Utilize the Wendland kernel.
      * gnuplot:
      *     q2(x) = 2.0 * (2.0 - x)**4 - 4.0 * (2.0 - x)**3 * (1.0 + 2.0 * x)
      *     plot [0:2] q2(x)
@@ -2947,7 +2947,7 @@ static int collision_response(ParticleSimulationData *sim,
     /* get exact velocity right before collision */
     madd_v3_v3v3fl(v0, col->ve1, col->acc, dt1);
 
-    /* Convert collider velocity from 1/framestep to 1/s TODO:
+    /* Convert collider velocity from `1/frame_step` to `1/s` TODO:
      * here we assume 1 frame step for collision modifier. */
     mul_v3_fl(pce->vel, col->inv_timestep);
 
@@ -4584,7 +4584,7 @@ static void system_step(ParticleSimulationData *sim, float cfra, const bool use_
       psys->dt_frac = get_base_time_step(part);
     }
     else if ((int)cfra == startframe) {
-      /* Variable time step; initialise to subframes */
+      /* Variable time step; initialize to sub-frames. */
       psys->dt_frac = get_base_time_step(part);
     }
     else if (psys->dt_frac < MIN_TIMESTEP) {
@@ -4854,8 +4854,10 @@ void particle_system_update(struct Depsgraph *depsgraph,
       for (i = 0; i <= part->hair_step; i++) {
         hcfra = 100.0f * (float)i / (float)psys->part->hair_step;
         if ((part->flag & PART_HAIR_REGROW) == 0) {
+          const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
+              depsgraph, hcfra);
           BKE_animsys_evaluate_animdata(
-              &part_local->id, part_local->adt, hcfra, ADT_RECALC_ANIM, false);
+              &part_local->id, part_local->adt, &anim_eval_context, ADT_RECALC_ANIM, false);
         }
         system_step(&sim, hcfra, use_render_params);
         psys->cfra = hcfra;
@@ -4966,6 +4968,7 @@ void particle_system_update(struct Depsgraph *depsgraph,
       psys_orig->flag = (psys->flag & ~PSYS_SHARED_CACHES);
       psys_orig->cfra = psys->cfra;
       psys_orig->recalc = psys->recalc;
+      psys_orig->part->totpart = part->totpart;
     }
   }
 

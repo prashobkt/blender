@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __FN_MULTI_FUNCTION_DATA_TYPE_HH__
-#define __FN_MULTI_FUNCTION_DATA_TYPE_HH__
+#pragma once
 
 /** \file
  * \ingroup fn
@@ -108,6 +107,11 @@ class MFDataType {
     BLI_assert(false);
     return "";
   }
+
+  uint64_t hash() const
+  {
+    return DefaultHash<CPPType>{}(*type_) + (uint64_t)category_;
+  }
 };
 
 inline bool operator==(const MFDataType &a, const MFDataType &b)
@@ -121,5 +125,3 @@ inline bool operator!=(const MFDataType &a, const MFDataType &b)
 }
 
 }  // namespace blender::fn
-
-#endif /* __FN_MULTI_FUNCTION_DATA_TYPE_HH__ */

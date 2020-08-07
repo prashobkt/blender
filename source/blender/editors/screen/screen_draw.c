@@ -404,7 +404,7 @@ void ED_screen_draw_edges(wmWindow *win)
   /* It seems that all areas gets smaller when pixelsize is > 1.
    * So in order to avoid missing pixels we just disable de scissors. */
   if (U.pixelsize <= 1.0f) {
-    glEnable(GL_SCISSOR_TEST);
+    GPU_scissor_test(true);
   }
 
   UI_GetThemeColor4fv(TH_EDITOR_OUTLINE, col);
@@ -429,7 +429,7 @@ void ED_screen_draw_edges(wmWindow *win)
   GPU_blend(false);
 
   if (U.pixelsize <= 1.0f) {
-    glDisable(GL_SCISSOR_TEST);
+    GPU_scissor_test(false);
   }
 }
 
@@ -619,7 +619,7 @@ void ED_screen_preview_render(const bScreen *screen, int size_x, int size_y, uin
 
   screen_preview_draw(screen, size_x, size_y);
 
-  GPU_offscreen_read_pixels(offscreen, GL_UNSIGNED_BYTE, r_rect);
+  GPU_offscreen_read_pixels(offscreen, GPU_DATA_UNSIGNED_BYTE, r_rect);
   GPU_offscreen_unbind(offscreen, true);
 
   GPU_offscreen_free(offscreen);

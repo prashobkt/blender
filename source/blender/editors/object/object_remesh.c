@@ -72,7 +72,6 @@
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
 
-#include "GPU_draw.h"
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
@@ -1042,7 +1041,7 @@ static bool quadriflow_poll_property(const bContext *C, wmOperator *op, const Pr
     if (STREQ(prop_id, "target_edge_length") && mode != QUADRIFLOW_REMESH_EDGE_LENGTH) {
       return false;
     }
-    else if (STREQ(prop_id, "target_faces")) {
+    if (STREQ(prop_id, "target_faces")) {
       if (mode != QUADRIFLOW_REMESH_FACES) {
         /* Make sure we can edit the target_faces value even if it doesn't start as EDITABLE */
         float area = RNA_float_get(op->ptr, "mesh_area");

@@ -106,8 +106,7 @@
  * \endcode
  */
 
-#ifndef __WM_TYPES_H__
-#define __WM_TYPES_H__
+#pragma once
 
 struct ID;
 struct ImBuf;
@@ -361,6 +360,7 @@ typedef struct wmNotifier {
 #define ND_LOD (30 << 16)
 #define ND_DRAW_RENDER_VIEWPORT \
   (31 << 16) /* for camera & sequencer viewport update, also /w NC_SCENE */
+#define ND_SHADERFX (32 << 16)
 
 /* NC_MATERIAL Material */
 #define ND_SHADING (30 << 16)
@@ -927,5 +927,3 @@ extern struct CLG_LogRef *WM_LOG_MSGBUS_SUB;
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __WM_TYPES_H__ */

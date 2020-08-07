@@ -27,6 +27,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_kdtree.h"
+#include "BLI_linklist_stack.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 
@@ -96,12 +97,10 @@ static int trans_data_compare_dist(const void *a, const void *b)
   if (td_a->dist < td_b->dist) {
     return -1;
   }
-  else if (td_a->dist > td_b->dist) {
+  if (td_a->dist > td_b->dist) {
     return 1;
   }
-  else {
-    return 0;
-  }
+  return 0;
 }
 
 static int trans_data_compare_rdist(const void *a, const void *b)
@@ -112,12 +111,10 @@ static int trans_data_compare_rdist(const void *a, const void *b)
   if (td_a->rdist < td_b->rdist) {
     return -1;
   }
-  else if (td_a->rdist > td_b->rdist) {
+  if (td_a->rdist > td_b->rdist) {
     return 1;
   }
-  else {
-    return 0;
-  }
+  return 0;
 }
 
 static void sort_trans_data_dist_container(const TransInfo *t, TransDataContainer *tc)
@@ -413,59 +410,66 @@ void transform_autoik_update(TransInfo *t, short mode)
 /** \name Curve Surface
  * \{ */
 
-void calc_distanceCurveVerts(TransData *head, TransData *tail)
+void calc_distanceCurveVerts(TransData *head, TransData *tail, bool cyclic)
 {
-  TransData *td, *td_near = NULL;
+  TransData *td;
+  BLI_LINKSTACK_DECLARE(queue, TransData *);
+  BLI_LINKSTACK_INIT(queue);
   for (td = head; td <= tail; td++) {
     if (td->flag & TD_SELECTED) {
-      td_near = td;
       td->dist = 0.0f;
-    }
-    else if (td_near) {
-      float dist;
-      float vec[3];
-
-      sub_v3_v3v3(vec, td_near->center, td->center);
-      mul_m3_v3(head->mtx, vec);
-      dist = len_v3(vec);
-
-      if (dist < (td - 1)->dist) {
-        td->dist = (td - 1)->dist;
-      }
-      else {
-        td->dist = dist;
-      }
+      BLI_LINKSTACK_PUSH(queue, td);
     }
     else {
       td->dist = FLT_MAX;
-      td->flag |= TD_NOTCONNECTED;
     }
   }
-  td_near = NULL;
-  for (td = tail; td >= head; td--) {
-    if (td->flag & TD_SELECTED) {
-      td_near = td;
-      td->dist = 0.0f;
+
+  while ((td = BLI_LINKSTACK_POP(queue))) {
+    float dist;
+    float vec[3];
+
+    TransData *next_td = NULL;
+
+    if (td + 1 <= tail) {
+      next_td = td + 1;
     }
-    else if (td_near) {
-      float dist;
-      float vec[3];
+    else if (cyclic) {
+      next_td = head;
+    }
 
-      sub_v3_v3v3(vec, td_near->center, td->center);
+    if (next_td != NULL && !(next_td->flag & TD_NOTCONNECTED)) {
+      sub_v3_v3v3(vec, next_td->center, td->center);
       mul_m3_v3(head->mtx, vec);
-      dist = len_v3(vec);
+      dist = len_v3(vec) + td->dist;
 
-      if (td->flag & TD_NOTCONNECTED || dist < td->dist || (td + 1)->dist < td->dist) {
-        td->flag &= ~TD_NOTCONNECTED;
-        if (dist < (td + 1)->dist) {
-          td->dist = (td + 1)->dist;
-        }
-        else {
-          td->dist = dist;
-        }
+      if (dist < next_td->dist) {
+        next_td->dist = dist;
+        BLI_LINKSTACK_PUSH(queue, next_td);
+      }
+    }
+
+    next_td = NULL;
+
+    if (td - 1 >= head) {
+      next_td = td - 1;
+    }
+    else if (cyclic) {
+      next_td = tail;
+    }
+
+    if (next_td != NULL && !(next_td->flag & TD_NOTCONNECTED)) {
+      sub_v3_v3v3(vec, next_td->center, td->center);
+      mul_m3_v3(head->mtx, vec);
+      dist = len_v3(vec) + td->dist;
+
+      if (dist < next_td->dist) {
+        next_td->dist = dist;
+        BLI_LINKSTACK_PUSH(queue, next_td);
       }
     }
   }
+  BLI_LINKSTACK_FREE(queue);
 }
 
 /* Utility function for getting the handle data from bezier's */
@@ -610,9 +614,7 @@ bool FrameOnMouseSide(char side, float frame, float cframe)
   if (side == 'R') {
     return (frame >= cframe);
   }
-  else {
-    return (frame <= cframe);
-  }
+  return (frame <= cframe);
 }
 
 /** \} */
@@ -670,7 +672,7 @@ void posttrans_fcurve_clean(FCurve *fcu, const int sel_flag, const bool use_hand
           found = true;
           break;
         }
-        else if (rk->frame < bezt->vec[1][0]) {
+        if (rk->frame < bezt->vec[1][0]) {
           /* Terminate early if have passed the supposed insertion point? */
           break;
         }
@@ -696,11 +698,10 @@ void posttrans_fcurve_clean(FCurve *fcu, const int sel_flag, const bool use_hand
     }
     return;
   }
-  else {
-    /* Compute the average values for each retained keyframe */
-    LISTBASE_FOREACH (tRetainedKeyframe *, rk, &retained_keys) {
-      rk->val = rk->val / (float)rk->tot_count;
-    }
+
+  /* Compute the average values for each retained keyframe */
+  LISTBASE_FOREACH (tRetainedKeyframe *, rk, &retained_keys) {
+    rk->val = rk->val / (float)rk->tot_count;
   }
 
   /* 2) Delete all keyframes duplicating the "retained keys" found above
@@ -925,13 +926,13 @@ int special_transform_moving(TransInfo *t)
   if (t->spacetype == SPACE_SEQ) {
     return G_TRANSFORM_SEQ;
   }
-  else if (t->spacetype == SPACE_GRAPH) {
+  if (t->spacetype == SPACE_GRAPH) {
     return G_TRANSFORM_FCURVES;
   }
-  else if ((t->flag & T_EDIT) || (t->flag & T_POSE)) {
+  if ((t->flag & T_EDIT) || (t->flag & T_POSE)) {
     return G_TRANSFORM_EDIT;
   }
-  else if (t->flag & (T_OBJECT | T_TEXTURE)) {
+  if (t->flag & (T_OBJECT | T_TEXTURE)) {
     return G_TRANSFORM_OBJ;
   }
 
@@ -1276,6 +1277,9 @@ void createTransData(bContext *C, TransInfo *t)
       else {
         set_prop_dist(t, false);
       }
+    }
+    else if (convert_type == TC_MESH_UV && t->flag & T_PROP_CONNECTED) {
+      /* Already calculated by uv_set_connectivity_distance. */
     }
     else if (convert_type == TC_CURVE_VERTS && t->obedit_type == OB_CURVE) {
       set_prop_dist(t, false);

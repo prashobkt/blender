@@ -21,8 +21,7 @@
  * \ingroup gpu
  */
 
-#ifndef __GPU_SHADER_H__
-#define __GPU_SHADER_H__
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -87,8 +86,6 @@ void GPU_shader_transform_feedback_disable(GPUShader *shader);
 
 int GPU_shader_get_program(GPUShader *shader);
 
-void *GPU_shader_get_interface(GPUShader *shader);
-
 void GPU_shader_set_srgb_uniform(const struct GPUShaderInterface *interface);
 
 int GPU_shader_get_uniform(GPUShader *shader, const char *name);
@@ -144,8 +141,6 @@ typedef enum eGPUBuiltinShader {
   GPU_SHADER_2D_IMAGE,
   GPU_SHADER_2D_IMAGE_COLOR,
   GPU_SHADER_2D_IMAGE_DESATURATE_COLOR,
-  GPU_SHADER_2D_IMAGE_ALPHA_COLOR,
-  GPU_SHADER_2D_IMAGE_ALPHA,
   GPU_SHADER_2D_IMAGE_RECT_COLOR,
   GPU_SHADER_2D_IMAGE_MULTI_RECT_COLOR,
   GPU_SHADER_2D_CHECKER,
@@ -209,16 +204,6 @@ typedef enum eGPUBuiltinShader {
   GPU_SHADER_2D_IMAGE_OVERLAYS_MERGE,
   GPU_SHADER_2D_IMAGE_OVERLAYS_STEREO_MERGE,
   GPU_SHADER_2D_IMAGE_SHUFFLE_COLOR,
-  GPU_SHADER_2D_IMAGE_MASK_UNIFORM_COLOR,
-  /**
-   * Draw texture with alpha. Take a 3D position and a 2D texture coordinate for each vertex.
-   *
-   * \param alpha: uniform float
-   * \param image: uniform sampler2D
-   * \param texCoord: in vec2
-   * \param pos: in vec3
-   */
-  GPU_SHADER_3D_IMAGE_MODULATE_ALPHA,
   /* points */
   /**
    * Draw round points with a hardcoded size.
@@ -384,5 +369,3 @@ void GPU_shader_free_builtin_shaders(void);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __GPU_SHADER_H__ */

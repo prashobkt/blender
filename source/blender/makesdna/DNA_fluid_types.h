@@ -21,8 +21,7 @@
  * \ingroup DNA
  */
 
-#ifndef __DNA_FLUID_TYPES_H__
-#define __DNA_FLUID_TYPES_H__
+#pragma once
 
 #include "DNA_listBase.h"
 
@@ -471,9 +470,10 @@ typedef struct FluidDomainSettings {
   int res_max[3];          /* Cell max. */
   int res[3];              /* Data resolution (res_max-res_min). */
   int total_cells;
-  float dx;           /* 1.0f / res. */
-  float scale;        /* Largest domain size. */
-  int boundary_width; /* Usually this is just 1. */
+  float dx;               /* 1.0f / res. */
+  float scale;            /* Largest domain size. */
+  int boundary_width;     /* Usually this is just 1. */
+  float gravity_final[3]; /* Scene or domain gravity multiplied with gravity weight. */
 
   /* -- User-accesible fields (from here on). -- */
 
@@ -481,7 +481,6 @@ typedef struct FluidDomainSettings {
   int adapt_margin;
   int adapt_res;
   float adapt_threshold;
-  char _pad1[4]; /* Unused. */
 
   /* Fluid domain options */
   int maxres;            /* Longest axis on the BB gets this resolution assigned. */
@@ -524,8 +523,9 @@ typedef struct FluidDomainSettings {
   float particle_band_width;
   float fractions_threshold;
   float flip_ratio;
+  int sys_particle_maximum;
   short simulation_method;
-  char _pad4[6];
+  char _pad4[2];
 
   /* Diffusion options. */
   float surface_tension;
@@ -783,5 +783,3 @@ typedef struct FluidEffectorSettings {
   short guide_mode;
   char _pad2[2];
 } FluidEffectorSettings;
-
-#endif

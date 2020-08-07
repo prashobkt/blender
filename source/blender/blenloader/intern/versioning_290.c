@@ -21,12 +21,16 @@
 #define DNA_DEPRECATED_ALLOW
 
 #include "BLI_listbase.h"
+#include "BLI_math.h"
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_types.h"
+#include "DNA_cachefile_types.h"
 #include "DNA_constraint_types.h"
 #include "DNA_genfile.h"
 #include "DNA_gpencil_modifier_types.h"
+#include "DNA_gpencil_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
@@ -34,8 +38,10 @@
 
 #include "BKE_collection.h"
 #include "BKE_colortools.h"
+#include "BKE_gpencil.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
+#include "BKE_node.h"
 
 #include "BLO_readfile.h"
 #include "readfile.h"
@@ -181,6 +187,23 @@ void do_versions_after_linking_290(Main *bmain, ReportList *UNUSED(reports))
         }
       }
     }
+
+    /* Patch first frame for old files. */
+    Scene *scene = bmain->scenes.first;
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->type != OB_GPENCIL) {
+        continue;
+      }
+      bGPdata *gpd = ob->data;
+      LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+        bGPDframe *gpf = gpl->frames.first;
+        if (gpf && gpf->framenum > scene->r.sfra) {
+          bGPDframe *gpf_dup = BKE_gpencil_frame_duplicate(gpf);
+          gpf_dup->framenum = scene->r.sfra;
+          BLI_addhead(&gpl->frames, gpf_dup);
+        }
+      }
+    }
   }
 
   /**
@@ -194,6 +217,14 @@ void do_versions_after_linking_290(Main *bmain, ReportList *UNUSED(reports))
    * \note Keep this message at the bottom of the function.
    */
   {
+    LISTBASE_FOREACH (Collection *, collection, &bmain->collections) {
+      if (BKE_collection_cycles_fix(bmain, collection)) {
+        printf(
+            "WARNING: Cycle detected in collection '%s', fixed as best as possible.\n"
+            "You may have to reconstruct your View Layers...\n",
+            collection->id.name);
+      }
+    }
     /* Keep this block, even when empty. */
   }
 }
@@ -255,20 +286,31 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
+
+    /* Initialize parameters of the new Nishita sky model. */
+    if (!DNA_struct_elem_find(fd->filesdna, "NodeTexSky", "float", "sun_size")) {
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        if (ntree->type == NTREE_SHADER) {
+          LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+            if (node->type == SH_NODE_TEX_SKY && node->storage) {
+              NodeTexSky *tex = (NodeTexSky *)node->storage;
+              tex->sun_disc = true;
+              tex->sun_size = DEG2RADF(0.545);
+              tex->sun_elevation = M_PI_2;
+              tex->sun_rotation = 0.0f;
+              tex->altitude = 0.0f;
+              tex->air_density = 1.0f;
+              tex->dust_density = 1.0f;
+              tex->ozone_density = 1.0f;
+            }
+          }
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
   }
 
-  /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - "versioning_userdef.c", #BLO_version_defaults_userpref_blend
-   * - "versioning_userdef.c", #do_versions_theme
-   *
-   * \note Keep this message at the bottom of the function.
-   */
-  {
-    /* Keep this block, even when empty. */
-
+  if (!MAIN_VERSION_ATLEAST(bmain, 290, 6)) {
     /* Transition to saving expansion for all of a modifier's sub-panels. */
     if (!DNA_struct_elem_find(fd->filesdna, "ModifierData", "short", "ui_expand_flag")) {
       for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
@@ -338,17 +380,105 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
         }
       }
     }
-  }
 
-  /* Refactor bevel profile type to use an enum. */
-  if (!DNA_struct_elem_find(fd->filesdna, "BevelModifierData", "short", "profile_type")) {
+    /* Refactor bevel profile type to use an enum. */
+    if (!DNA_struct_elem_find(fd->filesdna, "BevelModifierData", "short", "profile_type")) {
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+          if (md->type == eModifierType_Bevel) {
+            BevelModifierData *bmd = (BevelModifierData *)md;
+            bool use_custom_profile = bmd->flags & MOD_BEVEL_CUSTOM_PROFILE_DEPRECATED;
+            bmd->profile_type = use_custom_profile ? MOD_BEVEL_PROFILE_CUSTOM :
+                                                     MOD_BEVEL_PROFILE_SUPERELLIPSE;
+          }
+        }
+      }
+    }
+
+    /* Change ocean modifier values from [0, 10] to [0, 1] ranges. */
     for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
       LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
-        if (md->type == eModifierType_Bevel) {
-          BevelModifierData *bmd = (BevelModifierData *)md;
-          bool use_custom_profile = bmd->flags & MOD_BEVEL_CUSTOM_PROFILE_DEPRECATED;
-          bmd->profile_type = use_custom_profile ? MOD_BEVEL_PROFILE_CUSTOM :
-                                                   MOD_BEVEL_PROFILE_SUPERELLIPSE;
+        if (md->type == eModifierType_Ocean) {
+          OceanModifierData *omd = (OceanModifierData *)md;
+          omd->wave_alignment *= 0.1f;
+          omd->sharpen_peak_jonswap *= 0.1f;
+        }
+      }
+    }
+  }
+
+  /**
+   * Versioning code until next subversion bump goes here.
+   *
+   * \note Be sure to check when bumping the version:
+   * - "versioning_userdef.c", #BLO_version_defaults_userpref_blend
+   * - "versioning_userdef.c", #do_versions_theme
+   *
+   * \note Keep this message at the bottom of the function.
+   */
+  {
+    /* Keep this block, even when empty. */
+
+    /* Initialize additional parameter of the Nishita sky model and change altitude unit. */
+    if (!DNA_struct_elem_find(fd->filesdna, "NodeTexSky", "float", "sun_intensity")) {
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        if (ntree->type == NTREE_SHADER) {
+          LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+            if (node->type == SH_NODE_TEX_SKY && node->storage) {
+              NodeTexSky *tex = (NodeTexSky *)node->storage;
+              tex->sun_intensity = 1.0f;
+              tex->altitude *= 0.001f;
+            }
+          }
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
+
+    /* Refactor bevel affect type to use an enum. */
+    if (!DNA_struct_elem_find(fd->filesdna, "BevelModifierData", "char", "affect_type")) {
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+          if (md->type == eModifierType_Bevel) {
+            BevelModifierData *bmd = (BevelModifierData *)md;
+            const bool use_vertex_bevel = bmd->flags & MOD_BEVEL_VERT_DEPRECATED;
+            bmd->affect_type = use_vertex_bevel ? MOD_BEVEL_AFFECT_VERTICES :
+                                                  MOD_BEVEL_AFFECT_EDGES;
+          }
+        }
+      }
+    }
+
+    /* Initialise additional velocity parameter for CacheFiles. */
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "MeshSeqCacheModifierData", "float", "velocity_scale")) {
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+          if (md->type == eModifierType_MeshSequenceCache) {
+            MeshSeqCacheModifierData *mcmd = (MeshSeqCacheModifierData *)md;
+            mcmd->velocity_scale = 1.0f;
+            mcmd->vertex_velocities = NULL;
+            mcmd->num_vertices = 0;
+          }
+        }
+      }
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "CacheFile", "char", "velocity_unit")) {
+      for (CacheFile *cache_file = bmain->cachefiles.first; cache_file != NULL;
+           cache_file = cache_file->id.next) {
+        BLI_strncpy(cache_file->velocity_name, ".velocities", sizeof(cache_file->velocity_name));
+        cache_file->velocity_unit = CACHEFILE_VELOCITY_UNIT_SECOND;
+      }
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "OceanModifierData", "int", "viewport_resolution")) {
+      for (Object *object = bmain->objects.first; object != NULL; object = object->id.next) {
+        LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+          if (md->type == eModifierType_Ocean) {
+            OceanModifierData *omd = (OceanModifierData *)md;
+            omd->viewport_resolution = omd->resolution;
+          }
         }
       }
     }

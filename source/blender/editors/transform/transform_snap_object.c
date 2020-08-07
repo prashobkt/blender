@@ -1014,12 +1014,11 @@ static void raycast_obj_fn(SnapObjectContext *sctx,
                                    dt->r_hit_list);
           break;
         }
-        else {
-          BMEditMesh *em = BKE_editmesh_from_object(ob);
-          if (em->mesh_eval_final) {
-            me = em->mesh_eval_final;
-            use_hide = true;
-          }
+
+        BMEditMesh *em = BKE_editmesh_from_object(ob);
+        if (em->mesh_eval_final) {
+          me = em->mesh_eval_final;
+          use_hide = true;
         }
       }
       retval = raycastMesh(sctx,
@@ -1107,11 +1106,13 @@ static bool raycastObjects(SnapObjectContext *sctx,
                            const float ray_start[3],
                            const float ray_dir[3],
                            /* read/write args */
-                           float *ray_depth,
+                           /* Parameters below cannot be const, because they are assigned to a
+                            * non-const variable (readability-non-const-parameter). */
+                           float *ray_depth /* NOLINT */,
                            /* return args */
-                           float r_loc[3],
-                           float r_no[3],
-                           int *r_index,
+                           float r_loc[3] /* NOLINT */,
+                           float r_no[3] /* NOLINT */,
+                           int *r_index /* NOLINT */,
                            Object **r_ob,
                            float r_obmat[4][4],
                            ListBase *r_hit_list)
@@ -1275,7 +1276,7 @@ static bool test_projected_edge_dist(const struct DistProjectedAABBPrecalc *prec
                                      float r_co[3])
 {
   float near_co[3], lambda;
-  if (!isect_ray_seg_v3(precalc->ray_origin, precalc->ray_direction, va, vb, &lambda)) {
+  if (!isect_ray_line_v3(precalc->ray_origin, precalc->ray_direction, va, vb, &lambda)) {
     copy_v3_v3(near_co, va);
   }
   else {
@@ -1667,11 +1668,11 @@ static short snap_mesh_edge_verts_mixed(SnapObjectContext *sctx,
   };
 
   float lambda;
-  if (!isect_ray_seg_v3(neasrest_precalc.ray_origin,
-                        neasrest_precalc.ray_direction,
-                        v_pair[0],
-                        v_pair[1],
-                        &lambda)) {
+  if (!isect_ray_line_v3(neasrest_precalc.ray_origin,
+                         neasrest_precalc.ray_direction,
+                         v_pair[0],
+                         v_pair[1],
+                         &lambda)) {
     /* do nothing */
   }
   else {
@@ -2689,11 +2690,10 @@ static void snap_obj_fn(SnapObjectContext *sctx,
                                 dt->r_index);
           break;
         }
-        else {
-          BMEditMesh *em = BKE_editmesh_from_object(ob);
-          if (em->mesh_eval_final) {
-            me = em->mesh_eval_final;
-          }
+
+        BMEditMesh *em = BKE_editmesh_from_object(ob);
+        if (em->mesh_eval_final) {
+          me = em->mesh_eval_final;
         }
       }
       else if (ob->dt == OB_BOUNDBOX) {
@@ -2791,11 +2791,13 @@ static short snapObjectsRay(SnapObjectContext *sctx,
                             SnapData *snapdata,
                             const struct SnapObjectParams *params,
                             /* read/write args */
-                            float *dist_px,
+                            /* Parameters below cannot be const, because they are assigned to a
+                             * non-const variable (readability-non-const-parameter). */
+                            float *dist_px /* NOLINT */,
                             /* return args */
-                            float r_loc[3],
-                            float r_no[3],
-                            int *r_index,
+                            float r_loc[3] /* NOLINT */,
+                            float r_no[3] /* NOLINT */,
+                            int *r_index /* NOLINT */,
                             Object **r_ob,
                             float r_obmat[4][4])
 {

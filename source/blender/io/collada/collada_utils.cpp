@@ -528,9 +528,7 @@ BoneExtensionManager::~BoneExtensionManager()
     for (BoneExtensionMap::iterator ext_it = extended_bones->begin();
          ext_it != extended_bones->end();
          ++ext_it) {
-      if (ext_it->second != NULL) {
-        delete ext_it->second;
-      }
+      delete ext_it->second;
     }
     extended_bones->clear();
     delete extended_bones;
@@ -605,7 +603,7 @@ float BoneExtended::get_roll()
   return this->roll;
 }
 
-void BoneExtended::set_tail(float vec[])
+void BoneExtended::set_tail(const float vec[])
 {
   this->tail[0] = vec[0];
   this->tail[1] = vec[1];
@@ -674,8 +672,7 @@ void BoneExtended::set_bone_layers(std::string layerString, std::vector<std::str
 
 std::string BoneExtended::get_bone_layers(int bitfield)
 {
-  std::string result = "";
-  std::string sep = "";
+  std::string sep;
   int bit = 1u;
 
   std::ostringstream ss;

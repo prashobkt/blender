@@ -611,41 +611,39 @@ bool BKE_id_copy(Main *bmain, const ID *id, ID **newid)
  * Invokes the appropriate copy method for the block and returns the result in
  * newid, unless test. Returns true if the block can be copied.
  */
-ID *BKE_id_copy_for_duplicate(Main *bmain,
-                              ID *id,
-                              const bool is_owner_id_liboverride,
-                              const eDupli_ID_Flags duplicate_flags)
+ID *BKE_id_copy_for_duplicate(Main *bmain, ID *id, const eDupli_ID_Flags duplicate_flags)
 {
   if (id == NULL) {
-    return NULL;
+    return id;
   }
   if (id->newid == NULL) {
-    if (!is_owner_id_liboverride || !ID_IS_LINKED(id)) {
-      ID *id_new;
-      BKE_id_copy(bmain, id, &id_new);
-      /* Copying add one user by default, need to get rid of that one. */
-      id_us_min(id_new);
-      ID_NEW_SET(id, id_new);
-
-      /* Shape keys are always copied with their owner ID, by default. */
-      ID *key_new = (ID *)BKE_key_from_id(id_new);
-      ID *key = (ID *)BKE_key_from_id(id);
-      if (key != NULL) {
-        ID_NEW_SET(key, key_new);
-      }
-
-      /* Note: embedded data (root nodetrees and master collections) should never be referenced by
-       * anything else, so we do not need to set their newid pointer and flag. */
-
-      if (duplicate_flags & USER_DUP_ACT) {
-        BKE_animdata_copy_id_action(bmain, id_new, true);
-        if (key_new != NULL) {
-          BKE_animdata_copy_id_action(bmain, key_new, true);
-        }
-        /* Note that actions of embedded data (root nodetrees and master collections) are handled
-         * by `BKE_animdata_copy_id_action` as well. */
-      }
+    const bool do_linked_id = (duplicate_flags & USER_DUP_LINKED_ID) != 0;
+    if (!(do_linked_id || !ID_IS_LINKED(id))) {
+      return id;
     }
+
+    ID *id_new;
+    BKE_id_copy(bmain, id, &id_new);
+    /* Copying add one user by default, need to get rid of that one. */
+    id_us_min(id_new);
+    ID_NEW_SET(id, id_new);
+
+    /* Shape keys are always copied with their owner ID, by default. */
+    ID *key_new = (ID *)BKE_key_from_id(id_new);
+    ID *key = (ID *)BKE_key_from_id(id);
+    if (key != NULL) {
+      ID_NEW_SET(key, key_new);
+    }
+
+    /* Note: embedded data (root nodetrees and master collections) should never be referenced by
+     * anything else, so we do not need to set their newid pointer and flag. */
+
+    BKE_animdata_duplicate_id_action(bmain, id_new, duplicate_flags);
+    if (key_new != NULL) {
+      BKE_animdata_duplicate_id_action(bmain, id_new, duplicate_flags);
+    }
+    /* Note that actions of embedded data (root nodetrees and master collections) are handled
+     * by `BKE_animdata_duplicate_id_action` as well. */
   }
   return id->newid;
 }
@@ -2163,7 +2161,7 @@ void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id, char separa
 
 /**
  * Generate full name of the data-block (without ID code, but with library if any),
- * with a 3-character prefix prepended indicating whether it comes from a library,
+ * with a 2 to 3 character prefix prepended indicating whether it comes from a library,
  * is overriding, has a fake or no user, etc.
  *
  * \note Result is unique to a given ID type in a given Main database.
@@ -2172,11 +2170,13 @@ void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id, char separa
  *              will be filled with generated string.
  * \param separator_char: Character to use for separating name and library name. Can be 0 to use
  *                        default (' ').
+ * \param r_prefix_len: The length of the prefix added.
  */
 void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
                                     const ID *id,
                                     const bool add_lib_hint,
-                                    char separator_char)
+                                    char separator_char,
+                                    int *r_prefix_len)
 {
   int i = 0;
 
@@ -2187,6 +2187,10 @@ void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
   name[i++] = ' ';
 
   BKE_id_full_name_get(name + i, id, separator_char);
+
+  if (r_prefix_len) {
+    *r_prefix_len = i;
+  }
 }
 
 /**

@@ -21,8 +21,7 @@
  * \ingroup edinterface
  */
 
-#ifndef __INTERFACE_INTERN_H__
-#define __INTERFACE_INTERN_H__
+#pragma once
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_rect.h"
@@ -32,6 +31,7 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+struct AnimationEvalContext;
 struct ARegion;
 struct ID;
 struct ImBuf;
@@ -219,8 +219,8 @@ struct uiBut {
   const char *disabled_info;
 
   BIFIconID icon;
-  /** drawtype: UI_EMBOSS, UI_EMBOSS_NONE ... etc, copied from the block */
-  char dt;
+  /** emboss: UI_EMBOSS, UI_EMBOSS_NONE ... etc, copied from the #uiBlock.emboss */
+  char emboss;
   /** direction in a pie menu, used for collision detection (RadialDirection) */
   signed char pie_dir;
   /** could be made into a single flag */
@@ -433,8 +433,8 @@ struct uiBlock {
   char direction;
   /** UI_BLOCK_THEME_STYLE_* */
   char theme_style;
-  /** drawtype: UI_EMBOSS, UI_EMBOSS_NONE ... etc, copied to buttons */
-  char dt;
+  /** UI_EMBOSS, UI_EMBOSS_NONE ... etc, copied to #uiBut.emboss */
+  char emboss;
   bool auto_open;
   char _pad[5];
   double auto_open_last;
@@ -547,10 +547,10 @@ extern void ui_but_string_get(uiBut *but, char *str, const size_t maxlen) ATTR_N
 extern char *ui_but_string_get_dynamic(uiBut *but, int *r_str_size);
 extern void ui_but_convert_to_unit_alt_name(uiBut *but, char *str, size_t maxlen) ATTR_NONNULL();
 extern bool ui_but_string_set(struct bContext *C, uiBut *but, const char *str) ATTR_NONNULL();
-extern bool ui_but_string_set_eval_num(struct bContext *C,
-                                       uiBut *but,
-                                       const char *str,
-                                       double *value) ATTR_NONNULL();
+extern bool ui_but_string_eval_number(struct bContext *C,
+                                      const uiBut *but,
+                                      const char *str,
+                                      double *value) ATTR_NONNULL();
 extern int ui_but_string_get_max_length(uiBut *but);
 /* Clear & exit the active button's string. */
 extern void ui_but_active_string_clear_and_exit(struct bContext *C, uiBut *but) ATTR_NONNULL();
@@ -567,6 +567,9 @@ extern void ui_but_rna_menu_convert_to_panel_type(struct uiBut *but, const char 
 extern void ui_but_rna_menu_convert_to_menu_type(struct uiBut *but, const char *menu_type);
 extern bool ui_but_menu_draw_as_popover(const uiBut *but);
 
+void ui_but_range_set_hard(uiBut *but);
+void ui_but_range_set_soft(uiBut *but);
+
 extern void ui_but_update(uiBut *but);
 extern void ui_but_update_edited(uiBut *but);
 extern bool ui_but_is_float(const uiBut *but) ATTR_WARN_UNUSED_RESULT;
@@ -579,7 +582,7 @@ extern bool ui_but_supports_cycling(const uiBut *but) ATTR_WARN_UNUSED_RESULT;
 extern int ui_but_is_pushed_ex(uiBut *but, double *value) ATTR_WARN_UNUSED_RESULT;
 extern int ui_but_is_pushed(uiBut *but) ATTR_WARN_UNUSED_RESULT;
 
-void ui_but_override_flag(uiBut *but);
+void ui_but_override_flag(struct Main *bmain, uiBut *but);
 
 extern void ui_block_bounds_calc(uiBlock *block);
 
@@ -970,7 +973,7 @@ int ui_but_align_opposite_to_area_align_get(const struct ARegion *region) ATTR_W
 void ui_block_align_calc(uiBlock *block, const struct ARegion *region);
 
 /* interface_anim.c */
-void ui_but_anim_flag(uiBut *but, float cfra);
+void ui_but_anim_flag(uiBut *but, const struct AnimationEvalContext *anim_eval_context);
 void ui_but_anim_copy_driver(struct bContext *C);
 void ui_but_anim_paste_driver(struct bContext *C);
 bool ui_but_anim_expression_get(uiBut *but, char *str, size_t maxlen);
@@ -1106,5 +1109,3 @@ bool ui_jump_to_target_button_poll(struct bContext *C);
 
 /* interface_queries.c */
 void ui_interface_tag_script_reload_queries(void);
-
-#endif /* __INTERFACE_INTERN_H__ */

@@ -362,17 +362,24 @@ static bool id_search_add(const bContext *C,
        */
       char name_ui[MAX_ID_FULL_NAME_UI];
       int iconid = ui_id_icon_get(C, id, template_ui->preview);
-      bool has_sep_char = (id->lib != NULL);
+      const bool use_lib_prefix = template_ui->preview || iconid;
+      const bool has_sep_char = (id->lib != NULL);
 
       /* When using previews, the library hint (linked, overridden, missing) is added with a
        * character prefix, otherwise we can use a icon. */
-      BKE_id_full_name_ui_prefix_get(name_ui, id, template_ui->preview, UI_SEP_CHAR);
-      if (!template_ui->preview) {
+      int name_prefix_offset;
+      BKE_id_full_name_ui_prefix_get(
+          name_ui, id, use_lib_prefix, UI_SEP_CHAR, &name_prefix_offset);
+      if (!use_lib_prefix) {
         iconid = UI_library_icon_get(id);
       }
 
-      if (!UI_search_item_add(
-              items, name_ui, id, iconid, has_sep_char ? UI_BUT_HAS_SEP_CHAR : 0)) {
+      if (!UI_search_item_add(items,
+                              name_ui,
+                              id,
+                              iconid,
+                              has_sep_char ? UI_BUT_HAS_SEP_CHAR : 0,
+                              name_prefix_offset)) {
         return false;
       }
     }
@@ -521,7 +528,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
   switch (event) {
     case UI_ID_BROWSE:
     case UI_ID_PIN:
-      RNA_warning("warning, id event %d shouldnt come here", event);
+      RNA_warning("warning, id event %d shouldn't come here", event);
       break;
     case UI_ID_OPEN:
     case UI_ID_ADD_NEW:
@@ -558,7 +565,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
     case UI_ID_LOCAL:
       if (id) {
         Main *bmain = CTX_data_main(C);
-        if (BKE_lib_override_library_is_enabled() && CTX_wm_window(C)->eventstate->shift) {
+        if (CTX_wm_window(C)->eventstate->shift) {
           if (ID_IS_OVERRIDABLE_LIBRARY(id)) {
             /* Only remap that specific ID usage to overriding local data-block. */
             ID *override_id = BKE_lib_override_library_create_from_id(bmain, id, false);
@@ -568,6 +575,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
               /* Assign new pointer, takes care of updates/notifiers */
               RNA_id_pointer_create(override_id, &idptr);
             }
+            undo_push_label = "Make Library Override";
           }
         }
         else {
@@ -576,11 +584,13 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
 
             /* reassign to get get proper updates/notifiers */
             idptr = RNA_property_pointer_get(&template_ui->ptr, template_ui->prop);
+            undo_push_label = "Make Local";
           }
         }
-        RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, NULL);
-        RNA_property_update(C, &template_ui->ptr, template_ui->prop);
-        undo_push_label = "Make Local";
+        if (undo_push_label != NULL) {
+          RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, NULL);
+          RNA_property_update(C, &template_ui->ptr, template_ui->prop);
+        }
       }
       break;
     case UI_ID_OVERRIDE:
@@ -930,10 +940,8 @@ static void template_ID(const bContext *C,
                            0,
                            0,
                            0,
-                           BKE_lib_override_library_is_enabled() ?
-                               TIP_("Direct linked library data-block, click to make local, "
-                                    "Shift + Click to create a library override") :
-                               TIP_("Direct linked library data-block, click to make local"));
+                           TIP_("Direct linked library data-block, click to make local, "
+                                "Shift + Click to create a library override"));
         if (disabled) {
           UI_but_flag_enable(but, UI_BUT_DISABLED);
         }
@@ -1836,18 +1844,6 @@ void uiTemplatePathBuilder(uiLayout *layout,
  *  Template for building the panel layout for the active object's modifiers.
  * \{ */
 
-/**
- * Get the active object or the property region's pinned object.
- */
-static Object *get_context_object(const bContext *C)
-{
-  SpaceProperties *sbuts = CTX_wm_space_properties(C);
-  if (sbuts != NULL && (sbuts->pinid != NULL) && GS(sbuts->pinid->name) == ID_OB) {
-    return (Object *)sbuts->pinid;
-  }
-  return CTX_data_active_object(C);
-}
-
 static void modifier_panel_id(void *md_link, char *r_name)
 {
   ModifierData *md = (ModifierData *)md_link;
@@ -1859,7 +1855,7 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
   ScrArea *sa = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
 
-  Object *ob = get_context_object(C);
+  Object *ob = ED_object_active_context(C);
   ListBase *modifiers = &ob->modifiers;
 
   bool panels_match = UI_panel_list_matches_data(region, modifiers, modifier_panel_id);
@@ -1891,8 +1887,9 @@ void uiTemplateModifiers(uiLayout *UNUSED(layout), bContext *C)
   else {
     /* The expansion might have been changed elsewhere, so we still need to set it. */
     LISTBASE_FOREACH (Panel *, panel, &region->panels) {
-      if ((panel->type != NULL) && (panel->type->flag & PNL_INSTANCED))
+      if ((panel->type != NULL) && (panel->type->flag & PNL_INSTANCED)) {
         UI_panel_set_expand_from_list_data(C, panel);
+      }
     }
 
     /* Assuming there's only one group of instanced panels, update the custom data pointers. */
@@ -1952,7 +1949,7 @@ static ListBase *get_constraints(const bContext *C, bool use_bone_constraints)
     }
   }
   else {
-    Object *ob = get_context_object(C);
+    Object *ob = ED_object_active_context(C);
     if (ob != NULL) {
       constraints = &ob->constraints;
     }
@@ -2036,6 +2033,7 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C, bool use_bone_
   ScrArea *sa = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
 
+  Object *ob = ED_object_active_context(C);
   ListBase *constraints = get_constraints(C, use_bone_constraints);
 
   /* Switch between the bone panel ID function and the object panel ID function. */
@@ -2051,11 +2049,15 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C, bool use_bone_
       char panel_idname[MAX_NAME];
       panel_id_func(con, panel_idname);
 
+      /* Create custom data RNA pointer. */
+      PointerRNA *con_ptr = MEM_mallocN(sizeof(PointerRNA), "panel customdata");
+      RNA_pointer_create(&ob->id, &RNA_Constraint, con, con_ptr);
+
       Panel *new_panel = UI_panel_add_instanced(
-          sa, region, &region->panels, panel_idname, i, NULL);
+          sa, region, &region->panels, panel_idname, i, con_ptr);
+
       if (new_panel) {
-        /* Set the list panel functionality function pointers since we don't do it with
-         * python. */
+        /* Set the list panel functionality function pointers since we don't do it with python. */
         new_panel->type->set_list_data_expand_flag = set_constraint_expand_flag;
         new_panel->type->get_list_data_expand_flag = get_constraint_expand_flag;
         new_panel->type->reorder = constraint_reorder;
@@ -2067,8 +2069,25 @@ void uiTemplateConstraints(uiLayout *UNUSED(layout), bContext *C, bool use_bone_
   else {
     /* The expansion might have been changed elsewhere, so we still need to set it. */
     LISTBASE_FOREACH (Panel *, panel, &region->panels) {
-      if ((panel->type != NULL) && (panel->type->flag & PNL_INSTANCED))
+      if ((panel->type != NULL) && (panel->type->flag & PNL_INSTANCED)) {
         UI_panel_set_expand_from_list_data(C, panel);
+      }
+    }
+
+    /* Assuming there's only one group of instanced panels, update the custom data pointers. */
+    Panel *panel = region->panels.first;
+    LISTBASE_FOREACH (bConstraint *, con, constraints) {
+      /* Move to the next instanced panel corresponding to the next constraint. */
+      while ((panel->type == NULL) || !(panel->type->flag & PNL_INSTANCED)) {
+        panel = panel->next;
+        BLI_assert(panel != NULL); /* There shouldn't be fewer panels than constraint panels. */
+      }
+
+      PointerRNA *con_ptr = MEM_mallocN(sizeof(PointerRNA), "constraint panel customdata");
+      RNA_pointer_create(&ob->id, &RNA_Constraint, con, con_ptr);
+      UI_panel_custom_data_set(panel, con_ptr);
+
+      panel = panel->next;
     }
   }
 }
@@ -2095,7 +2114,7 @@ void uiTemplateGpencilModifiers(uiLayout *UNUSED(layout), bContext *C)
 {
   ScrArea *sa = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
-  Object *ob = get_context_object(C);
+  Object *ob = ED_object_active_context(C);
   ListBase *modifiers = &ob->greasepencil_modifiers;
 
   bool panels_match = UI_panel_list_matches_data(region, modifiers, gpencil_modifier_panel_id);
@@ -2127,8 +2146,9 @@ void uiTemplateGpencilModifiers(uiLayout *UNUSED(layout), bContext *C)
   else {
     /* The expansion might have been changed elsewhere, so we still need to set it. */
     LISTBASE_FOREACH (Panel *, panel, &region->panels) {
-      if ((panel->type != NULL) && (panel->type->flag & PNL_INSTANCED))
+      if ((panel->type != NULL) && (panel->type->flag & PNL_INSTANCED)) {
         UI_panel_set_expand_from_list_data(C, panel);
+      }
     }
 
     /* Assuming there's only one group of instanced panels, update the custom data pointers. */
@@ -2183,7 +2203,7 @@ void uiTemplateShaderFx(uiLayout *UNUSED(layout), bContext *C)
 {
   ScrArea *sa = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
-  Object *ob = get_context_object(C);
+  Object *ob = ED_object_active_context(C);
   ListBase *shaderfx = &ob->shader_fx;
 
   bool panels_match = UI_panel_list_matches_data(region, shaderfx, shaderfx_panel_id);
@@ -2195,8 +2215,13 @@ void uiTemplateShaderFx(uiLayout *UNUSED(layout), bContext *C)
       char panel_idname[MAX_NAME];
       shaderfx_panel_id(fx, panel_idname);
 
+      /* Create custom data RNA pointer. */
+      PointerRNA *fx_ptr = MEM_mallocN(sizeof(PointerRNA), "panel customdata");
+      RNA_pointer_create(&ob->id, &RNA_ShaderFx, fx, fx_ptr);
+
       Panel *new_panel = UI_panel_add_instanced(
-          sa, region, &region->panels, panel_idname, i, NULL);
+          sa, region, &region->panels, panel_idname, i, fx_ptr);
+
       if (new_panel != NULL) {
         UI_panel_set_expand_from_list_data(C, new_panel);
       }
@@ -2205,8 +2230,30 @@ void uiTemplateShaderFx(uiLayout *UNUSED(layout), bContext *C)
   else {
     /* The expansion might have been changed elsewhere, so we still need to set it. */
     LISTBASE_FOREACH (Panel *, panel, &region->panels) {
-      if ((panel->type != NULL) && (panel->type->flag & PNL_INSTANCED))
+      if ((panel->type != NULL) && (panel->type->flag & PNL_INSTANCED)) {
         UI_panel_set_expand_from_list_data(C, panel);
+      }
+    }
+
+    /* Assuming there's only one group of instanced panels, update the custom data pointers. */
+    Panel *panel = region->panels.first;
+    LISTBASE_FOREACH (ShaderFxData *, fx, shaderfx) {
+      const ShaderFxTypeInfo *fxi = BKE_shaderfx_get_info(fx->type);
+      if (fxi->panelRegister == NULL) {
+        continue;
+      }
+
+      /* Move to the next instanced panel corresponding to the next modifier. */
+      while ((panel->type == NULL) || !(panel->type->flag & PNL_INSTANCED)) {
+        panel = panel->next;
+        BLI_assert(panel != NULL); /* There shouldn't be fewer panels than modifiers with UIs. */
+      }
+
+      PointerRNA *fx_ptr = MEM_mallocN(sizeof(PointerRNA), "panel customdata");
+      RNA_pointer_create(&ob->id, &RNA_ShaderFx, fx, fx_ptr);
+      UI_panel_custom_data_set(panel, fx_ptr);
+
+      panel = panel->next;
     }
   }
 }
@@ -4829,6 +4876,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
   /* Preset selector */
   /* There is probably potential to use simpler "uiItemR" functions here, but automatic updating
    * after a preset is selected would be more complicated. */
+  row = uiLayoutRow(layout, true);
   bt = uiDefBlockBut(
       block, CurveProfile_buttons_presets, profile, "Preset", 0, 0, UI_UNIT_X, UI_UNIT_X, "");
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), NULL);
@@ -7303,6 +7351,9 @@ void uiTemplateCacheFile(uiLayout *layout,
     row = uiLayoutRow(layout, false);
     uiItemR(row, &fileptr, "scale", 0, IFACE_("Manual Scale"), ICON_NONE);
   }
+
+  uiItemR(layout, &fileptr, "velocity_name", 0, NULL, ICON_NONE);
+  uiItemR(layout, &fileptr, "velocity_unit", 0, NULL, ICON_NONE);
 
   /* TODO: unused for now, so no need to expose. */
 #if 0

@@ -474,10 +474,9 @@ BLI_INLINE const float *bm_vert_co_get(const MeshRenderData *mr, const BMVert *e
   if (vert_coords != NULL) {
     return vert_coords[BM_elem_index_get(eve)];
   }
-  else {
-    UNUSED_VARS(mr);
-    return eve->co;
-  }
+
+  UNUSED_VARS(mr);
+  return eve->co;
 }
 
 BLI_INLINE const float *bm_vert_no_get(const MeshRenderData *mr, const BMVert *eve)
@@ -486,10 +485,9 @@ BLI_INLINE const float *bm_vert_no_get(const MeshRenderData *mr, const BMVert *e
   if (vert_normals != NULL) {
     return vert_normals[BM_elem_index_get(eve)];
   }
-  else {
-    UNUSED_VARS(mr);
-    return eve->no;
-  }
+
+  UNUSED_VARS(mr);
+  return eve->no;
 }
 
 BLI_INLINE const float *bm_face_no_get(const MeshRenderData *mr, const BMFace *efa)
@@ -498,10 +496,9 @@ BLI_INLINE const float *bm_face_no_get(const MeshRenderData *mr, const BMFace *e
   if (poly_normals != NULL) {
     return poly_normals[BM_elem_index_get(efa)];
   }
-  else {
-    UNUSED_VARS(mr);
-    return efa->no;
-  }
+
+  UNUSED_VARS(mr);
+  return efa->no;
 }
 
 /** \} */
@@ -890,12 +887,15 @@ static void extract_tris_finish(const MeshRenderData *mr, void *ibo, void *_data
   MeshExtract_Tri_Data *data = _data;
   GPU_indexbuf_build_in_place(&data->elb, ibo);
   /* HACK: Create ibo sub-ranges and assign them to each #GPUBatch. */
+  /* The `surface_per_mat` tests are there when object shading type is set to Wire or Bounds. In
+   * these cases there isn't a surface per material. */
   if (mr->use_final_mesh && mr->cache->surface_per_mat && mr->cache->surface_per_mat[0]) {
-    BLI_assert(mr->cache->surface_per_mat[0]->elem == ibo);
     for (int i = 0; i < mr->mat_len; i++) {
       /* Multiply by 3 because these are triangle indices. */
-      const int start = data->tri_mat_start[i] * 3;
-      const int len = data->tri_mat_end[i] * 3 - data->tri_mat_start[i] * 3;
+      const int mat_start = data->tri_mat_start[i];
+      const int mat_end = data->tri_mat_end[i];
+      const int start = mat_start * 3;
+      const int len = (mat_end - mat_start) * 3;
       GPUIndexBuf *sub_ibo = GPU_indexbuf_create_subrange(ibo, start, len);
       /* WARNING: We modify the #GPUBatch here! */
       GPU_batch_elembuf_set(mr->cache->surface_per_mat[i], sub_ibo, true);
@@ -2534,26 +2534,28 @@ static void *extract_vcol_init(const MeshRenderData *mr, void *buf)
   }
 
   /* Sculpt Vertex Colors */
-  for (int i = 0; i < 8; i++) {
-    if (svcol_layers & (1 << i)) {
-      char attr_name[32], attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
-      const char *layer_name = CustomData_get_layer_name(cd_vdata, CD_PROP_COLOR, i);
-      GPU_vertformat_safe_attr_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
+  if (U.experimental.use_sculpt_vertex_colors) {
+    for (int i = 0; i < 8; i++) {
+      if (svcol_layers & (1 << i)) {
+        char attr_name[32], attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
+        const char *layer_name = CustomData_get_layer_name(cd_vdata, CD_PROP_COLOR, i);
+        GPU_vertformat_safe_attr_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
 
-      BLI_snprintf(attr_name, sizeof(attr_name), "c%s", attr_safe_name);
-      GPU_vertformat_attr_add(&format, attr_name, GPU_COMP_U16, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
+        BLI_snprintf(attr_name, sizeof(attr_name), "c%s", attr_safe_name);
+        GPU_vertformat_attr_add(&format, attr_name, GPU_COMP_U16, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
 
-      if (i == CustomData_get_render_layer(cd_vdata, CD_PROP_COLOR)) {
-        GPU_vertformat_alias_add(&format, "c");
-      }
-      if (i == CustomData_get_active_layer(cd_vdata, CD_PROP_COLOR)) {
-        GPU_vertformat_alias_add(&format, "ac");
-      }
-      /* Gather number of auto layers. */
-      /* We only do `vcols` that are not overridden by `uvs`. */
-      if (CustomData_get_named_layer_index(cd_ldata, CD_MLOOPUV, layer_name) == -1) {
-        BLI_snprintf(attr_name, sizeof(attr_name), "a%s", attr_safe_name);
-        GPU_vertformat_alias_add(&format, attr_name);
+        if (i == CustomData_get_render_layer(cd_vdata, CD_PROP_COLOR)) {
+          GPU_vertformat_alias_add(&format, "c");
+        }
+        if (i == CustomData_get_active_layer(cd_vdata, CD_PROP_COLOR)) {
+          GPU_vertformat_alias_add(&format, "ac");
+        }
+        /* Gather number of auto layers. */
+        /* We only do `vcols` that are not overridden by `uvs`. */
+        if (CustomData_get_named_layer_index(cd_ldata, CD_MLOOPUV, layer_name) == -1) {
+          BLI_snprintf(attr_name, sizeof(attr_name), "a%s", attr_safe_name);
+          GPU_vertformat_alias_add(&format, attr_name);
+        }
       }
     }
   }
@@ -2599,7 +2601,7 @@ static void *extract_vcol_init(const MeshRenderData *mr, void *buf)
       }
     }
 
-    if (svcol_layers & (1 << i)) {
+    if (svcol_layers & (1 << i) && U.experimental.use_sculpt_vertex_colors) {
       if (mr->extract_type == MR_EXTRACT_BMESH) {
         int cd_ofs = CustomData_get_n_offset(cd_vdata, CD_PROP_COLOR, i);
         BMIter f_iter;
@@ -2932,7 +2934,7 @@ static float evaluate_vertex_weight(const MDeformVert *dvert, const DRW_MeshWeig
   if ((wstate->defgroup_active < 0) && (wstate->defgroup_len > 0)) {
     return -2.0f;
   }
-  else if (dvert == NULL) {
+  if (dvert == NULL) {
     return (wstate->alert_mode != OB_DRAW_GROUPUSER_NONE) ? -1.0f : 0.0f;
   }
 
@@ -4291,7 +4293,7 @@ static void statvis_calc_sharp(const MeshRenderData *mr, float *r_sharp)
           /* non-manifold edge, yet... */
           continue;
         }
-        else if (*pval != NULL) {
+        if (*pval != NULL) {
           const float *f1_no = mr->poly_normals[mp_index];
           const float *f2_no = *pval;
           angle = angle_normalized_v3v3(f1_no, f2_no);
@@ -4384,10 +4386,6 @@ static void *extract_fdots_pos_init(const MeshRenderData *mr, void *buf)
   GPUVertBuf *vbo = buf;
   GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, mr->poly_len);
-  if (!mr->use_subsurf_fdots) {
-    /* Clear so we can accumulate on it. */
-    memset(vbo->data, 0x0, mr->poly_len * vbo->format.stride);
-  }
   return vbo->data;
 }
 
@@ -4396,12 +4394,20 @@ static void extract_fdots_pos_iter_poly_bm(const MeshRenderData *mr,
                                            void *data)
 {
   float(*center)[3] = data;
-  EXTRACT_POLY_AND_LOOP_FOREACH_BM_BEGIN(l, l_index, params, mr)
+
+  EXTRACT_POLY_FOREACH_BM_BEGIN(f, f_index, params, mr)
   {
-    float w = 1.0f / (float)l->f->len;
-    madd_v3_v3fl(center[BM_elem_index_get(l->f)], bm_vert_co_get(mr, l->v), w);
+    float *co = center[f_index];
+    zero_v3(co);
+
+    BMLoop *l_iter, *l_first;
+    l_iter = l_first = BM_FACE_FIRST_LOOP(f);
+    do {
+      add_v3_v3(co, bm_vert_co_get(mr, l_iter->v));
+    } while ((l_iter = l_iter->next) != l_first);
+    mul_v3_fl(co, 1.0f / (float)f->len);
   }
-  EXTRACT_POLY_AND_LOOP_FOREACH_BM_END(l);
+  EXTRACT_POLY_FOREACH_BM_END;
 }
 
 static void extract_fdots_pos_iter_poly_mesh(const MeshRenderData *mr,
@@ -4409,20 +4415,34 @@ static void extract_fdots_pos_iter_poly_mesh(const MeshRenderData *mr,
                                              void *data)
 {
   float(*center)[3] = (float(*)[3])data;
-  EXTRACT_POLY_AND_LOOP_FOREACH_MESH_BEGIN(mp, mp_index, ml, ml_index, params, mr)
-  {
-    const MVert *mv = &mr->mvert[ml->v];
-    if (mr->use_subsurf_fdots) {
+  const MVert *mvert = mr->mvert;
+  const MLoop *mloop = mr->mloop;
+
+  if (mr->use_subsurf_fdots) {
+    EXTRACT_POLY_AND_LOOP_FOREACH_MESH_BEGIN(mp, mp_index, ml, ml_index, params, mr)
+    {
+      const MVert *mv = &mr->mvert[ml->v];
       if (mv->flag & ME_VERT_FACEDOT) {
         copy_v3_v3(center[mp_index], mv->co);
       }
     }
-    else {
-      float w = 1.0f / (float)mp->totloop;
-      madd_v3_v3fl(center[mp_index], mv->co, w);
-    }
+    EXTRACT_POLY_AND_LOOP_FOREACH_MESH_END;
   }
-  EXTRACT_POLY_AND_LOOP_FOREACH_MESH_END;
+  else {
+    EXTRACT_POLY_FOREACH_MESH_BEGIN(mp, mp_index, params, mr)
+    {
+      float *co = center[mp_index];
+      zero_v3(co);
+
+      const MLoop *ml = &mloop[mp->loopstart];
+      for (int i = 0; i < mp->totloop; i++, ml++) {
+        const MVert *mv = &mvert[ml->v];
+        add_v3_v3(center[mp_index], mv->co);
+      }
+      mul_v3_fl(co, 1.0f / (float)mp->totloop);
+    }
+    EXTRACT_POLY_FOREACH_MESH_END;
+  }
 }
 
 static const MeshExtract extract_fdots_pos = {

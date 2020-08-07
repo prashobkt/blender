@@ -21,8 +21,7 @@
  * \ingroup DNA
  */
 
-#ifndef __DNA_SCREEN_TYPES_H__
-#define __DNA_SCREEN_TYPES_H__
+#pragma once
 
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
@@ -68,6 +67,8 @@ typedef struct bScreen {
   short winid;
   /** User-setting for which editors get redrawn during anim playback. */
   short redraws_flag;
+
+  char statusbar_info[256];
 
   /** Temp screen in a temp window, don't save (like user prefs). */
   char temp;
@@ -167,9 +168,8 @@ typedef struct Panel {
   /** Panel size excluding children. */
   int blocksizex, blocksizey;
   short labelofs;
-  char _pad[2];
+  char _pad[4];
   short flag, runtime_flag;
-  short control;
   short snap;
   /** Panels are aligned according to increasing sort-order. */
   int sortorder;
@@ -539,8 +539,8 @@ enum {
   PNL_CLOSEDX = (1 << 1),
   PNL_CLOSEDY = (1 << 2),
   PNL_CLOSED = (PNL_CLOSEDX | PNL_CLOSEDY),
-  /*PNL_TABBED    = (1 << 3), */ /*UNUSED*/
-  PNL_OVERLAP = (1 << 4),
+  /* PNL_TABBED = (1 << 3), */  /*UNUSED*/
+  /* PNL_OVERLAP = (1 << 4), */ /*UNUSED*/
   PNL_PIN = (1 << 5),
   PNL_POPOVER = (1 << 6),
   /** The panel has been drag-drop reordered and the instanced panel list needs to be rebuilt. */
@@ -704,5 +704,3 @@ enum {
   /* Only editor overlays (currently gizmos only!) should be redrawn. */
   RGN_DRAW_EDITOR_OVERLAYS = 32,
 };
-
-#endif /* __DNA_SCREEN_TYPES_H__ */

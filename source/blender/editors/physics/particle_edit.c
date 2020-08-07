@@ -216,11 +216,9 @@ PTCacheEdit *PE_get_current_from_psys(ParticleSystem *psys)
     if ((psys->flag & PSYS_HAIR_DYNAMICS) != 0 && (psys->pointcache->flag & PTCACHE_BAKED) != 0) {
       return psys->pointcache->edit;
     }
-    else {
-      return psys->edit;
-    }
+    return psys->edit;
   }
-  else if (psys->pointcache->flag & PTCACHE_BAKED) {
+  if (psys->pointcache->flag & PTCACHE_BAKED) {
     return psys->pointcache->edit;
   }
   return NULL;
@@ -561,9 +559,7 @@ static bool key_test_depth(const PEData *data, const float co[3], const int scre
   if (win[2] - 0.00001f > depth) {
     return 0;
   }
-  else {
-    return 1;
-  }
+  return 1;
 }
 
 static bool key_inside_circle(const PEData *data, float rad, const float co[3], float *distance)
@@ -618,9 +614,7 @@ static bool key_inside_test(PEData *data, const float co[3])
   if (data->mval) {
     return key_inside_circle(data, data->rad, co, NULL);
   }
-  else {
-    return key_inside_rect(data, co);
-  }
+  return key_inside_rect(data, co);
 }
 
 static bool point_is_selected(PTCacheEditPoint *point)
@@ -3372,9 +3366,7 @@ static void PE_mirror_x(Depsgraph *depsgraph, Scene *scene, Object *ob, int tagg
           PE_mirror_particle(ob, psmd_eval->mesh_final, psys, pa, NULL);
           continue;
         }
-        else {
-          point->flag |= PEP_TAG;
-        }
+        point->flag |= PEP_TAG;
       }
     }
 
@@ -4354,7 +4346,7 @@ static int brush_add(const bContext *C, PEData *data, short number)
       }
 
       pa->size = 1.0f;
-      initialize_particle(&sim, pa);
+      init_particle(&sim, pa);
       reset_particle(&sim, pa, 0.0, 1.0);
       point->flag |= PEP_EDIT_RECALC;
       if (pe_x_mirror(ob)) {

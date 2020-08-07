@@ -127,7 +127,7 @@ static void scene_init_data(ID *id)
 
   mblur_shutter_curve = &scene->r.mblur_shutter_curve;
   BKE_curvemapping_set_defaults(mblur_shutter_curve, 1, 0.0f, 0.0f, 1.0f, 1.0f);
-  BKE_curvemapping_initialize(mblur_shutter_curve);
+  BKE_curvemapping_init(mblur_shutter_curve);
   BKE_curvemap_reset(mblur_shutter_curve->cm,
                      &mblur_shutter_curve->clipr,
                      CURVE_PRESET_MAX,
@@ -140,13 +140,13 @@ static void scene_init_data(ID *id)
   /* grease pencil multiframe falloff curve */
   scene->toolsettings->gp_sculpt.cur_falloff = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
   CurveMapping *gp_falloff_curve = scene->toolsettings->gp_sculpt.cur_falloff;
-  BKE_curvemapping_initialize(gp_falloff_curve);
+  BKE_curvemapping_init(gp_falloff_curve);
   BKE_curvemap_reset(
       gp_falloff_curve->cm, &gp_falloff_curve->clipr, CURVE_PRESET_GAUSS, CURVEMAP_SLOPE_POSITIVE);
 
   scene->toolsettings->gp_sculpt.cur_primitive = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
   CurveMapping *gp_primitive_curve = scene->toolsettings->gp_sculpt.cur_primitive;
-  BKE_curvemapping_initialize(gp_primitive_curve);
+  BKE_curvemapping_init(gp_primitive_curve);
   BKE_curvemap_reset(gp_primitive_curve->cm,
                      &gp_primitive_curve->clipr,
                      CURVE_PRESET_BELL,
@@ -570,6 +570,24 @@ static void scene_foreach_id(ID *id, LibraryForeachIDData *data)
   }
 }
 
+static void scene_foreach_cache(ID *id,
+                                IDTypeForeachCacheFunctionCallback function_callback,
+                                void *user_data)
+{
+  Scene *scene = (Scene *)id;
+  IDCacheKey key = {
+      .id_session_uuid = id->session_uuid,
+      .offset_in_ID = offsetof(Scene, eevee.light_cache_data),
+      .cache_v = scene->eevee.light_cache_data,
+  };
+
+  function_callback(id,
+                    &key,
+                    (void **)&scene->eevee.light_cache_data,
+                    IDTYPE_CACHE_CB_FLAGS_PERSISTENT,
+                    user_data);
+}
+
 IDTypeInfo IDType_ID_SCE = {
     .id_code = ID_SCE,
     .id_filter = FILTER_ID_SCE,
@@ -587,6 +605,7 @@ IDTypeInfo IDType_ID_SCE = {
      * support all possible corner cases. */
     .make_local = NULL,
     .foreach_id = scene_foreach_id,
+    .foreach_cache = scene_foreach_cache,
 };
 
 const char *RE_engine_id_BLENDER_EEVEE = "BLENDER_EEVEE";
@@ -751,7 +770,6 @@ void BKE_scene_copy_data_eevee(Scene *sce_dst, const Scene *sce_src)
 
 Scene *BKE_scene_duplicate(Main *bmain, Scene *sce, eSceneCopyMethod type)
 {
-  const bool is_scene_liboverride = ID_IS_OVERRIDE_LIBRARY(sce);
   Scene *sce_copy;
 
   /* TODO this should/could most likely be replaced by call to more generic code at some point...
@@ -822,15 +840,13 @@ Scene *BKE_scene_duplicate(Main *bmain, Scene *sce, eSceneCopyMethod type)
     return sce_copy;
   }
   else {
-    const eDupli_ID_Flags duplicate_flags = U.dupflag | USER_DUP_OBJECT;
+    eDupli_ID_Flags duplicate_flags = U.dupflag | USER_DUP_OBJECT;
 
     BKE_id_copy(bmain, (ID *)sce, (ID **)&sce_copy);
     id_us_min(&sce_copy->id);
     id_us_ensure_real(&sce_copy->id);
 
-    if (duplicate_flags & USER_DUP_ACT) {
-      BKE_animdata_copy_id_action(bmain, &sce_copy->id, true);
-    }
+    BKE_animdata_duplicate_id_action(bmain, &sce_copy->id, duplicate_flags);
 
     /* Extra actions, most notably SCE_FULL_COPY also duplicates several 'children' datablocks. */
 
@@ -841,22 +857,26 @@ Scene *BKE_scene_duplicate(Main *bmain, Scene *sce, eSceneCopyMethod type)
       if (!is_subprocess) {
         BKE_main_id_tag_all(bmain, LIB_TAG_NEW, false);
         BKE_main_id_clear_newpoins(bmain);
+        /* In case root duplicated ID is linked, assume we want to get a local copy of it and
+         * duplicate all expected linked data. */
+        if (ID_IS_LINKED(sce)) {
+          duplicate_flags |= USER_DUP_LINKED_ID;
+        }
       }
 
       /* Copy Freestyle LineStyle datablocks. */
       LISTBASE_FOREACH (ViewLayer *, view_layer_dst, &sce_copy->view_layers) {
         LISTBASE_FOREACH (
             FreestyleLineSet *, lineset, &view_layer_dst->freestyle_config.linesets) {
-          BKE_id_copy_for_duplicate(
-              bmain, &lineset->linestyle->id, is_scene_liboverride, duplicate_flags);
+          BKE_id_copy_for_duplicate(bmain, (ID *)lineset->linestyle, duplicate_flags);
         }
       }
 
       /* Full copy of world (included animations) */
-      BKE_id_copy_for_duplicate(bmain, &sce->world->id, is_scene_liboverride, duplicate_flags);
+      BKE_id_copy_for_duplicate(bmain, (ID *)sce->world, duplicate_flags);
 
       /* Full copy of GreasePencil. */
-      BKE_id_copy_for_duplicate(bmain, &sce->gpd->id, is_scene_liboverride, duplicate_flags);
+      BKE_id_copy_for_duplicate(bmain, (ID *)sce->gpd, duplicate_flags);
 
       /* Deep-duplicate collections and objects (using preferences' settings for which sub-data to
        * duplicate along the object itself). */

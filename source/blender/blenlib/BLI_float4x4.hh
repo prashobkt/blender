@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BLI_FLOAT4X4_HH__
-#define __BLI_FLOAT4X4_HH__
+#pragma once
 
 #include "BLI_float3.hh"
 #include "BLI_math_matrix.h"
@@ -71,8 +70,8 @@ struct float4x4 {
 
   float4x4 inverted() const
   {
-    float result[4][4];
-    invert_m4_m4(result, values);
+    float4x4 result;
+    invert_m4_m4(result.values, values);
     return result;
   }
 
@@ -84,6 +83,18 @@ struct float4x4 {
     BLI_assert(values[0][3] == 0.0f && values[1][3] == 0.0f && values[2][3] == 0.0f &&
                values[3][3] == 1.0f);
     return this->inverted();
+  }
+
+  float4x4 transposed() const
+  {
+    float4x4 result;
+    transpose_m4_m4(result.values, values);
+    return result;
+  }
+
+  float4x4 inverted_transposed_affine() const
+  {
+    return this->inverted_affine().transposed();
   }
 
   struct float3x3_ref {
@@ -108,8 +119,16 @@ struct float4x4 {
     interp_m4_m4m4(result, a.values, b.values, t);
     return result;
   }
+
+  uint64_t hash() const
+  {
+    uint64_t h = 435109;
+    for (int i = 0; i < 16; i++) {
+      float value = ((const float *)this)[i];
+      h = h * 33 + (*(uint32_t *)&value);
+    }
+    return h;
+  }
 };
 
 }  // namespace blender
-
-#endif /* __BLI_FLOAT4X4_HH__ */

@@ -21,8 +21,7 @@
  * \ingroup edsculpt
  */
 
-#ifndef __SCULPT_INTERN_H__
-#define __SCULPT_INTERN_H__
+#pragma once
 
 #include "DNA_brush_types.h"
 #include "DNA_key_types.h"
@@ -50,6 +49,8 @@ bool SCULPT_mode_poll_view3d(struct bContext *C);
 /* checks for a brush, not just sculpt mode */
 bool SCULPT_poll(struct bContext *C);
 bool SCULPT_poll_view3d(struct bContext *C);
+
+bool SCULPT_vertex_colors_poll(struct bContext *C);
 
 /* Updates */
 
@@ -95,6 +96,9 @@ const float *SCULPT_vertex_co_get(struct SculptSession *ss, int index);
 void SCULPT_vertex_normal_get(SculptSession *ss, int index, float no[3]);
 float SCULPT_vertex_mask_get(struct SculptSession *ss, int index);
 const float *SCULPT_vertex_color_get(SculptSession *ss, int index);
+
+const float *SCULPT_vertex_persistent_co_get(SculptSession *ss, int index);
+void SCULPT_vertex_persistent_normal_get(SculptSession *ss, int index, float no[3]);
 
 #define SCULPT_VERTEX_NEIGHBOR_FIXED_CAPACITY 256
 typedef struct SculptVertexNeighborIter {
@@ -146,8 +150,6 @@ int SCULPT_active_vertex_get(SculptSession *ss);
 const float *SCULPT_active_vertex_co_get(SculptSession *ss);
 void SCULPT_active_vertex_normal_get(SculptSession *ss, float normal[3]);
 
-bool SCULPT_vertex_is_boundary(SculptSession *ss, const int index);
-
 /* Fake Neighbors */
 
 #define FAKE_NEIGHBOR_NONE -1
@@ -156,6 +158,11 @@ void SCULPT_fake_neighbors_ensure(struct Sculpt *sd, Object *ob, const float max
 void SCULPT_fake_neighbors_enable(Object *ob);
 void SCULPT_fake_neighbors_disable(Object *ob);
 void SCULPT_fake_neighbors_free(struct Object *ob);
+
+/* Vertex Info. */
+void SCULPT_boundary_info_ensure(Object *object);
+/* Boundary Info needs to be initialized in order to use this function. */
+bool SCULPT_vertex_is_boundary(const SculptSession *ss, const int index);
 
 /* Sculpt Visibility API */
 
@@ -177,7 +184,7 @@ bool SCULPT_vertex_has_unique_face_set(SculptSession *ss, int index);
 int SCULPT_face_set_next_available_get(SculptSession *ss);
 
 void SCULPT_face_set_visibility_set(SculptSession *ss, int face_set, bool visible);
-bool SCULPT_vertex_all_face_sets_visible_get(SculptSession *ss, int index);
+bool SCULPT_vertex_all_face_sets_visible_get(const SculptSession *ss, int index);
 bool SCULPT_vertex_any_face_set_visible_get(SculptSession *ss, int index);
 
 void SCULPT_face_sets_visibility_invert(SculptSession *ss);
@@ -343,7 +350,6 @@ void SCULPT_cloth_simulation_free(struct SculptClothSimulation *cloth_sim);
 
 void SCULPT_cloth_simulation_limits_draw(const uint gpuattr,
                                          const struct Brush *brush,
-                                         const float obmat[4][4],
                                          const float location[3],
                                          const float normal[3],
                                          const float rds,
@@ -389,6 +395,7 @@ void SCULPT_pose_ik_chain_free(struct SculptPoseIKChain *ik_chain);
 /* Multiplane Scrape Brush. */
 void SCULPT_do_multiplane_scrape_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode);
 void SCULPT_multiplane_scrape_preview_draw(const uint gpuattr,
+                                           Brush *brush,
                                            SculptSession *ss,
                                            const float outline_col[3],
                                            const float outline_alpha);
@@ -402,15 +409,14 @@ void SCULPT_do_paint_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode
 void SCULPT_do_smear_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode);
 
 /* Smooth Brush. */
-
-void SCULPT_neighbor_average(SculptSession *ss, float avg[3], uint vert);
-void SCULPT_bmesh_neighbor_average(float avg[3], struct BMVert *v);
-
 void SCULPT_bmesh_four_neighbor_average(float avg[3], float direction[3], struct BMVert *v);
 
 void SCULPT_neighbor_coords_average(SculptSession *ss, float result[3], int index);
 float SCULPT_neighbor_mask_average(SculptSession *ss, int index);
 void SCULPT_neighbor_color_average(SculptSession *ss, float result[4], int index);
+
+/* Mask the mesh boundaries smoothing only the mesh surface without using automasking. */
+void SCULPT_neighbor_coords_average_interior(SculptSession *ss, float result[3], int index);
 
 void SCULPT_smooth(Sculpt *sd,
                    Object *ob,
@@ -676,7 +682,8 @@ typedef struct {
   float radius_squared;
   const float *center;
   bool original;
-  bool ignore_fully_masked;
+  /* This ignores fully masked and fully hidden nodes. */
+  bool ignore_fully_ineffective;
 } SculptSearchSphereData;
 
 typedef struct {
@@ -684,7 +691,7 @@ typedef struct {
   struct SculptSession *ss;
   float radius_squared;
   bool original;
-  bool ignore_fully_masked;
+  bool ignore_fully_ineffective;
   struct DistRayAABB_Precalc *dist_ray_to_aabb_precalc;
 } SculptSearchCircleData;
 
@@ -731,6 +738,12 @@ bool SCULPT_pbvh_calc_area_normal(const struct Brush *brush,
  */
 
 #define SCULPT_CLAY_STABILIZER_LEN 10
+
+typedef struct AutomaskingSettings {
+  /* Flags from eAutomasking_flag. */
+  int flags;
+  int initial_face_set;
+} AutomaskingSettings;
 
 typedef struct StrokeCache {
   /* Invariants */
@@ -816,6 +829,15 @@ typedef struct StrokeCache {
   bool original;
   float anchored_location[3];
 
+  /* Paint Brush. */
+  struct {
+    float hardness;
+    float flow;
+    float wet_mix;
+    float wet_persistence;
+    float density;
+  } paint_brush;
+
   /* Pose brush */
   struct SculptPoseIKChain *pose_ik_chain;
 
@@ -854,7 +876,11 @@ typedef struct StrokeCache {
   float true_gravity_direction[3];
   float gravity_direction[3];
 
-  float *automask;
+  /* Automasking. */
+  AutomaskingSettings automask_settings;
+  /* Precomputed automask factor indexed by vertex, owned by the automasking system and initialized
+   * in SCULPT_automasking_init when needed. */
+  float *automask_factor;
 
   float stroke_local_mat[4][4];
   float multiplane_scrape_angle;
@@ -882,7 +908,10 @@ typedef struct FilterCache {
 
   /* Sharpen mesh filter. */
   float sharpen_smooth_ratio;
+  float sharpen_intensify_detail_strength;
+  int sharpen_curvature_smooth_iterations;
   float *sharpen_factor;
+  float (*sharpen_detail_directions)[3];
 
   /* unmasked nodes */
   PBVHNode **nodes;
@@ -967,5 +996,3 @@ void SCULPT_OT_set_detail_size(struct wmOperatorType *ot);
 
 /* Dyntopo. */
 void SCULPT_OT_dynamic_topology_toggle(struct wmOperatorType *ot);
-
-#endif

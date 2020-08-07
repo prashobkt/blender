@@ -96,7 +96,7 @@ static void invert_cdf(const float cdf[FILTER_CDF_TABLE_SIZE],
 }
 
 /* Evaluate a discrete function table with linear interpolation. */
-static float eval_table(float *table, float x)
+static float eval_table(const float *table, float x)
 {
   CLAMP(x, 0.0f, 1.0f);
   x = x * (FILTER_CDF_TABLE_SIZE - 1);
@@ -240,9 +240,9 @@ int EEVEE_temporal_sampling_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data
       view_is_valid = view_is_valid && (ED_screen_animation_no_scrub(wm) == NULL);
     }
 
-    effects->taa_total_sample = EEVEE_renderpasses_only_first_sample_pass_active(vedata) ?
-                                    1 :
-                                    scene_eval->eevee.taa_samples;
+    const bool first_sample_only = EEVEE_renderpasses_only_first_sample_pass_active(vedata);
+    view_is_valid = view_is_valid && !first_sample_only;
+    effects->taa_total_sample = first_sample_only ? 1 : scene_eval->eevee.taa_samples;
     MAX2(effects->taa_total_sample, 0);
 
     DRW_view_persmat_get(NULL, persmat, false);
@@ -269,7 +269,14 @@ int EEVEE_temporal_sampling_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data
       }
     }
     else {
-      effects->bypass_drawing = true;
+      const bool all_shaders_compiled = stl->g_data->queued_shaders_count_prev == 0;
+      /* Fix Texture painting (see T79370) and shader compilation (see T78520). */
+      if (DRW_state_is_navigating() || !all_shaders_compiled) {
+        effects->taa_current_sample = 1;
+      }
+      else {
+        effects->bypass_drawing = true;
+      }
     }
 
     return repro_flag | EFFECT_TAA | EFFECT_DOUBLE_BUFFER | EFFECT_DEPTH_DOUBLE_BUFFER |

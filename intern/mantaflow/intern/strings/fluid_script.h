@@ -146,19 +146,19 @@ mantaMsg('1 Mantaflow cell is ' + str(ratioMetersToRes_s$ID$) + ' Blender length
 ratioResToBLength_s$ID$ = float(res_s$ID$) / float(domainSize_s$ID$) # [cells / blength] (blength: cm, m, or km, ... )\n\
 mantaMsg('1 Blender length unit is ' + str(ratioResToBLength_s$ID$) + ' Mantaflow cells long.')\n\
 \n\
-ratioBTimeToTimstep_s$ID$ = float(1) / float(frameLengthRaw_s$ID$) # the time within 1 blender time unit, see also fluid.c\n\
-mantaMsg('1 Blender time unit is ' + str(ratioBTimeToTimstep_s$ID$) + ' Mantaflow time units long.')\n\
+ratioBTimeToTimestep_s$ID$ = float(1) / float(frameLengthRaw_s$ID$) # the time within 1 blender time unit, see also fluid.c\n\
+mantaMsg('1 Blender time unit is ' + str(ratioBTimeToTimestep_s$ID$) + ' Mantaflow time units long.')\n\
 \n\
 ratioFrameToFramelength_s$ID$ = float(1) / float(frameLengthUnscaled_s$ID$ ) # the time within 1 frame\n\
 mantaMsg('frame / frameLength is ' + str(ratioFrameToFramelength_s$ID$) + ' Mantaflow time units long.')\n\
 \n\
-scaleAcceleration_s$ID$ = ratioResToBLength_s$ID$ * (ratioBTimeToTimstep_s$ID$**2)# [meters/btime^2] to [cells/timestep^2] (btime: sec, min, or h, ...)\n\
+scaleAcceleration_s$ID$ = ratioResToBLength_s$ID$ * (ratioBTimeToTimestep_s$ID$**2)# [meters/btime^2] to [cells/timestep^2] (btime: sec, min, or h, ...)\n\
 mantaMsg('scaleAcceleration is ' + str(scaleAcceleration_s$ID$))\n\
 \n\
 scaleSpeedFrames_s$ID$ = ratioResToBLength_s$ID$ * ratioFrameToFramelength_s$ID$ # [blength/frame] to [cells/frameLength]\n\
 mantaMsg('scaleSpeed is ' + str(scaleSpeedFrames_s$ID$))\n\
 \n\
-scaleSpeedTime_s$ID$ = ratioResToBLength_s$ID$ * ratioBTimeToTimstep_s$ID$ # [blength/btime] to [cells/frameLength]\n\
+scaleSpeedTime_s$ID$ = ratioResToBLength_s$ID$ * ratioBTimeToTimestep_s$ID$ # [blength/btime] to [cells/frameLength]\n\
 mantaMsg('scaleSpeedTime is ' + str(scaleSpeedTime_s$ID$))\n\
 \n\
 gravity_s$ID$ *= scaleAcceleration_s$ID$ # scale from world acceleration to cell based acceleration\n\
@@ -418,19 +418,6 @@ const std::string fluid_post_step =
     "\n\
 def fluid_post_step_$ID$():\n\
     mantaMsg('Fluid post step')\n\
-    forces_s$ID$.clear()\n\
-    x_force_s$ID$.clear()\n\
-    y_force_s$ID$.clear()\n\
-    z_force_s$ID$.clear()\n\
-    \n\
-    if using_guiding_s$ID$:\n\
-        weightGuide_s$ID$.clear()\n\
-    if using_invel_s$ID$:\n\
-        x_invel_s$ID$.clear()\n\
-        y_invel_s$ID$.clear()\n\
-        z_invel_s$ID$.clear()\n\
-        invel_s$ID$.clear()\n\
-        invelC_s$ID$.clear()\n\
     \n\
     # Copy vel grid to reals grids (which Blender internal will in turn use for vel access)\n\
     copyVec3ToReal(source=vel_s$ID$, targetX=x_vel_s$ID$, targetY=y_vel_s$ID$, targetZ=z_vel_s$ID$)\n";
@@ -770,8 +757,6 @@ if (GUI):\n\
 cache_resumable       = $CACHE_RESUMABLE$\n\
 cache_dir             = '$CACHE_DIR$'\n\
 file_format_data      = '$CACHE_DATA_FORMAT$'\n\
-file_format_noise     = '$CACHE_NOISE_FORMAT$'\n\
-file_format_particles = '$CACHE_PARTICLE_FORMAT$'\n\
 file_format_mesh      = '$CACHE_MESH_FORMAT$'\n\
 \n\
 # How many frame to load from cache\n\

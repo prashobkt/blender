@@ -238,7 +238,12 @@ static void compo_progressjob(void *cjv, float progress)
 }
 
 /* only this runs inside thread */
-static void compo_startjob(void *cjv, short *stop, short *do_update, float *progress)
+static void compo_startjob(void *cjv,
+                           /* Cannot be const, this function implements wm_jobs_start_callback.
+                            * NOLINTNEXTLINE: readability-non-const-parameter. */
+                           short *stop,
+                           short *do_update,
+                           float *progress)
 {
   CompoJob *cj = cjv;
   bNodeTree *ntree = cj->localtree;
@@ -1692,6 +1697,8 @@ static int node_mute_exec(bContext *C, wmOperator *UNUSED(op))
     }
   }
 
+  do_tag_update |= ED_node_is_simulation(snode);
+
   snode_notify(C, snode);
   if (do_tag_update) {
     snode_dag_update(C, snode);
@@ -1733,6 +1740,8 @@ static int node_delete_exec(bContext *C, wmOperator *UNUSED(op))
       nodeRemoveNode(bmain, snode->edittree, node, true);
     }
   }
+
+  do_tag_update |= ED_node_is_simulation(snode);
 
   ntreeUpdateTree(CTX_data_main(C), snode->edittree);
 
@@ -2734,7 +2743,7 @@ static int clear_viewer_border_exec(bContext *C, wmOperator *UNUSED(op))
 void NODE_OT_clear_viewer_border(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Clear Viewer Border";
+  ot->name = "Clear Viewer Region";
   ot->description = "Clear the boundaries for viewer operations";
   ot->idname = "NODE_OT_clear_viewer_border";
 

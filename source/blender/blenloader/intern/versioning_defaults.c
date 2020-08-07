@@ -106,7 +106,7 @@ static void blo_update_defaults_screen(bScreen *screen,
       /* Some toolbars have been saved as initialized,
        * we don't want them to have odd zoom-level or scrolling set, see: T47047 */
       if (ELEM(region->regiontype, RGN_TYPE_UI, RGN_TYPE_TOOLS, RGN_TYPE_TOOL_PROPS)) {
-        region->v2d.flag &= ~V2D_IS_INITIALISED;
+        region->v2d.flag &= ~V2D_IS_INIT;
       }
     }
 
@@ -315,7 +315,7 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   copy_v2_fl2(scene->safe_areas.title, 0.1f, 0.05f);
   copy_v2_fl2(scene->safe_areas.action, 0.035f, 0.035f);
 
-  /* Change default cubemap quality. */
+  /* Change default cube-map quality. */
   scene->eevee.gi_filter_quality = 3.0f;
 
   /* Enable Soft Shadows by default. */
@@ -326,7 +326,7 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   if (ts->gp_sculpt.cur_falloff == NULL) {
     ts->gp_sculpt.cur_falloff = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
     CurveMapping *gp_falloff_curve = ts->gp_sculpt.cur_falloff;
-    BKE_curvemapping_initialize(gp_falloff_curve);
+    BKE_curvemapping_init(gp_falloff_curve);
     BKE_curvemap_reset(gp_falloff_curve->cm,
                        &gp_falloff_curve->clipr,
                        CURVE_PRESET_GAUSS,
@@ -335,7 +335,7 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   if (ts->gp_sculpt.cur_primitive == NULL) {
     ts->gp_sculpt.cur_primitive = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
     CurveMapping *gp_primitive_curve = ts->gp_sculpt.cur_primitive;
-    BKE_curvemapping_initialize(gp_primitive_curve);
+    BKE_curvemapping_init(gp_primitive_curve);
     BKE_curvemap_reset(gp_primitive_curve->cm,
                        &gp_primitive_curve->clipr,
                        CURVE_PRESET_BELL,
