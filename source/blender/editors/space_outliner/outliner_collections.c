@@ -564,7 +564,7 @@ static int collection_duplicate_exec(bContext *C, wmOperator *op)
 
   /* Can happen when calling from a key binding. */
   if (te == NULL) {
-    BKE_report(op->reports, RPT_ERROR, "No active collection");
+    BKE_reportf(op->reports, RPT_WARNING, "No active collection");
     return OPERATOR_CANCELLED;
   }
 
@@ -1527,11 +1527,17 @@ static int outliner_color_tag_set_exec(bContext *C, wmOperator *op)
     if (collection == scene->master_collection) {
       continue;
     }
+    if (ID_IS_LINKED(collection)) {
+      BKE_report(op->reports, RPT_WARNING, "Can't add a color tag to a linked collection");
+      continue;
+    }
 
     collection->color = color_tag;
   };
 
   BLI_freelistN(&selected.selected_array);
+
+  WM_event_add_notifier(C, NC_SCENE | ND_LAYER_CONTENT, NULL);
 
   return OPERATOR_FINISHED;
 }
