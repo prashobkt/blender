@@ -712,9 +712,6 @@ static bool CLG_ctx_output_use_timestamp_get(CLogContext *ctx)
 static void CLG_ctx_output_use_timestamp_set(CLogContext *ctx, int value)
 {
   ctx->use_timestamp = (bool)value;
-  if (ctx->use_timestamp) {
-    ctx->timestamp_tick_start = clg_timestamp_ticks_get();
-  }
 }
 
 /** Action on fatal severity. */
@@ -848,6 +845,7 @@ static CLogContext *CLG_ctx_init(void)
   ctx->default_type.level = 0;
   ctx->use_stdout = true;
   ctx->always_show_warnings = true;
+  ctx->timestamp_tick_start = clg_timestamp_ticks_get();
 
   /* enable all loggers by default */
   CLG_ctx_type_filter_include(ctx, "*", strlen("*"));
