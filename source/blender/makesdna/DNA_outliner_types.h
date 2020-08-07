@@ -21,8 +21,7 @@
  * \ingroup DNA
  */
 
-#ifndef __DNA_OUTLINER_TYPES_H__
-#define __DNA_OUTLINER_TYPES_H__
+#pragma once
 
 #include "DNA_defs.h"
 
@@ -131,5 +130,3 @@ enum {
          TSE_KEYMAP_ITEM, \
          TSE_ID_BASE, \
          TSE_GP_LAYER))
-
-#endif

@@ -23,8 +23,7 @@
  * \brief Object groups, one object can be in many groups at once.
  */
 
-#ifndef __DNA_COLLECTION_TYPES_H__
-#define __DNA_COLLECTION_TYPES_H__
+#pragma once
 
 #include "DNA_ID.h"
 #include "DNA_defs.h"
@@ -110,5 +109,3 @@ enum {
   COLLECTION_COLOR_09 = 9,
   COLLECTION_COLOR_10 = 10,
 };
-
-#endif /* __DNA_COLLECTION_TYPES_H__ */
