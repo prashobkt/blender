@@ -75,52 +75,6 @@ class ModifierSpec:
                " with parameters: " + str(self.modifier_parameters)
 
 
-class PhysicsSpec:
-    """
-    Holds one Physics modifier and its parameters.
-    """
-
-    def __init__(self, modifier_name: str, modifier_type: str, modifier_parameters: dict, frame_end: int):
-        """
-        Constructs a physics spec.
-        :param modifier_name: str - name of object modifier, e.g. "Cloth"
-        :param modifier_type: str - type of object modifier, e.g. "CLOTH"
-        :param modifier_parameters: dict - {name : val} dictionary giving modifier parameters, e.g. {"quality" : 4}
-        :param frame_end:int - the last frame of the simulation at which it is baked
-        """
-        self.modifier_name = modifier_name
-        self.modifier_type = modifier_type
-        self.modifier_parameters = modifier_parameters
-        self.frame_end = frame_end
-
-    def __str__(self):
-        return "Physics Modifier: " + self.modifier_name + " of type " + self.modifier_type + \
-               " with parameters: " + str(self.modifier_parameters) + " with frame end: " + str(self.frame_end)
-
-
-class FluidDyanmicPaintSpec:
-    """
-    Holds a Fluid modifier and a Dynamic Paint modifier and their parameters.
-    """
-
-    def __init__(self, modifier_name: str, modifier_type: str, sub_type: str, modifier_parameters: dict, frame_end: int):
-        """
-        Constructs a Fluid/Dynamic Paint spec.
-        :param modifier_name: str - name of object modifier, e.g. "FLUID"
-        :param sub_type: str - type of fluid, e.g. "Domain"
-        :param modifier_parameters: dict - {name : val} dictionary giving modifier parameters, e.g. {"use_mesh" : True}
-        :param frame_end:int - the frame at which the modifier is "applied"
-        """
-        self.modifier_name = modifier_name
-        self.sub_type = sub_type
-        self.modifier_parameters = modifier_parameters
-        self.modifier_type = modifier_type
-        self.frame_end = frame_end
-
-    def __str__(self):
-        return "Modifier: " + self.modifier_name + " of type " + self.modifier_type + \
-               " with parameters: " + str(self.modifier_parameters) + " with frame end: " + str(self.frame_end)
-
 class ParticleSystemSpec:
     """
     Holds a Particle System modifier and its parameters.
@@ -142,7 +96,6 @@ class ParticleSystemSpec:
     def __str__(self):
         return "Physics Modifier: " + self.modifier_name + " of type " + self.modifier_type + \
                " with parameters: " + str(self.modifier_parameters) + " with frame end: " + str(self.frame_end)
-
 
 
 class OperatorSpec:
@@ -231,12 +184,12 @@ class MeshTest:
         if operations_stack is None:
             operations_stack = []
         for operation in operations_stack:
-            if not (isinstance(operation, ModifierSpec) or isinstance(operation, OperatorSpec) or isinstance(operation, PhysicsSpec)
+            if not (isinstance(operation, ModifierSpec) or isinstance(operation, OperatorSpec)
                     or isinstance(operation, ObjectOperatorSpec) or isinstance(operation, DeformModifierSpec)
-                    or isinstance(operation, FluidDyanmicPaintSpec) or isinstance(operation, ParticleSystemSpec)):
-                raise ValueError("Expected operation of type {} or {} or {} or {} or {} or {}. Got {}".
-                                 format(type(ModifierSpec), type(OperatorSpec), type(PhysicsSpec),
-                                        type(DeformModifierSpec), type(FluidDyanmicPaintSpec), type(ParticleSystemSpec),
+                    or isinstance(operation, ParticleSystemSpec)):
+                raise ValueError("Expected operation of type {} or {} or {} or {}. Got {}".
+                                 format(type(ModifierSpec), type(OperatorSpec),
+                                        type(DeformModifierSpec), type(ParticleSystemSpec),
                                         type(operation)))
         self.operations_stack = operations_stack
         self.apply_modifier = apply_modifiers
@@ -402,7 +355,7 @@ class MeshTest:
         self.set_parameters(modifier, modifier_spec.modifier_parameters)
 
         if modifier.type in bakers_list:
-            self._bake_current_simulation(test_object, modifier.type, modifier.name, modifier_spec.frame_end)
+            self._bake_current_simulation(test_object, modifier.name, modifier_spec.frame_end)
 
         scene.frame_set(modifier_spec.frame_end)
 
@@ -440,105 +393,6 @@ class MeshTest:
                     override = {'scene': scene, 'active_object': test_object, 'point_cache': override_setting}
                     bpy.ops.ptcache.bake(override, bake=True)
                     break
-
-
-    def _apply_physics_settings(self, test_object, physics_spec: PhysicsSpec):
-        """
-        Apply Physics settings to test objects.
-        """
-        scene = bpy.context.scene
-        scene.frame_set(1)
-        modifier = test_object.modifiers.new(physics_spec.modifier_name,
-                                             physics_spec.modifier_type)
-        physics_setting = modifier.settings
-        if self.verbose:
-            print("Created modifier '{}' of type '{}'.".
-                  format(physics_spec.modifier_name, physics_spec.modifier_type))
-
-        for param_name in physics_spec.modifier_parameters:
-            try:
-                setattr(physics_setting, param_name, physics_spec.modifier_parameters[param_name])
-                if self.verbose:
-                    print("\t set parameter '{}' with value '{}'".
-                          format(param_name, physics_spec.modifier_parameters[param_name]))
-            except AttributeError:
-                # Clean up first
-                bpy.ops.object.delete()
-                raise AttributeError("Modifier '{}' has no parameter named '{}'".
-                                     format(physics_spec.modifier_type, param_name))
-
-        scene.frame_set(physics_spec.frame_end + 1)
-
-        self._bake_current_simulation(test_object, physics_spec.modifier_type, physics_spec.modifier_name, physics_spec.frame_end)
-        if self.apply_modifier:
-            self._apply_modifier(test_object, physics_spec.modifier_name)
-
-    def _apply_fluid_settings(self, test_object, fluid_paint_spec: FluidDyanmicPaintSpec):
-        """
-        Apply Fluid settings to test objects.
-        """
-        scene = bpy.context.scene
-        scene.frame_set(1)
-        modifier = test_object.modifiers.new(fluid_paint_spec.modifier_name,
-                                             fluid_paint_spec.modifier_type)
-
-        physics_setting = None
-        physics_canvas_surface_settings = None
-
-        if fluid_paint_spec.modifier_type == "FLUID":
-            modifier.fluid_type = fluid_paint_spec.sub_type
-            if fluid_paint_spec.sub_type == "DOMAIN":
-                physics_setting = modifier.domain_settings
-            elif fluid_paint_spec.sub_type == "FLOW":
-                physics_setting = modifier.flow_settings
-            elif fluid_paint_spec.sub_type == "EFFECTOR":
-                physics_setting = modifier.effector_settings
-
-        elif fluid_paint_spec.modifier_type == "DYNAMIC_PAINT":
-            modifier.ui_type = fluid_paint_spec.sub_type
-
-            if fluid_paint_spec.sub_type == "CANVAS":
-                bpy.ops.dpaint.type_toggle(type='CANVAS')
-                physics_setting = modifier.canvas_settings
-            elif fluid_paint_spec.sub_type == "BRUSH":
-                bpy.ops.dpaint.type_toggle(type='BRUSH')
-                physics_setting = modifier.brush_settings
-
-        if self.verbose:
-            print("Created modifier '{}' of type '{}'.".
-                  format(fluid_paint_spec.modifier_name, fluid_paint_spec.modifier_type))
-
-        for param_name in fluid_paint_spec.modifier_parameters:
-            try:
-                setattr(physics_setting, param_name, fluid_paint_spec.modifier_parameters[param_name])
-                if self.verbose:
-                    print("\t set parameter '{}' with value '{}'".
-                          format(param_name, fluid_paint_spec.modifier_parameters[param_name]))
-            except AttributeError:
-                try:
-                    physics_canvas_surface_settings = physics_setting.canvas_surfaces.active
-                    setattr(physics_canvas_surface_settings, param_name, fluid_paint_spec.modifier_parameters[param_name])
-                    if self.verbose:
-                        print("\t set parameter '{}' with value '{}'".
-                              format(param_name, fluid_paint_spec.modifier_parameters[param_name]))
-                except AttributeError:
-                    # Clean up first
-                    bpy.ops.object.delete()
-                    raise AttributeError("Modifier '{}' has no parameter named '{}'".
-                                         format(fluid_paint_spec.modifier_type, param_name))
-
-        if fluid_paint_spec.modifier_type == "FLUID":
-            bpy.ops.fluid.bake_all()
-        elif fluid_paint_spec.modifier_type == "DYNAMIC_PAINT":
-            override = {'scene': scene, 'active_object': test_object, 'point_cache': physics_canvas_surface_settings.point_cache}
-            bpy.ops.ptcache.bake(override, bake=True)
-
-
-        # Jump to the frame specified by user to apply the modifier.
-        scene.frame_set(fluid_paint_spec.frame_end)
-
-        if self.apply_modifier:
-            self._apply_modifier(test_object, fluid_paint_spec.modifier_name)
 
     def _apply_particle_system(self, test_object, particle_sys_spec: ParticleSystemSpec):
         """

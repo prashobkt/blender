@@ -24,13 +24,14 @@ import sys
 import bpy
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from modules.mesh_test import ModifierTest, PhysicsSpec
+from modules.mesh_test import ModifierTest, ModifierSpec
 
 
 def main():
     test = [
-      ["SoftBodySimple", "testSoftBody", "expectedSoftBody",
-       [PhysicsSpec('Softbody', 'SOFT_BODY', {'use_goal': False, 'bend': 8, 'pull': 0.8, 'push': 0.8}, 45)]],
+
+        ["SoftBodySimple", "testSoftBody", "expectedSoftBody",
+         [ModifierSpec('Softbody', 'SOFT_BODY', {'settings': {'use_goal': False, 'bend': 8, 'pull': 0.8, 'push': 0.8}}, 45)]],
     ]
     soft_body_test = ModifierTest(test)
 

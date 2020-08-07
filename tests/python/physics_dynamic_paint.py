@@ -24,14 +24,16 @@ import sys
 import bpy
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from modules.mesh_test import ModifierTest, FluidSpec
+from modules.mesh_test import ModifierTest, ModifierSpec
 
 
 def main():
     test = [
 
-        ["DynamicPaint", "test", "exp",
-         [FluidSpec('dynamic_paint', 'DYNAMIC_PAINT', 'CANVAS', {'surface_type': 'WAVE', 'frame_end': 50}, 50)]],
+        ["DynamicPaint2", "test", "exp",
+         [ModifierSpec('dynamic_paint', 'DYNAMIC_PAINT',
+                       {'ui_type': 'CANVAS',
+                        'canvas_settings': {'canvas_surfaces': {'surface_type': 'WAVE', 'frame_end': 50}}}, 50)]],
 
     ]
     dynamic_paint_test = ModifierTest(test)

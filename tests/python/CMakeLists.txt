@@ -201,6 +201,40 @@ add_blender_test(
 )
 
 add_blender_test(
+  physics_dynamic_paint
+  ${TEST_SRC_DIR}/physics/dynamic_paint_test.blend
+  --python ${TEST_PYTHON_DIR}/physics_dynamic_paint.py
+  --
+  --run-all-tests
+)
+
+add_blender_test(
+  deform_modifiers
+  ${TEST_SRC_DIR}/modeling/deform_modifiers.blend
+  --python ${TEST_PYTHON_DIR}/deform_modifiers.py
+  --
+  --run-all-tests
+)
+
+add_blender_test(
+  physics_ocean
+  ${TEST_SRC_DIR}/physics/ocean_test.blend
+  --python ${TEST_PYTHON_DIR}/physics_ocean.py
+  --
+  --run-all-tests
+)
+
+
+add_blender_test(
+  particle_system
+  ${TEST_SRC_DIR}/modeling/particle_test.blend
+  --python ${TEST_PYTHON_DIR}/physics_particle_system.py
+  --
+  --run-all-tests
+)
+
+
+add_blender_test(
   constraints
   --python ${CMAKE_CURRENT_LIST_DIR}/bl_constraints.py
   --
