@@ -338,10 +338,18 @@ class MeshTest:
                 # We want to set the attribute only when we have reached the last setting
                 # Applying of intermediate settings is meaningless.
                 if i == len(nested_settings_path)-1:
-                    setattr(modifier, setting, modifier_parameters)
+                    try:
+                        setattr(modifier, setting, modifier_parameters)
+                    except AttributeError:
+                        # Clean up first
+                        bpy.ops.object.delete()
+                        raise AttributeError("Modifier '{}' has no parameter named '{}'".
+                                             format(modifier_name, setting))
+
                 else:
                     try:
                         param_setting = getattr(modifier, setting)
+                        # getattr doesn't accept canvas_surfaces["Surface"], but we need to pass it to setattr
                         if setting == "canvas_surfaces":
                             modifier = param_setting.active
                         else:
@@ -407,25 +415,29 @@ class MeshTest:
         else:
             raise Exception("This object type is not yet supported!")
 
-    def _bake_current_simulation(self, obj, test_mod_type, test_mod_name, frame_end):
-        override_setting = None
+    def _bake_current_simulation(self, test_object, test_modifier_name, frame_end):
+        """
+        FLUID: Bakes the simulation
+        SOFT BODY, CLOTH, DYNAMIC PAINT: Overrides the point_cache context and then bakes.
+        """
+
         for scene in bpy.data.scenes:
-            for modifier in obj.modifiers:
+            for modifier in test_object.modifiers:
                 if modifier.type == 'FLUID':
                     bpy.ops.fluid.bake_all()
                     break
 
                 elif modifier.type == 'CLOTH' or modifier.type == 'SOFT_BODY':
-                    obj.modifiers[test_mod_name].point_cache.frame_end = frame_end
+                    test_object.modifiers[test_modifier_name].point_cache.frame_end = frame_end
                     override_setting = modifier.point_cache
-                    override = {'scene': scene, 'active_object': obj, 'point_cache': override_setting}
+                    override = {'scene': scene, 'active_object': test_object, 'point_cache': override_setting}
                     bpy.ops.ptcache.bake(override, bake=True)
                     break
 
                 elif modifier.type == 'DYNAMIC_PAINT':
-                    dp_setting = modifier.canvas_settings.canvas_surfaces.active
-                    override_setting = dp_setting.point_cache
-                    override = {'scene': scene, 'active_object': obj, 'point_cache': override_setting}
+                    dynamic_paint_setting = modifier.canvas_settings.canvas_surfaces.active
+                    override_setting = dynamic_paint_setting.point_cache
+                    override = {'scene': scene, 'active_object': test_object, 'point_cache': override_setting}
                     bpy.ops.ptcache.bake(override, bake=True)
                     break
 
