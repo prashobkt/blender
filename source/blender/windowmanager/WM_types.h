@@ -106,8 +106,7 @@
  * \endcode
  */
 
-#ifndef __WM_TYPES_H__
-#define __WM_TYPES_H__
+#pragma once
 
 struct ID;
 struct ImBuf;
@@ -932,5 +931,3 @@ extern struct CLG_LogRef *WM_LOG_GIZMO;
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __WM_TYPES_H__ */

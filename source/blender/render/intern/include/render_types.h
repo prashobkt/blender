@@ -21,8 +21,7 @@
  * \ingroup render
  */
 
-#ifndef __RENDER_TYPES_H__
-#define __RENDER_TYPES_H__
+#pragma once
 
 /* ------------------------------------------------------------------------- */
 /* exposed internal in render module only! */
@@ -170,5 +169,3 @@ struct Render {
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __RENDER_TYPES_H__ */

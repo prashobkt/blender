@@ -583,7 +583,7 @@ static int wm_handler_ui_call(bContext *C,
     if (is_wheel) {
       return WM_HANDLER_CONTINUE;
     }
-    else if (wm_event_always_pass(event) == 0) {
+    if (wm_event_always_pass(event) == 0) {
       do_wheel_ui = true;
     }
   }
@@ -769,7 +769,7 @@ bool WM_operator_poll(bContext *C, wmOperatorType *ot)
   if (ot->pyop_poll) {
     return ot->pyop_poll(C, ot);
   }
-  else if (ot->poll) {
+  if (ot->poll) {
     return ot->poll(C);
   }
 
@@ -1075,7 +1075,7 @@ bool WM_operator_repeat_check(const bContext *UNUSED(C), wmOperator *op)
   if (op->type->exec != NULL) {
     return true;
   }
-  else if (op->opm) {
+  if (op->opm) {
     /* for macros, check all have exec() we can call */
     wmOperatorTypeMacro *otmacro;
     for (otmacro = op->opm->type->macro.first; otmacro; otmacro = otmacro->next) {
@@ -1797,10 +1797,10 @@ static bool wm_eventmatch(const wmEvent *winevent, const wmKeyMapItem *kmi)
         /* tablet events can occur on hover + keypress */
         return false;
       }
-      else if ((kmitype == TABLET_STYLUS) && (wmtab->active != EVT_TABLET_STYLUS)) {
+      if ((kmitype == TABLET_STYLUS) && (wmtab->active != EVT_TABLET_STYLUS)) {
         return false;
       }
-      else if ((kmitype == TABLET_ERASER) && (wmtab->active != EVT_TABLET_ERASER)) {
+      if ((kmitype == TABLET_ERASER) && (wmtab->active != EVT_TABLET_ERASER)) {
         return false;
       }
     }
@@ -2408,13 +2408,11 @@ static int wm_handlers_do_keymap_with_keymap_handler(
             }
             break;
           }
+          if (action & WM_HANDLER_HANDLED) {
+            CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "handled - and pass on! '%s'", kmi->idname);
+          }
           else {
-            if (action & WM_HANDLER_HANDLED) {
-              CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "    handled - and pass on! '%s'", kmi->idname);
-            }
-            else {
-              CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "    un-handled '%s'", kmi->idname);
-            }
+            CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "un-handled '%s'", kmi->idname);
           }
         }
       }
@@ -2461,13 +2459,11 @@ static int wm_handlers_do_keymap_with_gizmo_handler(
           CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "    handled - and pass on! '%s'", kmi->idname);
           break;
         }
+        if (action & WM_HANDLER_HANDLED) {
+          CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "    handled - and pass on! '%s'", kmi->idname);
+        }
         else {
-          if (action & WM_HANDLER_HANDLED) {
-            CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "    handled - and pass on! '%s'", kmi->idname);
-          }
-          else {
-            CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "    un-handled '%s'", kmi->idname);
-          }
+          CLOG_VERBOSE(WM_LOG_HANDLERS, 2, "    un-handled '%s'", kmi->idname);
         }
       }
     }
@@ -3084,13 +3080,9 @@ static bool wm_event_pie_filter(wmWindow *win, const wmEvent *event)
       win->lock_pie_event = EVENT_NONE;
       return false;
     }
-    else {
-      return true;
-    }
+    return true;
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 /**
@@ -3650,13 +3642,11 @@ wmKeyMap *WM_event_get_keymap_from_toolsystem_fallback(wmWindowManager *wm,
         handler->keymap_tool = area->runtime.tool;
         return km;
       }
-      else {
-        CLOG_VERBOSE(WM_LOG_EVENTS,
-                     1,
-                     "Keymap: '%s' not found for tool '%s'",
-                     tref_rt->keymap,
-                     area->runtime.tool->idname);
-      }
+      CLOG_VERBOSE(WM_LOG_EVENTS,
+                   1,
+                   "Keymap: '%s' not found for tool '%s'",
+                   tref_rt->keymap,
+                   area->runtime.tool->idname);
     }
   }
   return NULL;
@@ -3677,13 +3667,11 @@ wmKeyMap *WM_event_get_keymap_from_toolsystem(wmWindowManager *wm, wmEventHandle
         handler->keymap_tool = area->runtime.tool;
         return km;
       }
-      else {
-        CLOG_VERBOSE(WM_LOG_EVENTS,
-                     1,
-                     "Keymap: '%s' not found for tool '%s'",
-                     tref_rt->keymap,
-                     area->runtime.tool->idname);
-      }
+      CLOG_VERBOSE(WM_LOG_EVENTS,
+                   1,
+                   "Keymap: '%s' not found for tool '%s'",
+                   tref_rt->keymap,
+                   area->runtime.tool->idname);
     }
   }
   return NULL;
@@ -3739,12 +3727,10 @@ static bool event_or_prev_in_rect(const wmEvent *event, const rcti *rect)
   if (BLI_rcti_isect_pt(rect, event->x, event->y)) {
     return true;
   }
-  else if (event->type == MOUSEMOVE && BLI_rcti_isect_pt(rect, event->prevx, event->prevy)) {
+  if (event->type == MOUSEMOVE && BLI_rcti_isect_pt(rect, event->prevx, event->prevy)) {
     return true;
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 static bool handler_region_v2d_mask_test(const ARegion *region, const wmEvent *event)
@@ -3930,138 +3916,137 @@ static int convert_key(GHOST_TKey key)
   if (key >= GHOST_kKeyA && key <= GHOST_kKeyZ) {
     return (EVT_AKEY + ((int)key - GHOST_kKeyA));
   }
-  else if (key >= GHOST_kKey0 && key <= GHOST_kKey9) {
+  if (key >= GHOST_kKey0 && key <= GHOST_kKey9) {
     return (EVT_ZEROKEY + ((int)key - GHOST_kKey0));
   }
-  else if (key >= GHOST_kKeyNumpad0 && key <= GHOST_kKeyNumpad9) {
+  if (key >= GHOST_kKeyNumpad0 && key <= GHOST_kKeyNumpad9) {
     return (EVT_PAD0 + ((int)key - GHOST_kKeyNumpad0));
   }
-  else if (key >= GHOST_kKeyF1 && key <= GHOST_kKeyF24) {
+  if (key >= GHOST_kKeyF1 && key <= GHOST_kKeyF24) {
     return (EVT_F1KEY + ((int)key - GHOST_kKeyF1));
   }
-  else {
-    switch (key) {
-      case GHOST_kKeyBackSpace:
-        return EVT_BACKSPACEKEY;
-      case GHOST_kKeyTab:
-        return EVT_TABKEY;
-      case GHOST_kKeyLinefeed:
-        return EVT_LINEFEEDKEY;
-      case GHOST_kKeyClear:
-        return 0;
-      case GHOST_kKeyEnter:
-        return EVT_RETKEY;
 
-      case GHOST_kKeyEsc:
-        return EVT_ESCKEY;
-      case GHOST_kKeySpace:
-        return EVT_SPACEKEY;
-      case GHOST_kKeyQuote:
-        return EVT_QUOTEKEY;
-      case GHOST_kKeyComma:
-        return EVT_COMMAKEY;
-      case GHOST_kKeyMinus:
-        return EVT_MINUSKEY;
-      case GHOST_kKeyPlus:
-        return EVT_PLUSKEY;
-      case GHOST_kKeyPeriod:
-        return EVT_PERIODKEY;
-      case GHOST_kKeySlash:
-        return EVT_SLASHKEY;
+  switch (key) {
+    case GHOST_kKeyBackSpace:
+      return EVT_BACKSPACEKEY;
+    case GHOST_kKeyTab:
+      return EVT_TABKEY;
+    case GHOST_kKeyLinefeed:
+      return EVT_LINEFEEDKEY;
+    case GHOST_kKeyClear:
+      return 0;
+    case GHOST_kKeyEnter:
+      return EVT_RETKEY;
 
-      case GHOST_kKeySemicolon:
-        return EVT_SEMICOLONKEY;
-      case GHOST_kKeyEqual:
-        return EVT_EQUALKEY;
+    case GHOST_kKeyEsc:
+      return EVT_ESCKEY;
+    case GHOST_kKeySpace:
+      return EVT_SPACEKEY;
+    case GHOST_kKeyQuote:
+      return EVT_QUOTEKEY;
+    case GHOST_kKeyComma:
+      return EVT_COMMAKEY;
+    case GHOST_kKeyMinus:
+      return EVT_MINUSKEY;
+    case GHOST_kKeyPlus:
+      return EVT_PLUSKEY;
+    case GHOST_kKeyPeriod:
+      return EVT_PERIODKEY;
+    case GHOST_kKeySlash:
+      return EVT_SLASHKEY;
 
-      case GHOST_kKeyLeftBracket:
-        return EVT_LEFTBRACKETKEY;
-      case GHOST_kKeyRightBracket:
-        return EVT_RIGHTBRACKETKEY;
-      case GHOST_kKeyBackslash:
-        return EVT_BACKSLASHKEY;
-      case GHOST_kKeyAccentGrave:
-        return EVT_ACCENTGRAVEKEY;
+    case GHOST_kKeySemicolon:
+      return EVT_SEMICOLONKEY;
+    case GHOST_kKeyEqual:
+      return EVT_EQUALKEY;
 
-      case GHOST_kKeyLeftShift:
-        return EVT_LEFTSHIFTKEY;
-      case GHOST_kKeyRightShift:
-        return EVT_RIGHTSHIFTKEY;
-      case GHOST_kKeyLeftControl:
-        return EVT_LEFTCTRLKEY;
-      case GHOST_kKeyRightControl:
-        return EVT_RIGHTCTRLKEY;
-      case GHOST_kKeyOS:
-        return EVT_OSKEY;
-      case GHOST_kKeyLeftAlt:
-        return EVT_LEFTALTKEY;
-      case GHOST_kKeyRightAlt:
-        return EVT_RIGHTALTKEY;
-      case GHOST_kKeyApp:
-        return EVT_APPKEY;
+    case GHOST_kKeyLeftBracket:
+      return EVT_LEFTBRACKETKEY;
+    case GHOST_kKeyRightBracket:
+      return EVT_RIGHTBRACKETKEY;
+    case GHOST_kKeyBackslash:
+      return EVT_BACKSLASHKEY;
+    case GHOST_kKeyAccentGrave:
+      return EVT_ACCENTGRAVEKEY;
 
-      case GHOST_kKeyCapsLock:
-        return EVT_CAPSLOCKKEY;
-      case GHOST_kKeyNumLock:
-        return 0;
-      case GHOST_kKeyScrollLock:
-        return 0;
+    case GHOST_kKeyLeftShift:
+      return EVT_LEFTSHIFTKEY;
+    case GHOST_kKeyRightShift:
+      return EVT_RIGHTSHIFTKEY;
+    case GHOST_kKeyLeftControl:
+      return EVT_LEFTCTRLKEY;
+    case GHOST_kKeyRightControl:
+      return EVT_RIGHTCTRLKEY;
+    case GHOST_kKeyOS:
+      return EVT_OSKEY;
+    case GHOST_kKeyLeftAlt:
+      return EVT_LEFTALTKEY;
+    case GHOST_kKeyRightAlt:
+      return EVT_RIGHTALTKEY;
+    case GHOST_kKeyApp:
+      return EVT_APPKEY;
 
-      case GHOST_kKeyLeftArrow:
-        return EVT_LEFTARROWKEY;
-      case GHOST_kKeyRightArrow:
-        return EVT_RIGHTARROWKEY;
-      case GHOST_kKeyUpArrow:
-        return EVT_UPARROWKEY;
-      case GHOST_kKeyDownArrow:
-        return EVT_DOWNARROWKEY;
+    case GHOST_kKeyCapsLock:
+      return EVT_CAPSLOCKKEY;
+    case GHOST_kKeyNumLock:
+      return 0;
+    case GHOST_kKeyScrollLock:
+      return 0;
 
-      case GHOST_kKeyPrintScreen:
-        return 0;
-      case GHOST_kKeyPause:
-        return EVT_PAUSEKEY;
+    case GHOST_kKeyLeftArrow:
+      return EVT_LEFTARROWKEY;
+    case GHOST_kKeyRightArrow:
+      return EVT_RIGHTARROWKEY;
+    case GHOST_kKeyUpArrow:
+      return EVT_UPARROWKEY;
+    case GHOST_kKeyDownArrow:
+      return EVT_DOWNARROWKEY;
 
-      case GHOST_kKeyInsert:
-        return EVT_INSERTKEY;
-      case GHOST_kKeyDelete:
-        return EVT_DELKEY;
-      case GHOST_kKeyHome:
-        return EVT_HOMEKEY;
-      case GHOST_kKeyEnd:
-        return EVT_ENDKEY;
-      case GHOST_kKeyUpPage:
-        return EVT_PAGEUPKEY;
-      case GHOST_kKeyDownPage:
-        return EVT_PAGEDOWNKEY;
+    case GHOST_kKeyPrintScreen:
+      return 0;
+    case GHOST_kKeyPause:
+      return EVT_PAUSEKEY;
 
-      case GHOST_kKeyNumpadPeriod:
-        return EVT_PADPERIOD;
-      case GHOST_kKeyNumpadEnter:
-        return EVT_PADENTER;
-      case GHOST_kKeyNumpadPlus:
-        return EVT_PADPLUSKEY;
-      case GHOST_kKeyNumpadMinus:
-        return EVT_PADMINUS;
-      case GHOST_kKeyNumpadAsterisk:
-        return EVT_PADASTERKEY;
-      case GHOST_kKeyNumpadSlash:
-        return EVT_PADSLASHKEY;
+    case GHOST_kKeyInsert:
+      return EVT_INSERTKEY;
+    case GHOST_kKeyDelete:
+      return EVT_DELKEY;
+    case GHOST_kKeyHome:
+      return EVT_HOMEKEY;
+    case GHOST_kKeyEnd:
+      return EVT_ENDKEY;
+    case GHOST_kKeyUpPage:
+      return EVT_PAGEUPKEY;
+    case GHOST_kKeyDownPage:
+      return EVT_PAGEDOWNKEY;
 
-      case GHOST_kKeyGrLess:
-        return EVT_GRLESSKEY;
+    case GHOST_kKeyNumpadPeriod:
+      return EVT_PADPERIOD;
+    case GHOST_kKeyNumpadEnter:
+      return EVT_PADENTER;
+    case GHOST_kKeyNumpadPlus:
+      return EVT_PADPLUSKEY;
+    case GHOST_kKeyNumpadMinus:
+      return EVT_PADMINUS;
+    case GHOST_kKeyNumpadAsterisk:
+      return EVT_PADASTERKEY;
+    case GHOST_kKeyNumpadSlash:
+      return EVT_PADSLASHKEY;
 
-      case GHOST_kKeyMediaPlay:
-        return EVT_MEDIAPLAY;
-      case GHOST_kKeyMediaStop:
-        return EVT_MEDIASTOP;
-      case GHOST_kKeyMediaFirst:
-        return EVT_MEDIAFIRST;
-      case GHOST_kKeyMediaLast:
-        return EVT_MEDIALAST;
+    case GHOST_kKeyGrLess:
+      return EVT_GRLESSKEY;
 
-      default:
-        return EVT_UNKNOWNKEY; /* GHOST_kKeyUnknown */
-    }
+    case GHOST_kKeyMediaPlay:
+      return EVT_MEDIAPLAY;
+    case GHOST_kKeyMediaStop:
+      return EVT_MEDIASTOP;
+    case GHOST_kKeyMediaFirst:
+      return EVT_MEDIAFIRST;
+    case GHOST_kKeyMediaLast:
+      return EVT_MEDIALAST;
+
+    default:
+      return EVT_UNKNOWNKEY; /* GHOST_kKeyUnknown */
   }
 }
 

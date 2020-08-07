@@ -792,9 +792,8 @@ DrawDataList *DRW_drawdatalist_from_id(ID *id)
     IdDdtTemplate *idt = (IdDdtTemplate *)id;
     return &idt->drawdata;
   }
-  else {
-    return NULL;
-  }
+
+  return NULL;
 }
 
 DrawData *DRW_drawdata_get(ID *id, DrawEngineType *engine_type)
@@ -1658,7 +1657,6 @@ void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
   RenderEngineType *engine_type = engine->type;
-  RenderData *r = &scene->r;
   Render *render = engine->re;
 
   DRW_render_context_enable(render);
@@ -1680,7 +1678,7 @@ void DRW_render_gpencil(struct RenderEngine *engine, struct Depsgraph *depsgraph
   drw_context_state_init();
 
   DST.viewport = GPU_viewport_create();
-  const int size[2] = {(r->size * r->xsch) / 100, (r->size * r->ysch) / 100};
+  const int size[2] = {engine->resolution_x, engine->resolution_y};
   GPU_viewport_size_set(DST.viewport, size);
 
   drw_viewport_var_init();
@@ -1952,6 +1950,14 @@ void DRW_render_instance_buffer_finish(void)
   DST.buffer_finish_called = true;
   DRW_instance_buffer_finish(DST.idatalist);
   drw_resource_buffer_finish(DST.vmempool);
+}
+
+/* WARNING: Changing frame might free the ViewLayerEngineData */
+void DRW_render_set_time(RenderEngine *engine, Depsgraph *depsgraph, int frame, float subframe)
+{
+  RE_engine_frame_set(engine, frame, subframe);
+  DST.draw_ctx.scene = DEG_get_evaluated_scene(depsgraph);
+  DST.draw_ctx.view_layer = DEG_get_evaluated_view_layer(depsgraph);
 }
 
 /**
@@ -2719,6 +2725,12 @@ void DRW_render_context_enable(Render *render)
     WM_init_opengl();
   }
 
+  if (GPU_use_main_context_workaround()) {
+    GPU_context_main_lock();
+    DRW_opengl_context_enable();
+    return;
+  }
+
   void *re_gl_context = RE_gl_context_get(render);
 
   /* Changing Context */
@@ -2736,6 +2748,12 @@ void DRW_render_context_enable(Render *render)
 
 void DRW_render_context_disable(Render *render)
 {
+  if (GPU_use_main_context_workaround()) {
+    DRW_opengl_context_disable();
+    GPU_context_main_unlock();
+    return;
+  }
+
   void *re_gl_context = RE_gl_context_get(render);
 
   if (re_gl_context != NULL) {

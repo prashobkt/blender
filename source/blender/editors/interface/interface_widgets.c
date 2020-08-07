@@ -1401,7 +1401,7 @@ static void widget_draw_icon(
     }
   }
   else if (ELEM(but->type, UI_BTYPE_BUT)) {
-    if (but->flag & UI_BUT_DISABLED) {
+    if (but->flag & (UI_BUT_DISABLED | UI_BUT_INACTIVE)) {
       alpha *= 0.5f;
     }
   }
@@ -2403,7 +2403,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
     }
     else if (but->flag & UI_BUT_DRAG_MULTI) {
       bool text_is_edited = ui_but_drag_multi_edit_get(but) != NULL;
-      if (text_is_edited) {
+      if (text_is_edited || (but->drawflag & UI_BUT_TEXT_LEFT)) {
         rect->xmin += text_padding;
       }
     }

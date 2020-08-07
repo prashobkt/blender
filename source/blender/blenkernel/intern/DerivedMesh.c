@@ -2357,38 +2357,6 @@ void DM_debug_print(DerivedMesh *dm)
   MEM_freeN(str);
 }
 
-char *DM_debug_sprintfN_cdlayers(CustomData *data)
-{
-  int i;
-  const CustomDataLayer *layer;
-
-  DynStr *message = BLI_dynstr_new();
-  BLI_dynstr_append(message, "{\n");
-
-  for (i = 0, layer = data->layers; i < data->totlayer; i++, layer++) {
-
-    const char *name = CustomData_layertype_name(layer->type);
-    const int size = CustomData_sizeof(layer->type);
-    const char *structname;
-    int structnum;
-    CustomData_file_write_info(layer->type, &structname, &structnum);
-    BLI_dynstr_appendf(
-        message,
-        "        dict(name='%s', struct='%s', type=%d, ptr='%p', elem=%d, length=%d),\n",
-        name,
-        structname,
-        layer->type,
-        (const void *)layer->data,
-        size,
-        (int)(MEM_allocN_len(layer->data) / size));
-  }
-  BLI_dynstr_append(message, "}");
-
-  char *cstring = BLI_dynstr_get_cstring(message);
-  BLI_dynstr_free(message);
-  return cstring;
-}
-
 bool DM_is_valid(DerivedMesh *dm)
 {
   const bool do_verbose = true;

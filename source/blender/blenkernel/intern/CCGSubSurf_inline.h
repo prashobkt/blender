@@ -18,8 +18,7 @@
  * \ingroup bke
  */
 
-#ifndef __CCGSUBSURF_INLINE_H__
-#define __CCGSUBSURF_INLINE_H__
+#pragma once
 
 /* defined in CCGSubSurf_util.c */
 extern struct CLG_LogRef *BKE_LOG_SUBSURF_DUMP_COORDS;
@@ -277,5 +276,3 @@ BLI_INLINE void VertDataAvg4(float v[],
     v[i] = (a[i] + b[i] + c[i] + d[i]) * 0.25f;
   }
 }
-
-#endif /* __CCGSUBSURF_INLINE_H__ */

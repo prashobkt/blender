@@ -605,9 +605,7 @@ char *WM_operatortype_description(struct bContext *C,
       if (description[0]) {
         return description;
       }
-      else {
-        MEM_freeN(description);
-      }
+      MEM_freeN(description);
     }
   }
 
@@ -620,9 +618,7 @@ char *WM_operatortype_description(struct bContext *C,
   if (info && info[0]) {
     return BLI_strdup(info);
   }
-  else {
-    return NULL;
-  }
+  return NULL;
 }
 
 /** \} */

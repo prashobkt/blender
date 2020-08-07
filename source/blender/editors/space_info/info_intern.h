@@ -21,8 +21,7 @@
  * \ingroup spinfo
  */
 
-#ifndef __INFO_INTERN_H__
-#define __INFO_INTERN_H__
+#pragma once
 
 #include "DNA_windowmanager_types.h"
 
@@ -72,5 +71,3 @@ void INFO_OT_report_copy(struct wmOperatorType *ot);
 
 #define IS_REPORT_VISIBLE(report, report_mask, search_string) \
   (info_filter_text(report, search_string) && ((report)->type & report_mask))
-
-#endif /* __INFO_INTERN_H__ */

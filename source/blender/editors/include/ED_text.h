@@ -21,8 +21,7 @@
  * \ingroup editors
  */
 
-#ifndef __ED_TEXT_H__
-#define __ED_TEXT_H__
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,5 +51,3 @@ bool ED_text_is_syntax_highlight_supported(struct Text *text);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __ED_TEXT_H__ */
