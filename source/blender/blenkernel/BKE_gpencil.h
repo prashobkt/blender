@@ -17,8 +17,7 @@
  * This is a new part of Blender
  */
 
-#ifndef __BKE_GPENCIL_H__
-#define __BKE_GPENCIL_H__
+#pragma once
 
 /** \file
  * \ingroup bke
@@ -282,5 +281,3 @@ int BKE_gpencil_material_find_index_by_name_prefix(struct Object *ob, const char
 #ifdef __cplusplus
 }
 #endif
-
-#endif /*  __BKE_GPENCIL_H__ */

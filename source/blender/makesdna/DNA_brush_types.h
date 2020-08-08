@@ -21,8 +21,7 @@
  * \ingroup DNA
  */
 
-#ifndef __DNA_BRUSH_TYPES_H__
-#define __DNA_BRUSH_TYPES_H__
+#pragma once
 
 #include "DNA_ID.h"
 #include "DNA_curve_types.h"
@@ -352,6 +351,11 @@ typedef enum eBrushClothForceFalloffType {
   BRUSH_CLOTH_FORCE_FALLOFF_PLANE = 1,
 } eBrushClothForceFalloffType;
 
+typedef enum eBrushClothSimulationAreaType {
+  BRUSH_CLOTH_SIMULATION_AREA_LOCAL = 0,
+  BRUSH_CLOTH_SIMULATION_AREA_GLOBAL = 1,
+} eBrushClothSimulationAreaType;
+
 typedef enum eBrushPoseDeformType {
   BRUSH_POSE_DEFORM_ROTATE_TWIST = 0,
   BRUSH_POSE_DEFORM_SCALE_TRASLATE = 1,
@@ -547,7 +551,7 @@ typedef struct Brush {
   char gpencil_sculpt_tool;
   /** Active grease pencil weight tool. */
   char gpencil_weight_tool;
-  char _pad1[6];
+  char _pad1[2];
 
   float autosmooth_factor;
 
@@ -586,6 +590,7 @@ typedef struct Brush {
   /* cloth */
   int cloth_deform_type;
   int cloth_force_falloff_type;
+  int cloth_simulation_area_type;
 
   float cloth_mass;
   float cloth_damping;
@@ -740,6 +745,8 @@ typedef enum eBrushFlags2 {
   BRUSH_POSE_IK_ANCHORED = (1 << 2),
   BRUSH_USE_CONNECTED_ONLY = (1 << 3),
   BRUSH_CLOTH_PIN_SIMULATION_BOUNDARY = (1 << 4),
+  BRUSH_POSE_USE_LOCK_ROTATION = (1 << 5),
+  BRUSH_CLOTH_USE_COLLISION = (1 << 6),
 } eBrushFlags2;
 
 typedef enum {
@@ -939,5 +946,3 @@ enum {
 
 #define MAX_BRUSH_PIXEL_RADIUS 500
 #define GP_MAX_BRUSH_PIXEL_RADIUS 1000
-
-#endif /* __DNA_BRUSH_TYPES_H__ */
