@@ -288,30 +288,24 @@ class MeshTest:
         if not isinstance(modifier_parameters, dict):
             param_setting = None
             for i, setting in enumerate(nested_settings_path):
-                # We want to set the attribute only when we have reached the last setting
-                # Applying of intermediate settings is meaningless.
-                if i == len(nested_settings_path)-1:
-                    try:
+                try:
+                    # We want to set the attribute only when we have reached the last setting
+                    # Applying of intermediate settings is meaningless.
+                    if i == len(nested_settings_path)-1:
                         setattr(modifier, setting, modifier_parameters)
-                    except AttributeError:
-                        # Clean up first
-                        bpy.ops.object.delete()
-                        raise AttributeError("Modifier '{}' has no parameter named '{}'".
-                                             format(modifier_name, setting))
 
-                else:
-                    try:
+                    else:
                         param_setting = getattr(modifier, setting)
                         # getattr doesn't accept canvas_surfaces["Surface"], but we need to pass it to setattr
                         if setting == "canvas_surfaces":
                             modifier = param_setting.active
                         else:
                             modifier = param_setting
-                    except AttributeError:
-                        # Clean up first
-                        bpy.ops.object.delete()
-                        raise AttributeError("Modifier '{}' has no parameter named '{}'".
-                                             format(modifier_name, setting))
+                except AttributeError:
+                    # Clean up first
+                    bpy.ops.object.delete()
+                    raise AttributeError("Modifier '{}' has no parameter named '{}'".
+                                         format(modifier_name, setting))
 
             # It pops the current node before moving on to its sibling.
             nested_settings_path.pop()
@@ -513,7 +507,6 @@ class MeshTest:
             for mod_name in modifier_names:
                 self._apply_modifier(test_object, mod_name)
 
-
     def run_test(self):
         """
         Apply operations in self.operations_stack on self.test_object and compare the
@@ -546,25 +539,19 @@ class MeshTest:
             elif isinstance(operation, OperatorSpec):
                 self._apply_operator(evaluated_test_object, operation)
 
-            elif isinstance(operation, PhysicsSpec):
-                self._apply_physics_settings(evaluated_test_object, operation)
-
             elif isinstance(operation, ObjectOperatorSpec):
                 self._apply_object_operator(operation)
 
             elif isinstance(operation, DeformModifierSpec):
                 self._apply_modifier_operator(evaluated_test_object, operation)
 
-            elif isinstance(operation, FluidDyanmicPaintSpec):
-                self._apply_fluid_settings(evaluated_test_object, operation)
-
             elif isinstance(operation, ParticleSystemSpec):
                 self._apply_particle_system(evaluated_test_object, operation)
 
             else:
-                raise ValueError("Expected operation of type {} or {} or {} or {} or {} or {}. Got {}".
-                                 format(type(ModifierSpec), type(OperatorSpec), type(PhysicsSpec),
-                                        type(ObjectOperatorSpec), type(FluidDyanmicPaintSpec), type(ParticleSystemSpec), type(operation)))
+                raise ValueError("Expected operation of type {} or {} or {} or {}. Got {}".
+                                 format(type(ModifierSpec), type(OperatorSpec),
+                                        type(ObjectOperatorSpec), type(ParticleSystemSpec), type(operation)))
 
         # Compare resulting mesh with expected one.
         if self.verbose:
