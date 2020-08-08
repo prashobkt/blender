@@ -1785,12 +1785,23 @@ static void move_to_collection_menu_create(bContext *UNUSED(C), uiLayout *layout
   }
 }
 
+static int collection_color_to_icon(Collection *collection)
+{
+  int icon = ICON_NONE;
+
+  if (collection->color != COLLECTION_COLOR_NONE) {
+    icon = ICON_COLLECTION_COLOR_01 + (collection->color - 1);
+  }
+
+  return icon;
+}
+
 static void move_to_collection_menus_items(uiLayout *layout, MoveToCollectionData *menu)
 {
   if (BLI_listbase_is_empty(&menu->submenus)) {
     uiItemIntO(layout,
                menu->collection->id.name + 2,
-               ICON_NONE,
+               collection_color_to_icon(menu->collection),
                menu->ot->idname,
                "collection_index",
                menu->index);
