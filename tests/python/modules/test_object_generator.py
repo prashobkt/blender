@@ -34,7 +34,8 @@ def vertex_selection(obj, vert_set: set, randomize: bool):
     Selecting vertices which will be later assigned to vertex groups
     :param: obj: the selected object for vertex group
     :param: vert_set: set of indices e.g.{0,2,3)
-    :param: randomize: bool: select vertices randomly"""
+    :param: randomize: bool: select vertices randomly
+    """
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='DESELECT')
     bpy.ops.object.mode_set(mode='OBJECT')
@@ -59,7 +60,8 @@ def create_vertex_group(obj_name, vg_name, vg_vert_set, randomize):
     :param obj_name : blend object: - the object for vertex group
     :param vg_name : str - vertex group name
     :param vg_vert_set : set - set of vertices assgined to the vertex group
-    :param randomize : bool - select random vertices"""
+    :param randomize : bool - select random vertices
+    """
     #   Validating user input
     #  -checking for whether the object exists
     #  -index value is within the right range
@@ -110,7 +112,7 @@ def create_test_objects(collection_name, obj_dict):
     :param collection_name: str - name of the collection for test and expected objects
     :param obj_dict: dict (key:value) - dictionary contains test object names and types, e.g. {'myTestCube':'Cube'}
     :param helper: bool - object is a helper object or a test object.
-     """
+    """
     offset_y = get_last_location() + 5
     obj_list = []
 

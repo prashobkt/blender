@@ -227,12 +227,19 @@ add_blender_test(
 
 add_blender_test(
   particle_system
-  ${TEST_SRC_DIR}/modeling/particle_test.blend
+  ${TEST_SRC_DIR}/physics/physics_particle_test.blend
   --python ${TEST_PYTHON_DIR}/physics_particle_system.py
   --
   --run-all-tests
 )
 
+add_blender_test(
+  particle_instance
+  ${TEST_SRC_DIR}/physics/physics_particle_instance.blend
+  --python ${TEST_PYTHON_DIR}/physics_particle_instance.py
+  --
+  --run-all-tests
+)
 
 add_blender_test(
   constraints
