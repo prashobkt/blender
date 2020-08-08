@@ -29,14 +29,14 @@ from modules.mesh_test import ModifierTest, ModifierSpec
 
 def main():
     test = [
-        #
-        # ["FluidLiquid", "test", "exp",
-        #  [FluidSpec('fluid_liquid', 'FLUID', 'DOMAIN', {'domain_type': 'LIQUID', 'use_mesh': True, 'cache_type': 'ALL',
-        #                                        'cache_frame_end': 20}, 20)]],
-
+        # For nested settings, use a nested dictionary, enable Python tooltips.
+        # THere might be some Blender warnings like "unable to remove directory/file"
+        # There might be a System Error message as well PyEval System Error.
         ["FluidLiquid", "test", "exp",
-         [ModifierSpec('fluid_liquid', 'FLUID', {'fluid_type': 'DOMAIN', 'domain_settings': {'domain_type': 'LIQUID', 'use_mesh': True, 'cache_type': 'ALL',
-                                                                                           'cache_frame_end': 20}})]],
+         [ModifierSpec('fluid_liquid', 'FLUID', {'fluid_type': 'DOMAIN', 'domain_settings':
+                                                 {'domain_type': 'LIQUID', 'use_mesh': True,
+                                                  'cache_type': 'ALL', 'cache_directory': "fluidy_cache",
+                                                  'cache_frame_end': 20}}, 20)]],
 
     ]
     fluid_test = ModifierTest(test)
