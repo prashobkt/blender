@@ -547,6 +547,70 @@ class CellsInfo {
   }
 };
 
+/* For Debugging: write a .obj file showing the patch/cell structure or just the cells. */
+void write_obj_cell_patch(const Mesh &m,
+                          const CellsInfo &cinfo,
+                          const PatchesInfo &pinfo,
+                          bool cells_only,
+                          const std::string &name)
+{
+  /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
+   * This is just for developer debugging anyway, and should never be called in production Blender.
+   */
+#  ifdef _WIN_32
+  const char *objdir = BLI_getenv("HOME");
+#  else
+  const char *objdir = "/tmp/";
+#  endif
+
+  std::string fname = std::string(objdir) + name + std::string("_cellpatch.obj");
+  std::ofstream f;
+  f.open(fname);
+  if (!f) {
+    std::cout << "Could not open file " << fname << "\n";
+    return;
+  }
+
+  /* Copy Mesh so can populate verts. */
+  Mesh mm = m;
+  mm.populate_vert();
+  f << "o cellpatch\n";
+  for (Vertp v : mm.vertices()) {
+    const double3 dv = v->co;
+    f << "v " << dv[0] << " " << dv[1] << " " << dv[2] << "\n";
+  }
+  if (!cells_only) {
+    for (int p : pinfo.index_range()) {
+      f << "g patch" << p << "\n";
+      const Patch &patch = pinfo.patch(p);
+      for (int t : patch.tris()) {
+        const Face &tri = *mm.face(t);
+        f << "f ";
+        for (Vertp v : tri) {
+          f << mm.lookup_vert(v) + 1 << " ";
+        }
+        f << "\n";
+      }
+    }
+  }
+  for (int c : cinfo.index_range()) {
+    f << "g cell" << c << "\n";
+    const Cell &cell = cinfo.cell(c);
+    for (int p : cell.patches()) {
+      const Patch &patch = pinfo.patch(p);
+      for (int t : patch.tris()) {
+        const Face &tri = *mm.face(t);
+        f << "f ";
+        for (Vertp v : tri) {
+          f << mm.lookup_vert(v) + 1 << " ";
+        }
+        f << "\n";
+      }
+    }
+  }
+  f.close();
+}
+
 static void merge_cells(int merge_to, int merge_from, CellsInfo &cinfo, PatchesInfo &pinfo)
 {
   if (merge_to == merge_from) {
@@ -1324,6 +1388,97 @@ static int find_ambient_cell(const Mesh &tm,
   return c_ambient;
 }
 
+/* We need an edge on the convex hull of the edges incident on closestp
+ * in order to sort around, including a dummy triangle that has testp and
+ * the sorting edge vertices. So we don't want an edge that is collinear
+ * with the line through testp and closestp.
+ * The method is to project onto a plane that contains testp-closestp,
+ * and then choose the edge that, when projected, has the maximum absolute
+ * slope (regarding the line testp-closestp as the xaxis for slope computation).
+ */
+static Edge find_good_sorting_edge(Vertp testp,
+                                   Vertp closestp,
+                                   const Mesh &tm,
+                                   const TriMeshTopology &tmtopo)
+{
+  constexpr int dbg_level = 0;
+  if (dbg_level > 0) {
+    std::cout << "FIND_GOOD_SORTING_EDGE testp = " << testp << ", closestp = " << closestp << "\n";
+  }
+  /* We want to project the edges incident to closestp onto a plane
+   * whose ordinate direction will be regarded as going from closetp to testp,
+   * and whose abscissa direction is some perpendicular to that.
+   * A perpendicular direction can be found by swapping two coordinates
+   * and negating one, and zeroing out the third, being careful that one
+   * of the swapped vertices is non-zero.
+   */
+  const mpq3 &co_closest = closestp->co_exact;
+  const mpq3 &co_test = testp->co_exact;
+  BLI_assert(!(co_test == co_closest));
+  mpq3 abscissa = co_test - co_closest;
+  /* Find a non-zero-component axis of abscissa. */
+  int axis;
+  for (axis = 0; axis < 3; ++axis) {
+    if (abscissa[axis] != 0) {
+      break;
+    }
+  }
+  BLI_assert(axis < 3);
+  int axis_next = (axis + 1) % 3;
+  int axis_next_next = (axis_next + 1) % 3;
+  mpq3 ordinate;
+  ordinate[axis] = abscissa[axis_next];
+  ordinate[axis_next] = -abscissa[axis];
+  ordinate[axis_next_next] = 0;
+  /* By construction, dot(abscissa, ordinate) == 0, so they are perpendicular. */
+  mpq3 normal = mpq3::cross(abscissa, ordinate);
+  if (dbg_level > 0) {
+    std::cout << "abscissa = " << abscissa << "\n";
+    std::cout << "ordinate = " << ordinate << "\n";
+    std::cout << "normal = " << normal << "\n";
+  }
+  mpq_class nlen2 = normal.length_squared();
+  mpq_class max_abs_slope = -1;
+  Edge esort;
+  const Vector<Edge> &edges = tmtopo.vert_edges(closestp);
+  for (Edge e : edges) {
+    const Vertp v_other = (e.v0() == closestp) ? e.v1() : e.v0();
+    const mpq3 &co_other = v_other->co_exact;
+    mpq3 evec = co_other - co_closest;
+    /* Get projection of evec onto plane of abscissa and ordinate. */
+    mpq3 proj_evec = evec - (mpq3::dot(evec, normal) / nlen2) * normal;
+    /* The projection calculations along the abscissa and ordinate should
+     * be scaled by 1/abscissa and 1/ordinate respectively,
+     * but we can skip: it won't affect which evec has the maximum slope.
+     */
+    mpq_class evec_a = mpq3::dot(proj_evec, abscissa);
+    mpq_class evec_o = mpq3::dot(proj_evec, ordinate);
+    if (dbg_level > 0) {
+      std::cout << "e = " << e << "\n";
+      std::cout << "v_other = " << v_other << "\n";
+      std::cout << "evec = " << evec << ", proj_evec = " << proj_evec << "\n";
+      std::cout << "evec_a = " << evec_a << ", evec_o = " << evec_o << "\n";
+    }
+    if (evec_a == 0) {
+      /* evec is perpendicular to abscissa. */
+      esort = e;
+      if (dbg_level > 0) {
+        std::cout << "perpendicular esort is " << esort << "\n";
+      }
+      break;
+    }
+    mpq_class abs_slope = abs(evec_o / evec_a);
+    if (abs_slope > max_abs_slope) {
+      esort = e;
+      max_abs_slope = abs_slope;
+      if (dbg_level > 0) {
+        std::cout << "with abs_slope " << abs_slope << " new esort is " << esort << "\n";
+      }
+    }
+  }
+  return esort;
+}
+
 /* Find the cell that contains v. Consider the cells adjacent to triangle t.
  * The close_edge and close_vert values are what were returned by
  * closest_on_tri_to_point when determining that v was close to t.
@@ -1349,35 +1504,39 @@ static int find_containing_cell(Vertp v,
     std::cout << "FIND_CONTAINING_CELL v=" << v << ", t=" << t << "\n";
   }
   const Face &tri = *tm.face(t);
-  int sort_edge_index;
+  Edge etest;
   if (close_edge != -1) {
-    sort_edge_index = close_edge;
-  }
-  else if (close_vert != -1) {
-    /* TODO: supposed to find a convex edge here! As in find_ambient_cell. */
-    sort_edge_index = close_vert;
+    Vertp v0 = tri[close_edge];
+    Vertp v1 = tri[(close_edge + 1) % 3];
+    const Vector<Edge> &edges = tmtopo.vert_edges(v0);
+    if (dbg_level > 0) {
+      std::cout << "look for edge containing " << v0 << " and " << v1 << "\n";
+      std::cout << "  in edges: ";
+      for (Edge e : edges) {
+        std::cout << e << " ";
+      }
+      std::cout << "\n";
+    }
+    for (Edge e : edges) {
+      if ((e.v0() == v0 && e.v1() == v1) || (e.v0() == v1 && e.v1() == v0)) {
+        etest = e;
+        break;
+      }
+    }
   }
   else {
-    /* TODO: supposed to find a convex edge here! */
-    sort_edge_index = 0;
-  }
-  Vertp v0 = tri[sort_edge_index];
-  Vertp v1 = tri[(sort_edge_index + 1) % 3];
-  const Vector<Edge> &edges = tmtopo.vert_edges(v0);
-  if (dbg_level > 0) {
-    std::cout << "look for edge containing " << v0 << " and " << v1 << "\n";
-    std::cout << "  in edges: ";
-    for (Edge e : edges) {
-      std::cout << e << " ";
+    int cv = close_vert;
+    if (cv == -1) {
+      /* Closest point is inside the triangle. Pick any vert for closest. */
+      cv = 0;
     }
-    std::cout << "\n";
-  }
-  Edge etest;
-  for (Edge e : edges) {
-    if ((e.v0() == v0 && e.v1() == v1) || (e.v0() == v1 && e.v1() == v0)) {
-      etest = e;
-      break;
+    Vertp vert_cv = tri[cv];
+    if (vert_cv == v) {
+      /* Need to use another one to find sorting edge. */
+      vert_cv = tri[(cv + 1) % 3];
+      BLI_assert(vert_cv != v);
     }
+    etest = find_good_sorting_edge(v, vert_cv, tm, tmtopo);
   }
   BLI_assert(etest.v0() != nullptr);
   if (dbg_level > 0) {
@@ -1545,12 +1704,12 @@ static Vector<ComponentContainer> find_component_containers(int comp,
     if (dbg_level > 0) {
       std::cout << "comp_other = " << comp_other << "\n";
     }
+    int nearest_tri = NO_INDEX;
+    int nearest_tri_close_vert = -1;
+    int nearest_tri_close_edge = -1;
+    mpq_class nearest_tri_dist_squared;
     for (int p : components[comp_other]) {
       const Patch &patch = pinfo.patch(p);
-      int nearest_tri = NO_INDEX;
-      int nearest_tri_close_vert = -1;
-      int nearest_tri_close_edge = -1;
-      mpq_class nearest_tri_dist_squared;
       for (int t : patch.tris()) {
         const Face tri = *tm.face(t);
         if (dbg_level > 1) {
@@ -1575,22 +1734,29 @@ static Vector<ComponentContainer> find_component_containers(int comp,
           nearest_tri_dist_squared = d2;
         }
       }
-      if (dbg_level > 0) {
-        std::cout << "closest tri to comp=" << comp << " in comp_other=" << comp_other << " is t"
-                  << nearest_tri << "\n";
-      }
-      int containing_cell = find_containing_cell(test_v,
-                                                 nearest_tri,
-                                                 nearest_tri_close_edge,
-                                                 nearest_tri_close_vert,
+    }
+    if (dbg_level > 0) {
+      std::cout << "closest tri to comp=" << comp << " in comp_other=" << comp_other << " is t"
+                << nearest_tri << "\n";
+      Facep tn = tm.face(nearest_tri);
+      std::cout << "tri = " << tn << "\n";
+      std::cout << "  (" << tn->vert[0]->co << "," << tn->vert[1]->co << "," << tn->vert[2]->co
+                << ")\n";
+    }
+    int containing_cell = find_containing_cell(test_v,
+                                               nearest_tri,
+                                               nearest_tri_close_edge,
+                                               nearest_tri_close_vert,
 
-                                                 pinfo,
-                                                 tm,
-                                                 tmtopo,
-                                                 arena);
-      if (containing_cell != ambient_cell[comp_other]) {
-        ans.append(ComponentContainer(comp_other, containing_cell, nearest_tri_dist_squared));
-      }
+                                               pinfo,
+                                               tm,
+                                               tmtopo,
+                                               arena);
+    if (dbg_level > 0) {
+      std::cout << "containing cell = " << containing_cell << "\n";
+    }
+    if (containing_cell != ambient_cell[comp_other]) {
+      ans.append(ComponentContainer(comp_other, containing_cell, nearest_tri_dist_squared));
     }
   }
   return ans;
@@ -1652,6 +1818,9 @@ static void finish_patch_cell_graph(const Mesh &tm,
       std::cout << "\n";
     }
   }
+  if (dbg_level > 1) {
+    write_obj_cell_patch(tm, cinfo, pinfo, false, "beforemerge");
+  }
   /* For nested components, merge their ambient cell with the nearest containing cell. */
   Vector<int> outer_components;
   for (int comp : comp_cont.index_range()) {
@@ -1696,6 +1865,9 @@ static void finish_patch_cell_graph(const Mesh &tm,
     std::cout << "Patches\n";
     for (int i : pinfo.index_range()) {
       std::cout << i << ": " << pinfo.patch(i) << "\n";
+    }
+    if (dbg_level > 1) {
+      write_obj_cell_patch(tm, cinfo, pinfo, false, "finished");
     }
   }
 }
@@ -2666,7 +2838,7 @@ static Mesh polymesh_from_trimesh_with_dissolve(const Mesh &tm_out,
                                                 MArena *arena)
 {
   const int dbg_level = 0;
-  if (dbg_level > 0) {
+  if (dbg_level > 1) {
     std::cout << "\nPOLYMESH_FROM_TRIMESH_WITH_DISSOLVE\n";
   }
   /* Gather all output triangles that are part of each input face.
@@ -2714,7 +2886,6 @@ static Mesh polymesh_from_trimesh_with_dissolve(const Mesh &tm_out,
     }
   }
   Mesh pm_out(face);
-
   /* Dissolve vertices that were (a) not original; and (b) now have valence 2 and
    * are between two other vertices that are exactly in line with them.
    * These were created because of triangulation edges that have been dissolved.
