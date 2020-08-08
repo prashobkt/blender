@@ -84,7 +84,7 @@ class ParticleSystemSpec:
         """
         Constructs a particle system spec.
         :param modifier_name: str - name of object modifier, e.g. "Particles"
-        :param modifier_type: str - type of object modifier, e.g. "PARTICLE_SYSTEM", can be removed
+        :param modifier_type: str - type of object modifier, e.g. "PARTICLE_SYSTEM"
         :param modifier_parameters: dict - {name : val} dictionary giving modifier parameters, e.g. {"seed" : 1}
         :param frame_end:int - the last frame of the simulation at which the modifier is applied
         """
@@ -420,7 +420,7 @@ class MeshTest:
                 raise AttributeError("Modifier '{}' has no parameter named '{}'".
                                      format(particle_sys_spec.modifier_type, param_name))
 
-        bpy.context.scene.frame_set(20)
+        bpy.context.scene.frame_set(particle_sys_spec.frame_end)
         test_object.select_set(True)
         bpy.ops.object.duplicates_make_real()
         test_object.select_set(True)
