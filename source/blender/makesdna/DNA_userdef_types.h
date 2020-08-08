@@ -541,13 +541,12 @@ typedef struct bUserMenu {
 typedef struct bUserMenuItem {
   struct bUserMenuItem *next, *prev;
   struct bUserMenuItem_SubMenu *parent;
+  int icon;
   char ui_name[64];
   char type;
-  char icon;
   // editor
-  char icon_name[64];
   char is_selected;
-  char _pad0[5];
+  char _pad0[2];
 } bUserMenuItem;
 
 typedef struct bUserMenuItem_Op {

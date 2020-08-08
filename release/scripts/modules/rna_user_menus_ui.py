@@ -68,9 +68,9 @@ def draw_button(context, box, item, index):
     row = col.row(align=True)
     if item.type == "SEPARATOR":
         name = "___________"
-    icons = bpy.types.UILayout.bl_rna.functions["prop"].parameters["icon"].enum_items.keys()
-    selected_icon = icons[item.icon]
-    row.prop(item, "is_selected", icon=selected_icon, text=name, toggle=1)
+    #icons = bpy.types.UILayout.bl_rna.functions["prop"].parameters["icon"].enum_items.keys()
+    #selected_icon = icons[item.icon]
+    row.prop(item, "is_selected", icon=item.icon, text=name, toggle=1)
     if item.type == "SUBMENU":
         sm = item.get_submenu()
         if um.active_group.is_pie and index >= 0:
@@ -147,11 +147,7 @@ def draw_item_editor(context, row):
         col.prop(current, "type")
         if (current.type != "SEPARATOR"):
             rowsub = col.row(align=True)
-            icons = bpy.types.UILayout.bl_rna.functions["prop"].parameters["icon"].enum_items.keys()
-            current.icon_name = icons[current.icon]
-            rowsub.operator("preferences.icon_change", text="", icon='TRIA_LEFT').value = -1
-            rowsub.prop(current, "icon_name", text="")
-            rowsub.operator("preferences.icon_change", text="", icon='TRIA_RIGHT').value = 1
+            rowsub.prop(current, "icon", icon=current.icon, text="")
             col.prop(current, "name")
         if (current.type == "OPERATOR"):
             umi_op = current.get_operator()

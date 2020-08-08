@@ -1334,23 +1334,6 @@ class PREFERENCES_OT_pie_menuitem_add(Operator):
         context.preferences.is_dirty = True
         return {'FINISHED'}
 
-class PREFERENCES_OT_icon_change(Operator):
-    """change user menu item icon"""
-    bl_idname = "preferences.icon_change"
-    bl_label = "Change User Menu Item Icon"
-
-    value: IntProperty()
-
-    def execute(self, context):
-        prefs = context.preferences
-        um = prefs.user_menus
-        item = um.active_item
-        icons = bpy.types.UILayout.bl_rna.functions["prop"].parameters["icon"].enum_items.keys()
-
-        item.icon = item.icon + self.value
-        item.icon_name = icons[item.icon]
-        return {'FINISHED'}
-
 classes = (
     PREFERENCES_OT_addon_disable,
     PREFERENCES_OT_addon_enable,
@@ -1384,5 +1367,4 @@ classes = (
     PREFERENCES_OT_menuitem_up,
     PREFERENCES_OT_menuitem_down,
     PREFERENCES_OT_pie_menuitem_add,
-    PREFERENCES_OT_icon_change,
 )

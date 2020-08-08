@@ -6633,19 +6633,11 @@ static void rna_def_userdef_usermenu(BlenderRNA *brna)
       prop, "rna_UserDef_usermenus_item_type_get", "rna_UserDef_usermenus_item_type_set", NULL);
   RNA_def_property_ui_text(prop, "type", "the type of item");
 
-  prop = RNA_def_property(srna, "icon", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, NULL, "icon");
-  RNA_def_property_range(prop, 0, 255);
-  RNA_def_property_ui_text(prop, "icon", "the icon to display");
-
-  prop = RNA_def_property(srna, "icon_name", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, NULL, "icon_name");
-  RNA_def_property_ui_text(prop, "Icon Name", "Name of the icon");
-  // RNA_def_property_string_funcs(prop,
-  //                              "rna_UserDef_usermenus_item_icon_name_get",
-  //                              NULL,
-  //                              "rna_UserDef_usermenus_item_icon_name_set");
-  //                              RNA_def_struct_name_property(srna, prop);
+  prop = RNA_def_property(srna, "icon", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "icon");
+  RNA_def_property_enum_items(prop, rna_enum_icon_items);
+  RNA_def_property_enum_default(prop, ICON_NONE);
+  RNA_def_property_ui_text(prop, "Icon", "The item icon");
 
   prop = RNA_def_property(srna, "is_selected", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "is_selected", 0);
