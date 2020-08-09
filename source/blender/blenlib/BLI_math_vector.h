@@ -20,8 +20,7 @@
  *
  * */
 
-#ifndef __BLI_MATH_VECTOR_H__
-#define __BLI_MATH_VECTOR_H__
+#pragma once
 
 /** \file
  * \ingroup bli
@@ -533,5 +532,3 @@ void mul_vn_db(double *array_tar, const int size, const double f);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __BLI_MATH_VECTOR_H__ */

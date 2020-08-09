@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BLI_DELAUNAY_2D_H__
-#define __BLI_DELAUNAY_2D_H__
+#pragma once
 
 /** \file
  * \ingroup bli
@@ -267,5 +266,3 @@ CDT_result<mpq_class> delaunay_2d_calc(const CDT_input<mpq_class> &input,
 } /* namespace blender::meshintersect */
 
 #endif /* __cplusplus */
-
-#endif /* __BLI_DELAUNAY_2D_H__ */
