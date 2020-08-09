@@ -41,7 +41,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "../gpencil_io_exporter.h"
-#include "gpencil_io_svg.h"
+#include "gpencil_io_export_svg.h"
 
 using blender::io::gpencil::GpencilExporterSVG;
 
