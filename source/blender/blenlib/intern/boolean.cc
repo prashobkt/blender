@@ -548,11 +548,11 @@ class CellsInfo {
 };
 
 /* For Debugging: write a .obj file showing the patch/cell structure or just the cells. */
-void write_obj_cell_patch(const Mesh &m,
-                          const CellsInfo &cinfo,
-                          const PatchesInfo &pinfo,
-                          bool cells_only,
-                          const std::string &name)
+static void write_obj_cell_patch(const Mesh &m,
+                                 const CellsInfo &cinfo,
+                                 const PatchesInfo &pinfo,
+                                 bool cells_only,
+                                 const std::string &name)
 {
   /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
    * This is just for developer debugging anyway, and should never be called in production Blender.
@@ -1396,10 +1396,7 @@ static int find_ambient_cell(const Mesh &tm,
  * and then choose the edge that, when projected, has the maximum absolute
  * slope (regarding the line testp-closestp as the xaxis for slope computation).
  */
-static Edge find_good_sorting_edge(Vertp testp,
-                                   Vertp closestp,
-                                   const Mesh &tm,
-                                   const TriMeshTopology &tmtopo)
+static Edge find_good_sorting_edge(Vertp testp, Vertp closestp, const TriMeshTopology &tmtopo)
 {
   constexpr int dbg_level = 0;
   if (dbg_level > 0) {
@@ -1536,7 +1533,7 @@ static int find_containing_cell(Vertp v,
       vert_cv = tri[(cv + 1) % 3];
       BLI_assert(vert_cv != v);
     }
-    etest = find_good_sorting_edge(v, vert_cv, tm, tmtopo);
+    etest = find_good_sorting_edge(v, vert_cv, tmtopo);
   }
   BLI_assert(etest.v0() != nullptr);
   if (dbg_level > 0) {
@@ -2504,8 +2501,7 @@ static bool dissolve_leaves_valid_bmesh(FaceMergeState *fms,
                                         const MergeFace &mf_right)
 {
   int a_edge_start = mf_left.edge.first_index_of_try(me_index);
-  int b_edge_start = mf_right.edge.first_index_of_try(me_index);
-  BLI_assert(a_edge_start != -1 && b_edge_start != -1);
+  BLI_assert(a_edge_start != -1);
   int alen = static_cast<int>(mf_left.vert.size());
   int blen = static_cast<int>(mf_right.vert.size());
   int b_left_face = me.right_face;
