@@ -75,6 +75,7 @@ bool GpencilExporterSVG::write(std::string subfix,
                                const bool body,
                                const bool savepage)
 {
+  bool result = true;
   /* Create new document and add header. */
   if (newpage) {
     create_document_header();
@@ -94,10 +95,22 @@ bool GpencilExporterSVG::write(std::string subfix,
       frame_file.replace(found, 8, subfix + ".svg");
     }
 
-    return doc.save_file(frame_file.c_str());
+/* Support unicode character paths on Windows. */
+#ifdef WIN32
+    char filename_cstr[FILE_MAX];
+    BLI_strncpy(filename_cstr, frame_file.c_str(), FILE_MAX);
+
+    UTF16_ENCODE(filename_cstr);
+    std::wstring wstr(filename_cstr_16);
+    result = doc.save_file(wstr.c_str());
+
+    UTF16_UN_ENCODE(filename_cstr);
+#else
+    result = doc.save_file(frame_file.c_str());
+#endif
   }
 
-  return true;
+  return result;
 }
 
 /* Create document header and main svg node. */

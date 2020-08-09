@@ -33,18 +33,12 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
-#include "BLI_path_util.h"
-#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_gpencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
-
-#ifdef WIN32
-#  include "utfconv.h"
-#endif
 
 #include "UI_view2d.h"
 
@@ -91,8 +85,6 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   gpd = (bGPdata *)params_.obact->data;
   const bool is_storyboard = ((params_.flag & GP_EXPORT_STORYBOARD_MODE) != 0);
 
-  Scene *scene = CTX_data_scene(params_.C);
-
   /* Load list of selected objects. */
   create_object_list();
 
@@ -131,8 +123,8 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
       rctf boundbox;
       get_select_boundbox(&boundbox);
 
-      render_x_ = boundbox.xmax - boundbox.xmin;  // winx_;
-      render_y_ = boundbox.ymax - boundbox.ymin;  // winy_;
+      render_x_ = boundbox.xmax - boundbox.xmin;
+      render_y_ = boundbox.ymax - boundbox.ymin;
       offset_[0] = boundbox.xmin;
       offset_[1] = boundbox.ymin;
     }
@@ -199,10 +191,6 @@ void GpencilExporter::set_out_filename(char *filename)
 {
   BLI_strncpy(out_filename_, filename, FILE_MAX);
   BLI_path_abs(out_filename_, BKE_main_blendfile_path(bmain));
-
-  //#ifdef WIN32
-  //  UTF16_ENCODE(svg_filename);
-  //#endif
 }
 
 /* Convert to screen space. */
