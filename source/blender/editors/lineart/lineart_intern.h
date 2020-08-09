@@ -56,7 +56,7 @@ LineartStaticMemPoolNode *lineart_mem_new_static_pool(struct LineartStaticMemPoo
                                                       size_t size);
 void *lineart_mem_aquire(struct LineartStaticMemPool *smp, size_t size);
 void *lineart_mem_aquire_thread(struct LineartStaticMemPool *smp, size_t size);
-void *lineart_mem_destroy(LineartStaticMemPool *smp);
+void lineart_mem_destroy(LineartStaticMemPool *smp);
 
 void lineart_matrix_ortho_44d(double (*mProjection)[4],
                               double xMin,

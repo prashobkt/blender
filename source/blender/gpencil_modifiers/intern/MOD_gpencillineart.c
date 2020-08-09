@@ -168,7 +168,8 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
     /* Don't have data yet, update line art. Note:  ED_lineart_post_frame_update_external will
      * automatically return when calculation is already in progress.*/
     if (is_render) {
-      ED_lineart_post_frame_update_external(NULL, DEG_get_evaluated_scene(depsgraph), depsgraph);
+      ED_lineart_post_frame_update_external(
+          NULL, DEG_get_evaluated_scene(depsgraph), depsgraph, true);
       while (!ED_lineart_modifier_sync_flag_check(LRT_SYNC_FRESH) ||
              !ED_lineart_calculation_flag_check(LRT_RENDER_FINISHED)) {
         /* Wait till it's done. */

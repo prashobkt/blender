@@ -271,6 +271,7 @@ typedef enum eLineartModifierSyncStatus {
   LRT_SYNC_WAITING = 1,
   LRT_SYNC_FRESH = 2,
   LRT_SYNC_IGNORE = 3,
+  LRT_SYNC_CLEARING = 4
 } eLineartModifierSyncStatus;
 
 typedef struct LineartSharedResource {
@@ -550,7 +551,8 @@ struct bContext;
 
 void ED_lineart_post_frame_update_external(struct bContext *C,
                                            struct Scene *s,
-                                           struct Depsgraph *dg);
+                                           struct Depsgraph *dg,
+                                           bool from_modifier);
 
 struct SceneLineart;
 

@@ -385,9 +385,9 @@ static void lineart_occlusion_single_line(LineartRenderBuffer *rb,
                  l,
                  r,
                  ((Object *)rt->base.rl[0]->object_ref)->id.name,
-                 rt->base.rl[0]->object_ref,
+                 (int)rt->base.rl[0]->object_ref,
                  ((Object *)rl->object_ref)->id.name,
-                 rl->object_ref);
+                 (int)rl->object_ref);
         }
         if (rl->min_occ > rb->max_occlusion_level) {
           return; /* No need to caluclate any longer. */
@@ -2444,6 +2444,12 @@ void ED_lineart_modifier_sync_flag_set(eLineartModifierSyncStatus flag,
 {
   BLI_spin_lock(&lineart_share.lock_render_status);
 
+  if (flag != LRT_RENDER_IDLE) {
+    while (lineart_share.flag_sync_staus == LRT_SYNC_CLEARING) {
+      /* Waiting, no double clearing in a new call. */
+    }
+  }
+
   lineart_share.flag_sync_staus = flag;
 
   BLI_spin_unlock(&lineart_share.lock_render_status);
@@ -3889,7 +3895,10 @@ void SCENE_OT_lineart_bake_strokes(wmOperatorType *ot)
   ot->exec = lineart_gpencil_bake_strokes_exec;
 }
 
-void ED_lineart_post_frame_update_external(bContext *C, Scene *scene, Depsgraph *dg)
+void ED_lineart_post_frame_update_external(bContext *C,
+                                           Scene *scene,
+                                           Depsgraph *dg,
+                                           bool from_modifier)
 {
   if (!(scene->lineart.flags & LRT_AUTO_UPDATE)) {
     /* This way the modifier will update, removing remaing strokes in the viewport. */
@@ -3924,13 +3933,22 @@ void ED_lineart_post_frame_update_external(bContext *C, Scene *scene, Depsgraph 
     }
   }
   else if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_FRESH)) {
-    /* At this stage GP should have all the data. We clear the flag */
-    ED_lineart_modifier_sync_flag_set(LRT_SYNC_IDLE, false);
+    /* To avoid double clearing. */
+    ED_lineart_modifier_sync_flag_set(LRT_SYNC_CLEARING, from_modifier);
+
+    /* TODO in the future: the call below seems to cause crash (double free) when using eevee in
+     * SOME files, not sure why but  */
+
     /* Due to using GPencil modifiers, and the scene is updated each time some value is changed, we
      * really don't need to keep the buffer any longer. If in the future we want fast refresh on
      * parameter changes (e.g. thickness or picking different result in an already validated
-     * buffer), remove this call below. */
-    ED_lineart_destroy_render_data_external();
+     * buffer), remove ED_lineart_destroy_render_data_external() below. */
+    if (!from_modifier) {
+      ED_lineart_destroy_render_data_external();
+    }
+
+    /* At this stage GP should have all the data. We clear the flag */
+    ED_lineart_modifier_sync_flag_set(LRT_SYNC_IDLE, from_modifier);
   }
 }
 
