@@ -22,7 +22,7 @@
 
 #include "DNA_material_types.h"
 
-#include "gpencil_io_base.h"
+#include "gpencil_io_export_base.h"
 #include "pugixml.hpp"
 
 struct Main;

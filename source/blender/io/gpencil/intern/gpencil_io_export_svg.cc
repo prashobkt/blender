@@ -54,8 +54,8 @@
 
 #include "ED_view3d.h"
 
+#include "gpencil_io_export_svg.h"
 #include "gpencil_io_exporter.h"
-#include "gpencil_io_svg.h"
 
 #include "pugixml.hpp"
 
