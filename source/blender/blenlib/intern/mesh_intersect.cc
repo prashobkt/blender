@@ -157,7 +157,14 @@ void Plane::make_canonical()
   else {
     mpq_class den = norm_exact[2];
     norm_exact = mpq3(0, 0, 1);
-    d_exact = d_exact / den;
+    if (den != 0) {
+      d_exact = d_exact / den;
+    }
+    else {
+      std::cout << "unexpected zero normal in Plane::make_canonical\n";
+      std::cout << "Plane = " << *this << "\n";
+      d_exact = 0;
+    }
   }
   norm = double3(norm_exact[0].get_d(), norm_exact[1].get_d(), norm_exact[2].get_d());
   d = d_exact.get_d();
@@ -2715,10 +2722,8 @@ static CoplanarClusterInfo find_clusters(const Mesh &tm, const Array<BoundingBox
   return ans;
 }
 
-/* Does TriMesh tm have any triangles with zero area? */
-static bool has_degenerate_tris(const Mesh &tm)
+static bool face_is_degenerate(Facep f)
 {
-  for (Facep f : tm.faces()) {
     const Face &face = *f;
     Vertp v0 = face[0];
     Vertp v1 = face[1];
@@ -2740,8 +2745,34 @@ static bool has_degenerate_tris(const Mesh &tm)
     if (ab.x == 0 && ab.y == 0 && ab.z == 0) {
       return true;
     }
+
+  return false;
+
+}
+
+/* Does TriMesh tm have any triangles with zero area? */
+static bool has_degenerate_tris(const Mesh &tm)
+{
+  for (Facep f : tm.faces()) {
+    if (face_is_degenerate(f)) {
+      return true;
+    }
   }
   return false;
+}
+
+static Mesh remove_degenerate_tris(const Mesh &tm_in)
+{
+  Mesh ans;
+  Vector<Facep> new_faces;
+  new_faces.reserve(tm_in.face_size());
+  for (Facep f : tm_in.faces()) {
+    if (!face_is_degenerate(f)) {
+      new_faces.append(f);
+    }
+  }
+  ans.set_faces(new_faces);
+  return ans;
 }
 
 /* This is the main routine for calculating the self_intersection of a triangle mesh. */
@@ -2755,7 +2786,7 @@ Mesh trimesh_nary_intersect(
     const Mesh &tm_in, int nshapes, std::function<int(int)> shape_fn, bool use_self, MArena *arena)
 {
   constexpr int dbg_level = 0;
-  if (dbg_level > 2) {
+  if (dbg_level > 0) {
     std::cout << "\nTRIMESH_NARY_INTERSECT nshapes=" << nshapes << " use_self=" << use_self
               << "\n";
     for (Facep f : tm_in.faces()) {
@@ -2769,13 +2800,21 @@ Mesh trimesh_nary_intersect(
       }
     }
   }
+  /* Usually can use tm_in but if it has degenerate or illegal triangles,
+   * then need to work on a copy of it without those triangles.
+   */
+  const Mesh *tm_clean = &tm_in;
+  Mesh tm_cleaned;
   if (has_degenerate_tris(tm_in)) {
-    std::cout << "IMPLEMENT ME - remove degenerate and illegal tris\n";
-    BLI_assert(false);
+    tm_cleaned = remove_degenerate_tris(tm_in);
+    tm_clean = &tm_cleaned;
+    if (dbg_level > 1) {
+      std::cout << "cleaned input mesh:\n" << tm_cleaned;
+    }
   }
-  Array<BoundingBox> tri_bb = calc_face_bounding_boxes(tm_in);
-  TriOverlaps tri_ov(tm_in, tri_bb, nshapes, shape_fn, use_self);
-  CoplanarClusterInfo clinfo = find_clusters(tm_in, tri_bb);
+  Array<BoundingBox> tri_bb = calc_face_bounding_boxes(*tm_clean);
+  TriOverlaps tri_ov(*tm_clean, tri_bb, nshapes, shape_fn, use_self);
+  CoplanarClusterInfo clinfo = find_clusters(*tm_clean, tri_bb);
   if (dbg_level > 1) {
     std::cout << clinfo;
   }
@@ -2787,18 +2826,18 @@ Mesh trimesh_nary_intersect(
 #  endif
   Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
   for (int c : clinfo.index_range()) {
-    cluster_subdivided[c] = calc_cluster_subdivided(clinfo, c, tm_in, arena);
+    cluster_subdivided[c] = calc_cluster_subdivided(clinfo, c, *tm_clean, arena);
   }
-  blender::Array<Mesh> tri_subdivided(tm_in.face_size());
-  calc_subdivided_tris(tri_subdivided, tm_in, clinfo, tri_ov, arena);
-  for (int t : tm_in.face_index_range()) {
+  blender::Array<Mesh> tri_subdivided(tm_clean->face_size());
+  calc_subdivided_tris(tri_subdivided, *tm_clean, clinfo, tri_ov, arena);
+  for (int t : tm_clean->face_index_range()) {
     int c = clinfo.tri_cluster(t);
     if (c != NO_INDEX) {
       BLI_assert(tri_subdivided[t].face_size() == 0);
-      tri_subdivided[t] = extract_subdivided_tri(cluster_subdivided[c], tm_in, t, arena);
+      tri_subdivided[t] = extract_subdivided_tri(cluster_subdivided[c], *tm_clean, t, arena);
     }
     else if (tri_subdivided[t].face_size() == 0) {
-      tri_subdivided[t] = extract_single_tri(tm_in, t);
+      tri_subdivided[t] = extract_single_tri(*tm_clean, t);
     }
   }
   Mesh combined = union_tri_subdivides(tri_subdivided);
