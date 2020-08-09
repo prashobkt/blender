@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BLI_MATH_MPQ_HH__
-#define __BLI_MATH_MPQ_HH__
+#pragma once
 
 #ifdef WITH_GMP
 
@@ -31,4 +30,3 @@
 #  include "gmpxx.h"
 
 #endif /* WITH_GMP */
-#endif /* __BLI_MATH_MPQ_HH__ */

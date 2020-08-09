@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BLI_BOOLEAN_HH__
-#define __BLI_BOOLEAN_HH__
+#pragma once
 
 /** \file
  * \ingroup bli
@@ -75,4 +74,3 @@ Mesh boolean_trimesh(Mesh &tm,
 }  // namespace blender::meshintersect
 
 #endif /* WITH_GMP */
-#endif /* __BLI_BOOLEAN_HH__ */

@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BLI_MESH_INTERSECT_HH__
-#define __BLI_MESH_INTERSECT_HH__
+#pragma once
 
 /** \file
  * \ingroup bli
@@ -357,4 +356,3 @@ void write_obj_mesh(Mesh &m, const std::string &objname);
 } /* namespace blender::meshintersect */
 
 #endif /* WITH_GMP */
-#endif /* __BLI_MESH_INTERSECT_HH__ */

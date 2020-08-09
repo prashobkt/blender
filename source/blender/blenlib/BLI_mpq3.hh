@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BLI_MPQ3_HH__
-#define __BLI_MPQ3_HH__
+#pragma once
 
 #ifdef WITH_GMP
 
@@ -273,4 +272,3 @@ uint64_t hash_mpq_class(const mpq_class &value);
 }  // namespace blender
 
 #endif /* WITH_GMP */
-#endif /* __BLI_MPQ3_HH__ */

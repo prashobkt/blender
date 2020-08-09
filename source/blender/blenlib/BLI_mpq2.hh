@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BLI_MPQ2_HH__
-#define __BLI_MPQ2_HH__
+#pragma once
 
 #ifdef WITH_GMP
 
@@ -177,4 +176,3 @@ struct mpq2 {
 }  // namespace blender
 
 #endif /* WITH_GMP */
-#endif /* __BLI_MPQ_HH__ */

@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BLI_DOUBLE3_HH__
-#define __BLI_DOUBLE3_HH__
+#pragma once
 
 #include <iostream>
 
@@ -239,5 +238,3 @@ struct double3 {
 };
 
 }  // namespace blender
-
-#endif /* __BLI_DOUBLE3_HH__ */
