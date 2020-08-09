@@ -1502,6 +1502,10 @@ static int find_containing_cell(Vertp v,
   }
   const Face &tri = *tm.face(t);
   Edge etest;
+  if (close_edge == -1 && close_vert == -1) {
+    /* Choose any edge if closest point is inside the triangle. */
+    close_edge = 0;
+  }
   if (close_edge != -1) {
     Vertp v0 = tri[close_edge];
     Vertp v1 = tri[(close_edge + 1) % 3];
@@ -1523,10 +1527,6 @@ static int find_containing_cell(Vertp v,
   }
   else {
     int cv = close_vert;
-    if (cv == -1) {
-      /* Closest point is inside the triangle. Pick any vert for closest. */
-      cv = 0;
-    }
     Vertp vert_cv = tri[cv];
     if (vert_cv == v) {
       /* Need to use another one to find sorting edge. */
