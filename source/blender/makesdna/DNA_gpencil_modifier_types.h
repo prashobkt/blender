@@ -18,8 +18,7 @@
  * \ingroup DNA
  */
 
-#ifndef __DNA_GPENCIL_MODIFIER_TYPES_H__
-#define __DNA_GPENCIL_MODIFIER_TYPES_H__
+#pragma once
 
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
@@ -829,4 +828,3 @@ typedef struct LineartGpencilModifierData {
 
 } LineartGpencilModifierData;
 
-#endif /* __DNA_GPENCIL_MODIFIER_TYPES_H__ */
