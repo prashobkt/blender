@@ -94,11 +94,11 @@ static void geometry_to_blender_objects(Main *bmain,
 {
   OBJImportCollection import_collection{bmain, scene};
   for (const std::unique_ptr<Geometry> &geometry : all_geometries) {
-    if (geometry->geom_type() & GEOM_MESH) {
+    if (geometry->get_geom_type() == GEOM_MESH) {
       MeshFromGeometry mesh_ob_from_geometry{bmain, *geometry, global_vertices, materials};
       import_collection.add_object_to_collection(mesh_ob_from_geometry.mover());
     }
-    else if (geometry->geom_type() & GEOM_CURVE) {
+    else if (geometry->get_geom_type() == GEOM_CURVE) {
       CurveFromGeometry curve_ob_from_geometry(bmain, *geometry, global_vertices);
       import_collection.add_object_to_collection(curve_ob_from_geometry.mover());
     }

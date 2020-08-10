@@ -113,7 +113,7 @@ enum eGeometryType {
 
 class Geometry {
  private:
-  const eGeometryType geom_type_ = GEOM_MESH;
+  eGeometryType geom_type_ = GEOM_MESH;
   std::string geometry_name_{};
   Vector<std::string> material_name_{};
   /**
@@ -133,7 +133,8 @@ class Geometry {
   Geometry(eGeometryType type, std::string_view ob_name)
       : geom_type_(type), geometry_name_(std::string(ob_name)){};
 
-  eGeometryType geom_type() const;
+  eGeometryType get_geom_type() const;
+  void set_geom_type(const eGeometryType new_type);
   const std::string &geometry_name() const;
   int vertex_indices_lookup(const int key) const;
   int64_t tot_verts() const;

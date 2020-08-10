@@ -36,9 +36,18 @@
 
 namespace blender::io::obj {
 
-eGeometryType Geometry::geom_type() const
+eGeometryType Geometry::get_geom_type() const
 {
   return geom_type_;
+}
+
+/**
+ * Use very rarely. Only when it is guaranteed that the
+ * type originally set is wrong.
+ */
+void Geometry::set_geom_type(const eGeometryType new_type)
+{
+  geom_type_ = new_type;
 }
 
 const std::string &Geometry::geometry_name() const

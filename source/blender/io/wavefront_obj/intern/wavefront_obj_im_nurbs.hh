@@ -58,6 +58,8 @@ class CurveFromGeometry : NonMovable, NonCopyable {
    * Object of type OB_CURVE. Use the mover function to own it.
    */
   unique_object_ptr curve_object_;
+  const Geometry &curve_geometry_;
+  const GlobalVertices &global_vertices_;
 
  public:
   CurveFromGeometry(Main *bmain,
@@ -70,6 +72,6 @@ class CurveFromGeometry : NonMovable, NonCopyable {
   }
 
  private:
-  void create_nurbs(const Geometry &curve_geometry, const GlobalVertices &global_vertices);
+  void create_nurbs();
 };
 }  // namespace blender::io::obj

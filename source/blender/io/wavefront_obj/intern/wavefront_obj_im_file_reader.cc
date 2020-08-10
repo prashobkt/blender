@@ -184,29 +184,35 @@ BLI_INLINE void copy_string_to_int(Span<string_view> src,
  * this function returns true.
  */
 static Geometry *create_geometry(Geometry *const prev_geometry,
-                                 const eGeometryType type,
+                                 const eGeometryType new_type,
                                  string_view name,
                                  Vector<std::unique_ptr<Geometry>> &r_all_geometries)
 {
   auto new_geometry = [&]() {
     if (name.empty()) {
-      r_all_geometries.append(std::make_unique<Geometry>(type, "New object"));
+      r_all_geometries.append(std::make_unique<Geometry>(new_type, "New object"));
     }
     else {
-      r_all_geometries.append(std::make_unique<Geometry>(type, name));
+      r_all_geometries.append(std::make_unique<Geometry>(new_type, name));
     }
     return r_all_geometries.last().get();
   };
 
-  if (prev_geometry && prev_geometry->geom_type() & GEOM_MESH) {
+  if (prev_geometry && prev_geometry->get_geom_type() == GEOM_MESH) {
     /* After the creation of a Geometry instance, at least one element has been found in the OBJ
      * file that indicates that it is a mesh. */
     if (prev_geometry->tot_face_elems() || prev_geometry->tot_normals()) {
       return new_geometry();
     }
+    if (new_type == GEOM_CURVE) {
+      /* The object originally created is not a mesh now that curve data
+       * follows the vertex coordinates list. */
+      prev_geometry->set_geom_type(GEOM_CURVE);
+      return prev_geometry;
+    }
   }
 
-  if (prev_geometry && prev_geometry->geom_type() & GEOM_CURVE) {
+  if (prev_geometry && prev_geometry->get_geom_type() == GEOM_CURVE) {
     return new_geometry();
   }
 

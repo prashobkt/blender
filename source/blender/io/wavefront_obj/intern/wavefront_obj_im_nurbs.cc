@@ -30,11 +30,10 @@ namespace blender::io::obj {
 /**
  * Create a NURBS spline for the Curve converted from Geometry.
  */
-void CurveFromGeometry::create_nurbs(const Geometry &curve_geometry,
-                                     const GlobalVertices &global_vertices)
+void CurveFromGeometry::create_nurbs()
 {
-  const int64_t tot_vert{curve_geometry.nurbs_elem().curv_indices.size()};
-  const NurbsElement &nurbs_geometry = curve_geometry.nurbs_elem();
+  const int64_t tot_vert{curve_geometry_.nurbs_elem().curv_indices.size()};
+  const NurbsElement &nurbs_geometry = curve_geometry_.nurbs_elem();
   Nurb *nurb = static_cast<Nurb *>(blender_curve_->nurb.first);
 
   nurb->type = CU_NURBS;
@@ -51,7 +50,7 @@ void CurveFromGeometry::create_nurbs(const Geometry &curve_geometry,
   BKE_nurb_points_add(nurb, tot_vert);
   for (int i = 0; i < tot_vert; i++) {
     BPoint &bpoint = nurb->bp[i];
-    copy_v3_v3(bpoint.vec, global_vertices.vertices[nurbs_geometry.curv_indices[i]]);
+    copy_v3_v3(bpoint.vec, global_vertices_.vertices[nurbs_geometry.curv_indices[i]]);
     bpoint.vec[3] = 1.0f;
     bpoint.weight = 1.0f;
   }
@@ -86,15 +85,16 @@ void CurveFromGeometry::create_nurbs(const Geometry &curve_geometry,
 CurveFromGeometry::CurveFromGeometry(Main *bmain,
                                      const Geometry &geometry,
                                      const GlobalVertices &global_vertices)
+    : curve_geometry_(geometry), global_vertices_(global_vertices)
 {
-  std::string ob_name = geometry.geometry_name();
-  if (ob_name.empty() && !geometry.group().empty()) {
-    ob_name = geometry.group();
+  std::string ob_name = curve_geometry_.geometry_name();
+  if (ob_name.empty() && !curve_geometry_.group().empty()) {
+    ob_name = curve_geometry_.group();
   }
   else {
     ob_name = "Untitled";
   }
-  blender_curve_.reset(BKE_curve_add(bmain, geometry.geometry_name().c_str(), OB_CURVE));
+  blender_curve_.reset(BKE_curve_add(bmain, curve_geometry_.geometry_name().c_str(), OB_CURVE));
   curve_object_.reset(BKE_object_add_only_object(bmain, OB_CURVE, ob_name.c_str()));
 
   blender_curve_->flag = CU_3D;
@@ -104,7 +104,7 @@ CurveFromGeometry::CurveFromGeometry(Main *bmain,
 
   Nurb *nurb = static_cast<Nurb *>(MEM_callocN(sizeof(Nurb), "OBJ import NURBS curve"));
   BLI_addtail(BKE_curve_nurbs_get(blender_curve_.get()), nurb);
-  create_nurbs(geometry, global_vertices);
+  create_nurbs();
 
   curve_object_->data = blender_curve_.release();
 }
