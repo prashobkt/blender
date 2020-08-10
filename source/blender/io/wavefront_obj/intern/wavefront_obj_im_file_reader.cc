@@ -123,6 +123,11 @@ void copy_string_to_float(string_view src, const float fallback_value, float &r_
     std::cerr << "Bad conversion to float:'" << inv_arg.what() << "':'" << src << "'" << std::endl;
     r_dst = fallback_value;
   }
+  catch (const std::out_of_range &out_of_range) {
+    std::cerr << "Out of range for float:'" << out_of_range.what() << ":'" << src << "'"
+              << std::endl;
+    r_dst = fallback_value;
+  }
 }
 
 /**
@@ -156,6 +161,10 @@ BLI_INLINE void copy_string_to_int(string_view src, const int fallback_value, in
   catch (const std::invalid_argument &inv_arg) {
     std::cerr << "Bad conversion to int:'" << inv_arg.what() << "':'" << src << "'" << std::endl;
     r_dst = fallback_value;
+  }
+  catch (const std::out_of_range &out_of_range) {
+    std::cerr << "Out of range for int:'" << out_of_range.what() << ":'" << src << "'"
+              << std::endl;
   }
 }
 
@@ -314,16 +323,9 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
       /* Some implementations use "0" and "null" too, in addition to "off". */
       if (rest_line != "0" && rest_line.find("off") == string::npos &&
           rest_line.find("null") == string::npos) {
-        /* TODO ankitm make a string to bool function if need arises. */
-        try {
-          std::stoi(string(rest_line));
-          shaded_smooth = true;
-        }
-        catch (const std::invalid_argument &inv_arg) {
-          std::cerr << "Bad argument for smooth shading:'" << inv_arg.what() << "':'" << rest_line
-                    << "'" << std::endl;
-          shaded_smooth = false;
-        }
+        int smooth = 0;
+        copy_string_to_int(rest_line, 0, smooth);
+        shaded_smooth = smooth != 0;
       }
       else {
         /* The OBJ file explicitly set shading to off. */
