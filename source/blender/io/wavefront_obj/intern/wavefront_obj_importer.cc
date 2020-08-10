@@ -124,7 +124,7 @@ void importer_main(bContext *C, const OBJImportParams &import_params)
     mtl_parser.parse_and_store(materials);
   }
   //  obj_parser.print_obj_data(list_of_objects, global_vertices);
-  /* TODO ankitm use the offsets for Curves too. */
+
   VertexOffset vertex_offset;
   global_vertices.vertex_offset = &vertex_offset;
   geometry_to_blender_objects(bmain, scene, all_geometries, global_vertices, materials);

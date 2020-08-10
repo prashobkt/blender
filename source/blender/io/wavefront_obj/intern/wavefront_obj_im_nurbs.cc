@@ -32,7 +32,6 @@ namespace blender::io::obj {
  */
 void CurveFromGeometry::create_nurbs()
 {
-  const int64_t tot_vert{curve_geometry_.nurbs_elem().curv_indices.size()};
   const NurbsElement &nurbs_geometry = curve_geometry_.nurbs_elem();
   Nurb *nurb = static_cast<Nurb *>(blender_curve_->nurb.first);
 
@@ -47,6 +46,9 @@ void CurveFromGeometry::create_nurbs()
   nurb->orderu = nurb->orderv = nurbs_geometry.degree + 1;
   nurb->resolu = nurb->resolv = blender_curve_->resolu;
 
+  const int64_t tot_vert{curve_geometry_.nurbs_elem().curv_indices.size()};
+  global_vertices_.vertex_offset->add_vertex_offset(tot_vert);
+
   BKE_nurb_points_add(nurb, tot_vert);
   for (int i = 0; i < tot_vert; i++) {
     BPoint &bpoint = nurb->bp[i];
@@ -54,8 +56,8 @@ void CurveFromGeometry::create_nurbs()
     bpoint.vec[3] = 1.0f;
     bpoint.weight = 1.0f;
   }
-  BKE_nurb_knot_calc_u(nurb);
 
+  BKE_nurb_knot_calc_u(nurb);
   bool do_endpoints = true;
   if (nurbs_geometry.curv_indices.size() &&
       nurbs_geometry.parm.size() > nurbs_geometry.degree + 1) {

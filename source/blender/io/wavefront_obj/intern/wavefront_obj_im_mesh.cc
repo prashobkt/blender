@@ -80,13 +80,15 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
 
 void MeshFromGeometry::create_vertices()
 {
+  /* Since the keys in a Geometry's vertex coordinates Map almost always exceed the total
+   * vertices in that Mesh, account for it using the offset. */
   int offset = global_vertices_.vertex_offset->get_vertex_offset();
   const int64_t tot_verts_object{mesh_geometry_.tot_verts()};
+  global_vertices_.vertex_offset->add_vertex_offset(tot_verts_object);
+
   for (int i = 0; i < tot_verts_object; ++i) {
-    /* Current object's vertex indices index into the global list of vertex coordinates. */
     copy_v3_v3(blender_mesh_->mvert[i].co, global_vertices_.vertices[offset + i]);
   }
-  global_vertices_.vertex_offset->add_vertex_offset(tot_verts_object);
 }
 
 void MeshFromGeometry::create_polys_loops()
@@ -102,11 +104,13 @@ void MeshFromGeometry::create_polys_loops()
   else {
     UNUSED_VARS(weight);
   }
+
   /* Do not remove elements from the VectorSet since order of insertion is required.
    * StringRef is fine since per-face deform group name outlives the VectorSet. */
   VectorSet<StringRef> group_names;
   const int64_t tot_face_elems{mesh_geometry_.tot_face_elems()};
   int tot_loop_idx = 0;
+
   for (int poly_idx = 0; poly_idx < tot_face_elems; ++poly_idx) {
     const FaceElement &curr_face = mesh_geometry_.face_elements()[poly_idx];
     MPoly &mpoly = blender_mesh_->mpoly[poly_idx];
