@@ -47,16 +47,16 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
                                    const Geometry &mesh_geometry,
                                    const GlobalVertices &global_vertices,
                                    const Map<std::string, MTLMaterial> &materials)
-    : mesh_geometry_(&mesh_geometry), global_vertices_(&global_vertices)
+    : mesh_geometry_(mesh_geometry), global_vertices_(global_vertices)
 {
-  std::string ob_name{mesh_geometry_->geometry_name()};
+  std::string ob_name{mesh_geometry_.geometry_name()};
   if (ob_name.empty()) {
     ob_name = "Untitled";
   }
-  const int64_t tot_verts_object{mesh_geometry_->tot_verts()};
-  const int64_t tot_edges{mesh_geometry_->tot_edges()};
-  const int64_t tot_face_elems{mesh_geometry_->tot_face_elems()};
-  const int64_t tot_loops{mesh_geometry_->tot_loops()};
+  const int64_t tot_verts_object{mesh_geometry_.tot_verts()};
+  const int64_t tot_edges{mesh_geometry_.tot_edges()};
+  const int64_t tot_face_elems{mesh_geometry_.tot_face_elems()};
+  const int64_t tot_loops{mesh_geometry_.tot_loops()};
 
   blender_mesh_.reset(
       BKE_mesh_new_nomain(tot_verts_object, tot_edges, 0, tot_loops, tot_face_elems));
@@ -80,13 +80,13 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
 
 void MeshFromGeometry::create_vertices()
 {
-  int offset = global_vertices_->vertex_offset->get_vertex_offset();
-  const int64_t tot_verts_object{mesh_geometry_->tot_verts()};
+  int offset = global_vertices_.vertex_offset->get_vertex_offset();
+  const int64_t tot_verts_object{mesh_geometry_.tot_verts()};
   for (int i = 0; i < tot_verts_object; ++i) {
     /* Current object's vertex indices index into the global list of vertex coordinates. */
-    copy_v3_v3(blender_mesh_->mvert[i].co, global_vertices_->vertices[offset + i]);
+    copy_v3_v3(blender_mesh_->mvert[i].co, global_vertices_.vertices[offset + i]);
   }
-  global_vertices_->vertex_offset->add_vertex_offset(tot_verts_object);
+  global_vertices_.vertex_offset->add_vertex_offset(tot_verts_object);
 }
 
 void MeshFromGeometry::create_polys_loops()
@@ -94,10 +94,10 @@ void MeshFromGeometry::create_polys_loops()
   /* May not be used conditionally. */
   blender_mesh_->dvert = nullptr;
   float weight = 0.0f;
-  if (mesh_geometry_->tot_verts() && mesh_geometry_->use_vertex_groups()) {
+  if (mesh_geometry_.tot_verts() && mesh_geometry_.use_vertex_groups()) {
     blender_mesh_->dvert = static_cast<MDeformVert *>(CustomData_add_layer(
-        &blender_mesh_->vdata, CD_MDEFORMVERT, CD_CALLOC, nullptr, mesh_geometry_->tot_verts()));
-    weight = 1.0f / mesh_geometry_->tot_verts();
+        &blender_mesh_->vdata, CD_MDEFORMVERT, CD_CALLOC, nullptr, mesh_geometry_.tot_verts()));
+    weight = 1.0f / mesh_geometry_.tot_verts();
   }
   else {
     UNUSED_VARS(weight);
@@ -105,10 +105,10 @@ void MeshFromGeometry::create_polys_loops()
   /* Do not remove elements from the VectorSet since order of insertion is required.
    * StringRef is fine since per-face deform group name outlives the VectorSet. */
   VectorSet<StringRef> group_names;
-  const int64_t tot_face_elems{mesh_geometry_->tot_face_elems()};
+  const int64_t tot_face_elems{mesh_geometry_.tot_face_elems()};
   int tot_loop_idx = 0;
   for (int poly_idx = 0; poly_idx < tot_face_elems; ++poly_idx) {
-    const FaceElement &curr_face = mesh_geometry_->face_elements()[poly_idx];
+    const FaceElement &curr_face = mesh_geometry_.face_elements()[poly_idx];
     MPoly &mpoly = blender_mesh_->mpoly[poly_idx];
     mpoly.totloop = curr_face.face_corners.size();
     mpoly.loopstart = tot_loop_idx;
@@ -119,7 +119,7 @@ void MeshFromGeometry::create_polys_loops()
     for (const FaceCorner &curr_corner : curr_face.face_corners) {
       MLoop *mloop = &blender_mesh_->mloop[tot_loop_idx];
       tot_loop_idx++;
-      mloop->v = mesh_geometry_->vertex_indices_lookup(curr_corner.vert_index);
+      mloop->v = mesh_geometry_.vertex_indices_lookup(curr_corner.vert_index);
       if (blender_mesh_->dvert) {
         /* Iterating over mloop results in finding the same vertex multiple times.
          * Another way is to allocate memory for dvert while creating vertices and fill them here.
@@ -154,11 +154,11 @@ void MeshFromGeometry::create_polys_loops()
 
 void MeshFromGeometry::create_edges()
 {
-  const int64_t tot_edges{mesh_geometry_->tot_edges()};
+  const int64_t tot_edges{mesh_geometry_.tot_edges()};
   for (int i = 0; i < tot_edges; ++i) {
-    const MEdge &curr_edge = mesh_geometry_->edges()[i];
-    blender_mesh_->medge[i].v1 = mesh_geometry_->vertex_indices_lookup(curr_edge.v1);
-    blender_mesh_->medge[i].v2 = mesh_geometry_->vertex_indices_lookup(curr_edge.v2);
+    const MEdge &curr_edge = mesh_geometry_.edges()[i];
+    blender_mesh_->medge[i].v1 = mesh_geometry_.vertex_indices_lookup(curr_edge.v1);
+    blender_mesh_->medge[i].v2 = mesh_geometry_.vertex_indices_lookup(curr_edge.v2);
   }
 
   /* Set argument `update` to true so that existing, explicitly imported edges can be merged
@@ -170,15 +170,15 @@ void MeshFromGeometry::create_edges()
 void MeshFromGeometry::create_uv_verts()
 {
   MLoopUV *mluv_dst = static_cast<MLoopUV *>(CustomData_add_layer(
-      &blender_mesh_->ldata, CD_MLOOPUV, CD_CALLOC, nullptr, mesh_geometry_->tot_loops()));
+      &blender_mesh_->ldata, CD_MLOOPUV, CD_CALLOC, nullptr, mesh_geometry_.tot_loops()));
   int tot_loop_idx = 0;
 
-  for (const FaceElement &curr_face : mesh_geometry_->face_elements()) {
+  for (const FaceElement &curr_face : mesh_geometry_.face_elements()) {
     for (const FaceCorner &curr_corner : curr_face.face_corners) {
       if (curr_corner.uv_vert_index >= 0) {
         /* Current corner's UV vertex index indices into current object's UV vertex indices, which
          * index into global list of UV vertex coordinates. */
-        const float2 &mluv_src = global_vertices_->uv_vertices[curr_corner.uv_vert_index];
+        const float2 &mluv_src = global_vertices_.uv_vertices[curr_corner.uv_vert_index];
         copy_v2_v2(mluv_dst[tot_loop_idx].uv, mluv_src);
         tot_loop_idx++;
       }

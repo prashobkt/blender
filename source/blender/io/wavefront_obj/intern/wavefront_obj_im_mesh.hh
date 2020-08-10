@@ -58,8 +58,8 @@ class MeshFromGeometry : NonMovable, NonCopyable {
    * An Object of type OB_MESH. Use the mover function to own it.
    */
   unique_object_ptr blender_object_{nullptr};
-  const Geometry *mesh_geometry_;
-  const GlobalVertices *global_vertices_;
+  const Geometry &mesh_geometry_;
+  const GlobalVertices &global_vertices_;
 
  public:
   MeshFromGeometry(Main *bmain,
