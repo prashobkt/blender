@@ -49,7 +49,7 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
                                    const Map<std::string, MTLMaterial> &materials)
     : mesh_geometry_(mesh_geometry), global_vertices_(global_vertices)
 {
-  std::string ob_name{mesh_geometry_.geometry_name()};
+  std::string ob_name{mesh_geometry_.get_geometry_name()};
   if (ob_name.empty()) {
     ob_name = "Untitled";
   }

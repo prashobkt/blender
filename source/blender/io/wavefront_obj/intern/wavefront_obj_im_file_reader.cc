@@ -201,8 +201,13 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
   if (prev_geometry && prev_geometry->get_geom_type() == GEOM_MESH) {
     /* After the creation of a Geometry instance, at least one element has been found in the OBJ
      * file that indicates that it is a mesh. */
-    if (prev_geometry->tot_face_elems() || prev_geometry->tot_normals()) {
+    if (prev_geometry->tot_face_elems() || prev_geometry->tot_normals() ||
+        prev_geometry->tot_verts()) {
       return new_geometry();
+    }
+    if (new_type == GEOM_MESH) {
+      prev_geometry->set_geometry_name(name);
+      return prev_geometry;
     }
     if (new_type == GEOM_CURVE) {
       /* The object originally created is not a mesh now that curve data
@@ -259,7 +264,6 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
       mtl_libraries_.append(string(rest_line));
     }
     else if (line_key == "o") {
-      /* Update index offsets to keep track of objects which have claimed their vertices. */
       shaded_smooth = false;
       object_group = {};
       current_geometry = create_geometry(current_geometry, GEOM_MESH, rest_line, all_geometries);
@@ -300,7 +304,8 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
     }
     else if (line_key == "g") {
       object_group = rest_line;
-      if (object_group.find("off") != string::npos || object_group.find("null") != string::npos) {
+      if (object_group.find("off") != string::npos || object_group.find("null") != string::npos ||
+          object_group.find("default") != string::npos) {
         /* Set group for future elements like faces or curves to empty. */
         object_group = {};
       }
@@ -415,7 +420,6 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
     }
     else if (line_key == "end") {
       /* Curves mark their end this way. */
-      object_group = "";
     }
     else if (line_key == "usemtl") {
       current_geometry->material_name_.append(string(rest_line));

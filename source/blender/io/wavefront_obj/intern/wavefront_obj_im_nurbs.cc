@@ -87,14 +87,15 @@ CurveFromGeometry::CurveFromGeometry(Main *bmain,
                                      const GlobalVertices &global_vertices)
     : curve_geometry_(geometry), global_vertices_(global_vertices)
 {
-  std::string ob_name = curve_geometry_.geometry_name();
+  std::string ob_name{curve_geometry_.get_geometry_name()};
   if (ob_name.empty() && !curve_geometry_.group().empty()) {
     ob_name = curve_geometry_.group();
   }
   else {
     ob_name = "Untitled";
   }
-  blender_curve_.reset(BKE_curve_add(bmain, curve_geometry_.geometry_name().c_str(), OB_CURVE));
+
+  blender_curve_.reset(BKE_curve_add(bmain, ob_name.c_str(), OB_CURVE));
   curve_object_.reset(BKE_object_add_only_object(bmain, OB_CURVE, ob_name.c_str()));
 
   blender_curve_->flag = CU_3D;

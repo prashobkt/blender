@@ -135,7 +135,8 @@ class Geometry {
 
   eGeometryType get_geom_type() const;
   void set_geom_type(const eGeometryType new_type);
-  const std::string &geometry_name() const;
+  std::string_view get_geometry_name() const;
+  void set_geometry_name(std::string_view new_name);
   int vertex_indices_lookup(const int key) const;
   int64_t tot_verts() const;
   Span<FaceElement> face_elements() const;
