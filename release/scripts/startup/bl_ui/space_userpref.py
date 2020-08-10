@@ -650,8 +650,8 @@ class USERPREF_PT_system_logging(SystemPanel, CenterAlignMixIn, Panel):
     def draw_header_preset(self, _context):
         layout = self.layout
         # TODO (grzelins) this is mocap:
-        layout.operator("preferences.studiolight_install", icon='IMPORT', text="Save*").type = 'WORLD'
-        layout.operator("preferences.studiolight_install", icon='IMPORT', text="Restore Default").type = 'WORLD'
+        layout.operator("preferences.log_preferences_save", icon='IMPORT', text="Save")
+        layout.operator("preferences.log_preferences_reset_default", icon='IMPORT', text="Restore Default")
         layout.operator("preferences.studiolight_install", icon='PRESET', text="")
         layout.separator()
 
@@ -659,7 +659,7 @@ class USERPREF_PT_system_logging(SystemPanel, CenterAlignMixIn, Panel):
         prefs = context.preferences
         system = prefs.system
 
-        layout.prop(system, "log_filter")
+        layout.prop(system, "log_type_filter")
         layout.prop(system, "verbose")
         layout.prop(system, "log_severity")
 

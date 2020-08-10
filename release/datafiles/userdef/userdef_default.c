@@ -18,6 +18,7 @@
 
 /* For constants. */
 #include "BLI_math_base.h"
+#include <CLG_log.h>
 
 #include "DNA_anim_types.h"
 #include "DNA_curve_types.h"
@@ -230,10 +231,21 @@ const UserDef U_default = {
     .collection_instance_empty_size = 1.0f,
 
     .statusbar_flag = STATUSBAR_SHOW_VERSION,
-    .log_filter = "",
+    .log_type_filter = CLG_DEFAULT_LOG_TYPE_FILTER,
+    .log_severity = CLG_DEFAULT_SEVERITY,
+    .log_verbosity = CLG_DEFAULT_LEVEL,
+    .log_use_basename = CLG_DEFAULT_USE_BASENAME,
+    .log_use_timestamp = CLG_DEFAULT_USE_TIMESTAMP,
+    .log_use_stdout = CLG_DEFAULT_USE_STDOUT,
+    .log_always_show_warnings = CLG_DEFAULT_ALWAYS_SHOW_WARNINGS,
+    .log_output_file_path = CLG_DEFAULT_OUTPUT_PATH,
+    .debug_flags = 0,
+    .debug_value = 0,
+    .verbose = 0,
 
     .runtime =
         {
             .is_dirty = 0,
+            .use_settings_from_command_line = 0,
         },
 };

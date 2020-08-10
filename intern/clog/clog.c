@@ -92,7 +92,7 @@ typedef struct CLogContext {
   int output;
   FILE *output_file;
 
-  /** For timer (use_timestamp). */
+  /** For timer (log_use_timestamp). */
   uint64_t timestamp_tick_start;
 
   /** For new types. */
@@ -841,14 +841,17 @@ static CLogContext *CLG_ctx_init(void)
   pthread_mutex_init(&ctx->types_lock, NULL);
 #endif
   ctx->use_color = true;
-  ctx->default_type.severity_level = CLG_SEVERITY_WARN;
-  ctx->default_type.level = 0;
-  ctx->use_stdout = true;
-  ctx->always_show_warnings = true;
+  ctx->use_timestamp = CLG_DEFAULT_USE_TIMESTAMP;
+  ctx->use_basename = CLG_DEFAULT_USE_BASENAME;
+  ctx->default_type.severity_level = CLG_DEFAULT_SEVERITY;
+  ctx->default_type.level = CLG_DEFAULT_LEVEL;
+  ctx->use_stdout = CLG_DEFAULT_USE_STDOUT;
+  ctx->always_show_warnings = CLG_DEFAULT_ALWAYS_SHOW_WARNINGS;
   ctx->timestamp_tick_start = clg_timestamp_ticks_get();
 
   /* enable all loggers by default */
-  CLG_ctx_type_filter_include(ctx, "*", strlen("*"));
+  CLG_ctx_type_filter_include(
+      ctx, CLG_DEFAULT_LOG_TYPE_FILTER, strlen(CLG_DEFAULT_LOG_TYPE_FILTER));
 
   CLG_ctx_output_update(ctx);
 

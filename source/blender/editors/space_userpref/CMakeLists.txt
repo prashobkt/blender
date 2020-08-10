@@ -23,6 +23,7 @@ set(INC
   ../../makesrna
   ../../windowmanager
   ../../../../intern/guardedalloc
+  ../../../../intern/clog
 )
 
 set(INC_SYS

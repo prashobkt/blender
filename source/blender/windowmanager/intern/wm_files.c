@@ -132,6 +132,7 @@
 #include "WM_toolsystem.h"
 #include "WM_types.h"
 
+#include "../../editors/space_userpref/userpref_intern.h"
 #include "wm.h"
 #include "wm_event_system.h"
 #include "wm_files.h"
@@ -966,8 +967,11 @@ void wm_homefile_read(struct bContext *C,
     if (!use_factory_settings && BLI_exists(filepath_userdef)) {
       UserDef *userdef = BKE_blendfile_userdef_read(filepath_userdef, reports);
       if (userdef != NULL) {
+        /* runtime data is about to be swapped (and forgotten) */
+        userdef->runtime.use_settings_from_command_line = U.runtime.use_settings_from_command_line;
         BKE_blender_userdef_data_set_and_free(userdef);
         userdef = NULL;
+        USERPREF_restore_global_log_settings(true);
 
         skip_flags |= BLO_READ_SKIP_USERDEF;
         CLOG_INFO(WM_LOG_SESSION, "Read prefs: %s", filepath_userdef);

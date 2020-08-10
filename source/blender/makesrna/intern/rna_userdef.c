@@ -1113,30 +1113,22 @@ static void rna_Userdef_log_filter_update(struct Main *UNUSED(main),
 }
 */
 
-static void rna_clog_log_filter_get(PointerRNA *ptr, char *value)
+static void rna_clog_log_filter_get(PointerRNA *UNUSED(ptr), char *value)
 {
-  UserDef *userdef = (UserDef *)ptr->data;
-
   char *dummy_buff = MEM_callocN(255, __func__);
   int written = CLG_type_filter_get(dummy_buff, 255);
   memset(value, 0, 256);
-  memcpy(userdef->log_filter, dummy_buff, written + 1);
-
-  /* TODO (grzelins) how to init Userdef with command line value? */
-  BLI_strncpy(value, userdef->log_filter, 255);
-
+  memcpy(value, dummy_buff, written + 1);
   MEM_freeN(dummy_buff);
 }
 
 static int rna_clog_filter_length(PointerRNA *UNUSED(ptr))
 {
-  return 255;  // length of userdef->log_filter
+  return 255;  // length of userdef->log_type_filter
 }
 
-static void rna_clog_log_filter_set(PointerRNA *ptr, const char *value)
+static void rna_clog_log_filter_set(PointerRNA *UNUSED(ptr), const char *value)
 {
-  UserDef *userdef = (UserDef *)ptr->data;
-  BLI_strncpy(userdef->log_filter, value, 255);
   CLG_type_filter_set(value);
 }
 
@@ -1186,12 +1178,7 @@ static int rna_verbose_get(PointerRNA *UNUSED(ptr))
 
 static void rna_verbose_set(PointerRNA *UNUSED(ptr), int value)
 {
-  G.log.level = value;
-#  ifdef WITH_LIBMV
-  libmv_setLoggingVerbosity(value);
-#  elif defined(WITH_CYCLES_LOGGING)
-  CCL_logging_verbosity_set(value);
-#  endif
+  G_verbose_set(value);
 }
 
 static void rna_verbose_range(
@@ -5809,8 +5796,8 @@ static void rna_def_userdef_system(BlenderRNA *brna)
                            "Log level, when severity is set to verbose or debug. "
                            "The most silent is 0, the most talkative is 65535");
 
-  prop = RNA_def_property(srna, "log_filter", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, NULL, "log_filter");
+  prop = RNA_def_property(srna, "log_type_filter", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "log_type_filter");
   //  RNA_def_property_update(prop, 0, "rna_Userdef_log_filter_update");
   RNA_def_property_string_funcs(
       prop, "rna_clog_log_filter_get", "rna_clog_filter_length", "rna_clog_log_filter_set");
@@ -5856,9 +5843,10 @@ static void rna_def_userdef_system(BlenderRNA *brna)
       {G_DEBUG_FFMPEG, "DEBUG_FFMPEG", ICON_NONE, "Debug FFMPEG", ""},
       {G_DEBUG_PYTHON, "DEBUG_PYTHON", ICON_NONE, "Debug Python", ""},
       {G_DEBUG_HANDLERS, "DEBUG_HANDLERS", ICON_NONE, "Debug Handlers", ""},
-      {G_DEBUG_WM, "DEBUG_WM", ICON_NONE, "Debug window manager", ""},
+      {G_DEBUG_WM, "DEBUG_WM", ICON_NONE, "Debug Window Manager", ""},
       {G_DEBUG_JOBS, "DEBUG_JOBS", ICON_NONE, "Debug Jobs", ""},
       {G_DEBUG_FREESTYLE, "DEBUG_FREESTYLE", ICON_NONE, "Debug Freestyle", ""},
+//      {G_DEBUG_DEPSGRAPH, "DEBUG_DEPSGRAPH", ICON_NONE, "Debug Depsgraph (Alias)", ""},
       {G_DEBUG_DEPSGRAPH_BUILD, "DEBUG_DEPSGRAPH_BUILD", ICON_NONE, "Debug Depsgraph Build", ""},
       {G_DEBUG_DEPSGRAPH_EVAL, "DEBUG_DEPSGRAPH_EVAL", ICON_NONE, "Debug Depsgraph Eval", ""},
       {G_DEBUG_DEPSGRAPH_TAG, "DEBUG_DEPSGRAPH_TAG", ICON_NONE, "Debug Depsgraph Tag", ""},
@@ -5874,7 +5862,6 @@ static void rna_def_userdef_system(BlenderRNA *brna)
        "Debug Depsgraph Pretty",
        ""},
       {G_DEBUG_DEPSGRAPH_UUID, "DEBUG_DEPSGRAPH_UUID", ICON_NONE, "Debug Depsgraph UUID", ""},
-      /* skipped G_DEBUG_DEPSGRAPH */
       {G_DEBUG_SIMDATA, "DEBUG_SIMDATA", ICON_NONE, "Debug Simulation Data", ""},
       {G_DEBUG_GPU_MEM, "DEBUG_GPU_MEM", ICON_NONE, "Debug GPU Memory", ""},
       {G_DEBUG_GPU, "DEBUG_GPU", ICON_NONE, "Debug GPU", ""},
@@ -5888,6 +5875,9 @@ static void rna_def_userdef_system(BlenderRNA *brna)
       {G_DEBUG_XR, "DEBUG_XR", ICON_NONE, "Debug XR", ""},
       {G_DEBUG_XR_TIME, "DEBUG_XR_TIME", ICON_NONE, "Debug XR Time", ""},
       {G_DEBUG_GHOST, "DEBUG_GHOST", ICON_NONE, "Debug GHOST", ""},
+      {G_DEBUG_LIBMV, "DEBUG_LIBMV", ICON_NONE, "Debug LIBMV", ""},
+      {G_DEBUG_CYCLES, "DEBUG_CYCLES", ICON_NONE, "Debug Cycles", ""},
+      {G_DEBUG_FPE, "DEBUG_FPE", ICON_NONE, "Debug FPE", "Debug floating point exceptions"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -5895,10 +5885,15 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_ENUM_FLAG);
   RNA_def_property_enum_funcs(prop, "rna_debug_get", "rna_debug_set", NULL);
   RNA_def_property_enum_items(prop, debug_items);
+  RNA_def_property_enum_default(prop, 0);
   RNA_def_property_ui_text(
       prop,
       "Debug Flags",
       "Boolean, for debug info (started with --debug / --debug_* matching this attribute name");
+
+//  prop = RNA_def_property(srna, "debug_cycles", PROP_BOOLEAN, PROP_NONE);
+//  RNA_def_property_boolean_sdna(prop, NULL, "edit_studio_light", 1);
+//  RNA_def_property_boolean_sdna(prop, NULL, "debug_flags", G_DEBUG_CYCLES);
 
   /* TODO (grzelins) now we can remove WM_OT_debug_menu */
   prop = RNA_def_property(srna, "debug_value", PROP_INT, PROP_NONE);

@@ -23,6 +23,7 @@
  * Application level startup/shutdown functionality.
  */
 
+#include <BLI_mempool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,7 +62,17 @@
 #include "RE_pipeline.h"
 #include "RE_render_ext.h"
 
+#include "../../../creator/creator_intern.h"
+#include "../../editors/space_userpref/userpref_intern.h"
 #include "BLF_api.h"
+
+#ifdef WITH_LIBMV
+#  include "libmv-capi.h"
+#endif
+
+#ifdef WITH_CYCLES_LOGGING
+#  include "CCL_api.h"
+#endif
 
 Global G;
 UserDef U;
@@ -148,6 +159,47 @@ void BKE_blender_globals_init(void)
 #else
   G.f &= ~G_FLAG_SCRIPT_AUTOEXEC;
 #endif
+}
+
+void G_debug_enable(int flags)
+{
+  if (flags & G_DEBUG) {
+    MEM_set_memory_debug();
+#ifdef DEBUG
+    BLI_mempool_set_memory_debug();
+#endif
+  }
+
+#ifdef WITH_LIBMV
+  if (flags & G_DEBUG_LIBMV) {
+    libmv_startDebugLogging();
+  }
+#endif
+#ifdef WITH_CYCLES_LOGGING
+  if (flags & G_DEBUG_CYCLES) {
+    CCL_start_debug_logging();
+  }
+#endif
+  if (flags & G_DEBUG_FPE) {
+    main_signal_setup_fpe();
+  }
+
+  if (flags & G_DEBUG_MEMORY) {
+    MEM_set_memory_debug();
+  }
+  G.debug |= flags;
+}
+
+void G_verbose_set(int level)
+{
+#ifdef WITH_LIBMV
+  libmv_setLoggingVerbosity(level);
+#elif defined(WITH_CYCLES_LOGGING)
+  CCL_logging_verbosity_set(level);
+#else
+  (void)level;
+#endif
+  G.log.level = level;
 }
 
 void BKE_blender_globals_clear(void)

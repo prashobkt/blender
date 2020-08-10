@@ -23,4 +23,8 @@
 
 #pragma once
 
+void USERPREF_save_global_log_settings(void);
+void USERPREF_restore_global_log_settings(bool use_command_line_mask);
+void USERPREF_restore_factory_log_settings(void);
+
 /* internal exports only */

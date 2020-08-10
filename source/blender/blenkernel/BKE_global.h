@@ -157,12 +157,19 @@ enum {
   G_DEBUG_XR_TIME = (1 << 22),               /* XR/OpenXR timing messages */
 
   G_DEBUG_GHOST = (1 << 23), /* Debug GHOST module. */
+  G_DEBUG_LIBMV = (1 << 24),
+  G_DEBUG_CYCLES = (1 << 25),
+  G_DEBUG_FPE = (1 << 26), /* floating point exceptions */
+  G_DEBUG_MEMORY = (1 << 27),
 };
+
+void G_debug_enable(int flags);
+void G_verbose_set(int value);
 
 #define G_DEBUG_ALL \
   (G_DEBUG | G_DEBUG_FFMPEG | G_DEBUG_PYTHON | G_DEBUG_EVENTS | G_DEBUG_WM | G_DEBUG_JOBS | \
    G_DEBUG_FREESTYLE | G_DEBUG_DEPSGRAPH | G_DEBUG_GPU_MEM | G_DEBUG_IO | G_DEBUG_GPU_SHADERS | \
-   G_DEBUG_GHOST)
+   G_DEBUG_GHOST | G_DEBUG_LIBMV | G_DEBUG_CYCLES | G_DEBUG_FPE | G_DEBUG_MEMORY)
 
 /** #Global.fileflags */
 enum {

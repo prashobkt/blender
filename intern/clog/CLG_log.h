@@ -94,6 +94,16 @@ extern "C" {
 #define STRINGIFY_APPEND(a, b) "" a #b
 #define STRINGIFY(x) STRINGIFY_APPEND("", x)
 
+#define CLG_DEFAULT_SEVERITY CLG_SEVERITY_WARN
+#define CLG_DEFAULT_LEVEL 0
+#define CLG_DEFAULT_OUTPUT_PATH ""
+#define CLG_DEFAULT_USE_TIMESTAMP false
+#define CLG_DEFAULT_USE_BASENAME false
+#define CLG_DEFAULT_USE_STDOUT true
+#define CLG_DEFAULT_ALWAYS_SHOW_WARNINGS true
+/** can not be null */
+#define CLG_DEFAULT_LOG_TYPE_FILTER "*"
+
 struct CLogContext;
 
 /* Don't typedef enums. */

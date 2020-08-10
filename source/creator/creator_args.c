@@ -71,14 +71,6 @@
 
 #  include "WM_api.h"
 
-#  ifdef WITH_LIBMV
-#    include "libmv-capi.h"
-#  endif
-
-#  ifdef WITH_CYCLES_LOGGING
-#    include "CCL_api.h"
-#  endif
-
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
 #  include "DEG_depsgraph_debug.h"
@@ -777,6 +769,7 @@ static int arg_handle_log_severity_set(int argc, const char **argv, void *UNUSED
     }
     else {
       CLG_severity_level_set(severity_level);
+      U.runtime.use_settings_from_command_line |= ARGS_LOG_SEVERITY;
     }
     return 1;
   }
@@ -806,6 +799,7 @@ static int arg_handle_log_level_set(int argc, const char **argv, void *UNUSED(da
       else {
         CLG_level_set(verbosity_level);
       }
+      U.runtime.use_settings_from_command_line |= ARGS_LOG_LEVEL;
     }
     return 1;
   }
@@ -823,6 +817,7 @@ static int arg_handle_log_show_basename_set(int UNUSED(argc),
                                             void *UNUSED(data))
 {
   CLG_output_use_basename_set(true);
+  U.runtime.use_settings_from_command_line |= ARGS_LOG_SHOW_BASENAME;
   return 0;
 }
 
@@ -847,6 +842,7 @@ static int arg_handle_log_show_timestamp_set(int UNUSED(argc),
                                              void *UNUSED(data))
 {
   CLG_output_use_timestamp_set(true);
+  U.runtime.use_settings_from_command_line |= ARGS_LOG_SHOW_TIMESTAMP;
   return 0;
 }
 
@@ -859,6 +855,7 @@ static int arg_handle_log_file_set(int argc, const char **argv, void *UNUSED(dat
   if (argc > 1) {
     CLG_file_output_path_set(argv[1]);
     CLG_use_stdout_set(false);
+    U.runtime.use_settings_from_command_line |= ARGS_LOG_FILE;
     return 1;
   }
   else {
@@ -880,6 +877,7 @@ static int arg_handle_log_set(int argc, const char **argv, void *UNUSED(data))
   const char *arg_id = "--log";
   if (argc > 1) {
     CLG_type_filter_set(argv[1]);
+    U.runtime.use_settings_from_command_line |= ARGS_LOG_TYPE;
     return 1;
   }
   else {
@@ -897,12 +895,9 @@ static const char arg_handle_debug_mode_set_doc[] =
     "\t* Keeps Python's 'sys.stdin' rather than setting it to None";
 static int arg_handle_debug_mode_set(int UNUSED(argc), const char **UNUSED(argv), void *data)
 {
-  G.debug |= G_DEBUG; /* std output printf's */
+  G_debug_enable(G_DEBUG);
+  U.runtime.use_settings_from_command_line |= ARGS_DEBUG;
   printf("Blender %s\n", BKE_blender_version_string());
-  MEM_set_memory_debug();
-#  ifndef NDEBUG
-  BLI_mempool_set_memory_debug();
-#  endif
 
 #  ifdef WITH_BUILDINFO
   printf("Build: %s %s %s %s\n", build_date, build_time, build_platform, build_type);
@@ -980,7 +975,8 @@ static int arg_handle_debug_mode_generic_set(int UNUSED(argc),
                                              const char **UNUSED(argv),
                                              void *data)
 {
-  G.debug |= POINTER_AS_INT(data);
+  G_debug_enable(POINTER_AS_INT(data));
+  U.runtime.use_settings_from_command_line |= ARGS_DEBUG;
   return 0;
 }
 
@@ -991,7 +987,8 @@ static int arg_handle_debug_mode_io(int UNUSED(argc),
                                     const char **UNUSED(argv),
                                     void *UNUSED(data))
 {
-  G.debug |= G_DEBUG_IO;
+  G_debug_enable(G_DEBUG_IO);
+  U.runtime.use_settings_from_command_line |= ARGS_DEBUG;
   return 0;
 }
 
@@ -1002,13 +999,8 @@ static int arg_handle_debug_mode_all(int UNUSED(argc),
                                      const char **UNUSED(argv),
                                      void *UNUSED(data))
 {
-  G.debug |= G_DEBUG_ALL;
-#  ifdef WITH_LIBMV
-  libmv_startDebugLogging();
-#  endif
-#  ifdef WITH_CYCLES_LOGGING
-  CCL_start_debug_logging();
-#  endif
+  G_debug_enable(G_DEBUG_ALL);
+  U.runtime.use_settings_from_command_line |= ARGS_DEBUG;
   return 0;
 }
 
@@ -1020,8 +1012,7 @@ static int arg_handle_debug_mode_libmv(int UNUSED(argc),
                                        const char **UNUSED(argv),
                                        void *UNUSED(data))
 {
-  libmv_startDebugLogging();
-
+  G_debug_enable(G_DEBUG_LIBMV);
   return 0;
 }
 #  endif
@@ -1034,11 +1025,12 @@ static int arg_handle_debug_mode_cycles(int UNUSED(argc),
                                         const char **UNUSED(argv),
                                         void *UNUSED(data))
 {
-  CCL_start_debug_logging();
+  G_debug_enable(G_DEBUG_CYCLES);
   return 0;
 }
 #  endif
 
+/* TODO (grzelins) this is useless it is done in --debug */
 static const char arg_handle_debug_mode_memory_set_doc[] =
     "\n\t"
     "Enable fully guarded memory allocation and debugging.";
@@ -1046,7 +1038,7 @@ static int arg_handle_debug_mode_memory_set(int UNUSED(argc),
                                             const char **UNUSED(argv),
                                             void *UNUSED(data))
 {
-  MEM_set_memory_debug();
+  G_debug_enable(G_DEBUG_MEMORY);
   return 0;
 }
 
@@ -1065,6 +1057,7 @@ static int arg_handle_debug_value_set(int argc, const char **argv, void *UNUSED(
     }
 
     G.debug_value = value;
+    U.runtime.use_settings_from_command_line |= ARGS_DEBUG_VALUE;
 
     return 1;
   }
@@ -1081,7 +1074,8 @@ static int arg_handle_debug_fpe_set(int UNUSED(argc),
                                     const char **UNUSED(argv),
                                     void *UNUSED(data))
 {
-  main_signal_setup_fpe();
+  G_debug_enable(G_DEBUG_FPE);
+  U.runtime.use_settings_from_command_line |= ARGS_DEBUG;
   return 0;
 }
 
@@ -1488,14 +1482,7 @@ static int arg_handle_verbosity_set(int argc, const char **argv, void *UNUSED(da
       printf("\nError: %s '%s %s'.\n", err_msg, arg_id, argv[1]);
     }
 
-#  ifdef WITH_LIBMV
-    libmv_setLoggingVerbosity(level);
-#  elif defined(WITH_CYCLES_LOGGING)
-    CCL_logging_verbosity_set(level);
-#  else
-    (void)level;
-#  endif
-    G.log.level = level;
+  G_verbose_set(level);
 
     return 1;
   }

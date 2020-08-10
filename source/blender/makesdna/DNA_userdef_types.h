@@ -585,8 +585,23 @@ typedef struct WalkNavigation {
 
 typedef struct UserDef_Runtime {
   char is_dirty;
-  char _pad0[7];
+  char _pad0[3];
+  /* TODO (grzelins) store here or in Global? */
+  int use_settings_from_command_line;
 } UserDef_Runtime;
+
+typedef enum UserDef_RuntimeCommandLineArgs {
+  ARGS_DEBUG = (1 << 0),
+  ARGS_DEBUG_VALUE = (1 << 1),
+  ARGS_LOG_TYPE = (1 << 2),
+  ARGS_LOG_LEVEL = (1 << 3),
+  ARGS_LOG_SEVERITY = (1 << 4),
+  ARGS_LOG_SHOW_BASENAME = (1 << 5),
+  ARGS_LOG_SHOW_TIMESTAMP = (1 << 6),
+  ARGS_LOG_FILE = (1 << 7),
+  ARGS_VERBOSE = (1 << 8),
+  //  ARGS_LOG_DISABLE_ALWAYS_SHOW_WARNINGS = (1 << 6), // needed?
+} UserDef_RuntimeCommandLineArgs;
 
 /**
  * Store UI data here instead of the space
@@ -893,14 +908,17 @@ typedef struct UserDef {
   UserDef_Experimental experimental;
 
   /* keep roughly in sync with CLogContext */
-  char log_filter[256];
+  char log_type_filter[256];
   int log_severity;
   int log_verbosity;
-  char use_basename;
-  char use_timestamp;
-  char use_console_output;
-  char _pad[5];
-  char output_file_path[256];
+  char log_use_basename;
+  char log_use_timestamp;
+  char log_use_stdout;
+  char log_always_show_warnings;
+  int debug_flags;
+  char log_output_file_path[256];
+  int debug_value;
+  int verbose;
 
   /** Runtime data (keep last). */
   UserDef_Runtime runtime;
