@@ -5995,6 +5995,24 @@ static void rna_def_space_filebrowser(BlenderRNA *brna)
       prop, NC_SPACE | ND_SPACE_FILE_PARAMS, "rna_FileBrowser_FSMenu_active_update");
 }
 
+
+static void rna_def_space_info_filter(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+//  RNA_def_property_struct_type(prop, "SpaceInfoFilter");
+  srna = RNA_def_struct(brna, "SpaceInfoFilter", NULL);
+  RNA_def_struct_ui_text(srna, "String based filter", "");
+
+  prop = RNA_def_property(srna, "search_string", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "search_string");
+  RNA_def_property_ui_text(prop, "Filter Text", "");
+  RNA_def_property_flag(prop, PROP_TEXTEDIT_UPDATE);
+  RNA_def_property_ui_icon(prop, ICON_VIEWZOOM, 0);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+}
+
 static void rna_def_space_info(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -6070,6 +6088,27 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "use_log_filter", INFO_FILTER_LOG_FUNCTION);
   RNA_def_property_ui_text(prop, "Use Log Function Filter", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+
+/*
+  ListBase filter_log_file_line;
+  ListBase filter_log_type;
+  ListBase filter_log_function;
+*/
+  rna_def_space_info_filter(brna);
+  prop = RNA_def_property(srna, "filter_log_file_line", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, NULL, "filter_log_file_line", NULL);
+  RNA_def_property_struct_type(prop, "SpaceInfoFilter");
+  RNA_def_property_ui_text(prop, "Log File Line Filter", "");
+
+  prop = RNA_def_property(srna, "filter_log_type", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, NULL, "filter_log_type", NULL);
+  RNA_def_property_struct_type(prop, "SpaceInfoFilter");
+  RNA_def_property_ui_text(prop, "Log File Line Filter", "");
+
+  prop = RNA_def_property(srna, "filter_log_function", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, NULL, "filter_log_function", NULL);
+  RNA_def_property_struct_type(prop, "SpaceInfoFilter");
+  RNA_def_property_ui_text(prop, "Log File Line Filter", "");
 
   prop = RNA_def_property(srna, "use_log_message_new_line", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_log_message_new_line", true);

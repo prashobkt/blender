@@ -101,6 +101,9 @@ static void info_free(SpaceLink *sl)
     BKE_reports_clear(sinfo->active_reports);
     MEM_freeN(sinfo->active_reports);
   }
+  BLI_freelist(&sinfo->filter_log_file_line);
+  BLI_freelist(&sinfo->filter_log_type);
+  BLI_freelist(&sinfo->filter_log_function);
 }
 
 static void info_report_source_update(wmWindowManager *wm, SpaceInfo *sinfo)
@@ -144,8 +147,14 @@ static void info_init(struct wmWindowManager *wm, ScrArea *area)
 
 static SpaceLink *info_duplicate(SpaceLink *sl)
 {
+  SpaceInfo *sinfo = (SpaceInfo *)sl;
   SpaceInfo *sinfo_new = MEM_dupallocN(sl);
   sinfo_new->active_reports = NULL;  // will be reinitialized in info_init
+
+  /* make a copy of source layer */
+  BLI_duplicatelist(&sinfo_new->filter_log_file_line, &sinfo->filter_log_file_line);
+  BLI_duplicatelist(&sinfo_new->filter_log_type, &sinfo->filter_log_type);
+  BLI_duplicatelist(&sinfo_new->filter_log_function, &sinfo->filter_log_function);
 
   return (SpaceLink *)sinfo_new;
 }
@@ -217,6 +226,12 @@ static void info_operatortypes(void)
   WM_operatortype_append(FILE_OT_report_missing_files);
   WM_operatortype_append(FILE_OT_find_missing_files);
   WM_operatortype_append(INFO_OT_reports_display_update);
+  WM_operatortype_append(INFO_OT_log_file_line_filter_add);
+  WM_operatortype_append(INFO_OT_log_file_line_filter_remove);
+  WM_operatortype_append(INFO_OT_log_function_filter_add);
+  WM_operatortype_append(INFO_OT_log_function_filter_remove);
+  WM_operatortype_append(INFO_OT_log_type_filter_add);
+  WM_operatortype_append(INFO_OT_log_type_filter_remove);
 
   /* info_report.c */
   WM_operatortype_append(INFO_OT_select_pick);

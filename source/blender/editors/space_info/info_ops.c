@@ -21,6 +21,7 @@
  * \ingroup spinfo
  */
 
+#include <ED_screen.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -632,3 +633,181 @@ void INFO_OT_reports_display_update(wmOperatorType *ot)
 }
 
 /* report operators */
+
+/* log operators */
+static int log_file_line_filter_add_exec(bContext *C, wmOperator *op)
+{
+  SpaceInfo *sinfo = CTX_wm_space_info(C);
+  SpaceInfoFilter *filter = MEM_callocN(sizeof(*filter), __func__);
+  RNA_string_get(op->ptr, "filter", filter->search_string);
+  BLI_addtail(&sinfo->filter_log_file_line, filter);
+  return OPERATOR_FINISHED;
+}
+
+void INFO_OT_log_file_line_filter_add(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Add Log File Line Filter";
+  ot->idname = "INFO_OT_log_file_line_filter_add";
+  ot->description = "Add filter";
+
+  /* api callbacks */
+  ot->exec = log_file_line_filter_add_exec;
+  ot->poll = ED_operator_info_active;
+
+  /* flags */
+  ot->flag = OPTYPE_INTERNAL;
+
+  /* properties */
+  RNA_def_string(ot->srna, "filter", NULL, 255, "Filter", "a");
+}
+
+static int log_file_line_filter_remove_exec(bContext *C, wmOperator *op)
+
+{
+  SpaceInfo *sinfo = CTX_wm_space_info(C);
+  const int index = RNA_int_get(op->ptr, "index");
+
+  SpaceInfoFilter *filter = BLI_findlink(&sinfo->filter_log_file_line, index);
+  BLI_freelinkN(&sinfo->filter_log_file_line, filter);
+  if (BLI_listbase_is_empty(&sinfo->filter_log_file_line)) {
+    BLI_listbase_clear(&sinfo->filter_log_file_line);
+  }
+  return OPERATOR_FINISHED;
+}
+
+void INFO_OT_log_file_line_filter_remove(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Remove Log File Line Filter";
+  ot->idname = "INFO_OT_log_file_line_filter_remove";
+  ot->description = "Remove Filter";
+
+  /* api callbacks */
+  ot->exec = log_file_line_filter_remove_exec;
+  ot->poll = ED_operator_info_active;
+
+  /* flags */
+  ot->flag = OPTYPE_INTERNAL;
+
+  /* properties */
+  RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "", 0, INT_MAX);
+}
+
+static int log_function_filter_add_exec(bContext *C, wmOperator *op)
+{
+  SpaceInfo *sinfo = CTX_wm_space_info(C);
+  SpaceInfoFilter *filter = MEM_callocN(sizeof(*filter), __func__);
+  RNA_string_get(op->ptr, "filter", filter->search_string);
+  BLI_addtail(&sinfo->filter_log_function, filter);
+  return OPERATOR_FINISHED;
+}
+
+void INFO_OT_log_function_filter_add(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Add Log Function Filter";
+  ot->idname = "INFO_OT_log_function_filter_add";
+  ot->description = "Add filter";
+
+  /* api callbacks */
+  ot->exec = log_function_filter_add_exec;
+  ot->poll = ED_operator_info_active;
+
+  /* flags */
+  ot->flag = OPTYPE_INTERNAL;
+
+  /* properties */
+  RNA_def_string(ot->srna, "filter", NULL, 255, "Filter", "a");
+}
+
+static int log_function_filter_remove_exec(bContext *C, wmOperator *op)
+
+{
+  SpaceInfo *sinfo = CTX_wm_space_info(C);
+  const int index = RNA_int_get(op->ptr, "index");
+
+  SpaceInfoFilter *filter = BLI_findlink(&sinfo->filter_log_function, index);
+  BLI_freelinkN(&sinfo->filter_log_function, filter);
+  if (BLI_listbase_is_empty(&sinfo->filter_log_function)) {
+    BLI_listbase_clear(&sinfo->filter_log_function);
+  }
+  return OPERATOR_FINISHED;
+}
+
+void INFO_OT_log_function_filter_remove(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Remove Log Function Filter";
+  ot->idname = "INFO_OT_log_function_filter_remove";
+  ot->description = "Remove Filter";
+
+  /* api callbacks */
+  ot->exec = log_function_filter_remove_exec;
+  ot->poll = ED_operator_info_active;
+
+  /* flags */
+  ot->flag = OPTYPE_INTERNAL;
+
+  /* properties */
+  RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "", 0, INT_MAX);
+}
+
+static int log_type_filter_add_exec(bContext *C, wmOperator *op)
+{
+  SpaceInfo *sinfo = CTX_wm_space_info(C);
+  SpaceInfoFilter *filter = MEM_callocN(sizeof(*filter), __func__);
+  RNA_string_get(op->ptr, "filter", filter->search_string);
+  BLI_addtail(&sinfo->filter_log_type, filter);
+  return OPERATOR_FINISHED;
+}
+
+void INFO_OT_log_type_filter_add(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Add Log Type Filter";
+  ot->idname = "INFO_OT_log_type_filter_add";
+  ot->description = "Add filter";
+
+  /* api callbacks */
+  ot->exec = log_type_filter_add_exec;
+  ot->poll = ED_operator_info_active;
+
+  /* flags */
+  ot->flag = OPTYPE_INTERNAL;
+
+  /* properties */
+  RNA_def_string(ot->srna, "filter", NULL, 255, "Filter", "a");
+}
+
+static int log_type_filter_remove_exec(bContext *C, wmOperator *op)
+
+{
+  SpaceInfo *sinfo = CTX_wm_space_info(C);
+  const int index = RNA_int_get(op->ptr, "index");
+
+  SpaceInfoFilter *filter = BLI_findlink(&sinfo->filter_log_type, index);
+  BLI_freelinkN(&sinfo->filter_log_type, filter);
+  if (BLI_listbase_is_empty(&sinfo->filter_log_type)) {
+    BLI_listbase_clear(&sinfo->filter_log_type);
+  }
+  return OPERATOR_FINISHED;
+}
+
+void INFO_OT_log_type_filter_remove(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Remove Log type Filter";
+  ot->idname = "INFO_OT_log_type_filter_remove";
+  ot->description = "Remove Filter";
+
+  /* api callbacks */
+  ot->exec = log_type_filter_remove_exec;
+  ot->poll = ED_operator_info_active;
+
+  /* flags */
+  ot->flag = OPTYPE_INTERNAL;
+
+  /* properties */
+  RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "", 0, INT_MAX);
+}

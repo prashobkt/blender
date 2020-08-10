@@ -44,6 +44,12 @@ void FILE_OT_report_missing_files(struct wmOperatorType *ot);
 void FILE_OT_find_missing_files(struct wmOperatorType *ot);
 
 void INFO_OT_reports_display_update(struct wmOperatorType *ot);
+void INFO_OT_log_file_line_filter_add(struct wmOperatorType *ot);
+void INFO_OT_log_file_line_filter_remove(struct wmOperatorType *ot);
+void INFO_OT_log_function_filter_add(struct wmOperatorType *ot);
+void INFO_OT_log_function_filter_remove(struct wmOperatorType *ot);
+void INFO_OT_log_type_filter_add(struct wmOperatorType *ot);
+void INFO_OT_log_type_filter_remove(struct wmOperatorType *ot);
 
 /* info_draw.c */
 void *info_text_pick(const struct SpaceInfo *sinfo,

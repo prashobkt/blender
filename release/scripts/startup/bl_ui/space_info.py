@@ -152,21 +152,34 @@ class INFO_PT_report_type_visibility(Panel):
 
             box = layout.box()
             row = box.row(align=True)
-            row.prop(sinfo, "use_log_file_line_filter", text="")
-            row.label(text="Filter File Line")
-            row.operator("preferences.autoexec_path_add", text="", icon='ADD', emboss=False)
+            row.prop(sinfo, "use_log_file_line_filter", text="Filter File Line")
+            row.operator("info.log_file_line_filter_add", text="", icon='ADD', emboss=False)
+            for i, filter in enumerate(sinfo.filter_log_file_line):
+                row = box.row()
+                row.active = sinfo.use_log_file_line_filter
+                row.prop(filter, "search_string", text="")
+                # row.prop(path_cmp, "use_glob", text="", icon='FILTER')
+                row.operator("info.log_file_line_filter_remove", text="", icon='X', emboss=False).index = i
 
             box = layout.box()
             row = box.row(align=True)
-            row.prop(sinfo, "use_log_type_filter", text="")
-            row.label(text="Filter Log Type")
-            row.operator("preferences.autoexec_path_add", text="", icon='ADD', emboss=False)
+            row.prop(sinfo, "use_log_type_filter", text="Filter Log Type")
+            row.operator("info.log_type_filter_add", text="", icon='ADD', emboss=False)
+            for i, filter in enumerate(sinfo.filter_log_type):
+                row = box.row()
+                row.active = sinfo.use_log_type_filter
+                row.prop(filter, "search_string", text="")
+                row.operator("info.log_type_filter_remove", text="", icon='X', emboss=False).index = i
 
             box = layout.box()
             row = box.row(align=True)
-            row.prop(sinfo, "use_log_function_filter", text="")
-            row.label(text="Filter Log Function")
-            row.operator("preferences.autoexec_path_add", text="", icon='ADD', emboss=False)
+            row.prop(sinfo, "use_log_function_filter", text="Filter Log Function")
+            row.operator("info.log_function_filter_add", text="", icon='ADD', emboss=False)
+            for i, filter in enumerate(sinfo.filter_log_function):
+                row = box.row()
+                row.active = sinfo.use_log_function_filter
+                row.prop(filter, "search_string", text="")
+                row.operator("info.log_function_filter_remove", text="", icon='X', emboss=False).index = i
 
             # col = layout.column(align=True)
             row = layout.row(align=True)

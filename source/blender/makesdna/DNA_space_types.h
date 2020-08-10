@@ -104,7 +104,7 @@ enum {
 /* SpaceInfo.filter_* */
 typedef struct SpaceInfoFilter {
   struct SpaceInfoFilter *next, *prev;
-  char str_filter[256];
+  char search_string[256];
 } SpaceInfoFilter;
 
 /* Info Header */
