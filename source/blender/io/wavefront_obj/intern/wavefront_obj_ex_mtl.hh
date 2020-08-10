@@ -33,7 +33,7 @@ namespace blender::io::obj {
 class MTLWriter {
  private:
   FILE *mtl_outfile_;
-  char mtl_filepath_[PATH_MAX];
+  char mtl_filepath_[FILE_MAX];
   /**
    * One of the object's materials, to be exported.
    */
@@ -46,8 +46,8 @@ class MTLWriter {
  public:
   MTLWriter(const char *obj_filepath)
   {
-    BLI_strncpy(mtl_filepath_, obj_filepath, PATH_MAX);
-    BLI_path_extension_replace(mtl_filepath_, PATH_MAX, ".mtl");
+    BLI_strncpy(mtl_filepath_, obj_filepath, FILE_MAX);
+    BLI_path_extension_replace(mtl_filepath_, FILE_MAX, ".mtl");
   }
 
   ~MTLWriter()

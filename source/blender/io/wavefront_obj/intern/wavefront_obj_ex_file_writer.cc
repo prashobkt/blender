@@ -115,9 +115,9 @@ bool OBJWriter::init_writer(const char *filepath)
  */
 void OBJWriter::write_mtllib(const char *obj_filepath)
 {
-  char mtl_filepath[PATH_MAX];
-  BLI_strncpy(mtl_filepath, obj_filepath, PATH_MAX);
-  BLI_path_extension_replace(mtl_filepath, PATH_MAX, ".mtl");
+  char mtl_filepath[FILE_MAX];
+  BLI_strncpy(mtl_filepath, obj_filepath, FILE_MAX);
+  BLI_path_extension_replace(mtl_filepath, FILE_MAX, ".mtl");
 
   FILE *mtl_outfile = fopen(mtl_filepath, "w");
   if (!mtl_outfile) {

@@ -169,7 +169,7 @@ BLI_INLINE void copy_string_to_int(Span<string_view> src,
                                    const int fallback_value,
                                    MutableSpan<int> r_dst)
 {
-  BLI_assert(src.size() == r_dst.size());
+  BLI_assert(src.size() >= r_dst.size());
   for (int i = 0; i < r_dst.size(); ++i) {
     copy_string_to_int(src[i], fallback_value, r_dst[i]);
   }
