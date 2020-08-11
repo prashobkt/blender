@@ -928,8 +928,6 @@ static void free_softbody_intern(SoftBody *sb)
     int a;
     BodyPoint *bp;
 
-printf("calling free softbody intern on: %p \n",sb);
-
     if (sb->bpoint) {
       for (a = sb->totpoint, bp = sb->bpoint; a > 0; a--, bp++) {
         /* free spring list */
@@ -942,12 +940,6 @@ printf("calling free softbody intern on: %p \n",sb);
     }
     if (sb->bspring) {
       MEM_freeN(sb->bspring);
-    }
-
-    if (sb->admmpd) {
-      admmpd_dealloc(sb->admmpd);
-      MEM_freeN(sb->admmpd);
-      sb->admmpd = NULL;
     }
 
     sb->totpoint = sb->totspring = 0;
@@ -3132,7 +3124,7 @@ SoftBody *sbNew(Scene *scene)
   sb = MEM_callocN(sizeof(SoftBody), "softbody");
 
   sb->solver_mode = SOLVER_MODE_ADMMPD;
-  sb->admmpd_init_mode = ADMMPD_INIT_MODE_EMBEDDED;
+  sb->admmpd_init_mode = 0; // embedded
   sb->admmpd_substeps = 1;
   sb->admmpd_max_admm_iters = 20;
   sb->admmpd_self_collision = 0;
@@ -3149,7 +3141,7 @@ SoftBody *sbNew(Scene *scene)
   sb->admmpd_maxthreads = -1;
   sb->admmpd_loglevel = 1; // low
   sb->admmpd_linsolver = 1; // PCG
-  sb->admmpd = NULL; // allocated when needed
+  sb->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), "SoftBody_admmpd");
 
   sb->mediafrict = 0.5f;
   sb->nodemass = 1.0f;
@@ -3211,6 +3203,13 @@ void sbFree(Object *ob)
   free_softbody_intern(sb);
 
   if ((ob->id.tag & LIB_TAG_NO_MAIN) == 0) {
+
+    if (sb->admmpd) {
+      admmpd_dealloc(sb->admmpd);
+      MEM_freeN(sb->admmpd);
+      sb->admmpd = NULL;
+    }
+
     /* Only free shared data on non-CoW copies */
     BKE_ptcache_free_list(&sb->shared->ptcaches);
     sb->shared->pointcache = NULL;
@@ -3561,58 +3560,14 @@ static void sbStoreLastFrame(struct Depsgraph *depsgraph, Object *object, float 
 
 void sbExternalSolverCopy(struct SoftBody *sb_dest, const struct SoftBody *sb_src)
 {
-printf("calling copy softbody, src:%p, dest:%p \n",sb_src, sb_dest);
-
-  if (sb_src->admmpd != NULL)
-  {
-//      printf("YES WE HAVE ADMMPD\n");
-//    sb_dest->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), __func__);
-//    admmpd_copy(sb_src->admmpd, sb_dest->admmpd);
-  }
-}
-
-
-static void init_interface_admmpd(Scene *scene, Object *ob, float (*vertexCos)[3])
-{
-  if(ob->type != OB_MESH)
-    return;
-
-  Mesh *me = ob->data;
-  MEdge *medge = me->medge;
-  SoftBody *sb = ob->soft;
-
-  // Delete old data if we're reinitializing
-  if (sb->admmpd) {
-    admmpd_dealloc(sb->admmpd);
-    MEM_freeN(sb->admmpd);
-    sb->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), __func__);
-  }
-  else
-  {
-    sb->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), __func__);
-  }
-  
-  sb->admmpd->in_framerate = scene->r.frs_sec / scene->r.frs_sec_base;
-  if (!admmpd_init(sb->admmpd, ob, vertexCos, sb->admmpd_init_mode)) {
-    CLOG_ERROR(&LOG, sb->admmpd->last_error);
-  }
-
-  // Set up softbody to store defo verts
-  if (sb->admmpd->out_totverts > 0) {
-    if (sb->totpoint && sb->bpoint != NULL)
-    { // Free old data if exists
-      MEM_freeN(sb->bpoint);
-      sb->bpoint = NULL;
-    }
-    sb->totpoint = sb->admmpd->out_totverts;
-    sb->totspring = 0;
-    sb->bpoint = (BodyPoint*)MEM_callocN(sb->totpoint*sizeof(BodyPoint), __func__);
-  }
-
-  // admmpd_init will have created tets with extra vertices besides
-  // the ones on the surface (vertexCos). We'll store those vertices
-  // in SoftBody::bpoint.
-  admmpd_copy_to_bodypoint_and_object(sb->admmpd,sb->bpoint,NULL);
+ // printf("copy sb: %p to %p\n",sb_dest, sb_src);
+ // printf("dest admmpd: %p\n",sb_dest->admmpd);
+ // printf("src admmpd: %p\n",sb_src->admmpd);
+  //if (sb_src->admmpd != NULL)
+ // {
+  //  sb_dest->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), "SoftBody_admmpd");
+   // admmpd_copy(sb_dest->admmpd, sb_src->admmpd);
+ // }
 }
 
 static void update_collider_admmpd(
@@ -3621,7 +3576,7 @@ static void update_collider_admmpd(
   Object *vertexowner)
 {
   SoftBody *sb = vertexowner->soft;
-  if (sb->admmpd == NULL)
+  if (!sb->admmpd)
     return;
 
   unsigned int numobjects;
@@ -3743,11 +3698,16 @@ static void sbObjectStep_admmpd(
                   float (*vertexCos)[3],
                   int numVerts)
 {
-  if (ob->type != OB_MESH)
+  if (ob->type != OB_MESH) {
+    CLOG_ERROR(&LOG, "ADMM-PD only works with mesh object types");
     return;
+  }
 
   Mesh *me = ob->data;
   SoftBody *sb = ob->soft;
+
+  if (!sb->admmpd)
+    return;
 
   PointCache *cache = sb->shared->pointcache;
   PTCacheID pid;
@@ -3759,33 +3719,63 @@ static void sbObjectStep_admmpd(
 
   BKE_ptcache_id_from_softbody(&pid, ob, sb);
   BKE_ptcache_id_time(&pid, scene, framenr, &startframe, &endframe, &timescale);
-  float framerate = scene->r.frs_sec / scene->r.frs_sec_base;
 
   // clamp frame ranges
   if (framenr < startframe) {
     BKE_ptcache_invalidate(cache);
+    admmpd_dealloc(sb->admmpd);
     return;
   }
   else if (framenr > endframe) {
     framenr = endframe;
   }
 
-  // If it's the first frame we reset the cache and data
-  if (framenr == startframe || !sb->admmpd) {
+  // If it's the first frame, reset positions and
+  // velocities to the rest state.
+  if (framenr == startframe) {
     BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
-    init_interface_admmpd(scene,ob,vertexCos);
     BKE_ptcache_validate(cache, framenr);
+    if (!admmpd_update_mesh(sb->admmpd, ob, vertexCos)) {
+      CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
+    }
+    if (!admmpd_update_solver(sb->admmpd, scene, ob, vertexCos)) {
+      CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
+    }
+    //admmpd_reset_simulation(sb->admmpd, ob);
     cache->flag &= ~PTCACHE_REDO_NEEDED;
     sb->last_frame = framenr;
     sbStoreLastFrame(depsgraph, ob, framenr);
     return;
   }
+  else {
+    // When a paramter is changed the SoftBody object
+    // is deleted and a new one is created (CoW). Calling
+    // copy to object (with NULL vertexCos) makes sure
+    // the BodyPoint data has been properly allocated,
+    // but skips updating vertexCos.
+    admmpd_copy_to_object(sb->admmpd,ob,NULL);
 
-  // Has the mesh topology changed and we need to reinit?
-  if (admmpd_needs_reinit(sb->admmpd, ob, vertexCos, sb->admmpd_init_mode)) {
-    BKE_ptcache_invalidate(cache);
-    admmpd_dealloc(sb->admmpd);
-    return;
+    // Do we need to initialize the ADMM-PD mesh?
+    // a) Has never been initialized.
+    // b) The mesh topology has changed.
+    // TODO: ob->obmat or vertexCos change.
+    if (admmpd_mesh_needs_update(sb->admmpd, ob)) {
+      printf("Init mesh because needs it\n");
+      int res = admmpd_update_mesh(sb->admmpd, ob, vertexCos);
+      if (!res) {
+        CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
+      }
+    }
+    // Do we need to initialize the ADMM-PD solver?
+    // a) Has never been initialized
+    // b) Some settings require re-initialization
+    if (admmpd_solver_needs_update(sb->admmpd, scene, ob)) {
+      printf("Init solver because needs it\n");
+      int res = admmpd_update_solver(sb->admmpd, scene, ob, vertexCos);
+      if (!res) {
+        CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
+      }
+    }
   }
 
   // Read from cache
@@ -3800,17 +3790,8 @@ static void sbObjectStep_admmpd(
       cache_result == PTCACHE_READ_INTERPOLATED ||
       (!can_simulate && cache_result == PTCACHE_READ_OLD)) {
 
-      // Copies bodypoint vertices to ADMM internal verts
-      admmpd_copy_from_bodypoint(sb->admmpd,sb->bpoint);
-      // Maps ADMM internal verts to surface verts
-      admmpd_copy_to_bodypoint_and_object(sb->admmpd,NULL,vertexCos);
-      if(sb->local==0)
-      {
-        for (int i=0; i<me->totvert; ++i)
-        {
-          mul_m4_v3(ob->imat, vertexCos[i]);
-        }
-      }
+      admmpd_copy_from_object(sb->admmpd,ob);
+      admmpd_copy_to_object(sb->admmpd,ob,vertexCos);
 
       BKE_ptcache_validate(cache, framenr);
       if (cache_result == PTCACHE_READ_INTERPOLATED &&
@@ -3823,7 +3804,6 @@ static void sbObjectStep_admmpd(
     }
     else if (cache_result == PTCACHE_READ_OLD) {} // pass
     else if (cache->flag & PTCACHE_BAKED) {
-
       // if baked and nothing in cache, do nothing
       if (can_write_cache) {
         BKE_ptcache_invalidate(cache);
@@ -3835,14 +3815,7 @@ static void sbObjectStep_admmpd(
     {
       // If we are not simulating, we want to update object with the current
       // internally stored variables that persist over copy-on-writes.
-      admmpd_copy_to_bodypoint_and_object(sb->admmpd,sb->bpoint,vertexCos);
-      if(sb->local==0)
-      {
-        for (int i=0; i<me->totvert; ++i)
-        {
-          mul_m4_v3(ob->imat, vertexCos[i]);
-        }
-      }
+      admmpd_copy_to_object(sb->admmpd,ob,vertexCos);
       return;
     }
   } // end read from cache
@@ -3854,24 +3827,17 @@ static void sbObjectStep_admmpd(
   }
 
   // Update ADMMPD interface variables from cache and perform a solve.
-  admmpd_copy_from_bodypoint(sb->admmpd,sb->bpoint); // bpoint -> admmpd
+  //admmpd_copy_from_object(sb->admmpd,ob); // bpoint -> admmpd
   update_collider_admmpd(depsgraph, sb->collision_group, ob); // collision objects -> admmpd
   update_goal_positions_admmpd(ob, vertexCos); // goal positions -> admmpd
-  sb->admmpd->in_framerate = scene->r.frs_sec / scene->r.frs_sec_base;
 
   // Solve the time step
   if (!admmpd_solve(sb->admmpd,ob)) {
-    CLOG_ERROR(&LOG, sb->admmpd->last_error);
-  }
-
-  // Copies ADMM-PD data to both bodypoint and vertexCos.
-  admmpd_copy_to_bodypoint_and_object(sb->admmpd,sb->bpoint,vertexCos);
-  for (int i=0; i<me->totvert; ++i)
-  { // TODO move this to admmpd API
-    mul_m4_v3(ob->imat, vertexCos[i]);
+    CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
   }
 
   // Write cache
+  admmpd_copy_to_object(sb->admmpd,ob,vertexCos);
   BKE_ptcache_validate(cache, framenr);
   BKE_ptcache_write(&pid, framenr);
   sbStoreLastFrame(depsgraph, ob, framenr);

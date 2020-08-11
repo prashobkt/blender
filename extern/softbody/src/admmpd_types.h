@@ -60,6 +60,7 @@ struct Options {
     int max_gs_iters;
     int max_threads; // -1 = auto (num cpu threads - 1)
     int elastic_material; // ENUM, see admmpd_energy.h
+    int substeps; // used externally, ignore in solve()
     double gs_omega; // Gauss-Seidel relaxation
     double mult_ck; // stiffness multiplier for constraints
     double mult_pk; // (global) stiffness multiplier for pins
@@ -79,10 +80,12 @@ struct Options {
         max_cg_iters(10),
         max_gs_iters(100),
         max_threads(-1),
+        elastic_material(ELASTIC_ARAP),
+        substeps(1),
         gs_omega(1),
         mult_ck(3),
         mult_pk(3),
-        min_res(1e-8),
+        min_res(1e-6),
         youngs(1000000),
         poisson(0.399),
         density_kgm3(1522),
@@ -117,7 +120,7 @@ public:
     struct LinSolveData {
         LinSolveData() : last_pk(0) {}
         LinSolveData(const LinSolveData &src); // see comments below
-        mutable std::unique_ptr<Cholesky> ldlt_A_PtP;
+        mutable std::unique_ptr<Cholesky> ldlt_A_PtP; // see copy constructor
         double last_pk; // buffered to flag P update
         Eigen::MatrixXd rhs; // Mxbar + DtW2(z-u) + Ptq + Ctd
         Eigen::MatrixXd Ptq;

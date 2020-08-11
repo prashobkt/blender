@@ -29,42 +29,35 @@ extern "C" {
 #endif
 
 #include "DNA_object_types.h"
+#include "DNA_scene_types.h"
 
 typedef struct ADMMPDInterfaceData {
-    // totverts is usually different than mesh_totverts.
-    // This is due to the lattice/tetmesh that is generated
-    // in init. You can use them as input if reading from cache,
-    // as they will be copied to internal solver data before admmpd_solve.
-    int out_totverts; // number of deformable verts (output)
-    float in_framerate; // frames per second (input)
     char last_error[256]; // last error message
     struct ADMMPDInternalData *idata; // internal data
 } ADMMPDInterfaceData;
 
-// SoftBody bodypoint (contains pos,vec)
-typedef struct BodyPoint BodyPoint;
-
-// Do we need to reinitialize the data due to a topology change?
-int admmpd_needs_reinit(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3], int mode);
-
-// Clears all solver data and ADMMPDInterfaceData
+// Frees ADMMPDInternalData
 void admmpd_dealloc(ADMMPDInterfaceData*);
 
-// Initializes solver and allocates internal data
-// Mode:
-//      ADMMPD_INIT_MODE_EMBEDDED
-//      ADMMPD_INIT_MODE_TETGEN
-//      ADMMPD_INIT_MODE_TRIANGLE (cloth)
+// Initializes the deformation mesh. The need_update function is used to
+// test if the mesh topology has changed in a way that requires re-initialization.
+// The SoftBody object's (ob->soft) bpoint array is also updated.
+int admmpd_mesh_needs_update(ADMMPDInterfaceData*, Object*);
 // Returns 1 on success, 0 on failure
-int admmpd_init(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3], int mode);
+int admmpd_update_mesh(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3]);
 
-// Copies internal data from src to dst
-// Assumes dest is not NULL
-void admmpd_copy(ADMMPDInterfaceData *dest, const ADMMPDInterfaceData *src);
+// Intializes the solver data. The needs_update function will determine
+// if certain parameter changes require re-initialization.
+int admmpd_solver_needs_update(ADMMPDInterfaceData*, Scene*, Object*);
+// Returns 1 on success, 0 on failure.
+int admmpd_update_solver(ADMMPDInterfaceData*, Scene*, Object*, float (*vertexCos)[3]);
 
 // Copies BodyPoint data (from SoftBody)
 // to internal vertex position and velocity
-void admmpd_copy_from_bodypoint(ADMMPDInterfaceData*, const BodyPoint *pts);
+void admmpd_copy_from_object(ADMMPDInterfaceData*, Object*);
+
+// Copies ADMM-PD data to SoftBody::bpoint and vertexCos
+void admmpd_copy_to_object(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3]);
 
 // Sets the obstacle data for collisions
 void admmpd_update_obstacles(
@@ -81,14 +74,6 @@ void admmpd_update_goals(
     float *goal_k, // goal stiffness, nv
     float *goal_pos, // goal position, nv x 3
     int nv);
-
-// Copies internal vertex position and velocity data
-// to BodyPoints (from SoftBody) AND surface mesh vertices.
-// If pts or vertexCos is null, its skipped
-void admmpd_copy_to_bodypoint_and_object(
-    ADMMPDInterfaceData*,
-    BodyPoint *pts,
-    float (*vertexCos)[3]);
 
 // Performs a time step. Object is passed
 // only to update settings if they have changed.

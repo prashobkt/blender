@@ -42,13 +42,16 @@
 
 #define ADMMPD_API_DEBUG
 
+
+
 struct ADMMPDInternalData
 {
-  std::shared_ptr<admmpd::Collision> collision;
+  // Created in admmpd_update_mesh
   std::shared_ptr<admmpd::Mesh> mesh;
+  std::shared_ptr<admmpd::Collision> collision;
+  // Created in admmpd_update_solver
   std::shared_ptr<admmpd::Options> options;
   std::shared_ptr<admmpd::SolverData> data;
-  int substeps;
 };
 
 
@@ -60,10 +63,14 @@ static inline void strcpy_error(ADMMPDInterfaceData *iface, const std::string &s
 }
 
 static inline void options_from_object(
+  ADMMPDInterfaceData *iface,
+  Scene *scene,
   Object *ob,
   admmpd::Options *op,
   bool skip_require_reset)
 {
+  (void)(iface);
+
   SoftBody *sb = ob->soft;
   if (sb==NULL)
     return;
@@ -82,10 +89,17 @@ static inline void options_from_object(
 
   if (!skip_require_reset)
   {
+    if (scene)
+    {
+      float framerate = scene->r.frs_sec / scene->r.frs_sec_base;
+      float fps = std::min(1000.f,std::max(1.f,framerate));
+      op->timestep_s = (1.0/fps) / float(std::max(1,sb->admmpd_substeps));
+    }
     op->density_kgm3 = std::max(1.f,sb->admmpd_density_kgm3);
     op->youngs = std::pow(10.f, std::max(0.f,sb->admmpd_youngs_exp));
     op->poisson = std::max(0.f,std::min(0.499f,sb->admmpd_poisson));
     op->elastic_material = std::max(0, std::min(ELASTIC_NUM-1, sb->admmpd_material));
+    op->substeps = std::max(1,sb->admmpd_substeps);
   }
 }
 
@@ -133,23 +147,15 @@ static inline void vecs_from_object(
 
 void admmpd_dealloc(ADMMPDInterfaceData *iface)
 {
-  if (iface==NULL)
-    return;
-
-  // Do not change mesh_totverts or
-  // mesh_totfaces, because those are input and
-  // admmpd_dealloc is called on init.
-
-  iface->out_totverts = 0; // output vertices
+  if (!iface) { return; }
   memset(iface->last_error, 0, sizeof(iface->last_error));
-  if (iface->idata)
-  { // release ownership of ptrs
-    iface->idata->options.reset();
-    iface->idata->data.reset();
-    iface->idata->collision.reset();
-    iface->idata->mesh.reset();
-  }
 
+  if (!iface->idata) { return; }
+  iface->idata->options.reset();
+  iface->idata->data.reset();
+  iface->idata->collision.reset();
+  iface->idata->mesh.reset();
+  MEM_freeN((void*)iface->idata);
   iface->idata = nullptr;
 }
 
@@ -190,7 +196,6 @@ static inline int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, Object *ob
     }
   #endif
 
-  iface->out_totverts = tg.out_totverts;
   iface->idata->mesh = std::make_shared<admmpd::TetMesh>();
   success = iface->idata->mesh->create(
     tg.out_verts,
@@ -200,7 +205,7 @@ static inline int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, Object *ob
     tg.out_tets,
     tg.out_tottets);
 
-  if (!success || iface->out_totverts==0)
+  if (!success)
   {
     strcpy_error(iface, "TetMesh failed on creation");
     return 0;
@@ -219,8 +224,6 @@ static inline int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, Object *o
   std::vector<float> v;
   std::vector<unsigned int> f;
   vecs_from_object(ob,vertexCos,v,f);
-
-  iface->out_totverts = 0;
   iface->idata->mesh = std::make_shared<admmpd::EmbeddedMesh>();
 
   admmpd::EmbeddedMesh* emb_msh = static_cast<admmpd::EmbeddedMesh*>(iface->idata->mesh.get());
@@ -233,7 +236,6 @@ static inline int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, Object *o
     nullptr,
     0);
 
-  iface->out_totverts = iface->idata->mesh->rest_prim_verts()->rows();
   if (!success)
   {
     strcpy_error(iface, "EmbeddedMesh failed on creation");
@@ -250,7 +252,6 @@ static inline int admmpd_init_as_cloth(ADMMPDInterfaceData *iface, Object *ob, f
   std::vector<unsigned int> f;
   vecs_from_object(ob,vertexCos,v,f);
 
-  iface->out_totverts = 0;
   iface->idata->mesh = std::make_shared<admmpd::TriangleMesh>();
   bool success = iface->idata->mesh->create(
     v.data(),
@@ -260,7 +261,6 @@ static inline int admmpd_init_as_cloth(ADMMPDInterfaceData *iface, Object *ob, f
     nullptr,
     0);
 
-  iface->out_totverts = iface->idata->mesh->rest_facet_verts()->rows();
   if (!success)
   {
     strcpy_error(iface, "TriangleMesh failed on creation");
@@ -295,75 +295,77 @@ static inline int admmpd_reinit_solver(ADMMPDInterfaceData *iface)
   return 1;
 }
 
-int admmpd_needs_reinit(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3], int mode)
+int admmpd_mesh_needs_update(ADMMPDInterfaceData *iface, Object *ob)
 {
-  (void)(vertexCos); (void)(mode);
-
-  // Only return true if we need to RE-init the solver on topology change.
   if (!iface) { return 0; }
   if (!ob) { return 0; }
-  Mesh *me = (Mesh*)ob->data;
-  if (!me) { return 0; }
-  if (!iface->idata) { return 0; }
-  if (!iface->idata->mesh) { return 0; }
-  if (!iface->idata->data) { return 0; }
-  
-  // Has the defo verts changed?
-  if (iface->out_totverts != iface->idata->data->x.rows()) { return 1; }
-  int n_facet_verts = iface->idata->mesh->rest_facet_verts()->rows();
-  if ( n_facet_verts != me->totvert ) { return 1; }
+  if (!ob->soft) { return 0; }
+  if (!iface->idata) { return 1; }
+  if (!iface->idata->mesh) { return 1; }
+
+  // Mode or topology change?
+  int mode = ob->soft->admmpd_init_mode;
+  int mesh_type = iface->idata->mesh->type();
+  if (mode != mesh_type) { return 1; }
+  switch (mode)
+  {
+    default:
+    case MESHTYPE_EMBEDDED:
+    case MESHTYPE_TET: {
+      int nv = iface->idata->mesh->rest_prim_verts()->rows();
+      if (nv != ob->soft->totpoint) { return 1; }
+    } break;
+    case MESHTYPE_TRIANGLE: {
+      int nv = iface->idata->mesh->rest_facet_verts()->rows();
+      if (nv != ob->soft->totpoint) { return 1; }
+    } break;
+  }
 
   return 0;
 }
 
-
-int admmpd_init(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3], int mode)
+int admmpd_update_mesh(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
 {
-  if (iface==NULL || ob==NULL)
-  {
-    strcpy_error(iface, "NULL input");
-    return 0;
-  }
+  if (!iface) { return 0; }
+  if (!ob) { return 0; }
+  if (!ob->soft) { return 0; }
 
-  SoftBody *sb = ob->soft;
-  if (sb==NULL)
-  {
-    strcpy_error(iface, "NULL SoftBody input");
-    return 0;
-  }
+  if (!iface->idata)
+    iface->idata = (ADMMPDInternalData*)MEM_callocN(sizeof(ADMMPDInternalData), "ADMMPD_idata");
 
-  // Delete any existing data
-  admmpd_dealloc(iface);
+  int mode = ob->soft->admmpd_init_mode;
+  iface->idata->mesh.reset();
 
-  // Generate solver data if it doesn't exist
-  iface->idata = new ADMMPDInternalData();
-  iface->idata->substeps = std::max(1,sb->admmpd_substeps);
-  iface->idata->options = std::make_shared<admmpd::Options>();
-  iface->idata->data = std::make_shared<admmpd::SolverData>();
-  float fps = std::min(1000.f,std::max(1.f,iface->in_framerate));
-  admmpd::Options *op = iface->idata->options.get();
-  op->timestep_s = (1.0/fps) / float(std::max(1,sb->admmpd_substeps));
-  options_from_object(ob,op,false);
-
-  // Initialize the mesh
+  // Try to initialize the mesh
+  const Eigen::MatrixXd *x0 = nullptr;
   try
   {
     int gen_success = 0;
     switch (mode)
     {
       default:
-      case ADMMPD_INIT_MODE_EMBEDDED: {
+      case MESHTYPE_EMBEDDED: {
         gen_success = admmpd_init_with_lattice(iface,ob,vertexCos);
+        if (gen_success) {
+          x0 = iface->idata->mesh->rest_prim_verts();
+        }
       } break;
-      case ADMMPD_INIT_MODE_TETGEN: {
+      case MESHTYPE_TET: {
         gen_success = admmpd_init_with_tetgen(iface,ob,vertexCos);
+        if (gen_success) {
+          x0 = iface->idata->mesh->rest_prim_verts();
+        }
       } break;
-      case ADMMPD_INIT_MODE_TRIANGLE: {
+      case MESHTYPE_TRIANGLE: {
         gen_success = admmpd_init_as_cloth(iface,ob,vertexCos);
+        if (gen_success) {
+          x0 = iface->idata->mesh->rest_facet_verts();
+        }
       } break;
     }
-    if (!gen_success || iface->out_totverts==0)
+    if (!gen_success || !iface->idata->mesh || x0==nullptr)
     {
+      strcpy_error(iface, "failed to init mesh");
       return 0;
     }
   }
@@ -373,69 +375,172 @@ int admmpd_init(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3], i
     return 0;
   }
 
-  // Initialize the solver
-  if (!admmpd_reinit_solver(iface))
-    return 0;
+  // Set up softbody to store defo verts
+  int n_defo_verts = x0->rows();
+  SoftBody *sb = ob->soft;
+  if (sb->bpoint)
+    MEM_freeN(sb->bpoint);
+
+  sb->totpoint = n_defo_verts;
+  sb->totspring = 0;
+  sb->bpoint = (BodyPoint*)MEM_callocN(n_defo_verts*sizeof(BodyPoint), "ADMMPD_bpoint");
+
+  // Copy init data to BodyPoint
+  BodyPoint *pts = sb->bpoint;
+  for (int i=0; i<n_defo_verts; ++i)
+  {
+    BodyPoint *pt = &pts[i];
+    for(int j=0; j<3; ++j)
+    {
+      pt->pos[j] = x0->operator()(i,j);
+      pt->vec[j] = 0;
+    }
+  }
 
   return 1;
 }
 
-void admmpd_copy(ADMMPDInterfaceData *dest, const ADMMPDInterfaceData *src)
+int admmpd_solver_needs_update(ADMMPDInterfaceData *iface, Scene *sc, Object *ob)
 {
-  if (dest == NULL)
-    return;
+  (void)(sc);
+  if (!iface) { return 0; }
+  if (!ob) { return 0; }
+  if (!ob->soft) { return 0; }
+  if (!iface->idata) { return 1; }
+  if (!iface->idata->options) { return 1; }
+  if (!iface->idata->data) { return 1; }
 
-printf("ATTEMPTING COPY\n");
+  auto big_diff = [](const double &a, const double &b) {
+    if (std::abs(a-b) > 1e-4) { return true; }
+    return false;
+  };
 
-  dest->out_totverts = src->out_totverts;
-  dest->in_framerate = src->in_framerate;
+  admmpd::Options *opt = iface->idata->options.get();
+  SoftBody *sb = ob->soft;
+  if (sb->admmpd_material != opt->elastic_material) { return 1; }
+  if (sb->admmpd_substeps != opt->substeps) { return 1; }
+  double youngs = std::pow(10.f, std::max(0.f,sb->admmpd_youngs_exp));
+  if (big_diff(youngs, opt->youngs)) { return 1; }
+  if (big_diff(sb->admmpd_density_kgm3, opt->density_kgm3)) { return 1; }
+  if (big_diff(sb->admmpd_poisson, opt->poisson)) { return 1; }
 
-printf("A\n");
-
-if (src == NULL)
-{
-  printf("SRC IS NULL\n");
+  return 0;
 }
 
-printf("BOOP\n");
-
-if (dest->idata == nullptr)
+int admmpd_update_solver(ADMMPDInterfaceData *iface,  Scene *sc, Object *ob, float (*vertexCos)[3])
 {
-      printf("NO dest IDATA\n");
-}
+  if (!iface) { return 0; }
+  if (!ob) { return 0; }
+  if (!ob->soft) { return 0; }
+  (void)(vertexCos);
 
-  if (src->idata == nullptr)
+  // idata is created in admmpd_update_mesh
+  if (!iface->idata) { return 0; }
+  if (!iface->idata->mesh) { return 0; }
+
+  // Reset options and data
+  iface->idata->options = std::make_shared<admmpd::Options>();
+  iface->idata->data = std::make_shared<admmpd::SolverData>();
+
+  admmpd::Options *op = iface->idata->options.get();
+  options_from_object(iface,sc,ob,op,false);
+
+  try
   {
-    printf("NO SRC IDATA\n");
-    return;
+    admmpd::Solver().init(
+      iface->idata->mesh.get(),
+      iface->idata->options.get(),
+      iface->idata->data.get());
+  }
+  catch(const std::exception &e)
+  {
+    strcpy_error(iface, e.what());
+    return 0;
   }
 
-printf("B\n");
-
-  if (!dest->idata)  
-    dest->idata = new ADMMPDInternalData();
-
-printf("C\n");
-
-  dest->idata->substeps = src->idata->substeps;
-  dest->idata->collision = src->idata->collision;
-  dest->idata->mesh = src->idata->mesh;
-  dest->idata->options = src->idata->options;
-  dest->idata->data = src->idata->data;
+  return 1;
 }
 
-void admmpd_copy_from_bodypoint(ADMMPDInterfaceData *iface, const BodyPoint *pts)
+void admmpd_copy_from_object(ADMMPDInterfaceData *iface, Object *ob)
 {
-  if (iface == NULL || pts == NULL)
-    return;
+  if (!iface) { return; }
+  if (!iface->idata) { return; }
+  if (!iface->idata->data) { return; }
+  if (!ob) { return; }
+  if (!ob->soft) { return; }
+  if (!ob->soft->bpoint) { return; }
 
-  for (int i=0; i<iface->out_totverts; ++i)
+  // Should be the same, but if not we'll just
+  // copy over up to the amount that we can.
+  int nx = iface->idata->data->x.rows();
+  int nv = std::min(ob->soft->totpoint, nx);
+  for (int i=0; i<nv; ++i)
   {
-    const BodyPoint *pt = &pts[i];
+    const BodyPoint *pt = &ob->soft->bpoint[i];
     for(int j=0; j<3; ++j)
     {
       iface->idata->data->x(i,j)=pt->pos[j];
       iface->idata->data->v(i,j)=pt->vec[j];
+    }
+  }
+}
+
+void admmpd_copy_to_object(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
+{
+  if (!iface) { return; }
+  if (!iface->idata) { return; }
+  if (!iface->idata->data) { return; }
+  if (!iface->idata->mesh) { return; }
+  if (!iface->idata->mesh->rest_facet_verts()) { return; }
+
+  int nx = iface->idata->data->x.rows();
+
+  if (ob && ob->soft)
+  {
+    int np = std::min(ob->soft->totpoint, nx);
+    SoftBody *sb = ob->soft;
+    if (!sb->bpoint || nx != np)
+    {
+      // If we have a bpoint but it's the wrong size
+      if (ob->soft->bpoint && nx != np)
+        MEM_freeN(sb->bpoint);
+
+      // Create bpoint if we don't have one
+      if (!ob->soft->bpoint)
+        sb->bpoint = (BodyPoint*)MEM_callocN(nx*sizeof(BodyPoint), "ADMMPD_bpoint");
+
+      sb->totpoint = nx;
+      sb->totspring = 0;
+    }
+
+    // Copy internal data to BodyPoint
+    for (int i=0; i<nx; ++i)
+    {
+      BodyPoint *pt = &ob->soft->bpoint[i];
+      for(int j=0; j<3; ++j)
+      {
+        pt->pos[j] = iface->idata->data->x(i,j);
+        pt->vec[j] = iface->idata->data->v(i,j);
+      }
+    }
+  } // end has ob ptr
+
+  // Copy to vertexCos
+  int nfv = iface->idata->mesh->rest_facet_verts()->rows();
+  if (vertexCos != NULL)
+  {
+    for (int i=0; i<nfv; ++i)
+    {
+      Eigen::Vector3d xi =
+        iface->idata->mesh->get_mapped_facet_vertex(
+        &iface->idata->data->x, i);
+      vertexCos[i][0] = xi[0];
+      vertexCos[i][1] = xi[1];
+      vertexCos[i][2] = xi[2];
+      if (ob && ob->soft && ob->soft->local==0)
+      {
+        mul_m4_v3(ob->imat, vertexCos[i]);
+      }
     }
   }
 }
@@ -482,48 +587,9 @@ void admmpd_update_goals(
     }
 }
 
-void admmpd_copy_to_bodypoint_and_object(ADMMPDInterfaceData *iface, BodyPoint *pts, float (*vertexCos)[3])
-{
-
-  if (iface == NULL)
-    return;
-
-  // Map the deforming vertices to BodyPoint
-  for (int i=0; i<iface->out_totverts; ++i)
-  {
-    if (pts != NULL)
-    {
-      BodyPoint *pt = &pts[i];
-      for(int j=0; j<3; ++j)
-      {
-        pt->pos[j] = iface->idata->data->x(i,j);
-        pt->vec[j] = iface->idata->data->v(i,j);
-      }
-    }
-  }
-
-  // Map the facet vertices
-  const Eigen::MatrixXd *rest_facet_verts = iface->idata->mesh->rest_facet_verts();
-  if (vertexCos != NULL && rest_facet_verts != nullptr)
-  {
-    int num_surf_verts = rest_facet_verts->rows();
-    for (int i=0; i<num_surf_verts; ++i)
-    {
-      Eigen::Vector3d xi =
-        iface->idata->mesh->get_mapped_facet_vertex(
-        &iface->idata->data->x, i);
-      vertexCos[i][0] = xi[0];
-      vertexCos[i][1] = xi[1];
-      vertexCos[i][2] = xi[2];
-    }
-  }
-
-} // end map ADMMPD to bodypoint and object
-
 int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob)
 {
-  
-  if (iface==NULL || ob==NULL || ob->soft==NULL)
+  if (!iface || !ob || !ob->soft)
   {
     strcpy_error(iface, "NULL input");
     return 0;
@@ -535,14 +601,17 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob)
     return 0;
   }
 
+  // Change only options that do not cause a reset of the solver.
   options_from_object(
+    iface,
+    nullptr, // scene, ignored if null
     ob,
     iface->idata->options.get(),
     true);
 
   try
   {
-    int substeps = std::max(1,iface->idata->substeps);
+    int substeps = std::max(1,iface->idata->options->substeps);
     for (int i=0; i<substeps; ++i)
     {
       admmpd::Solver().solve(
@@ -558,5 +627,6 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob)
     strcpy_error(iface, e.what());
     return 0;
   }
+
   return 1;
 }

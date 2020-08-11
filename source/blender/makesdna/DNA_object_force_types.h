@@ -437,11 +437,6 @@ typedef struct SoftBody {
 #define SOLVER_MODE_ADMMPD 0
 #define SOLVER_MODE_LEGACY 1
 
-/* sb->admmpd_init_mode */
-#define ADMMPD_INIT_MODE_EMBEDDED 0
-#define ADMMPD_INIT_MODE_TETGEN 1
-#define ADMMPD_INIT_MODE_TRIANGLE 2
-
 #ifdef __cplusplus
 }
 #endif
