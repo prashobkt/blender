@@ -132,11 +132,7 @@ static void export_frame(ViewLayer *view_layer,
     frame_writer.write_object_name(*mesh_to_export);
     frame_writer.write_vertex_coords(*mesh_to_export);
 
-    /* Write edges of curves converted to mesh and primitive circle. */
-    if (mesh_to_export->tot_polygons() == 0) {
-      frame_writer.write_curve_edges(*mesh_to_export);
-    }
-    else {
+    if (mesh_to_export->tot_polygons() > 0) {
       Vector<Vector<uint>> uv_indices;
       if (export_params.export_normals) {
         frame_writer.write_poly_normals(*mesh_to_export);
@@ -150,6 +146,8 @@ static void export_frame(ViewLayer *view_layer,
       }
       frame_writer.write_poly_elements(*mesh_to_export, uv_indices);
     }
+    frame_writer.write_loose_edges(*mesh_to_export);
+
     frame_writer.update_index_offsets(*mesh_to_export);
   }
   /* Export nurbs in parm form, not as vertices and edges. */

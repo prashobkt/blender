@@ -120,7 +120,6 @@ void MeshFromGeometry::create_polys_loops()
       MLoop *mloop = &blender_mesh_->mloop[tot_loop_idx];
       tot_loop_idx++;
       mloop->v = curr_corner.vert_index;
-      std::cout << curr_corner.vert_index;
       if (blender_mesh_->dvert) {
         /* Iterating over mloop results in finding the same vertex multiple times.
          * Another way is to allocate memory for dvert while creating vertices and fill them here.
@@ -157,9 +156,13 @@ void MeshFromGeometry::create_edges()
 {
   const int64_t tot_edges{mesh_geometry_.tot_edges()};
   for (int i = 0; i < tot_edges; ++i) {
-    const MEdge &curr_edge = mesh_geometry_.edges()[i];
-    blender_mesh_->medge[i].v1 = curr_edge.v1;
-    blender_mesh_->medge[i].v2 = curr_edge.v2;
+    const MEdge &src_edge = mesh_geometry_.edges()[i];
+    MEdge &dst_edge = blender_mesh_->medge[i];
+    BLI_assert(src_edge.v1 < mesh_geometry_.tot_verts() &&
+               src_edge.v2 < mesh_geometry_.tot_verts());
+    dst_edge.v1 = src_edge.v1;
+    dst_edge.v2 = src_edge.v2;
+    dst_edge.flag = ME_LOOSEEDGE;
   }
 
   /* Set argument `update` to true so that existing, explicitly imported edges can be merged

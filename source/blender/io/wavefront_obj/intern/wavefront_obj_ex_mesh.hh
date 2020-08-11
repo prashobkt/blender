@@ -27,6 +27,7 @@
 #include "BKE_material.h"
 #include "BKE_mesh.h"
 
+#include "BLI_array.hh"
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 
@@ -68,10 +69,6 @@ class OBJMesh : NonMovable, NonCopyable {
    */
   uint tot_uv_vertices_ = 0;
   /**
-   * Only for curve converted to meshes: total edges in a mesh.
-   */
-  uint tot_edges_ = 0;
-  /**
    * Total smooth groups in an object.
    */
   uint tot_smooth_groups_ = 0;
@@ -93,6 +90,7 @@ class OBJMesh : NonMovable, NonCopyable {
   int ith_smooth_group(int poly_index) const;
 
   void ensure_mesh_normals();
+  void ensure_mesh_edges();
   void calc_smooth_groups();
   Material *get_object_material(short mat_nr);
   const MPoly &get_ith_poly(uint i);
@@ -109,7 +107,7 @@ class OBJMesh : NonMovable, NonCopyable {
   void calc_vertex_normal(float r_vertex_normal[3], uint vert_index);
   void calc_poly_normal_indices(Vector<uint> &r_normal_indices, uint poly_index);
   const char *get_poly_deform_group_name(const MPoly &mpoly, short &r_last_vertex_group);
-  void calc_edge_vert_indices(uint r_vert_indices[2], uint edge_index);
+  Array<int, 2> calc_edge_vert_indices(const uint edge_index) const;
 
  private:
   void triangulate_mesh_eval();

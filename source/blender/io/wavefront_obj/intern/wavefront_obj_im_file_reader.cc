@@ -237,8 +237,8 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
 
 void IndexOffsets::update_index_offsets(const GlobalVertices &global_vertices)
 {
-  index_offsets_[VERTEX_OFF] += global_vertices.vertices.size();
-  index_offsets_[UV_VERTEX_OFF] += global_vertices.uv_vertices.size();
+  index_offsets_[VERTEX_OFF] = global_vertices.vertices.size();
+  index_offsets_[UV_VERTEX_OFF] = global_vertices.uv_vertices.size();
 }
 
 /**
@@ -317,9 +317,9 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
       copy_string_to_int(str_edge_split[1], -1, edge_v2);
       /* Always keep stored indices non-negative and zero-based. */
       edge_v1 += edge_v1 < 0 ? global_vertices.vertices.size() :
-                               -offsets.get_index_offset(VERTEX_OFF) + 1;
+                               -offsets.get_index_offset(VERTEX_OFF) - 1;
       edge_v2 += edge_v2 < 0 ? global_vertices.vertices.size() :
-                               -offsets.get_index_offset(VERTEX_OFF) + 1;
+                               -offsets.get_index_offset(VERTEX_OFF) - 1;
       BLI_assert(edge_v1 >= 0 && edge_v2 >= 0);
       current_geometry->edges_.append({static_cast<uint>(edge_v1), static_cast<uint>(edge_v2)});
     }
@@ -386,10 +386,8 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
         }
         /* Always keep stored indices non-negative and zero-based. */
         corner.vert_index += corner.vert_index < 0 ? global_vertices.vertices.size() :
-                                                     -offsets.get_index_offset(VERTEX_OFF) + 1;
-        corner.uv_vert_index += corner.uv_vert_index < 0 ?
-                                    global_vertices.uv_vertices.size() :
-                                    -offsets.get_index_offset(UV_VERTEX_OFF) + 1;
+                                                     -offsets.get_index_offset(VERTEX_OFF) - 1;
+        corner.uv_vert_index += corner.uv_vert_index < 0 ? global_vertices.uv_vertices.size() : -1;
         curr_face.face_corners.append(corner);
       }
 

@@ -23,6 +23,7 @@
 
 #include "BKE_blender_version.h"
 
+#include "BLI_array.hh"
 #include "BLI_math_inline.h"
 
 #include "DNA_object_types.h"
@@ -357,17 +358,20 @@ void OBJWriter::write_poly_elements(OBJMesh &obj_mesh_data, Span<Vector<uint>> u
 }
 
 /**
- * Define and write an edge of a curve converted to mesh or a primitive circle as l v1 v2 .
+ * Write loose edges of a mesh, a curve converted to mesh, or a primitive circle as l v1 v2 .
  */
-void OBJWriter::write_curve_edges(OBJMesh &obj_mesh_data)
+void OBJWriter::write_loose_edges(OBJMesh &obj_mesh_data)
 {
-  uint vertex_indices[2];
+  Array<int, 2> vertex_indices;
+  obj_mesh_data.ensure_mesh_edges();
   for (uint edge_index = 0; edge_index < obj_mesh_data.tot_edges(); edge_index++) {
-    obj_mesh_data.calc_edge_vert_indices(vertex_indices, edge_index);
-    fprintf(outfile_,
-            "l %u %u\n",
-            vertex_indices[0] + index_offset_[VERTEX_OFF],
-            vertex_indices[1] + index_offset_[VERTEX_OFF]);
+    vertex_indices = obj_mesh_data.calc_edge_vert_indices(edge_index);
+    if (vertex_indices.size() == 2) {
+      fprintf(outfile_,
+              "l %u %u\n",
+              vertex_indices[0] + index_offset_[VERTEX_OFF],
+              vertex_indices[1] + index_offset_[VERTEX_OFF]);
+    }
   }
 }
 

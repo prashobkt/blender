@@ -71,16 +71,13 @@ OBJMesh::OBJMesh(Depsgraph *depsgraph, const OBJExportParams &export_params, Obj
         triangulate_mesh_eval();
       }
       tot_poly_normals_ = export_mesh_eval_->totpoly;
-      tot_edges_ = 0;
       if (tot_poly_normals_ <= 0) {
         tot_poly_normals_ = 0;
-        tot_edges_ = export_mesh_eval_->totedge;
       }
       break;
     }
     case OB_CURVE: {
       tot_poly_normals_ = 0;
-      tot_edges_ = export_mesh_eval_->totedge;
       break;
     }
     default: {
@@ -171,7 +168,7 @@ uint OBJMesh::tot_uv_vertices() const
 
 uint OBJMesh::tot_edges() const
 {
-  return tot_edges_;
+  return export_mesh_eval_->totedge;
 }
 
 /**
@@ -202,6 +199,12 @@ int OBJMesh::ith_smooth_group(int poly_index) const
 void OBJMesh::ensure_mesh_normals()
 {
   BKE_mesh_ensure_normals(export_mesh_eval_);
+}
+
+void OBJMesh::ensure_mesh_edges()
+{
+  BKE_mesh_calc_edges(export_mesh_eval_, true, false);
+  BKE_mesh_calc_edges_loose(export_mesh_eval_);
 }
 
 /**
@@ -456,17 +459,12 @@ const char *OBJMesh::get_poly_deform_group_name(const MPoly &mpoly, short &r_las
 /**
  * Only for curve converted to meshes and primitive circle: calculate vertex indices of one edge.
  */
-void OBJMesh::calc_edge_vert_indices(uint r_vert_indices[2], uint edge_index)
+Array<int, 2> OBJMesh::calc_edge_vert_indices(const uint edge_index) const
 {
-  r_vert_indices[0] = edge_index + 1;
-  r_vert_indices[1] = edge_index + 2;
-
-  /* Last edge's second vertex depends on whether the curve is cyclic or not. */
-  if (UNLIKELY(edge_index == export_mesh_eval_->totedge)) {
-    r_vert_indices[0] = edge_index + 1;
-    r_vert_indices[1] = export_mesh_eval_->totvert == export_mesh_eval_->totedge ?
-                            1 :
-                            export_mesh_eval_->totvert;
+  const MEdge &edge = export_mesh_eval_->medge[edge_index];
+  if (edge.flag & ME_LOOSEEDGE) {
+    return {edge.v1 + 1, edge.v2 + 1};
   }
+  return {};
 }
 }  // namespace blender::io::obj

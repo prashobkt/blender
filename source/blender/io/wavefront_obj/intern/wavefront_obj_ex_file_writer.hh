@@ -71,7 +71,7 @@ class OBJWriter {
                           short &r_last_face_vertex_group,
                           uint poly_index);
   void write_poly_elements(OBJMesh &obj_mesh_data, Span<Vector<uint>> uv_indices);
-  void write_curve_edges(OBJMesh &obj_mesh_data);
+  void write_loose_edges(OBJMesh &obj_mesh_data);
   void write_nurbs_curve(OBJNurbs &obj_nurbs_data);
 
   void update_index_offsets(OBJMesh &obj_mesh_data);
