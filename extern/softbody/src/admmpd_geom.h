@@ -21,17 +21,19 @@ static Eigen::Matrix<T,4,1> point_tet_barys(
     const Eigen::Matrix<T,3,1> &c,
     const Eigen::Matrix<T,3,1> &d);
 
+template<typename T>
 static bool point_in_tet(
-    const Eigen::Vector3d &p,
-    const Eigen::Vector3d &a,
-    const Eigen::Vector3d &b,
-    const Eigen::Vector3d &c,
-    const Eigen::Vector3d &d);
+    const Eigen::Matrix<T,3,1> &p,
+    const Eigen::Matrix<T,3,1> &a,
+    const Eigen::Matrix<T,3,1> &b,
+    const Eigen::Matrix<T,3,1> &c,
+    const Eigen::Matrix<T,3,1> &d);
 
+template<typename T>
 static void create_tets_from_box(
-    const Eigen::Vector3d &bmin,
-    const Eigen::Vector3d &bmax,
-    std::vector<Eigen::Vector3d> &verts,
+    const Eigen::Matrix<T,3,1> &bmin,
+    const Eigen::Matrix<T,3,1> &bmax,
+    std::vector<Eigen::Matrix<T,3,1>> &verts,
     std::vector<Eigen::RowVector4i> &tets);
 
 template<typename T>
@@ -89,10 +91,12 @@ static bool ray_triangle(
 	T &t_max,
 	Eigen::Matrix<T,3,1> *bary=nullptr);
 
+// Combines vertices if less than eps apart
+template<typename T>
 static void merge_close_vertices(
-	std::vector<Eigen::Vector3d> &verts,
+	std::vector<Eigen::Matrix<T,3,1> > &verts,
 	std::vector<Eigen::RowVector4i> &tets,
-	double eps = 1e-12);
+	T eps = 1e-12);
 
 // Replicates a matrix along the diagonal
 template<typename T>

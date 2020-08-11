@@ -12,7 +12,6 @@ namespace admmpd {
 class LinearSolver
 {
 public:
-	// Called once at simulation initialization
 	virtual void init_solve(
         const Mesh *mesh,
         const Options *options,
@@ -48,18 +47,24 @@ public:
 class ConjugateGradients : public LinearSolver
 {
 public:
+	// Calls LDLT::init_solve, since the same
+	// factorization and quantities are used.
 	void init_solve(
         const Mesh *mesh,
         const Options *options,
 		const Collision *collision,
         SolverData *data);
 
+	// Does not factor a new matrix if changes to C.
+	// Instead, uses CG with the factorization computed
+	// in init_solve as the preconditioner.
 	void solve(
         const Mesh *mesh,
         const Options *options,
 		const Collision *collision,
         SolverData *data);
 
+protected:
 	void apply_preconditioner(
 		SolverData *data,
 		Eigen::MatrixXd &x,

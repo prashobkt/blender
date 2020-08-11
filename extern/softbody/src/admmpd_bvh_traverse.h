@@ -33,51 +33,6 @@ public:
 	virtual bool stop_traversing(const AABB &aabb, int prim) = 0;
 };
 
-// Closest hit BVH traversal.
-template <typename T>
-class RayClosestHit : public Traverser<T,3>
-{
-protected:
-	using typename Traverser<T,3>::AABB;
-	typedef Eigen::Matrix<T,3,1> VecType;
-	typedef Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic> MatrixXType;
-
-	VecType o, d;
-	const MatrixXType *prim_verts;
-	const Eigen::MatrixXi *tri_inds;
-	T eps;
-	T t_min;
-
-public:
-	struct Output {
-		int prim; // -1 if no intersections
-		T t_max;
-		VecType barys;
-		Output() :
-			prim(-1),
-			t_max(std::numeric_limits<T>::max()),
-			barys(VecType::Zero())
-			{}
-	} output;
-
-	RayClosestHit(
-			const VecType &orig_, // ray origin
-			const VecType &dir_,  // normalized ray direction
-			const MatrixXType *prim_verts_,
-			const Eigen::MatrixXi *tri_inds_,
-			T eps_, // if dist(0,tri) < eps, is a hit. eps<=0 skips this test
-			T t_min_=0,
-			T t_max_=std::numeric_limits<T>::max());
-
-	void traverse(
-		const AABB &left_aabb, bool &go_left,
-		const AABB &right_aabb, bool &go_right,
-		bool &go_left_first);
-
-	// Searches for closest hit, so always returns false
-	bool stop_traversing(const AABB &aabb, int prim);
-};
-
 // Point in tet mesh traversal
 template <typename T>
 class PointInTetMeshTraverse : public Traverser<T,3>

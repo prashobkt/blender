@@ -39,21 +39,22 @@ Matrix<T,4,1> geom::point_tet_barys(
 
 // Checks that it's on the "correct" side of the normal
 // for each face of the tet. Assumes winding points inward.
+template <typename T>
 bool geom::point_in_tet(
-	const Vector3d &p,
-	const Vector3d &a,
-	const Vector3d &b,
-	const Vector3d &c,
-	const Vector3d &d)
+	const Matrix<T,3,1> &p,
+	const Matrix<T,3,1> &a,
+	const Matrix<T,3,1> &b,
+	const Matrix<T,3,1> &c,
+	const Matrix<T,3,1> &d)
 {
 	auto check_face = [](
-		const Vector3d &point,
-		const Vector3d &p0,
-		const Vector3d &p1,
-		const Vector3d &p2,
-		const Vector3d &p3 )
+		const Matrix<T,3,1> &point,
+		const Matrix<T,3,1> &p0,
+		const Matrix<T,3,1> &p1,
+		const Matrix<T,3,1> &p2,
+		const Matrix<T,3,1> &p3 )
 	{
-		Vector3d n = (p1-p0).cross(p2-p0);
+		Matrix<T,3,1> n = (p1-p0).cross(p2-p0);
 		double dp3 = n.dot(p3-p0);
 		double dp = n.dot(point-p0);
 		return (dp3*dp >= 0);
@@ -65,23 +66,24 @@ bool geom::point_in_tet(
 		check_face(p, d, a, b, c);
 }
 
+template <typename T>
 void geom::create_tets_from_box(
-    const Eigen::Vector3d &bmin,
-    const Eigen::Vector3d &bmax,
-    std::vector<Eigen::Vector3d> &verts,
+    const Eigen::Matrix<T,3,1> &bmin,
+    const Eigen::Matrix<T,3,1> &bmax,
+    std::vector<Eigen::Matrix<T,3,1> > &verts,
     std::vector<Eigen::RowVector4i> &tets)
 {
-	std::vector<Vector3d> v = {
+	std::vector<Matrix<T,3,1>> v = {
 		// Top plane, clockwise looking down
 		bmax,
-		Vector3d(bmin[0], bmax[1], bmax[2]),
-		Vector3d(bmin[0], bmax[1], bmin[2]),
-		Vector3d(bmax[0], bmax[1], bmin[2]),
+		Matrix<T,3,1>(bmin[0], bmax[1], bmax[2]),
+		Matrix<T,3,1>(bmin[0], bmax[1], bmin[2]),
+		Matrix<T,3,1>(bmax[0], bmax[1], bmin[2]),
 		// Bottom plane, clockwise looking down
-		Vector3d(bmax[0], bmin[1], bmax[2]),
-		Vector3d(bmin[0], bmin[1], bmax[2]),
+		Matrix<T,3,1>(bmax[0], bmin[1], bmax[2]),
+		Matrix<T,3,1>(bmin[0], bmin[1], bmax[2]),
 		bmin,
-		Vector3d(bmax[0], bmin[1], bmin[2])
+		Matrix<T,3,1>(bmax[0], bmin[1], bmin[2])
 	};
 	// Add vertices and get indices of the box
 	std::vector<int> b;
@@ -470,36 +472,36 @@ bool geom::ray_triangle(
 	return true;
 } // end ray - triangle test
 
+template <typename T>
 void geom::merge_close_vertices(
-	std::vector<Vector3d> &verts,
+	std::vector<Matrix<T,3,1> > &verts,
 	std::vector<RowVector4i> &tets,
-	double eps)
+	T eps)
 {
 	int nv = verts.size();
-	std::vector<Vector3d> new_v(nv); // new verts
+	std::vector<Matrix<T,3,1> > new_v(nv); // new verts
 	std::vector<int> idx(nv,0); // index mapping
 	std::vector<int> visited(nv,0);
-	int count = 0;
+	int curr_idx = 0;
 	for (int i=0; i<nv; ++i)
 	{
 		if(!visited[i])
 		{
+			new_v[curr_idx] = verts[i];
 			visited[i] = 1;
-			new_v[count] = verts[i];
-			idx[i] = count;
-			Vector3d vi = verts[i];
+			idx[i] = curr_idx;
 			for (int j = i+1; j<nv; ++j)
 			{
-				if((verts[j]-vi).norm() < eps)
+				if((verts[j]-verts[i]).norm() < eps)
 				{
 					visited[j] = 1;
-					idx[j] = count;
+					idx[j] = curr_idx;
 				}
 			}
-			count++;
+			curr_idx++;
 		}
 	}
-	new_v.resize(count);
+	new_v.resize(curr_idx);
 	verts = new_v;
 	int nt = tets.size();
 	for (int i=0; i<nt; ++i)
@@ -539,26 +541,48 @@ void geom::make_n3(
 //
 template Eigen::Matrix<double,4,1>
 	admmpd::geom::point_tet_barys<double>(
-	const Eigen::Vector3d&,
-	const Eigen::Vector3d&, const Eigen::Vector3d&,
-	const Eigen::Vector3d&, const Eigen::Vector3d&);
+	const Eigen::Matrix<double,3,1>&,
+	const Eigen::Matrix<double,3,1>&, const Eigen::Matrix<double,3,1>&,
+	const Eigen::Matrix<double,3,1>&, const Eigen::Matrix<double,3,1>&);
 template Eigen::Matrix<float,4,1>
 	admmpd::geom::point_tet_barys<float>(
 	const Eigen::Vector3f&,
 	const Eigen::Vector3f&, const Eigen::Vector3f&,
 	const Eigen::Vector3f&, const Eigen::Vector3f&);
+template bool admmpd::geom::point_in_tet<double>(
+	const Matrix<double,3,1>&,
+	const Matrix<double,3,1>&,
+	const Matrix<double,3,1>&,
+	const Matrix<double,3,1>&,
+	const Matrix<double,3,1>&);
+template bool admmpd::geom::point_in_tet<float>(
+	const Matrix<float,3,1>&,
+	const Matrix<float,3,1>&,
+	const Matrix<float,3,1>&,
+	const Matrix<float,3,1>&,
+	const Matrix<float,3,1>&);
+template void geom::create_tets_from_box<double>(
+    const Eigen::Matrix<double,3,1>&,
+    const Eigen::Matrix<double,3,1>&,
+    std::vector<Eigen::Matrix<double,3,1> >&,
+    std::vector<Eigen::RowVector4i>&);
+template void geom::create_tets_from_box<float>(
+    const Eigen::Matrix<float,3,1>&,
+    const Eigen::Matrix<float,3,1>&,
+    std::vector<Eigen::Matrix<float,3,1> >&,
+    std::vector<Eigen::RowVector4i>&);
 template Eigen::Matrix<double,3,1>
 	admmpd::geom::point_triangle_barys<double>(
-	const Eigen::Vector3d&, const Eigen::Vector3d&,
-	const Eigen::Vector3d&, const Eigen::Vector3d&);
+	const Eigen::Matrix<double,3,1>&, const Eigen::Matrix<double,3,1>&,
+	const Eigen::Matrix<double,3,1>&, const Eigen::Matrix<double,3,1>&);
 template Eigen::Matrix<float,3,1>
 	admmpd::geom::point_triangle_barys<float>(
 	const Eigen::Vector3f&, const Eigen::Vector3f&,
 	const Eigen::Vector3f&, const Eigen::Vector3f&);
 template Eigen::Matrix<double,3,1>
 	admmpd::geom::point_on_triangle<double>(
-	const Eigen::Vector3d&, const Eigen::Vector3d&,
-	const Eigen::Vector3d&, const Eigen::Vector3d&);
+	const Eigen::Matrix<double,3,1>&, const Eigen::Matrix<double,3,1>&,
+	const Eigen::Matrix<double,3,1>&, const Eigen::Matrix<double,3,1>&);
 template Eigen::Matrix<float,3,1>
 	admmpd::geom::point_on_triangle<float>(
 	const Eigen::Vector3f&, const Eigen::Vector3f&,
@@ -586,19 +610,27 @@ template bool geom::aabb_triangle_intersect<float>(
     const Eigen::Matrix<float,3,1>&,
     const Eigen::Matrix<float,3,1>&);
 template bool admmpd::geom::ray_aabb<double>(
-	const Eigen::Vector3d&, const Eigen::Vector3d&,
+	const Eigen::Matrix<double,3,1>&, const Eigen::Matrix<double,3,1>&,
 	const Eigen::AlignedBox<double,3>&, double, double);
 template bool admmpd::geom::ray_aabb<float>(
 	const Eigen::Vector3f&, const Eigen::Vector3f&,
 	const Eigen::AlignedBox<float,3>&, float, float);
 template bool admmpd::geom::ray_triangle<double>(
-	const Eigen::Vector3d&, const Eigen::Vector3d&,
-	const Eigen::Vector3d&, const Eigen::Vector3d&,
-	const Eigen::Vector3d&, double, double&, Eigen::Vector3d*);
+	const Eigen::Matrix<double,3,1>&, const Eigen::Matrix<double,3,1>&,
+	const Eigen::Matrix<double,3,1>&, const Eigen::Matrix<double,3,1>&,
+	const Eigen::Matrix<double,3,1>&, double, double&, Eigen::Matrix<double,3,1>*);
 template bool admmpd::geom::ray_triangle<float>(
 	const Eigen::Vector3f&, const Eigen::Vector3f&,
 	const Eigen::Vector3f&, const Eigen::Vector3f&,
 	const Eigen::Vector3f&, float, float&, Eigen::Vector3f*);
+template void geom::merge_close_vertices<double>(
+	std::vector<Matrix<double,3,1> > &,
+	std::vector<RowVector4i> &,
+	double eps);
+template void geom::merge_close_vertices<float>(
+	std::vector<Matrix<float,3,1> >&,
+	std::vector<RowVector4i> &,
+	float);
 template void admmpd::geom::make_n3<float>(
 	const Eigen::SparseMatrix<float>&,
 	Eigen::SparseMatrix<float>&);

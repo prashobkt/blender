@@ -3654,7 +3654,6 @@ static void sbObjectStep_admmpd(
 
   Mesh *me = ob->data;
   SoftBody *sb = ob->soft;
-
   if (!sb->admmpd) {
     CLOG_ERROR(&LOG, "No ADMM-PD data");
     return;
@@ -3812,6 +3811,9 @@ void sbObjectStep(struct Depsgraph *depsgraph,
 {
 
   SoftBody *sb = ob->soft;
+  if (!sb)
+    return;
+
   if (sb->solver_mode == SOLVER_MODE_ADMMPD) {
     sbObjectStep_admmpd(depsgraph,scene,ob,cfra,vertexCos,numVerts);
     return;

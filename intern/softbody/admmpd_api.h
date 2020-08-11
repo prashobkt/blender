@@ -39,16 +39,18 @@ typedef struct ADMMPDInterfaceData {
 // Frees ADMMPDInternalData
 void admmpd_dealloc(ADMMPDInterfaceData*);
 
-// Initializes the deformation mesh. The need_update function is used to
-// test if the mesh topology has changed in a way that requires re-initialization.
-// The SoftBody object's (ob->soft) bpoint array is also updated.
+// Test if the mesh topology has changed in a way that requires re-initialization.
 int admmpd_mesh_needs_update(ADMMPDInterfaceData*, Object*);
+
+// Initialize the mesh.
+// The SoftBody object's (ob->soft) bpoint array is also updated.
 // Returns 1 on success, 0 on failure
 int admmpd_update_mesh(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3]);
 
-// Intializes the solver data. The needs_update function will determine
-// if certain parameter changes require re-initialization.
+// Test if certain parameter changes require re-initialization.
 int admmpd_solver_needs_update(ADMMPDInterfaceData*, Scene*, Object*);
+
+// Initialize solver variables.
 // Returns 1 on success, 0 on failure.
 int admmpd_update_solver(ADMMPDInterfaceData*, Scene*, Object*, float (*vertexCos)[3]);
 
@@ -59,7 +61,10 @@ void admmpd_copy_from_object(ADMMPDInterfaceData*, Object*);
 // Copies ADMM-PD data to SoftBody::bpoint and vertexCos
 void admmpd_copy_to_object(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3]);
 
-// Sets the obstacle data for collisions
+// Sets the obstacle data for collisions.
+// Update obstacles has a different interface because of the
+// complexity of grabbing obstacle mesh data. We'll just do
+// that in softbody.c
 void admmpd_update_obstacles(
     ADMMPDInterfaceData*,
     float *in_verts_0,

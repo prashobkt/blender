@@ -13,80 +13,6 @@ namespace admmpd {
 using namespace Eigen;
 
 template <typename T>
-RayClosestHit<T>::RayClosestHit(
-		const VecType &orig_,
-		const VecType &dir_,
-		const MatrixXType *prim_verts_,
-		const Eigen::MatrixXi *tri_inds_,
-		T eps_,
-		T t_min_,
-		T t_max_) :
-	o(orig_),
-	d(dir_),
-	prim_verts(prim_verts_),
-	tri_inds(tri_inds_),
-	eps(eps_),
-	t_min(t_min_)
-{
-	output.t_max = t_max_;
-	BLI_assert(prim_verts != NULL);
-	BLI_assert(tri_inds != NULL);
-	BLI_assert(prim_verts->cols()==3);
-	BLI_assert(tri_inds->cols()==3);
-}
-
-template <typename T>
-void RayClosestHit<T>::traverse(
-	const AABB &left_aabb, bool &go_left,
-	const AABB &right_aabb, bool &go_right,
-	bool &go_left_first)
-{
-	go_left = geom::ray_aabb<T>(o,d,left_aabb,t_min,output.t_max) ||
-		(eps > 0 ? left_aabb.exteriorDistance(o) < eps : false);
-	go_right = geom::ray_aabb<T>(o,d,right_aabb,t_min,output.t_max) ||
-		(eps > 0 ? right_aabb.exteriorDistance(o) < eps : false);
-	(void)(go_left_first);
-}
-
-template <typename T>
-bool RayClosestHit<T>::stop_traversing(const AABB &aabb, int prim)
-{
-	BLI_assert(prim > 0);
-	BLI_assert(prim < tri_inds->rows());
-	if (!geom::ray_aabb<T>(o,d,aabb,t_min,output.t_max))
-		return true;
-	RowVector3i p = tri_inds->row(prim);
-	VecType v[3] = {
-		prim_verts->row(p[0]),
-		prim_verts->row(p[1]),
-		prim_verts->row(p[2])
-	};
-	T t_max = output.t_max;
-	VecType bary;
-	bool hit = geom::ray_triangle<T>(o,d,v[0],v[1],v[2],t_min,t_max,&bary);
-	if (hit)
-	{
-		output.prim = prim;
-		output.t_max = t_max;
-		output.barys = bary;
-		return false;
-	}
-	if (eps > 0)
-	{
-		VecType o_on_tri = geom::point_on_triangle<T>(o,v[0],v[1],v[2]);
-		T dist = (o-o_on_tri).norm();
-		if (dist < eps)
-		{
-			output.prim = prim;
-			output.t_max = dist;
-			output.barys = geom::point_triangle_barys<T>(o_on_tri,v[0],v[1],v[2]);
-		}
-	}
-	return false;
-}
-
-
-template <typename T>
 void PointInTetMeshTraverse<T>::traverse(
 	const AABB &left_aabb, bool &go_left,
 	const AABB &right_aabb, bool &go_right,
@@ -132,12 +58,7 @@ bool PointInTetMeshTraverse<T>::stop_traversing(
 		prim_verts->row(t[3])
 	};
 
-	bool hit = geom::point_in_tet(
-		point.template cast<double>(),
-		v[0].template cast<double>(),
-		v[1].template cast<double>(),
-		v[2].template cast<double>(),
-		v[3].template cast<double>());
+	bool hit = geom::point_in_tet<T>(point, v[0], v[1], v[2], v[3]);
 
 	if (hit)
 		output.prim = prim;
@@ -377,8 +298,6 @@ bool TetIntersectsMeshTraverse<T>::stop_traversing(
 } // end point in mesh stop traversing
 
 // Compile template types
-template class admmpd::RayClosestHit<double>;
-template class admmpd::RayClosestHit<float>;
 template class admmpd::PointInTetMeshTraverse<double>;
 template class admmpd::PointInTetMeshTraverse<float>;
 template class admmpd::PointInTriangleMeshTraverse<double>;

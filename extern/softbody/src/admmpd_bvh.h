@@ -99,11 +99,8 @@ public:
 	// Removes all BVH data
 	void clear();
 
-	// Creates the Octree up to depth with smart subdivision
-	// (only create children if it contains prims) and does not
-	// create a cell if it is outside the mesh.
-	// ** Assumes a closed mesh and only defined for 3D
-	// eps is added to the min and max of the boxes.
+	// Creates the Octree up to stopdepth. Only boxes containing
+	// faces are subdivided up to the depth.
 	void init(const MatrixXT *V, const Eigen::MatrixXi *F, int stopdepth);
 
 	// Returns bounding box of the root node
