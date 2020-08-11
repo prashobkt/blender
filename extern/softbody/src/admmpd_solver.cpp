@@ -57,7 +57,7 @@ bool Solver::init(
 	}
 
 	BLI_assert(data->x.rows()>0);
-	BLI_assert(data->x.cols()==0);
+	BLI_assert(data->x.cols()==3);
 	data->v.resize(data->x.rows(), 3);
 	data->v.setZero();
 	mesh->compute_masses(&data->x, options->density_kgm3, data->m);

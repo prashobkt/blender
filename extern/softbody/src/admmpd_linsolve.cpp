@@ -124,7 +124,12 @@ void LDLT::solve(
 			C.setFromTriplets(trips.begin(),trips.end());		
 		}
 	}
-
+	else
+	{
+		C.resize(1,nx*3);
+		d = VectorXd::Zero(1);
+	}
+	
 	// Compute RHS
 	data->ls.rhs.noalias() =
 		data->M_xbar +
@@ -143,7 +148,7 @@ void LDLT::solve(
 	// (A + PtP + CtC) x = b + Ptq + Ctd
 	double ck = options->mult_ck * data->A_diag_max;
 	data->ls.A_PtP_CtC_3 = data->ls.A_PtP_3 + ck * C.transpose()*C;
-	Vector3d Ctd3 = ck * C.transpose() * d;
+	VectorXd Ctd3 = ck * C.transpose() * d;
 	VectorXd rhs3(nx*3);
 	for (int i=0; i<nx; ++i)
 	{
@@ -202,17 +207,17 @@ void ConjugateGradients::solve(
 
 	auto map_vector_to_matrix = [](const VectorXd &x3, MatrixXd &x)
 	{
-		int nx = x3.rows()/3;
-		if (x.rows() != nx) { x.resize(nx,3); }
-		for (int i=0; i<nx; ++i)
+		int nx_ = x3.rows()/3;
+		if (x.rows() != nx_) { x.resize(nx_,3); }
+		for (int i=0; i<nx_; ++i)
 			x.row(i) = x3.segment<3>(i*3);
 	};
 
 	auto map_matrix_to_vector = [](const MatrixXd &x, VectorXd &x3)
 	{
-		int nx = x.rows();
-		if (x3.rows() != nx*3) { x3.resize(nx*3); }
-		for (int i=0; i<nx; ++i)
+		int nx_ = x.rows();
+		if (x3.rows() != nx_*3) { x3.resize(nx_*3); }
+		for (int i=0; i<nx_; ++i)
 			x3.segment<3>(i*3) = x.row(i);
 	};
 
@@ -247,6 +252,12 @@ void ConjugateGradients::solve(
 			C.setFromTriplets(trips.begin(),trips.end());		
 		}
 	}
+	else
+	{
+		C.resize(1,nx*3);
+		d = VectorXd::Zero(1);
+	}
+	
 
 	// Compute RHS
 	data->ls.rhs.noalias() =
