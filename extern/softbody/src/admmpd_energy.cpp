@@ -10,7 +10,7 @@
 namespace admmpd {
 using namespace Eigen;
 
-Lame::Lame() : m_material(ELASTIC_ARAP)
+Lame::Lame()
 {
 	m_limit = Vector2d(-999,999);
 	set_from_youngs_poisson(10000000,0.399);
@@ -52,9 +52,9 @@ void EnergyTerm::signed_svd(
 }
 
 void EnergyTerm::update(
+	const Options *options,
 	int index,
 	int energyterm_type,
-	const Lame &lame,
 	double rest_volume,
 	double weight,
 	const Eigen::MatrixXd *x,
@@ -66,17 +66,17 @@ void EnergyTerm::update(
 	{
 		default: break;
 		case ENERGYTERM_TET: {
-			update_tet(index,lame,rest_volume,weight,x,Dx,z,u);
+			update_tet(options,index,rest_volume,weight,x,Dx,z,u);
 		} break;
 		case ENERGYTERM_TRIANGLE: {
-			update_tri(index,lame,rest_volume,weight,x,Dx,z,u);
+			update_tri(options,index,rest_volume,weight,x,Dx,z,u);
 		} break;
 	}
 } // end EnergyTerm::update
 
 void EnergyTerm::update_tet(
+	const Options *options,
 	int index,
-	const Lame &lame,
 	double rest_volume,
 	double weight,
 	const Eigen::MatrixXd *x,
@@ -84,6 +84,9 @@ void EnergyTerm::update_tet(
 	Eigen::MatrixXd *z,
 	Eigen::MatrixXd *u)
 {
+	Lame lame;
+	lame.set_from_youngs_poisson(options->youngs,options->poisson);
+
 	(void)(x);
 	Matrix3d Dix = Dx->block<3,3>(index,0);
 	Matrix3d ui = u->block<3,3>(index,0);
@@ -94,7 +97,7 @@ void EnergyTerm::update_tet(
 	signed_svd(zi, U, S, V);
 	Vector3d s0 = S;
 
-	switch (lame.m_material)
+	switch (options->elastic_material)
 	{
 		default:
 		case ELASTIC_ARAP:
@@ -109,7 +112,7 @@ void EnergyTerm::update_tet(
 		case ELASTIC_NH:
 		{
 			S = Vector3d::Ones();
-			solve_prox(index,lame,s0,S);
+			solve_prox(options,index,lame,s0,S);
 			zi = U * S.asDiagonal() * V.transpose();
 		} break;
 	}
@@ -121,8 +124,8 @@ void EnergyTerm::update_tet(
 } // end EnergyTerm::update
 
 void EnergyTerm::update_tri(
+	const Options *options,
 	int index,
-	const Lame &lame,
 	double rest_area,
 	double weight,
 	const Eigen::MatrixXd *x,
@@ -130,6 +133,10 @@ void EnergyTerm::update_tri(
 	Eigen::MatrixXd *z,
 	Eigen::MatrixXd *u)
 {
+	Lame lame;
+	lame.set_from_youngs_poisson(options->youngs,options->poisson);
+
+	(void)(options);
 	typedef Matrix<double,2,3> Matrix23d;
 	// For we'll assume ARAP energy. If we need nonlinear energies
 	// in the future that's totally doable.
@@ -165,14 +172,17 @@ void EnergyTerm::update_tri(
 }
 
 int EnergyTerm::init_tet(
+	const Options *options,
 	int index,
-	const Lame &lame,
 	const Eigen::Matrix<int,1,4> &prim,
 	const Eigen::MatrixXd *x,
 	double &volume,
 	double &weight,
 	std::vector< Eigen::Triplet<double> > &triplets )
 {
+	Lame lame;
+	lame.set_from_youngs_poisson(options->youngs,options->poisson);
+
 	Matrix<double,3,3> edges;
 	edges.col(0) = x->row(prim[1]) - x->row(prim[0]);
 	edges.col(1) = x->row(prim[2]) - x->row(prim[0]);
@@ -203,14 +213,17 @@ int EnergyTerm::init_tet(
 }
 
 int EnergyTerm::init_triangle(
+	const Options *options,
 	int index,
-	const Lame &lame,
 	const Eigen::RowVector3i &prim,
 	const Eigen::MatrixXd *x,
 	double &area,
 	double &weight,
 	std::vector< Eigen::Triplet<double> > &triplets)
 {
+	Lame lame;
+	lame.set_from_youngs_poisson(options->youngs,options->poisson);
+
 	Matrix<double,3,2> edges;
 	edges.col(0) = x->row(prim[1]) - x->row(prim[0]);
 	edges.col(1) = x->row(prim[2]) - x->row(prim[0]);
@@ -244,10 +257,11 @@ int EnergyTerm::init_triangle(
 }
 
 void EnergyTerm::solve_prox(
-		int index,
-		const Lame &lame,
-		const Eigen::Vector3d &s0,
-		Eigen::Vector3d &s)
+	const Options *options,
+	int index,
+	const Lame &lame,
+	const Eigen::Vector3d &s0,
+	Eigen::Vector3d &s)
 {
 	(void)(index);
 	Vector3d g; // gradient
@@ -262,18 +276,18 @@ void EnergyTerm::solve_prox(
 	for(; iter<20; ++iter)
 	{
 		g.setZero();
-		energy_k = energy_density(lame,add_admm_pen,s0,s,&g); // e and g
+		energy_k = energy_density(options,lame,add_admm_pen,s0,s,&g); // e and g
 
 		// Converged because low gradient
 		if (g.norm() < eps)
 			break;
 
-		hessian_spd(lame,add_admm_pen,s,H);
+		hessian_spd(options,lame,add_admm_pen,s,H);
 		p = H.ldlt().solve(-g); // Newton step direction
 
 		s_prev = s;
 		s = s_prev + p;
-		energy_k1 = energy_density(lame,add_admm_pen,s0,s);
+		energy_k1 = energy_density(options,lame,add_admm_pen,s0,s);
 
 		// Backtracking line search
 		double alpha = 1;
@@ -283,7 +297,7 @@ void EnergyTerm::solve_prox(
 		{
 			alpha *= 0.5;
 			s = s_prev + alpha*p;
-			energy_k1 = energy_density(lame,add_admm_pen,s0,s);
+			energy_k1 = energy_density(options,lame,add_admm_pen,s0,s);
 			ls_iter++;
 		}
 
@@ -312,6 +326,7 @@ void EnergyTerm::solve_prox(
 } // end solve prox
 
 double EnergyTerm::energy_density(
+	const Options *options,
 	const Lame &lame,
 	bool add_admm_penalty,
 	const Eigen::Vector3d &s0,
@@ -323,7 +338,7 @@ double EnergyTerm::energy_density(
 	// Compute energy and gradient
 	// https://github.com/mattoverby/admm-elastic/blob/master/src/TetEnergyTerm.cpp
 	// I suppose I should add ARAP for completeness even though it's not used
-	switch (lame.m_material)
+	switch (options->elastic_material)
 	{
 		default: {
 			if (g != nullptr) g->setZero();
@@ -362,15 +377,16 @@ double EnergyTerm::energy_density(
 } // end energy
 
 void EnergyTerm::hessian_spd(
-		const Lame &lame,
-		bool add_admm_penalty,
-		const Eigen::Vector3d &s,
-		Eigen::Matrix3d &H)
+	const Options *options,
+	const Lame &lame,
+	bool add_admm_penalty,
+	const Eigen::Vector3d &s,
+	Eigen::Matrix3d &H)
 {
 	static const Matrix3d I = Matrix3d::Identity();
 
 	// Compute specific Hessian
-	switch (lame.m_material)
+	switch (options->elastic_material)
 	{
 		default:
 		{
@@ -420,6 +436,5 @@ void EnergyTerm::hessian_spd(
 	project_spd(H);
 
 } // end hessian
-
 
 } // end namespace mcl

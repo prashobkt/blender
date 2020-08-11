@@ -257,7 +257,6 @@ void ConjugateGradients::solve(
 		C.resize(1,nx*3);
 		d = VectorXd::Zero(1);
 	}
-	
 
 	// Compute RHS
 	data->ls.rhs.noalias() =
@@ -328,17 +327,20 @@ void ConjugateGradients::apply_preconditioner(
 	Eigen::MatrixXd &x,
 	const Eigen::MatrixXd &b)
 {
-	x = data->ls.ldlt_A_PtP->solve(b);
-//	x = m_ldlt.cholesky()->solve(b);
-/*
+	// Only bother with parallel solve if we have large dof
+	if (x.rows()<10000)
+	{
+		x = data->ls.ldlt_A_PtP->solve(b);
+		return;
+	}
+
 	BLI_assert(b.cols()==3);
 	if (x.rows() != b.rows())
 		x.resize(b.rows(),3);
 
-	Cholesky *chol = m_ldlt.cholesky();
+	Cholesky *chol = data->ls.ldlt_A_PtP.get();
 	const auto & linsolve = [&x,&b,&chol](int col)
 	{
-		if (col < 0 || col > 2) { return; }
 		x.col(col) = chol->solve(b.col(col));
 	};
 
@@ -351,8 +353,8 @@ void ConjugateGradients::apply_preconditioner(
 		if (pool[i].joinable())
 			pool[i].join();
 	}
-*/
-}
+
+} // end apply preconditioner
 
 #if 0
 void GaussSeidel::solve(
@@ -360,7 +362,6 @@ void GaussSeidel::solve(
 		SolverData *data,
 		Collision *collision)
 {
-	init_solve(options,data,collision);
 	MatrixXd dx(data->x.rows(),3);
 	dx.setZero();
 
@@ -377,7 +378,7 @@ void GaussSeidel::solve(
 	GaussSeidelThreadData thread_data = {
 		.iter = 0,
 		.color = 0,
-		.colors = &data->gsdata.A3_plus_CtC_colors,
+		.colors = &data->ls.A_colors,
 		.options = options,
 		.data = data,
 		.collision = collision,
@@ -398,7 +399,7 @@ void GaussSeidel::solve(
 		Vector3d inv_aii(0,0,0);
 		for (int j=0; j<3; ++j)
 		{
-			InnerIter rit(td->data->gsdata.A3_CtC_PtP, idx*3+j);
+			InnerIter rit(td->data->ls.A3_CtC_PtP, idx*3+j);
 			for (; rit; ++rit)
 			{
 				double v = rit.value();
@@ -420,7 +421,7 @@ void GaussSeidel::solve(
 		} // end loop segment
 
 		// Update x
-		Vector3d bi = td->data->gsdata.b3_Ctd_Ptx.segment<3>(idx*3);
+		Vector3d bi = ...;
 
 		//Vector3d bi = td->data->b.row(idx);
 		Vector3d xi = td->data->x.row(idx);
@@ -428,27 +429,17 @@ void GaussSeidel::solve(
 		for (int j=0; j<3; ++j)
 			xi_new[j] *= inv_aii[j];
 
-		if (xi_new.norm()>1000 || xi_new.norm()<-1000)
-		{
-			std::cout << "idx: " << idx << std::endl;
-			std::cout << "xi: " << xi_new.transpose() << std::endl;
-			std::cout << "bi+ctd: " << bi.transpose() << std::endl;
-			std::cout << "bi: " << td->data->b.row(idx) << std::endl;
-			std::cout << "LUx: " << LUx.transpose() << std::endl;
-			std::cout << "aii: " << inv_aii.transpose() << std::endl;
-			throw std::runtime_error("Gauss Seidel exploded");
-		}
-
 		td->data->x.row(idx) = xi*(1.0-omega) + xi_new*omega;
 
-		// Check fast-query constraints
+		// Check fast-query constraints, e.g.
+		// floor, obstacle (if SDF). Of course this doesn't
+		// work so well with embedded solver
 //		double floor_z = td->collision->get_floor();
 //		if (td->data->x(idx,2) < floor_z)
 //			td->data->x(idx,2) = floor_z;
 
 		// Update deltas
 		td->dx->row(idx) = td->data->x.row(idx)-xi.transpose();
-
 	};
 
 	TaskParallelSettings thrd_settings;
@@ -479,80 +470,18 @@ void GaussSeidel::init_solve(
 		SolverData *data,
 		Collision *collision)
 {
-
-	// TODO:
-	//
-	// When it comes to improving run time of Gauss-Seidel after
-	// the instability issues have been addressed, reducing the
-	// matrix-vector mults that occur here should be a priority.
-	// Many of them are unnecessary and can be done
-	// within the Gauss-Seidel sweeps!
-
 	BLI_assert(options != nullptr);
 	BLI_assert(data != nullptr);
 	BLI_assert(collision != nullptr);
 	int nx = data->x.rows();
 	BLI_assert(nx>0);
 	BLI_assert(data->x.cols()==3);
-	data->b.noalias() = data->M_xbar + data->DtW2*(data->z-data->u);
-	BLI_assert(data->b.rows()==nx);
-	BLI_assert(data->b.cols()==data->x.cols());
 
 	// Do we need to color the default colorings?
-	if (data->gsdata.A_colors.size() == 0)
+	if (data->ls.A_colors.size() == 0)
 	{
 		std::vector<std::set<int> > c_graph;
-		compute_colors(data->energies_graph, c_graph, data->gsdata.A_colors);
-	}
-
-	// Create large A if we haven't already.
-	if (data->gsdata.A3.nonZeros()==0)
-	{
-		SparseMatrix<double> A3;
-		geom::make_n3<double>(data->A, A3);
-		data->gsdata.A3 = A3;
-	}
-
-	// TODO
-	// Eventually we'll replace KtK with the full-dof matrix.
-	// For now use z and test collisions against ground plane.
-	bool has_constraints = data->C.nonZeros()>0;
-
-	// Finally, the new global matrix and rhs
-	if (has_constraints)
-	{
-		double col_k = options->mult_ck * data->A_diag_max;
-		data->gsdata.CtC = col_k * data->C.transpose()*data->C;
-		data->gsdata.Ctd.noalias() = col_k * data->C.transpose()*data->d;
-		data->gsdata.A3_CtC_PtP = data->gsdata.A3 + data->gsdata.CtC;
-		data->gsdata.b3_Ctd_Ptx.resize(nx*3);
-		for (int i=0; i<nx; ++i)
-		{
-			data->gsdata.b3_Ctd_Ptx[i*3+0] = data->b(i,0)+data->gsdata.Ctd[i*3+0];
-			data->gsdata.b3_Ctd_Ptx[i*3+1] = data->b(i,1)+data->gsdata.Ctd[i*3+1];
-			data->gsdata.b3_Ctd_Ptx[i*3+2] = data->b(i,2)+data->gsdata.Ctd[i*3+2];
-		}
-		std::vector<std::set<int> > c_graph;
-		collision->graph(c_graph);
-		compute_colors(data->energies_graph, c_graph, data->gsdata.A3_plus_CtC_colors);
-	}
-	else
-	{
-		if (data->gsdata.CtC.rows() != nx*3)
-			data->gsdata.CtC.resize(nx*3, nx*3);
-		data->gsdata.CtC.setZero();
-		if (data->gsdata.Ctd.rows() != nx*3)
-			data->gsdata.Ctd.resize(nx*3);
-		data->gsdata.Ctd.setZero();
-		data->gsdata.A3_CtC_PtP = data->gsdata.A3;
-		data->gsdata.b3_Ctd_Ptx.resize(nx*3);
-		for (int i=0; i<nx; ++i)
-		{
-			data->gsdata.b3_Ctd_Ptx[i*3+0] = data->b(i,0);
-			data->gsdata.b3_Ctd_Ptx[i*3+1] = data->b(i,1);
-			data->gsdata.b3_Ctd_Ptx[i*3+2] = data->b(i,2);
-		}
-		data->gsdata.A3_plus_CtC_colors = data->gsdata.A_colors;
+		compute_colors(data->energies_graph, c_graph, data->ls.A_colors);
 	}
 
 } // end init solve

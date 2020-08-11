@@ -20,7 +20,7 @@ typedef Discregrid::CubicLagrangeDiscreteGrid SDFType;
 
 #define MESHTYPE_EMBEDDED 0
 #define MESHTYPE_TET 1
-#define MESHTYPE_TRIANGLE 2
+#define MESHTYPE_TRIANGLE 2 // i.e. cloth
 #define MESHTYPE_NUM 3
 
 #define ENERGYTERM_TET 0
@@ -30,6 +30,10 @@ typedef Discregrid::CubicLagrangeDiscreteGrid SDFType;
 #define ELASTIC_ARAP 0 // As-rigid-as-possible
 #define ELASTIC_NH 1 // NeoHookean
 #define ELASTIC_NUM 2
+
+#define COLLISIONMODE_DISCRETE 0
+#define COLLISIONMODE_CONTINUOUS 1
+#define COLLISIONMODE_NUM 2
 
 #define SOLVERSTATE_INIT 0
 #define SOLVERSTATE_SOLVE 1
@@ -48,7 +52,7 @@ typedef Discregrid::CubicLagrangeDiscreteGrid SDFType;
 
 #define LINSOLVER_LDLT 0 // Eigen's LDL^T
 #define LINSOLVER_PCG 1 // Precon. Conj. Grad.
-#define LINSOLVER_MCGS 2 // Multi-Color Gauss-Siedel
+#define LINSOLVER_MCGS 2 // Multi-Color Gauss-Siedel (not yet supported)
 #define LINSOLVER_NUM 3
 
 struct Options {
@@ -60,6 +64,7 @@ struct Options {
     int max_gs_iters;
     int max_threads; // -1 = auto (num cpu threads - 1)
     int elastic_material; // ENUM, see admmpd_energy.h
+    int collision_mode;
     int substeps; // used externally, ignore in solve()
     double gs_omega; // Gauss-Seidel relaxation
     double mult_ck; // stiffness multiplier for constraints
@@ -81,6 +86,7 @@ struct Options {
         max_gs_iters(100),
         max_threads(-1),
         elastic_material(ELASTIC_ARAP),
+        collision_mode(COLLISIONMODE_DISCRETE),
         substeps(1),
         gs_omega(1),
         mult_ck(3),

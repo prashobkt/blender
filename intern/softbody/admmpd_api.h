@@ -69,11 +69,7 @@ void admmpd_update_obstacles(
     int nf);
 
 // Updates goal positions
-void admmpd_update_goals(
-    ADMMPDInterfaceData*,
-    float *goal_k, // goal stiffness, nv
-    float *goal_pos, // goal position, nv x 3
-    int nv);
+void admmpd_update_goals(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3]);
 
 // Performs a time step. Object is passed
 // only to update settings if they have changed.

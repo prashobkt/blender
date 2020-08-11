@@ -13,8 +13,7 @@ namespace admmpd {
 
 class Solver {
 public:
-    // Initialies solver data. If a per-vertex
-    // variable is resized it is initialized to zero.
+    // Initialies solver data.
     // Returns true on success
     bool init(
         const Mesh *mesh,
@@ -22,41 +21,29 @@ public:
         SolverData *data);
 
     // Solve a single time step.
-    // Returns number of iterations.
     // Collision ptr can be null.
-    // Pin ptr can be null
-    int solve(
+    void solve(
         const Mesh *mesh,
         const Options *options,
         SolverData *data,
         Collision *collision);
 
 protected:
-    // Returns the combined residual norm
-    double residual_norm(
-        const Options *options,
-        SolverData *data);
 
-    // Computes start-of-solve quantites
+    // Computes start-of-solve quantites.
+    // Collision ptr can be null.
     void init_solve(
         const Mesh *mesh,
         const Options *options,
         SolverData *data,
         Collision *collision);
 
-    // Performs collision detection
-    // and updates C, d
-    void update_collisions(
-        const Mesh *mesh,
-        const Options *options,
-        SolverData *data,
-        Collision *collision);
-
-    // Update z and u in parallel
+    // Update z and u in parallel, g(Dx)
 	void solve_local_step(
         const Options *options,
         SolverData *data);
 
+    // Solves the linear system, f(x)
     void solve_global_step(
         const Mesh *mesh,
         const Options *options,
@@ -77,7 +64,7 @@ protected:
         SolverData *data,
         int rows);
 
-    // Generates energies from the mesh
+    // Generates energies from a mesh
 	void append_energies(
         const Mesh *mesh,
 		const Options *options,

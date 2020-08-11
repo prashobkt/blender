@@ -34,6 +34,7 @@
 #include "BKE_mesh_remesh_voxel.h" // TetGen
 #include "BKE_mesh.h" // BKE_mesh_free
 #include "BKE_softbody.h" // BodyPoint
+#include "BKE_deform.h" // BKE_defvert_find_index
 #include "MEM_guardedalloc.h"
 
 #include <iostream>
@@ -316,6 +317,7 @@ int admmpd_mesh_needs_update(ADMMPDInterfaceData *iface, Object *ob)
   int mode = ob->soft->admmpd_init_mode;
   int mesh_type = iface->idata->mesh->type();
   if (mode != mesh_type) { return 1; }
+
   switch (mode)
   {
     default:
@@ -584,27 +586,51 @@ void admmpd_update_obstacles(
 
 }
 
-void admmpd_update_goals(
-    ADMMPDInterfaceData *iface,
-    float *goal_k, // goal stiffness, nv
-    float *goal_pos, // goal position, nv x 3
-    int nv)
+void admmpd_update_goals(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
 {
-    if (iface==NULL || goal_k==NULL || goal_pos==NULL)
-      return;
-    if (!iface->idata)
-      return;
-    if (!iface->idata->mesh)
-      return;
+  if (!iface) { return; }
+  if (!iface->idata) { return; }
+  if (!iface->idata->mesh) { return; }
+  if (!ob) { return; }
+  if (!ob->soft) { return; }
 
-    for (int i=0; i<nv; ++i)
-    {
-      // We want to call set_pin for every vertex, even
-      // if stiffness is zero. This allows us to animate pins on/off
-      // without calling Mesh::clear_pins().
-      Eigen::Vector3d qi(goal_pos[i*3+0], goal_pos[i*3+1], goal_pos[i*3+2]);
-      iface->idata->mesh->set_pin(i,qi,goal_k[i]);
+  SoftBody *sb = ob->soft;
+  Mesh *me = (Mesh*)ob->data;
+  if (!me) { return; }
+
+  // Goal positions turned off
+  if (!(ob->softflag & OB_SB_GOAL))
+  {
+    iface->idata->mesh->clear_pins();
+    return;
+  }
+
+  int defgroup_index = me->dvert ? (sb->vertgroup - 1) : -1;
+  int nv = me->totvert;
+
+  for (int i=0; i<nv; i++) {
+    double k = 0.1;
+    if ((ob->softflag & OB_SB_GOAL) && (defgroup_index != -1)) {
+      MDeformWeight *dw = BKE_defvert_find_index(me->dvert, defgroup_index);
+      k = dw ? dw->weight : 0.0f;
     }
+
+    Eigen::Vector3d goal_pos(0,0,0);
+    float vi[3];
+    vi[0] = vertexCos[i][0];
+    vi[1] = vertexCos[i][1];
+    vi[2] = vertexCos[i][2];
+    mul_m4_v3(ob->obmat, vi);
+    for (int j=0; j<3; ++j) {
+      goal_pos[j] = vi[j];
+    }
+
+    // We want to call set_pin for every vertex, even
+    // if stiffness is zero. This allows us to animate pins on/off
+    // without calling Mesh::clear_pins().
+    iface->idata->mesh->set_pin(i,goal_pos,k);
+
+  } // end loop verts
 }
 
 int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob)

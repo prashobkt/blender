@@ -13,7 +13,6 @@ namespace admmpd {
 
 class Lame {
 public:
-	int m_material;
 	double m_mu;
 	double m_lambda;
 	double m_bulk_mod;
@@ -33,9 +32,9 @@ public:
 
 	// Updates the z and u variables for an element energy.
 	void update(
+		const Options *options,
 		int index,
 		int energyterm_type,
-		const Lame &lame,
 		double rest_volume,
 		double weight,
 		const Eigen::MatrixXd *x,
@@ -45,8 +44,8 @@ public:
 
 	// Updates the z and u variables for a tet
 	void update_tet(
+		const Options *options,
 		int index,
-		const Lame &lame,
 		double rest_volume,
 		double weight,
 		const Eigen::MatrixXd *x,
@@ -56,8 +55,8 @@ public:
 
 	// Updates the z and u variables for a tri
 	void update_tri(
+		const Options *options,
 		int index,
-		const Lame &lame,
 		double rest_area,
 		double weight,
 		const Eigen::MatrixXd *x,
@@ -67,8 +66,8 @@ public:
 
 	// Initializes tet energy, returns num rows for D
 	int init_tet(
+		const Options *options,
 		int index,
-		const Lame &lame,
 		const Eigen::RowVector4i &prim,
 		const Eigen::MatrixXd *x,
 		double &volume,
@@ -77,8 +76,8 @@ public:
 
 	// Initializes facet energy, returns num rows for D
 	int init_triangle(
+		const Options *options,
 		int index,
-		const Lame &lame,
 		const Eigen::RowVector3i &prim,
 		const Eigen::MatrixXd *x,
 		double &area,
@@ -87,6 +86,7 @@ public:
 
 	// Solves proximal energy function
 	void solve_prox(
+		const Options *options,
 		int index,
 		const Lame &lame,
 		const Eigen::Vector3d &s0,
@@ -95,6 +95,7 @@ public:
 	// Returns gradient and energy (+ADMM penalty)
 	// of a material evaluated at s (singular values).
 	double energy_density(
+		const Options *options,
 		const Lame &lame,
 		bool add_admm_penalty,
 		const Eigen::Vector3d &s0,
@@ -104,6 +105,7 @@ public:
 	// Returns the Hessian of a material at S
 	// projected to nearest SPD
 	void hessian_spd(
+		const Options *options,
 		const Lame &lame,
 		bool add_admm_penalty,
 		const Eigen::Vector3d &s,

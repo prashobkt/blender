@@ -3558,18 +3558,6 @@ static void sbStoreLastFrame(struct Depsgraph *depsgraph, Object *object, float 
   object_orig->soft->last_frame = framenr;
 }
 
-void sbExternalSolverCopy(struct SoftBody *sb_dest, const struct SoftBody *sb_src)
-{
- // printf("copy sb: %p to %p\n",sb_dest, sb_src);
- // printf("dest admmpd: %p\n",sb_dest->admmpd);
- // printf("src admmpd: %p\n",sb_src->admmpd);
-  //if (sb_src->admmpd != NULL)
- // {
-  //  sb_dest->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), "SoftBody_admmpd");
-   // admmpd_copy(sb_dest->admmpd, sb_src->admmpd);
- // }
-}
-
 static void update_collider_admmpd(
   Depsgraph *depsgraph,
   Collection *collection,
@@ -3651,45 +3639,6 @@ static void update_collider_admmpd(
   BKE_collision_objects_free(objects);
 }
 
-static void update_goal_positions_admmpd(Object *ob, float (*vertexCos)[3])
-{
-  if(ob->type != OB_MESH)
-    return;
-
-  if(!(ob->softflag & OB_SB_GOAL))
-    return;
-
-  Mesh *me = ob->data;
-  SoftBody *sb = ob->soft;
-  if (!sb->admmpd)
-    return;
-
-  int nv = me->totvert;
-  float *goal_k = MEM_callocN(sizeof(float)*nv, __func__);
-  float *goal_pos = MEM_callocN(sizeof(float)*3*nv, __func__);
-  int defgroup_index = me->dvert ? (sb->vertgroup - 1) : -1;
-
-  for (int i=0; i<nv; i++) {
-    goal_k[i] = 0.1;
-    if ((ob->softflag & OB_SB_GOAL) && (defgroup_index != -1)) {
-      goal_k[i] = BKE_defvert_find_weight(&me->dvert[i], defgroup_index);
-    }
-
-    float vi[3];
-    vi[0] = vertexCos[i][0];
-    vi[1] = vertexCos[i][1];
-    vi[2] = vertexCos[i][2];
-    mul_m4_v3(ob->obmat, vi);
-    for (int j=0; j<3; ++j) {
-      goal_pos[i*3+j] = vi[j];
-    }
-  }
-
-  admmpd_update_goals(sb->admmpd, goal_k, goal_pos, nv);
-  MEM_freeN(goal_k);
-  MEM_freeN(goal_pos);
-}
-
 static void sbObjectStep_admmpd(
                   struct Depsgraph *depsgraph,
                   Scene *scene,
@@ -3706,8 +3655,10 @@ static void sbObjectStep_admmpd(
   Mesh *me = ob->data;
   SoftBody *sb = ob->soft;
 
-  if (!sb->admmpd)
+  if (!sb->admmpd) {
+    CLOG_ERROR(&LOG, "No ADMM-PD data");
     return;
+  }
 
   PointCache *cache = sb->shared->pointcache;
   PTCacheID pid;
@@ -3759,24 +3710,30 @@ static void sbObjectStep_admmpd(
     // a) Has never been initialized.
     // b) The mesh topology has changed.
     // TODO: ob->obmat or vertexCos change.
+    int init_mesh = 0;
     if (admmpd_mesh_needs_update(sb->admmpd, ob)) {
-      printf("Init mesh because needs it\n");
-      int res = admmpd_update_mesh(sb->admmpd, ob, vertexCos);
-      if (!res) {
+      init_mesh = admmpd_update_mesh(sb->admmpd, ob, vertexCos);
+      if (!init_mesh) {
         CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
       }
     }
     // Do we need to initialize the ADMM-PD solver?
     // a) Has never been initialized
     // b) Some settings require re-initialization
+    int init_solver = 0;
     if (admmpd_solver_needs_update(sb->admmpd, scene, ob)) {
-      printf("Init solver because needs it\n");
-      int res = admmpd_update_solver(sb->admmpd, scene, ob, vertexCos);
-      if (!res) {
+      init_solver = admmpd_update_solver(sb->admmpd, scene, ob, vertexCos);
+      if (!init_solver) {
         CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
       }
     }
-  }
+
+    if (framenr > startframe && (init_mesh || init_solver)) {
+      BKE_ptcache_invalidate(cache);
+      return;
+    }
+  
+  } // end is not start frame
 
   // Read from cache
   {
@@ -3829,7 +3786,7 @@ static void sbObjectStep_admmpd(
   // Update ADMMPD interface variables from cache and perform a solve.
   //admmpd_copy_from_object(sb->admmpd,ob); // bpoint -> admmpd
   update_collider_admmpd(depsgraph, sb->collision_group, ob); // collision objects -> admmpd
-  update_goal_positions_admmpd(ob, vertexCos); // goal positions -> admmpd
+  admmpd_update_goals(sb->admmpd, ob, vertexCos); // goal positions -> admmpd
 
   // Solve the time step
   if (!admmpd_solve(sb->admmpd,ob)) {

@@ -47,6 +47,9 @@ bool Solver::init(
 
 	switch (mesh->type())
 	{
+		default: {
+			throw_err("init","unknown mesh type");
+		} break;
 		case MESHTYPE_EMBEDDED:
 		case MESHTYPE_TET: {
 			data->x = *mesh->rest_prim_verts();
@@ -75,7 +78,7 @@ bool Solver::init(
 	return true;
 } // end init
 
-int Solver::solve(
+void Solver::solve(
 	const Mesh *mesh,
 	const Options *options,
 	SolverData *data,
@@ -102,6 +105,12 @@ int Solver::solve(
 	init_solve(mesh,options,data,collision);
 	log.stop_state(SOLVERSTATE_INIT_SOLVE);
 
+	if (options->collision_mode == COLLISIONMODE_CONTINUOUS)
+	{
+		// TODO: Perform continuous collision here
+		throw_err("solve","CCD not yet supported");
+	}
+
 	// Begin solver loop
 	int iters = 0;
 	for (; iters < options->max_admm_iters; ++iters)
@@ -111,9 +120,14 @@ int Solver::solve(
 		solve_local_step(options,data);
 		log.stop_state(SOLVERSTATE_LOCAL_STEP);
 
-		// Collision detection and linearization
+		// Collision detection
 		log.start_state(SOLVERSTATE_COLLISION_UPDATE);
-		update_collisions(mesh,options,data,collision);
+		if (collision && options->collision_mode==COLLISIONMODE_DISCRETE)
+		{
+			bool sort_bvh = false;
+			collision->update_bvh(mesh,options,data,&data->x_start,&data->x,sort_bvh);
+			collision->detect(mesh,options,data,&data->x_start,&data->x);
+		}
 		log.stop_state(SOLVERSTATE_COLLISION_UPDATE);
 
 		// Solve Ax=b s.t. Px=q and Cx=d
@@ -125,7 +139,9 @@ int Solver::solve(
 		if (options->min_res>0)
 		{
 			log.start_state(SOLVERSTATE_TEST_CONVERGED);
-			bool converged = residual_norm(options,data) <= options->min_res;
+			double ra = ((data->D*data->x) - data->z).norm();
+			double rx = (data->D*(data->x-data->x_prev)).norm();
+			bool converged = (ra+rx) <= options->min_res;
 			log.stop_state(SOLVERSTATE_TEST_CONVERGED);
 			if (converged)
 				break;
@@ -140,20 +156,13 @@ int Solver::solve(
 	log.stop_state(SOLVERSTATE_SOLVE);
 
 	if (options->log_level >= LOGLEVEL_HIGH)
-		printf("Timings:\n%s", log.to_string().c_str());
+	{
+		printf("\nTimings:\n%s", log.to_string().c_str());
+		printf("Iters: %d\n", iters);
+	}
 
-	return iters;
+	return;
 } // end solve
-
-double Solver::residual_norm(
-	const Options *options,
-	SolverData *data)
-{
-	(void)(options);
-	double ra = ((data->D*data->x) - data->z).norm();
-	double rx = (data->D*(data->x-data->x_prev)).norm();
-	return ra + rx;
-}
 
 void Solver::init_solve(
 	const Mesh *mesh,
@@ -192,13 +201,13 @@ void Solver::init_solve(
 
 	// ADMM variables
 	data->Dx.noalias() = data->D * data->x;
-	data->z = data->Dx;
+	data->z = data->Dx; // init guess
 	data->u.setZero();
 
 	switch (options->linsolver)
 	{
 		default: {
-			throw_err("init","unknown linsolver");
+			throw_err("init_solve","unknown linsolver");
 		} break;
 		case LINSOLVER_LDLT: {
 			LDLT().init_solve(mesh,options,collision,data);
@@ -206,8 +215,8 @@ void Solver::init_solve(
 		case LINSOLVER_PCG: {
 			ConjugateGradients().init_solve(mesh,options,collision,data);
 		} break;
-		case LINSOLVER_MCGS: { // TODO
-			LDLT().init_solve(mesh,options,collision,data);
+		case LINSOLVER_MCGS: {
+			throw_err("init_solve","MCGS solver not yet supported");
 		} break;
 	}
 
@@ -232,14 +241,10 @@ void Solver::solve_local_step(
 	{
 		(void)(tls);
 		LocalStepThreadData *td = (LocalStepThreadData*)userdata;
-		// We'll unnecessarily recompute Lame here, but in the future each
-		// energy may have a different stiffness.
-		Lame lame;
-		lame.set_from_youngs_poisson(td->options->youngs,td->options->poisson);
 		EnergyTerm().update(
+			td->options,
 			td->data->indices[i][0], // index
 			td->data->indices[i][2], // type
-			lame,
 			td->data->rest_volumes[i],
 			td->data->weights[i],
 			&td->data->x,
@@ -251,7 +256,7 @@ void Solver::solve_local_step(
 	data->Dx.noalias() = data->D * data->x;
 	int ne = data->indices.size();
 	BLI_assert(ne > 0);
-  	LocalStepThreadData thread_data = {.options=options, .data = data};
+  	LocalStepThreadData thread_data = {.options=options, .data=data};
 	TaskParallelSettings settings;
 	BLI_parallel_range_settings_defaults(&settings);
 	BLI_task_parallel_range(0, ne, &thread_data, parallel_zu_update, &settings);
@@ -268,7 +273,7 @@ void Solver::solve_global_step(
 	switch (options->linsolver)
 	{
 		default: {
-			throw_err("init","unknown linsolver");
+			throw_err("solve_global_step","unknown linsolver");
 		} break;
 		case LINSOLVER_LDLT: {
 			LDLT().solve(mesh,options,collision,data);
@@ -276,30 +281,11 @@ void Solver::solve_global_step(
 		case LINSOLVER_PCG: {
 			ConjugateGradients().solve(mesh,options,collision,data);
 		} break;
-		case LINSOLVER_MCGS: { // TODO
-			LDLT().solve(mesh,options,collision,data);
+		case LINSOLVER_MCGS: {
+			throw_err("solve_global_step","MCGS not yet supported");
 		} break;
 	}
 }
-
-void Solver::update_collisions(
-	const Mesh *mesh,
-	const Options *options,
-	SolverData *data,
-	Collision *collision)
-{
-	BLI_assert(data != NULL);
-	BLI_assert(options != NULL);
-
-	if (collision==NULL)
-		return;
-
-	// Update bounding boxes but don't sort tree
-	collision->update_bvh(mesh, options, data, &data->x_start, &data->x, false);
-	// Detect collisions and store collision pairs
-	collision->detect(mesh, options, data, &data->x_start, &data->x);
-
-} // end update constraints
 
 void Solver::init_matrices(
 	const Mesh *mesh,
@@ -428,9 +414,6 @@ void Solver::append_energies(
 	data->indices.reserve((int)data->indices.size()+n_elems);
 	data->rest_volumes.reserve((int)data->rest_volumes.size()+n_elems);
 	data->weights.reserve((int)data->weights.size()+n_elems);
-	Lame lame;
-	lame.set_from_youngs_poisson(options->youngs, options->poisson);
-	lame.m_material = options->elastic_material;
 
 	// The possibility of having an error in energy initialization
 	// while still wanting to continue the simulation is very low.
@@ -447,6 +430,7 @@ void Solver::append_energies(
 
 		switch (mesh_type)
 		{
+
 			case MESHTYPE_EMBEDDED:
 			case MESHTYPE_TET: {
 				energy_type = ENERGYTERM_TET;
@@ -457,14 +441,15 @@ void Solver::append_energies(
 					elems->operator()(i,3)
 				);
 				energy_dim = EnergyTerm().init_tet(
+					options,
 					energy_index,
-					lame,
 					ele,
 					&data->x,
 					data->rest_volumes.back(),
 					data->weights.back(),
 					D_triplets );
 			} break;
+
 			case MESHTYPE_TRIANGLE: {
 				energy_type = ENERGYTERM_TRIANGLE;
 				RowVector3i ele(
@@ -473,15 +458,16 @@ void Solver::append_energies(
 					elems->operator()(i,2)
 				);
 				energy_dim = EnergyTerm().init_triangle(
+					options,
 					energy_index,
-					lame,
 					ele,
 					&data->x,
 					data->rest_volumes.back(),
 					data->weights.back(),
 					D_triplets );
 			} break;
-		}
+
+		} // end switch mesh type
 
 		// Error in initialization
 		if( energy_dim <= 0 ){
