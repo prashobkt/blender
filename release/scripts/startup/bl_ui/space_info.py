@@ -36,7 +36,9 @@ class INFO_HT_header(Header):
 
         layout.separator_spacer()
 
-        row = layout.row(align=True)
+        row = layout.row()
+        if sinfo.view == 'CLOGS':
+            row.popover(panel="INFO_PT_log_formatting", text="", icon="SYNTAX_ON")
         row.popover(panel="INFO_PT_report_type_visibility", text="", icon="FILTER")
 
 
@@ -128,6 +130,23 @@ class INFO_MT_context_menu(Menu):
         layout.operator("info.report_delete", text="Delete")
 
 
+class INFO_PT_log_formatting(Panel):
+    bl_space_type = 'INFO'
+    bl_region_type = 'HEADER'
+    bl_label = "Log Formatting"
+
+    def draw(self, context):
+        layout = self.layout
+
+        sinfo = context.space_data
+
+        layout.label(text="Log Formatting")
+        col = layout.column()
+        col.prop(sinfo, "log_format")
+        col.prop(sinfo, "use_short_file_line")
+        col.prop(sinfo, "use_log_message_new_line", text="Message In New Line")
+
+
 class INFO_PT_report_type_visibility(Panel):
     bl_space_type = 'INFO'
     bl_region_type = 'HEADER'
@@ -155,9 +174,11 @@ class INFO_PT_report_type_visibility(Panel):
             row.prop(sinfo, "use_log_file_line_filter", text="Filter File Line")
             row.operator("info.log_file_line_filter_add", text="", icon='ADD', emboss=False)
             for i, filter in enumerate(sinfo.filter_log_file_line):
-                row = box.row()
+                row = box.row(align=True)
                 row.active = sinfo.use_log_file_line_filter
                 row.prop(filter, "search_string", text="")
+                row.prop(sinfo, "use_match_case", text="", icon='SMALL_CAPS')
+                row.prop(sinfo, "use_match_case", text="", icon='FILTER')
                 # row.prop(path_cmp, "use_glob", text="", icon='FILTER')
                 row.operator("info.log_file_line_filter_remove", text="", icon='X', emboss=False).index = i
 
@@ -187,12 +208,6 @@ class INFO_PT_report_type_visibility(Panel):
             row.active = sinfo.use_log_level_filter
             row.prop(sinfo, "filter_log_level", text="Max verbosity")
 
-            layout.label(text="Log Printing")
-            col = layout.column()
-            col.prop(sinfo, "log_format")
-            col.prop(sinfo, "use_short_file_line")
-            col.prop(sinfo, "use_log_message_new_line", text="Message In New Line")
-
 
 classes = (
     INFO_HT_header,
@@ -201,6 +216,7 @@ classes = (
     INFO_MT_view,
     INFO_MT_info,
     INFO_MT_context_menu,
+    INFO_PT_log_formatting,
     INFO_PT_report_type_visibility
 )
 
