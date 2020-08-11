@@ -1800,7 +1800,7 @@ static void rna_def_softbody(BlenderRNA *brna)
 
   static const EnumPropertyItem admmpd_material_items[] = {
       {0, "ARAP", 0, "ARAP", "As-rigid-as-possible"},
-      {1, "NH", 0, "neo-Hookean", "Classic neo-Hookean"},
+      {1, "NH", 0, "Neo-Hookean", "Classic neo-Hookean"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -1871,26 +1871,26 @@ static void rna_def_softbody(BlenderRNA *brna)
   prop = RNA_def_property(srna, "admmpd_max_admm_iters", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "admmpd_max_admm_iters");
   RNA_def_property_range(prop, 1.f, 1000.f);
-  RNA_def_property_ui_text(prop, "Max iterations", "Max number of solver iterations");
+  RNA_def_property_ui_text(prop, "Max Iterations", "Max number of solver iterations");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   prop = RNA_def_property(srna, "admmpd_converge_eps", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "admmpd_converge_eps");
   RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_text(prop, "Tolerance", "Solver tolerance");
+  RNA_def_property_ui_text(prop, "Tolerance", "Decrease tolerance for a more accurate solution");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   prop = RNA_def_property(srna, "admmpd_youngs_exp", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "admmpd_youngs_exp");
   RNA_def_property_range(prop, 1.f, 10.f);
-  RNA_def_property_ui_text(prop, "Young's mod", "Young's modulus exponent: 10^(n)");
+  RNA_def_property_ui_text(prop, "Young's Mod", "Young's modulus exponent: 10^(n)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   prop = RNA_def_property(srna, "admmpd_poisson", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "admmpd_poisson");
   RNA_def_property_range(prop, 0.0f, 0.499f);
-  RNA_def_property_ui_text(prop, "Poisson's ratio", "Material stiffness");
+  RNA_def_property_ui_text(prop, "Poisson's Ratio", "Material stiffness");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
@@ -1924,7 +1924,7 @@ static void rna_def_softbody(BlenderRNA *brna)
   prop = RNA_def_property(srna, "admmpd_density_kgm3", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "admmpd_density_kgm3");
   RNA_def_property_range(prop, 1.0f, 10000.f);
-  RNA_def_property_ui_text(prop, "Unit density", "Unit density in kg/m^3");
+  RNA_def_property_ui_text(prop, "Unit Density", "Unit density in kg/m^3");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 

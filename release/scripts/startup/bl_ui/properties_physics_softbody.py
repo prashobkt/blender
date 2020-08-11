@@ -56,7 +56,8 @@ class PHYSICS_PT_softbody(PhysicButtonsPanel, Panel):
 
         layout.prop(softbody, "solver_mode")
     
-        layout.prop(softbody, "collision_collection")
+        if softbody.solver_mode=='LEGACY':
+            layout.prop(softbody, "collision_collection")
 
 
 class PHYSICS_PT_softbody_object(PhysicButtonsPanel, Panel):
