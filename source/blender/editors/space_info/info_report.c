@@ -46,6 +46,19 @@
 
 #define REPORT_INDEX_INVALID -1
 
+static void redraw_every_space_info_area(const bContext *C)
+{
+  struct wmWindowManager *wm = CTX_wm_manager(C);
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+    bScreen *screen = WM_window_get_active_screen(win);
+    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+      if (area->spacetype == SPACE_INFO) {
+        ED_area_tag_redraw(area);
+      }
+    }
+  }
+}
+
 /* return true if substring is found */
 bool info_filter_text(const Report *report, const char *search_string)
 {
@@ -152,7 +165,7 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
 
   if (report_index == REPORT_INDEX_INVALID) {  // click in empty area
     reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
-    ED_area_tag_redraw(CTX_wm_area(C));
+    redraw_every_space_info_area(C);
     return OPERATOR_FINISHED;
   }
 
@@ -171,8 +184,7 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
   if (active_report == NULL) {
     report->flag |= RPT_SELECT;
     sinfo->active_report_index = report_index;
-
-    ED_area_tag_redraw(CTX_wm_area(C));
+    redraw_every_space_info_area(C);
     return OPERATOR_FINISHED;
   }
 
@@ -189,16 +201,14 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
           report_iter->flag |= RPT_SELECT;
         }
       }
-
-      ED_area_tag_redraw(CTX_wm_area(C));
+      redraw_every_space_info_area(C);
       return OPERATOR_FINISHED;
     }
     else {
       reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
       report->flag |= RPT_SELECT;
       sinfo->active_report_index = report_index;
-
-      ED_area_tag_redraw(CTX_wm_area(C));
+      redraw_every_space_info_area(C);
       return OPERATOR_FINISHED;
     }
   }
@@ -210,8 +220,7 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
     report->flag |= RPT_SELECT;
     sinfo->active_report_index = BLI_findindex(&reports->list, report);
   }
-
-  ED_area_tag_redraw(CTX_wm_area(C));
+  redraw_every_space_info_area(C);
   return OPERATOR_FINISHED;
 }
 
@@ -281,8 +290,7 @@ static int report_select_all_exec(bContext *C, wmOperator *op)
 
   int action = RNA_enum_get(op->ptr, "action");
   reports_select_all(reports, report_mask, sinfo->search_string, action);
-
-  ED_area_tag_redraw(CTX_wm_area(C));
+  redraw_every_space_info_area(C);
 
   return OPERATOR_FINISHED;
 }
@@ -365,8 +373,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
     }
   }
 
-  ED_area_tag_redraw(CTX_wm_area(C));
-
+  redraw_every_space_info_area(C);
   return OPERATOR_FINISHED;
 }
 
@@ -414,8 +421,7 @@ static int report_delete_exec(bContext *C, wmOperator *UNUSED(op))
 
     report = report_next;
   }
-
-  ED_area_tag_redraw(CTX_wm_area(C));
+  redraw_every_space_info_area(C);
 
   return OPERATOR_FINISHED;
 }
