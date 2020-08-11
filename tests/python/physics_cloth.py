@@ -30,8 +30,18 @@ from modules.mesh_test import ModifierTest, ModifierSpec
 def main():
     test = [
 
+        # Make sure no modifier is added on the test object.
         ["ClothSimple", "testCloth", "expectedCloth",
          [ModifierSpec('Cloth', 'CLOTH', {'settings': {'quality': 5}}, 35)]],
+
+        ["ClothPressure", "testObjClothPressure", "expObjClothPressure",
+         [ModifierSpec('Cloth2', 'CLOTH', {'settings': {'use_pressure': True, 'uniform_pressure_force': 1}}, 16)]],
+
+        ["ClothSelfCollision", "testClothCollision", "expClothCollision",
+         [ModifierSpec('Cloth', 'CLOTH', {'collision_settings': {'use_self_collision': True}}, 67)]],
+
+        ["ClothSpring", "testTorusClothSpring", "expTorusClothSpring",
+         [ModifierSpec('Cloth2', 'CLOTH', {'settings': {'use_internal_springs': True}}, 30)]],
 
 
     ]

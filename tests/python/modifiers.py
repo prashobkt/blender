@@ -263,7 +263,7 @@ def main():
         ["BalloonLaplacianSmooth", "testBalloonLaplacianSmooth", "expectedBalloonLaplacianSmooth",
          [ModifierSpec('laplaciansmooth', 'LAPLACIANSMOOTH', {'lambda_factor': 12, 'lambda_border': 12})]],
 
-        # Not reproducible anymore
+        # Gets updated often
         ["WavePlane", "testObjPlaneWave", "expObjPlaneWave",
          [ModifierSpec('wave', 'WAVE', {})]],
 

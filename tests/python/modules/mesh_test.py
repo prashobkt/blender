@@ -338,6 +338,10 @@ class MeshTest:
         scene.frame_set(0)
         modifier = test_object.modifiers.new(modifier_spec.modifier_name,
                                              modifier_spec.modifier_type)
+
+        if modifier is None:
+            raise Exception("This modifier type is already added on the Test Object, please remove it and try again.")
+
         if self.verbose:
             print("Created modifier '{}' of type '{}'.".
                   format(modifier_spec.modifier_name, modifier_spec.modifier_type))
