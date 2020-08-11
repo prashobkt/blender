@@ -3647,13 +3647,22 @@ static void sbObjectStep_admmpd(
                   float (*vertexCos)[3],
                   int numVerts)
 {
+  if (!ob)
+    return;
+
   if (ob->type != OB_MESH) {
     CLOG_ERROR(&LOG, "ADMM-PD only works with mesh object types");
     return;
   }
 
   Mesh *me = ob->data;
+  if (!me)
+    return;
+
   SoftBody *sb = ob->soft;
+  if (!sb)
+    return;
+
   if (!sb->admmpd) {
     CLOG_ERROR(&LOG, "No ADMM-PD data");
     return;
@@ -3698,13 +3707,6 @@ static void sbObjectStep_admmpd(
     return;
   }
   else {
-    // When a paramter is changed the SoftBody object
-    // is deleted and a new one is created (CoW). Calling
-    // copy to object (with NULL vertexCos) makes sure
-    // the BodyPoint data has been properly allocated,
-    // but skips updating vertexCos.
-    admmpd_copy_to_object(sb->admmpd,ob,NULL);
-
     // Do we need to initialize the ADMM-PD mesh?
     // a) Has never been initialized.
     // b) The mesh topology has changed.
@@ -3719,8 +3721,9 @@ static void sbObjectStep_admmpd(
     // Do we need to initialize the ADMM-PD solver?
     // a) Has never been initialized
     // b) Some settings require re-initialization
+    // c) The mesh has changed
     int init_solver = 0;
-    if (admmpd_solver_needs_update(sb->admmpd, scene, ob)) {
+    if (init_mesh || admmpd_solver_needs_update(sb->admmpd, scene, ob)) {
       init_solver = admmpd_update_solver(sb->admmpd, scene, ob, vertexCos);
       if (!init_solver) {
         CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);

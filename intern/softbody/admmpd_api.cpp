@@ -310,27 +310,20 @@ int admmpd_mesh_needs_update(ADMMPDInterfaceData *iface, Object *ob)
   if (!iface) { return 0; }
   if (!ob) { return 0; }
   if (!ob->soft) { return 0; }
+  if (!ob->data) { return 0; }
   if (!iface->idata) { return 1; }
   if (!iface->idata->mesh) { return 1; }
+
+  Mesh *mesh = (Mesh*)ob->data;
+  if (!mesh) { return 0; }
 
   // Mode or topology change?
   int mode = ob->soft->admmpd_init_mode;
   int mesh_type = iface->idata->mesh->type();
   if (mode != mesh_type) { return 1; }
-
-  switch (mode)
-  {
-    default:
-    case MESHTYPE_EMBEDDED:
-    case MESHTYPE_TET: {
-      int nv = iface->idata->mesh->rest_prim_verts()->rows();
-      if (nv != ob->soft->totpoint) { return 1; }
-    } break;
-    case MESHTYPE_TRIANGLE: {
-      int nv = iface->idata->mesh->rest_facet_verts()->rows();
-      if (nv != ob->soft->totpoint) { return 1; }
-    } break;
-  }
+  if (!iface->idata->mesh->rest_facet_verts()) { return 1; }
+  int nx = iface->idata->mesh->rest_facet_verts()->rows();
+  if (nx != mesh->totvert) { return 1; }
 
   return 0;
 }
@@ -508,15 +501,9 @@ void admmpd_copy_to_object(ADMMPDInterfaceData *iface, Object *ob, float (*verte
 
   if (ob && ob->soft)
   {
-    int np = std::min(ob->soft->totpoint, nx);
     SoftBody *sb = ob->soft;
-    if (!sb->bpoint || nx != np)
+    if (!sb->bpoint)
     {
-      // If we have a bpoint but it's the wrong size
-      if (ob->soft->bpoint && nx != np)
-        MEM_freeN(sb->bpoint);
-
-      // Create bpoint if we don't have one
       if (!ob->soft->bpoint)
         sb->bpoint = (BodyPoint*)MEM_callocN(nx*sizeof(BodyPoint), "ADMMPD_bpoint");
 
@@ -525,7 +512,8 @@ void admmpd_copy_to_object(ADMMPDInterfaceData *iface, Object *ob, float (*verte
     }
 
     // Copy internal data to BodyPoint
-    for (int i=0; i<nx; ++i)
+    int np = std::min(ob->soft->totpoint, nx);
+    for (int i=0; i<np; ++i)
     {
       BodyPoint *pt = &ob->soft->bpoint[i];
       for(int j=0; j<3; ++j)

@@ -29,8 +29,9 @@ void LDLT::init_solve(
 {
 	(void)(collision);
 	int nx = data->x.rows();
-	if (nx==0)
-		throw_err("init_solve","no vertices");
+	if (nx==0) { throw_err("init_solve","no vertices"); }
+	if (!mesh) { throw_err("init_solve","no mesh"); }
+	if (!options) { throw_err("init_solve","no options"); }
 
 	// Get the P matrix
 	std::set<int> pin_inds;
@@ -47,7 +48,7 @@ void LDLT::init_solve(
 
 	// Compute P
 	data->ls.last_pk = pk;
-	int np = q_coeffs.size();
+	int np = q_coeffs.size()/3;
 	SparseMatrix<double> P;
 	MatrixXd q;
 	if (data->ls.Ptq.rows() != nx)
@@ -74,17 +75,19 @@ void LDLT::init_solve(
 		data->ls.Ptq = pk * P.transpose() * q;
 	}
 
+	if (!data->ls.ldlt_A_PtP)
+		data->ls.ldlt_A_PtP = std::make_unique<Cholesky>();
+
+std::cout << "factoring" << std::endl;
+
 	// Compute A + P'P and factorize:
 	// 1) A not computed
 	// 2) P has changed
 	// 3) factorization not set
-	if ( !data->ls.ldlt_A_PtP ||
+	if ( data->ls.ldlt_A_PtP->info() != Eigen::Success ||
 		data->ls.A_PtP.nonZeros()==0 ||
 		new_P)
 	{
-		if (!data->ls.ldlt_A_PtP)
-			data->ls.ldlt_A_PtP = std::make_unique<Cholesky>();
-
 		data->ls.A_PtP = SparseMatrix<double>(data->A) + pk * P.transpose()*P;
 		data->ls.ldlt_A_PtP->compute(data->ls.A_PtP);
 		if(data->ls.ldlt_A_PtP->info() != Eigen::Success)

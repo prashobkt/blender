@@ -408,24 +408,31 @@ bool EmbeddedMesh::linearize_pins(
 		const Vector3d &qi = emb_pin_pos.at(emb_idx);
 		const double &ki = it_k->second;
 
+		if (ki <= 0.0)
+			continue;
+
 		int tet_idx = emb_v_to_tet[emb_idx];
 		RowVector4d bary = emb_barys.row(emb_idx);
 		RowVector4i tet = lat_T.row(tet_idx);
 
+		int p_idx = q.size()/3;
 		for (int i=0; i<3; ++i)
 		{
-			int p_idx = q.size();
 			q.emplace_back(qi[i]*ki);
-			if (replicate)
+		}
+
+		if (replicate)
+		{
+			for (int i=0; i<3; ++i)
 			{
 				for (int j=0; j<4; ++j)
-					trips.emplace_back(p_idx, tet[j]*3+i, bary[j]*ki);
+					trips.emplace_back(p_idx*3+i, tet[j]*3+i, bary[j]*ki);
 			}
-			else if (i==0)
-			{
-				for (int j=0; j<4; ++j)
-					trips.emplace_back(p_idx/3, tet[j], bary[j]*ki);	
-			}
+		}
+		else
+		{
+			for (int j=0; j<4; ++j)
+				trips.emplace_back(p_idx, tet[j], bary[j]*ki);	
 		}
 	}
 
@@ -576,6 +583,10 @@ bool TetMesh::linearize_pins(
 		pin_inds.emplace(idx);
 		const Vector3d &qi = pin_pos.at(idx);
 		const double &ki = it_k->second;
+
+		if (ki <= 0.0)
+			continue;
+
 		for (int i=0; i<3; ++i)
 		{
 			int p_idx = q.size();
@@ -699,18 +710,18 @@ bool TriangleMesh::linearize_pins(
 		pin_inds.emplace(idx);
 		const Vector3d &qi = pin_pos.at(idx);
 		const double &ki = it_k->second;
+		int p_idx = q.size()/3;
 		for (int i=0; i<3; ++i)
-		{
-			int p_idx = q.size();
 			q.emplace_back(qi[i]*ki);
-			if (replicate)
-			{
-				trips.emplace_back(p_idx, idx*3+i, ki);
-			}
-			else if (i==0)
-			{
-				trips.emplace_back(p_idx/3, idx, ki);	
-			}
+
+		if (replicate)
+		{
+			for (int i=0; i<3; ++i)
+				trips.emplace_back(p_idx*3+i, idx*3+i, ki);
+		}
+		else
+		{
+			trips.emplace_back(p_idx, idx, ki);	
 		}
 	}
 
