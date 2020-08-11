@@ -61,14 +61,12 @@ void Geometry::set_geometry_name(std::string_view new_name)
 }
 
 /**
- * Return the vertex index ranging from zero to total vertices in a Geometry instance.
- * Key ranges from zero to total vertices in an OBJ file.
- * To be used for mloop->v only.
+ * Returns an index that ranges from zero to total coordinates in the
+ * global list of vertices.
  */
-int Geometry::vertex_indices_lookup(const int key) const
+int64_t Geometry::vertex_index(const int64_t index) const
 {
-  BLI_assert(vertex_indices_.contains(key));
-  return vertex_indices_.lookup(key);
+  return vertex_indices_[index];
 }
 
 int64_t Geometry::tot_verts() const

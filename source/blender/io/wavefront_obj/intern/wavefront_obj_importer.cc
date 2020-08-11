@@ -57,10 +57,14 @@ void OBJParser::print_obj_data(Span<std::unique_ptr<Geometry>> all_geometries,
   printf("\n");
 
   for (const std::unique_ptr<Geometry> &curr_ob : all_geometries) {
-    for (const int curr_vert_idx : curr_ob->vertex_indices_.values()) {
+    for (const int curr_vert_idx : curr_ob->vertex_indices_) {
       printf(" %d", curr_vert_idx);
     }
     printf("\nglobal_vert_index^\n");
+    for (const MEdge &edge : curr_ob->edges()) {
+      printf(" %d %d", edge.v1, edge.v2);
+    }
+    printf("\nedge vertex indices^\n");
     for (const FaceElement &curr_face : curr_ob->face_elements_) {
       for (FaceCorner a : curr_face.face_corners) {
         printf(" %d/%d", a.vert_index, a.uv_vert_index);
@@ -123,10 +127,8 @@ void importer_main(bContext *C, const OBJImportParams &import_params)
     MTLParser mtl_parser{mtl_library, import_params.filepath};
     mtl_parser.parse_and_store(materials);
   }
-  //  obj_parser.print_obj_data(list_of_objects, global_vertices);
+  //  obj_parser.print_obj_data(all_geometries, global_vertices);
 
-  VertexOffset vertex_offset;
-  global_vertices.vertex_offset = &vertex_offset;
   geometry_to_blender_objects(bmain, scene, all_geometries, global_vertices, materials);
 }
 }  // namespace blender::io::obj

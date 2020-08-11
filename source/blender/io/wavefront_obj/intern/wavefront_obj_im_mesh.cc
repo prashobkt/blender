@@ -80,14 +80,10 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
 
 void MeshFromGeometry::create_vertices()
 {
-  /* Since the keys in a Geometry's vertex coordinates Map almost always exceed the total
-   * vertices in that Mesh, account for it using the offset. */
-  int offset = global_vertices_.vertex_offset->get_vertex_offset();
   const int64_t tot_verts_object{mesh_geometry_.tot_verts()};
-  global_vertices_.vertex_offset->add_vertex_offset(tot_verts_object);
-
   for (int i = 0; i < tot_verts_object; ++i) {
-    copy_v3_v3(blender_mesh_->mvert[i].co, global_vertices_.vertices[offset + i]);
+    copy_v3_v3(blender_mesh_->mvert[i].co,
+               global_vertices_.vertices[mesh_geometry_.vertex_index(i)]);
   }
 }
 
@@ -123,7 +119,8 @@ void MeshFromGeometry::create_polys_loops()
     for (const FaceCorner &curr_corner : curr_face.face_corners) {
       MLoop *mloop = &blender_mesh_->mloop[tot_loop_idx];
       tot_loop_idx++;
-      mloop->v = mesh_geometry_.vertex_indices_lookup(curr_corner.vert_index);
+      mloop->v = curr_corner.vert_index;
+      std::cout << curr_corner.vert_index;
       if (blender_mesh_->dvert) {
         /* Iterating over mloop results in finding the same vertex multiple times.
          * Another way is to allocate memory for dvert while creating vertices and fill them here.
@@ -161,8 +158,8 @@ void MeshFromGeometry::create_edges()
   const int64_t tot_edges{mesh_geometry_.tot_edges()};
   for (int i = 0; i < tot_edges; ++i) {
     const MEdge &curr_edge = mesh_geometry_.edges()[i];
-    blender_mesh_->medge[i].v1 = mesh_geometry_.vertex_indices_lookup(curr_edge.v1);
-    blender_mesh_->medge[i].v2 = mesh_geometry_.vertex_indices_lookup(curr_edge.v2);
+    blender_mesh_->medge[i].v1 = curr_edge.v1;
+    blender_mesh_->medge[i].v2 = curr_edge.v2;
   }
 
   /* Set argument `update` to true so that existing, explicitly imported edges can be merged

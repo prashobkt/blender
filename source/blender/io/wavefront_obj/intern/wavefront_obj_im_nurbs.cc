@@ -47,7 +47,6 @@ void CurveFromGeometry::create_nurbs()
   nurb->resolu = nurb->resolv = blender_curve_->resolu;
 
   const int64_t tot_vert{curve_geometry_.nurbs_elem().curv_indices.size()};
-  global_vertices_.vertex_offset->add_vertex_offset(tot_vert);
 
   BKE_nurb_points_add(nurb, tot_vert);
   for (int i = 0; i < tot_vert; i++) {

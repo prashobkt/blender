@@ -31,7 +31,7 @@
 namespace blender::io::obj {
 
 /* Types of index offsets. */
-enum index_offsets {
+enum eIndexOffsets {
   VERTEX_OFF = 0,
   UV_VERTEX_OFF = 1,
   NORMAL_OFF = 2,

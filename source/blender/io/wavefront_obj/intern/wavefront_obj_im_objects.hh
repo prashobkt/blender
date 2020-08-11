@@ -37,29 +37,10 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
+#include "wavefront_obj_ex_file_writer.hh"
 #include "wavefront_obj_im_objects.hh"
 
 namespace blender::io::obj {
-
-/**
- * Keeps track of the vertices that belong to other objects.
- * Needed only for mloop->v which needs vertex indices ranging from (0 to total vertices in the
- * mesh) as opposed to the indices ranging from (0 to total vertices in the global list).
- */
-struct VertexOffset {
- private:
-  int vertex_offset_ = 0;
-
- public:
-  int get_vertex_offset() const
-  {
-    return vertex_offset_;
-  }
-  void add_vertex_offset(const int vert_offset)
-  {
-    vertex_offset_ += vert_offset;
-  }
-};
 
 /**
  * List of all vertex and UV vertex coordinates in an OBJ file accessible to any
@@ -68,7 +49,25 @@ struct VertexOffset {
 struct GlobalVertices {
   Vector<float3> vertices{};
   Vector<float2> uv_vertices{};
-  VertexOffset *vertex_offset = nullptr;
+};
+
+/**
+ * Keeps track of the vertices that belong to other Geometries.
+ * Needed only for MLoop.v and MEdge.v1 which needs vertex indices ranging from (0 to total
+ * vertices in the mesh) as opposed to the other OBJ indices ranging from (0 to total vertices
+ * in the global list).
+ */
+struct IndexOffsets {
+ private:
+  Array<int64_t> index_offsets_{2, 0};
+
+ public:
+  void update_index_offsets(const GlobalVertices &global_vertices);
+  int64_t get_index_offset(const eIndexOffsets type) const
+  {
+    BLI_assert(type == UV_VERTEX_OFF || type == VERTEX_OFF);
+    return index_offsets_[type];
+  }
 };
 
 /**
@@ -117,10 +116,10 @@ class Geometry {
   std::string geometry_name_{};
   Vector<std::string> material_name_{};
   /**
-   * Keys range from zero to total vertices in the file. Values range from 0 to vertices
-   * in a Geometry instance.
+   * Indices in the vector range from zero to total vertices in a geomery.
+   * Values range from zero to total coordinates in the global list.
    */
-  Map<int, int> vertex_indices_{};
+  Vector<int> vertex_indices_;
   /** Edges written in the file in addition to (or even without polygon) elements. */
   Vector<MEdge> edges_{};
   Vector<FaceElement> face_elements_{};
@@ -137,7 +136,8 @@ class Geometry {
   void set_geom_type(const eGeometryType new_type);
   std::string_view get_geometry_name() const;
   void set_geometry_name(std::string_view new_name);
-  int vertex_indices_lookup(const int key) const;
+
+  int64_t vertex_index(const int64_t index) const;
   int64_t tot_verts() const;
   Span<FaceElement> face_elements() const;
   int64_t tot_face_elems() const;
