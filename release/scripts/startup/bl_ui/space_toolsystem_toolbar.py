@@ -1226,22 +1226,32 @@ class _defs_sculpt:
 
     @ToolDef.from_fn
     def mask_border():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.mask_box_gesture")
+            layout.prop(props, "use_front_faces_only", expand=False)
+
         return dict(
             idname="builtin.box_mask",
             label="Box Mask",
             icon="ops.sculpt.border_mask",
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
     def mask_lasso():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.mask_lasso_gesture")
+            layout.prop(props, "use_front_faces_only", expand=False)
+
         return dict(
             idname="builtin.lasso_mask",
             label="Lasso Mask",
             icon="ops.sculpt.lasso_mask",
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
@@ -1661,6 +1671,29 @@ class _defs_image_uv_sculpt:
 class _defs_gpencil_paint:
 
     @staticmethod
+    def gpencil_primitive_toolbar(context, layout, tool, props):
+        paint = context.tool_settings.gpencil_paint
+        brush = paint.brush
+
+        if brush is None:
+            return False
+
+        gp_settings = brush.gpencil_settings
+
+        row = layout.row(align=True)
+        tool_settings = context.scene.tool_settings
+        settings = tool_settings.gpencil_paint
+        row.template_ID_preview(settings, "brush", rows=3, cols=8, hide_buttons=True)
+
+        from bl_ui.properties_paint_common import (
+            brush_basic_gpencil_paint_settings,
+            brush_basic__draw_color_selector,
+        )
+
+        brush_basic__draw_color_selector(context, layout, brush, gp_settings, props)
+        brush_basic_gpencil_paint_settings(layout, context, brush, compact=True)
+
+    @staticmethod
     def generate_from_brushes(context):
         return generate_from_enum_ex(
             context,
@@ -1687,6 +1720,10 @@ class _defs_gpencil_paint:
 
     @ToolDef.from_fn
     def line():
+        def draw_settings(context, layout, tool):
+            props = tool.operator_properties("gpencil.primitive_line")
+            _defs_gpencil_paint.gpencil_primitive_toolbar(context, layout, tool, props)
+
         return dict(
             idname="builtin.line",
             label="Line",
@@ -1694,10 +1731,15 @@ class _defs_gpencil_paint:
             cursor='CROSSHAIR',
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
     def polyline():
+        def draw_settings(context, layout, tool):
+            props = tool.operator_properties("gpencil.primitive_polyline")
+            _defs_gpencil_paint.gpencil_primitive_toolbar(context, layout, tool, props)
+
         return dict(
             idname="builtin.polyline",
             label="Polyline",
@@ -1705,10 +1747,15 @@ class _defs_gpencil_paint:
             cursor='CROSSHAIR',
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
     def box():
+        def draw_settings(context, layout, tool):
+            props = tool.operator_properties("gpencil.primitive_box")
+            _defs_gpencil_paint.gpencil_primitive_toolbar(context, layout, tool, props)
+
         return dict(
             idname="builtin.box",
             label="Box",
@@ -1716,10 +1763,15 @@ class _defs_gpencil_paint:
             cursor='CROSSHAIR',
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
     def circle():
+        def draw_settings(context, layout, tool):
+            props = tool.operator_properties("gpencil.primitive_circle")
+            _defs_gpencil_paint.gpencil_primitive_toolbar(context, layout, tool, props)
+
         return dict(
             idname="builtin.circle",
             label="Circle",
@@ -1727,10 +1779,15 @@ class _defs_gpencil_paint:
             cursor='CROSSHAIR',
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
     def arc():
+        def draw_settings(context, layout, tool):
+            props = tool.operator_properties("gpencil.primitive_curve")
+            _defs_gpencil_paint.gpencil_primitive_toolbar(context, layout, tool, props)
+
         return dict(
             idname="builtin.arc",
             label="Arc",
@@ -1738,10 +1795,15 @@ class _defs_gpencil_paint:
             cursor='CROSSHAIR',
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
     def curve():
+        def draw_settings(context, layout, tool):
+            props = tool.operator_properties("gpencil.primitive_curve")
+            _defs_gpencil_paint.gpencil_primitive_toolbar(context, layout, tool, props)
+
         return dict(
             idname="builtin.curve",
             label="Curve",
@@ -1749,6 +1811,7 @@ class _defs_gpencil_paint:
             cursor='CROSSHAIR',
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
