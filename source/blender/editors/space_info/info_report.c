@@ -73,7 +73,7 @@ static void reports_select_all(ReportList *reports,
   if (action == SEL_TOGGLE) {
     action = SEL_SELECT;
     for (Report *report = reports->list.last; report; report = report->prev) {
-      if (IS_REPORT_VISIBLE(report, report_mask, search_string) && (report->flag & SELECT)) {
+      if (IS_REPORT_VISIBLE(report, report_mask, search_string) && (report->flag & RPT_SELECT)) {
         action = SEL_DESELECT;
         break;
       }
@@ -326,7 +326,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
   const int select = (sel_op != SEL_OP_SUB);
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     LISTBASE_FOREACH (Report *, report, &reports->list) {
-      if ((report->type & report_mask) == 0) {
+      if (!IS_REPORT_VISIBLE(report, report_mask, sinfo->search_string)) {
         continue;
       }
       report->flag &= ~RPT_SELECT;
@@ -366,7 +366,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
     }
 
     for (Report *report = report_min; (report != report_max->next); report = report->next) {
-      if ((report->type & report_mask) == 0) {
+      if (!IS_REPORT_VISIBLE(report, report_mask, sinfo->search_string)) {
         continue;
       }
       SET_FLAG_FROM_TEST(report->flag, select, RPT_SELECT);
@@ -413,7 +413,8 @@ static int report_delete_exec(bContext *C, wmOperator *UNUSED(op))
 
     report_next = report->next;
 
-    if ((report->type & report_mask) && (report->flag & RPT_SELECT)) {
+    if (IS_REPORT_VISIBLE(report, report_mask, sinfo->search_string) &&
+        (report->flag & RPT_SELECT)) {
       BLI_remlink(&reports->list, report);
       MEM_freeN((void *)report->message);
       MEM_freeN(report);
@@ -455,7 +456,8 @@ static int report_copy_exec(bContext *C, wmOperator *UNUSED(op))
   char *buf_str;
 
   for (report = reports->list.first; report; report = report->next) {
-    if ((report->type & report_mask) && (report->flag & RPT_SELECT)) {
+    if (IS_REPORT_VISIBLE(report, report_mask, sinfo->search_string) &&
+        (report->flag & RPT_SELECT)) {
       BLI_dynstr_append(buf_dyn, report->message);
       BLI_dynstr_append(buf_dyn, "\n");
     }
