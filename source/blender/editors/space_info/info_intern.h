@@ -30,7 +30,12 @@
 struct ReportList;
 struct SpaceInfo;
 struct wmOperatorType;
+struct TextViewContext;
+struct TextLine;
 
+#define INDEX_INVALID -1
+
+/* info_ops.c */
 void FILE_OT_autopack_toggle(struct wmOperatorType *ot);
 void FILE_OT_pack_all(struct wmOperatorType *ot);
 void FILE_OT_unpack_all(struct wmOperatorType *ot);
@@ -64,16 +69,48 @@ void info_textview_main(const struct SpaceInfo *sinfo,
                         const struct ReportList *reports);
 
 /* info_report.c */
-ReportList *clog_to_report_list(struct SpaceInfo *sinfo);
+void info_area_tag_redraw(const struct bContext *C);
 int info_report_mask(const struct SpaceInfo *sinfo);
 bool info_filter_text(const Report *report, const char *search_string);
-void INFO_OT_select_pick(struct wmOperatorType *ot); /* report selection */
-void INFO_OT_select_all(struct wmOperatorType *ot);
-void INFO_OT_select_box(struct wmOperatorType *ot);
+void INFO_OT_report_select_pick(struct wmOperatorType *ot); /* report selection */
+void INFO_OT_report_select_all(struct wmOperatorType *ot);
+void INFO_OT_report_select_box(struct wmOperatorType *ot);
 
 void INFO_OT_report_replay(struct wmOperatorType *ot);
 void INFO_OT_report_delete(struct wmOperatorType *ot);
 void INFO_OT_report_copy(struct wmOperatorType *ot);
 
+/* info_clog.c */
+void INFO_OT_clog_select_pick(struct wmOperatorType *ot); /* report selection */
+void INFO_OT_clog_select_all(struct wmOperatorType *ot);
+void INFO_OT_clog_select_box(struct wmOperatorType *ot);
+
+void INFO_OT_clog_delete(struct wmOperatorType *ot);
+void INFO_OT_clog_copy(struct wmOperatorType *ot);
+
+/* info_draw_report.c */
+enum eTextViewContext_LineFlag report_line_draw_data(struct TextViewContext *tvc,
+                                                     struct TextLine *text_line,
+                                                     uchar fg[4],
+                                                     uchar bg[4],
+                                                     int *r_icon,
+                                                     uchar r_icon_fg[4],
+                                                     uchar r_icon_bg[4]);
+int report_textview_begin(struct TextViewContext *tvc);
+void report_textview_end(struct TextViewContext *tvc);
+int report_textview_step(struct TextViewContext *tvc);
+void report_textview_line_get(struct TextViewContext *tvc, struct ListBase *text_lines);
+/* info_draw_clog.c */
+enum eTextViewContext_LineFlag clog_line_draw_data(struct TextViewContext *tvc,
+                                                   struct TextLine *text_line,
+                                                   uchar fg[4],
+                                                   uchar bg[4],
+                                                   int *r_icon,
+                                                   uchar r_icon_fg[4],
+                                                   uchar r_icon_bg[4]);
+int clog_textview_begin(struct TextViewContext *tvc);
+void clog_textview_end(struct TextViewContext *tvc);
+int clog_textview_step(struct TextViewContext *tvc);
+void clog_textview_line_get(struct TextViewContext *tvc, struct ListBase *text_lines);
 #define IS_REPORT_VISIBLE(report, report_mask, search_string) \
   (info_filter_text(report, search_string) && ((report)->type & report_mask))

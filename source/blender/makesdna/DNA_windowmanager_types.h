@@ -93,6 +93,7 @@ typedef struct Report {
   struct Report *next, *prev;
   /** ReportType. */
   short type;
+  /** ReportFlags. */
   short flag;
   /** `strlen(message)`, saves some time calculating the word wrap . */
   int len;
@@ -101,9 +102,8 @@ typedef struct Report {
 } Report;
 
 enum ReportFlags {
-  RPT_FLAG_NONE = (1 << 0),
-  RPT_SELECT = (1 << 1),
-  RPT_PYTHON = (1 << 2), /* report holds only python syntax, mainly for pretty printing */
+  RPT_SELECT = (1 << 0),
+  RPT_PYTHON = (1 << 1), /* report holds only python syntax, mainly for pretty printing */
 };
 
 /* saved in the wm, don't remove */

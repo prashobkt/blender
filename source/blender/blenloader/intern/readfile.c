@@ -7076,10 +7076,6 @@ static void direct_link_area(BlendDataReader *reader, ScrArea *area)
       sbuts->mainbo = sbuts->mainb;
       sbuts->mainbuser = sbuts->mainb;
     }
-    else if (sl->spacetype == SPACE_INFO) {
-      SpaceInfo *sinfo = (SpaceInfo *)sl;
-      sinfo->active_reports = NULL;
-    }
     else if (sl->spacetype == SPACE_CONSOLE) {
       SpaceConsole *sconsole = (SpaceConsole *)sl;
       ConsoleLine *cl, *cl_next;

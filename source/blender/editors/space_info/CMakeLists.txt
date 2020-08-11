@@ -31,6 +31,7 @@ set(INC
   ../../windowmanager
   ../../../../intern/glew-mx
   ../../../../intern/guardedalloc
+  ../../../../intern/clog
 )
 
 set(INC_SYS
@@ -39,8 +40,11 @@ set(INC_SYS
 
 set(SRC
   info_draw.c
+  info_draw_report.c
+  info_draw_clog.c
   info_ops.c
   info_report.c
+  info_clog.c
   info_stats.c
   space_info.c
   textview.c

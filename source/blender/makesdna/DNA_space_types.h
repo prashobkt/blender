@@ -118,16 +118,13 @@ typedef struct SpaceInfo {
   /* End 'SpaceLink' header. */
 
   int rpt_mask;
-  int active_report_index;
+  int active_index;
   char search_string[64];
   char view;
   char use_match_case;
   //  char use_search_glob;  // it can be default
   char use_log_message_new_line;
   char _pad1[5];
-
-  /* reports that were converted from CLOG */
-  ReportList *active_reports;
 
   int log_format;
   char use_short_file_line;

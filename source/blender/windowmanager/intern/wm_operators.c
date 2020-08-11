@@ -3890,7 +3890,7 @@ static void gesture_box_modal_keymap(wmKeyConfig *keyconf)
   WM_modalkeymap_assign(keymap, "ACTION_OT_select_box");
   WM_modalkeymap_assign(keymap, "ANIM_OT_channels_select_box");
   WM_modalkeymap_assign(keymap, "ANIM_OT_previewrange_set");
-  WM_modalkeymap_assign(keymap, "INFO_OT_select_box");
+  WM_modalkeymap_assign(keymap, "INFO_OT_report_select_box");
   WM_modalkeymap_assign(keymap, "FILE_OT_select_box");
   WM_modalkeymap_assign(keymap, "GRAPH_OT_select_box");
   WM_modalkeymap_assign(keymap, "MARKER_OT_select_box");

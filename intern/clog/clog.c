@@ -829,7 +829,7 @@ static void CLG_ctx_level_set(CLogContext *ctx, unsigned short level)
   }
 }
 
-static CLG_LogRecordList *CLG_ctx_log_record_get(CLogContext *ctx)
+static CLG_LogRecordList *CLG_ctx_log_records_get(CLogContext *ctx)
 {
   return &ctx->log_records;
 }
@@ -1041,9 +1041,9 @@ unsigned short CLG_level_get()
   return CLG_ctx_level_get(g_ctx);
 }
 
-CLG_LogRecordList *CLG_log_record_get()
+CLG_LogRecordList *CLG_log_records_get()
 {
-  return CLG_ctx_log_record_get(g_ctx);
+  return CLG_ctx_log_records_get(g_ctx);
 }
 
 /** \} */

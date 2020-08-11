@@ -41,12 +41,11 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "../../../../intern/clog/CLG_log.h"
+#include "CLG_log.h"
 #include "info_intern.h"
 
-#define REPORT_INDEX_INVALID -1
-
-static void redraw_every_space_info_area(const bContext *C)
+/** Redraw every possible space info */
+void info_area_tag_redraw(const bContext *C)
 {
   struct wmWindowManager *wm = CTX_wm_manager(C);
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
@@ -108,7 +107,7 @@ int info_report_mask(const SpaceInfo *sinfo)
 static int report_replay_exec(bContext *C, wmOperator *UNUSED(op))
 {
   //  SpaceInfo *sc = CTX_wm_space_info(C);
-  //  ReportList *reports = sinfo->active_reports;
+  //  ReportList *reports = CTX_wm_reports(C);
   //  int report_mask = info_report_mask(sc);
   //  Report *report;
 
@@ -158,14 +157,14 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
 
   SpaceInfo *sinfo = CTX_wm_space_info(C);
 
-  ReportList *reports = sinfo->active_reports;
+  ReportList *reports = CTX_wm_reports(C);
   Report *report = BLI_findlink(&reports->list, report_index);
 
   const int report_mask = info_report_mask(sinfo);
 
-  if (report_index == REPORT_INDEX_INVALID) {  // click in empty area
+  if (report_index == INDEX_INVALID) {  // click in empty area
     reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
-    redraw_every_space_info_area(C);
+    info_area_tag_redraw(C);
     return OPERATOR_FINISHED;
   }
 
@@ -174,7 +173,7 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
   }
 
   const Report *active_report = BLI_findlink((const struct ListBase *)reports,
-                                             sinfo->active_report_index);
+                                             sinfo->active_index);
   const bool is_active_report_selected = active_report ? active_report->flag & RPT_SELECT : false;
 
   if (deselect_all) {
@@ -183,14 +182,14 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
 
   if (active_report == NULL) {
     report->flag |= RPT_SELECT;
-    sinfo->active_report_index = report_index;
-    redraw_every_space_info_area(C);
+    sinfo->active_index = report_index;
+    info_area_tag_redraw(C);
     return OPERATOR_FINISHED;
   }
 
   if (use_range) {
     if (is_active_report_selected) {
-      if (report_index < sinfo->active_report_index) {
+      if (report_index < sinfo->active_index) {
         for (Report *i = report; i && i->prev != active_report; i = i->next) {
           i->flag |= RPT_SELECT;
         }
@@ -201,26 +200,26 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
           report_iter->flag |= RPT_SELECT;
         }
       }
-      redraw_every_space_info_area(C);
+      info_area_tag_redraw(C);
       return OPERATOR_FINISHED;
     }
     else {
       reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
       report->flag |= RPT_SELECT;
-      sinfo->active_report_index = report_index;
-      redraw_every_space_info_area(C);
+      sinfo->active_index = report_index;
+      info_area_tag_redraw(C);
       return OPERATOR_FINISHED;
     }
   }
 
-  if (extend && (report->flag & RPT_SELECT) && report_index == sinfo->active_report_index) {
+  if (extend && (report->flag & RPT_SELECT) && report_index == sinfo->active_index) {
     report->flag &= ~RPT_SELECT;
   }
   else {
     report->flag |= RPT_SELECT;
-    sinfo->active_report_index = BLI_findindex(&reports->list, report);
+    sinfo->active_index = BLI_findindex(&reports->list, report);
   }
-  redraw_every_space_info_area(C);
+  info_area_tag_redraw(C);
   return OPERATOR_FINISHED;
 }
 
@@ -228,13 +227,14 @@ static int select_report_pick_invoke(bContext *C, wmOperator *op, const wmEvent 
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ARegion *region = CTX_wm_region(C);
-  ReportList *reports = sinfo->active_reports;
+  ReportList *reports = CTX_wm_reports(C);
   Report *report;
 
+  BLI_assert(sinfo->view == INFO_VIEW_REPORTS);
   report = info_text_pick(sinfo, region, reports, event->mval[1]);
 
   if (report == NULL) {
-    RNA_int_set(op->ptr, "report_index", REPORT_INDEX_INVALID);
+    RNA_int_set(op->ptr, "report_index", INDEX_INVALID);
   }
   else {
     RNA_int_set(op->ptr, "report_index", BLI_findindex(&reports->list, report));
@@ -243,12 +243,12 @@ static int select_report_pick_invoke(bContext *C, wmOperator *op, const wmEvent 
   return select_report_pick_exec(C, op);
 }
 
-void INFO_OT_select_pick(wmOperatorType *ot)
+void INFO_OT_report_select_pick(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Select Report";
   ot->description = "Select reports by index";
-  ot->idname = "INFO_OT_select_pick";
+  ot->idname = "INFO_OT_report_select_pick";
 
   /* api callbacks */
   ot->poll = ED_operator_info_active;
@@ -263,7 +263,7 @@ void INFO_OT_select_pick(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "report_index",
               0,
-              REPORT_INDEX_INVALID,
+              INDEX_INVALID,
               INT_MAX,
               "Report",
               "Index of the report",
@@ -285,22 +285,22 @@ void INFO_OT_select_pick(wmOperatorType *ot)
 static int report_select_all_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  ReportList *reports = sinfo->active_reports;
+  ReportList *reports = CTX_wm_reports(C);
   const int report_mask = info_report_mask(sinfo);
 
   int action = RNA_enum_get(op->ptr, "action");
   reports_select_all(reports, report_mask, sinfo->search_string, action);
-  redraw_every_space_info_area(C);
+  info_area_tag_redraw(C);
 
   return OPERATOR_FINISHED;
 }
 
-void INFO_OT_select_all(wmOperatorType *ot)
+void INFO_OT_report_select_all(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "(De)select All";
   ot->description = "Change selection of all visible reports";
-  ot->idname = "INFO_OT_select_all";
+  ot->idname = "INFO_OT_report_select_all";
 
   /* api callbacks */
   ot->poll = ED_operator_info_active;
@@ -315,7 +315,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ARegion *region = CTX_wm_region(C);
-  ReportList *reports = sinfo->active_reports;
+  ReportList *reports = CTX_wm_reports(C);
   int report_mask = info_report_mask(sinfo);
   Report *report_min, *report_max;
   rcti rect;
@@ -333,6 +333,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
     }
   }
 
+  BLI_assert(sinfo->view == INFO_VIEW_REPORTS);
   report_min = info_text_pick(sinfo, region, reports, rect.ymax);
   report_max = info_text_pick(sinfo, region, reports, rect.ymin);
 
@@ -344,7 +345,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
     if (report_min == NULL) {
       // printf("find_min\n");
       LISTBASE_FOREACH (Report *, report, &reports->list) {
-        if (report->type & report_mask) {
+        if (IS_REPORT_VISIBLE(report, report_mask, sinfo->search_string)) {
           report_min = report;
           break;
         }
@@ -354,7 +355,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
     if (report_max == NULL) {
       // printf("find_max\n");
       for (Report *report = reports->list.last; report; report = report->prev) {
-        if (report->type & report_mask) {
+        if (IS_REPORT_VISIBLE(report, report_mask, sinfo->search_string)) {
           report_max = report;
           break;
         }
@@ -373,17 +374,17 @@ static int box_select_exec(bContext *C, wmOperator *op)
     }
   }
 
-  redraw_every_space_info_area(C);
+  info_area_tag_redraw(C);
   return OPERATOR_FINISHED;
 }
 
 /* ****** Box Select ****** */
-void INFO_OT_select_box(wmOperatorType *ot)
+void INFO_OT_report_select_box(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Box Select";
   ot->description = "Toggle box selection";
-  ot->idname = "INFO_OT_select_box";
+  ot->idname = "INFO_OT_report_select_box";
 
   /* api callbacks */
   ot->invoke = WM_gesture_box_invoke;
@@ -404,7 +405,7 @@ void INFO_OT_select_box(wmOperatorType *ot)
 static int report_delete_exec(bContext *C, wmOperator *UNUSED(op))
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  ReportList *reports = sinfo->active_reports;
+  ReportList *reports = CTX_wm_reports(C);
   int report_mask = info_report_mask(sinfo);
 
   Report *report, *report_next;
@@ -422,7 +423,7 @@ static int report_delete_exec(bContext *C, wmOperator *UNUSED(op))
 
     report = report_next;
   }
-  redraw_every_space_info_area(C);
+  info_area_tag_redraw(C);
 
   return OPERATOR_FINISHED;
 }
@@ -447,7 +448,7 @@ void INFO_OT_report_delete(wmOperatorType *ot)
 static int report_copy_exec(bContext *C, wmOperator *UNUSED(op))
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  ReportList *reports = sinfo->active_reports;
+  ReportList *reports = CTX_wm_reports(C);
   int report_mask = info_report_mask(sinfo);
 
   Report *report;
@@ -487,82 +488,4 @@ void INFO_OT_report_copy(wmOperatorType *ot)
   /*ot->flag = OPTYPE_REGISTER;*/
 
   /* properties */
-}
-
-/** Return newly allocated ReportList created from log records */
-ReportList *clog_to_report_list(SpaceInfo *sinfo)
-{
-  ReportList *reports = MEM_mallocN(sizeof(*reports), "ClogConvertedToReportList");
-  BKE_reports_init(reports, 0);
-  CLG_LogRecordList *records = CLG_log_record_get();
-
-  if (BLI_listbase_is_empty((const struct ListBase *)records)) {
-    return reports;
-  }
-
-  CLG_LogRecord *log = records->first;
-
-  while (log) {
-    DynStr *dynStr = BLI_dynstr_new();
-    if (sinfo->log_format & INFO_LOG_SHOW_TIMESTAMP) {
-      char timestamp_str[64];
-      const uint64_t timestamp = log->timestamp;
-      snprintf(timestamp_str,
-               sizeof(timestamp_str),
-               "%" PRIu64 ".%03u ",
-               timestamp / 1000,
-               (uint)(timestamp % 1000));
-      BLI_dynstr_appendf(dynStr, "%s", timestamp_str);
-    }
-    if (sinfo->log_format & INFO_LOG_SHOW_LEVEL) {
-      if (log->severity <= CLG_SEVERITY_VERBOSE) {
-        BLI_dynstr_appendf(dynStr, "%s:%u ", clg_severity_as_text(log->severity), log->verbosity);
-      }
-      else {
-        BLI_dynstr_appendf(dynStr, "%s ", clg_severity_as_text(log->severity));
-      }
-    }
-    if (sinfo->log_format & INFO_LOG_SHOW_LOG_TYPE) {
-      BLI_dynstr_appendf(dynStr, "(%s) ", log->type->identifier);
-    }
-    if (sinfo->log_format & INFO_LOG_SHOW_FILE_LINE) {
-      const char *file_line = (sinfo->use_short_file_line) ? BLI_path_basename(log->file_line) :
-                                                             log->file_line;
-      BLI_dynstr_appendf(dynStr, "%s ", file_line);
-    }
-    if (sinfo->log_format & INFO_LOG_SHOW_FUNCTION) {
-      BLI_dynstr_appendf(dynStr, "%s ", log->function);
-    }
-    if (sinfo->log_format & sinfo->use_log_message_new_line) {
-      BLI_dynstr_append(dynStr, "\n");
-    }
-
-    BLI_dynstr_append(dynStr, log->message);
-    char *cstr = BLI_dynstr_get_cstring(dynStr);
-    Report *report;
-    switch (log->severity) {
-      case CLG_SEVERITY_DEBUG:
-      case CLG_SEVERITY_VERBOSE:
-        report = BKE_report_init(RPT_DEBUG, 0, cstr);
-        break;
-      case CLG_SEVERITY_INFO:
-        report = BKE_report_init(RPT_INFO, 0, cstr);
-        break;
-      case CLG_SEVERITY_WARN:
-        report = BKE_report_init(RPT_WARNING, 0, cstr);
-        break;
-      case CLG_SEVERITY_ERROR:
-      case CLG_SEVERITY_FATAL:
-        report = BKE_report_init(RPT_ERROR, 0, cstr);
-        break;
-      default:
-        report = BKE_report_init(RPT_INFO, 0, cstr);
-        break;
-    }
-    BLI_addtail(&reports->list, report);
-    MEM_freeN(cstr);
-    BLI_dynstr_free(dynStr);
-    log = log->next;
-  }
-  return reports;
 }

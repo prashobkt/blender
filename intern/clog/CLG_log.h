@@ -152,7 +152,14 @@ typedef struct CLG_LogRecord {
   const char *file_line;
   const char *function;
   char *message;
+  /** CLG_LogRecordFlag */
+  int flag;
 } CLG_LogRecord;
+
+typedef enum CLG_LogRecordFlag {
+  CLG_SELECT = (1 << 0),
+  /*  CLG_SYNTAX_PYTHON = (1 << 1) */
+} CLG_LogRecordFlag;
 
 /** clog version of ListBase */
 typedef struct CLG_LogRecordList {
@@ -209,7 +216,7 @@ enum CLG_Severity CLG_severity_level_get(void);
 void CLG_severity_level_set(enum CLG_Severity log_level);
 unsigned short CLG_level_get(void);
 void CLG_level_set(unsigned short log_level);
-struct CLG_LogRecordList *CLG_log_record_get(void);
+struct CLG_LogRecordList *CLG_log_records_get(void);
 
 void CLG_logref_init(CLG_LogRef *clg_ref);
 

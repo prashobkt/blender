@@ -97,59 +97,23 @@ static SpaceLink *info_create(const ScrArea *UNUSED(area), const Scene *UNUSED(s
 static void info_free(SpaceLink *sl)
 {
   SpaceInfo *sinfo = (SpaceInfo *)sl;
-  if (sinfo->view == INFO_VIEW_CLOG) {
-    BKE_reports_clear(sinfo->active_reports);
-    MEM_freeN(sinfo->active_reports);
-  }
   BLI_freelist(&sinfo->filter_log_file_line);
   BLI_freelist(&sinfo->filter_log_type);
   BLI_freelist(&sinfo->filter_log_function);
 }
 
-static void info_report_source_update(wmWindowManager *wm, SpaceInfo *sinfo)
-{
-  switch (sinfo->view) {
-    case INFO_VIEW_REPORTS: {
-      if (sinfo->active_reports != &wm->reports) {
-        /* reports come from log, deinit them*/
-        BKE_reports_clear(sinfo->active_reports);
-        MEM_freeN(sinfo->active_reports);
-      }
-      sinfo->active_reports = &wm->reports;
-      break;
-    }
-    case INFO_VIEW_CLOG: {
-      if (sinfo->active_reports == &wm->reports) {
-        sinfo->active_reports = clog_to_report_list(sinfo);
-      }
-      break;
-    }
-  }
-}
-
 /* spacetype; init callback */
-static void info_init(struct wmWindowManager *wm, ScrArea *area)
+static void info_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area))
 {
-  SpaceInfo *sinfo = area->spacedata.first;
-  if (sinfo->active_reports == NULL) {
-    switch (sinfo->view) {
-      case INFO_VIEW_REPORTS: {
-        sinfo->active_reports = &wm->reports;
-        break;
-      }
-      case INFO_VIEW_CLOG: {
-        sinfo->active_reports = clog_to_report_list(sinfo);
-        break;
-      }
-    }
-  }
+  /*
+    SpaceInfo *sinfo = area->spacedata.first;
+  */
 }
 
 static SpaceLink *info_duplicate(SpaceLink *sl)
 {
   SpaceInfo *sinfo = (SpaceInfo *)sl;
   SpaceInfo *sinfo_new = MEM_dupallocN(sl);
-  sinfo_new->active_reports = NULL;  // will be reinitialized in info_init
 
   /* make a copy of source layer */
   BLI_duplicatelist(&sinfo_new->filter_log_file_line, &sinfo->filter_log_file_line);
@@ -180,7 +144,10 @@ static void info_textview_update_rect(const bContext *C, ARegion *region)
   View2D *v2d = &region->v2d;
 
   UI_view2d_totRect_set(
-      v2d, region->winx - 1, info_textview_height(sinfo, region, sinfo->active_reports));
+      v2d,
+      region->winx - 1,
+      info_textview_height(
+          sinfo, region, sinfo->view == INFO_VIEW_REPORTS ? CTX_wm_reports(C) : NULL));
 }
 
 static void info_main_region_draw(const bContext *C, ARegion *region)
@@ -203,7 +170,7 @@ static void info_main_region_draw(const bContext *C, ARegion *region)
   /* worlks best with no view2d matrix set */
   UI_view2d_view_ortho(v2d);
 
-  info_textview_main(sinfo, region, sinfo->active_reports);
+  info_textview_main(sinfo, region, sinfo->view == INFO_VIEW_REPORTS ? CTX_wm_reports(C) : NULL);
 
   /* reset view matrix */
   UI_view2d_view_restore(C);
@@ -234,13 +201,21 @@ static void info_operatortypes(void)
   WM_operatortype_append(INFO_OT_log_type_filter_remove);
 
   /* info_report.c */
-  WM_operatortype_append(INFO_OT_select_pick);
-  WM_operatortype_append(INFO_OT_select_all);
-  WM_operatortype_append(INFO_OT_select_box);
+  WM_operatortype_append(INFO_OT_report_select_pick);
+  WM_operatortype_append(INFO_OT_report_select_all);
+  WM_operatortype_append(INFO_OT_report_select_box);
 
   WM_operatortype_append(INFO_OT_report_replay);
   WM_operatortype_append(INFO_OT_report_delete);
   WM_operatortype_append(INFO_OT_report_copy);
+
+  /* info_clog.c */
+  WM_operatortype_append(INFO_OT_clog_select_pick);
+  WM_operatortype_append(INFO_OT_clog_select_all);
+  WM_operatortype_append(INFO_OT_clog_select_box);
+
+  WM_operatortype_append(INFO_OT_clog_delete);
+  WM_operatortype_append(INFO_OT_clog_copy);
 }
 
 static void info_keymap(struct wmKeyConfig *keyconf)
@@ -261,13 +236,11 @@ static void info_header_region_draw(const bContext *C, ARegion *region)
 }
 
 static void info_main_region_listener(wmWindow *UNUSED(win),
-                                      ScrArea *area,
+                                      ScrArea *UNUSED(area),
                                       ARegion *region,
                                       wmNotifier *wmn,
                                       const Scene *UNUSED(scene))
 {
-  SpaceInfo *sinfo = area->spacedata.first;
-
   /* context changes */
   switch (wmn->category) {
     case NC_SPACE:
@@ -276,10 +249,7 @@ static void info_main_region_listener(wmWindow *UNUSED(win),
         ED_region_tag_redraw(region);
       }
       else if (wmn->data == ND_SPACE_INFO_CHANGE_REPORT_SOURCE) {
-        /* TODO (grzelins) this is very bad */
-        Main *bmain = G_MAIN;
-        wmWindowManager *wm = bmain->wm.first;
-        info_report_source_update(wm, sinfo);
+        /* TODO (grzelins) cleanup */
         ED_region_tag_redraw(region);
       }
       break;

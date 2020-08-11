@@ -123,11 +123,17 @@ class INFO_MT_area(Menu):
 class INFO_MT_context_menu(Menu):
     bl_label = "Info Context Menu"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
 
-        layout.operator("info.report_copy", text="Copy")
-        layout.operator("info.report_delete", text="Delete")
+        sinfo = context.space_data
+
+        if sinfo.view == 'REPORTS':
+            layout.operator("info.report_copy", text="Copy")
+            layout.operator("info.report_delete", text="Delete")
+        else:
+            layout.operator("info.clog_copy", text="Copy Message")
+            layout.operator("info.clog_delete", text="Delete (mockup)")
 
 
 class INFO_PT_log_formatting(Panel):
