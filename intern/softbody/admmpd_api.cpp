@@ -42,7 +42,14 @@
 
 #define ADMMPD_API_DEBUG
 
-
+// Collision obstacles are cached until
+// solve(...) is called. If we are substepping,
+// the obstacle is interpolated from start to end.
+struct CollisionObstacle
+{
+  Eigen::VectorXf x0, x1;
+  std::vector<unsigned int> F;
+};
 
 struct ADMMPDInternalData
 {
@@ -52,6 +59,8 @@ struct ADMMPDInternalData
   // Created in admmpd_update_solver
   std::shared_ptr<admmpd::Options> options;
   std::shared_ptr<admmpd::SolverData> data;
+  // Created in set_obstacles
+  CollisionObstacle obs;
 };
 
 
@@ -553,15 +562,26 @@ void admmpd_update_obstacles(
     unsigned int *in_faces,
     int nf)
 {
-    if (iface==NULL || in_verts_0==NULL || in_verts_1==NULL || in_faces==NULL)
-      return;
-    if (!iface->idata)
-      return;
-    if (!iface->idata->collision)
-      return;
+  if (iface==NULL || in_verts_0==NULL || in_verts_1==NULL || in_faces==NULL)
+    return;
+  if (!iface->idata) { return; }
+  if (!iface->idata->collision) { return; }
+  if (nf==0 || nv==0) { return; }
 
-    iface->idata->collision->set_obstacles(
-      in_verts_0, in_verts_1, nv, in_faces, nf);
+  int nv3 = nv*3;
+  iface->idata->obs.x0.resize(nv3);
+  iface->idata->obs.x1.resize(nv3);
+  int nf3 = nf*3;
+  iface->idata->obs.F.resize(nf3);
+
+  for (int i=0; i<nv3; ++i)
+  {
+    iface->idata->obs.x0[i] = in_verts_0[i];
+    iface->idata->obs.x1[i] = in_verts_1[i];
+  }
+  for (int i=0; i<nf3; ++i)
+    iface->idata->obs.F[i] = in_faces[i];
+
 }
 
 void admmpd_update_goals(
@@ -609,11 +629,47 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob)
     iface->idata->options.get(),
     true);
 
+  // Changing the location of the obstacles requires a recompuation
+  // of the SDF. So we'll only do that if we need to:
+  // a) we are substepping (need to lerp)
+  // b) the obstacle is actually moving.
+  bool has_obstacles = 
+    iface->idata->collision &&
+    iface->idata->obs.x0.size() > 0 &&
+    iface->idata->obs.F.size() > 0 &&
+    iface->idata->obs.x0.size()==iface->idata->obs.x1.size();
+  bool lerp_obstacles =
+    has_obstacles &&
+    iface->idata->options->substeps>1 &&
+    (iface->idata->obs.x0-iface->idata->obs.x1).lpNorm<Eigen::Infinity>()>1e-6;
+
+  if (has_obstacles && !lerp_obstacles)
+  {
+    iface->idata->collision->set_obstacles(
+      iface->idata->obs.x0.data(),
+      iface->idata->obs.x1.data(),
+      iface->idata->obs.x0.size()/3,
+      iface->idata->obs.F.data(),
+      iface->idata->obs.F.size()/3);
+  }
+
   try
   {
+    Eigen::VectorXf obs_x1; // used if substeps > 1
     int substeps = std::max(1,iface->idata->options->substeps);
     for (int i=0; i<substeps; ++i)
     {
+      if (lerp_obstacles)
+      {
+          float t = float(i)/float(substeps-1);
+          obs_x1 = (1.f-t)*iface->idata->obs.x0 + t*iface->idata->obs.x1;
+          iface->idata->collision->set_obstacles(
+            iface->idata->obs.x0.data(),
+            obs_x1.data(),
+            iface->idata->obs.x0.size()/3,
+            iface->idata->obs.F.data(),
+            iface->idata->obs.F.size()/3);
+      }
       admmpd::Solver().solve(
         iface->idata->mesh.get(),
         iface->idata->options.get(),
