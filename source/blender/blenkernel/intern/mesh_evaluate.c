@@ -1406,7 +1406,7 @@ static bool loop_split_generator_check_cyclic_smooth_fan(const MLoop *mloops,
       return false;
     }
     /* Smooth loop/edge... */
-    else if (BLI_BITMAP_TEST(skip_loops, mlfan_vert_index)) {
+    if (BLI_BITMAP_TEST(skip_loops, mlfan_vert_index)) {
       if (mlfan_vert_index == ml_curr_index) {
         /* We walked around a whole cyclic smooth fan without finding any already-processed loop,
          * means we can use initial ml_curr/ml_prev edge as start for this smooth fan. */
@@ -1415,10 +1415,9 @@ static bool loop_split_generator_check_cyclic_smooth_fan(const MLoop *mloops,
       /* ... already checked in some previous looping, we can abort. */
       return false;
     }
-    else {
-      /* ... we can skip it in future, and keep checking the smooth fan. */
-      BLI_BITMAP_ENABLE(skip_loops, mlfan_vert_index);
-    }
+
+    /* ... we can skip it in future, and keep checking the smooth fan. */
+    BLI_BITMAP_ENABLE(skip_loops, mlfan_vert_index);
   }
 }
 
@@ -2310,22 +2309,21 @@ float BKE_mesh_calc_poly_area(const MPoly *mpoly, const MLoop *loopstart, const 
     return area_tri_v3(
         mvarray[loopstart[0].v].co, mvarray[loopstart[1].v].co, mvarray[loopstart[2].v].co);
   }
-  else {
-    int i;
-    const MLoop *l_iter = loopstart;
-    float area;
-    float(*vertexcos)[3] = BLI_array_alloca(vertexcos, (size_t)mpoly->totloop);
 
-    /* pack vertex cos into an array for area_poly_v3 */
-    for (i = 0; i < mpoly->totloop; i++, l_iter++) {
-      copy_v3_v3(vertexcos[i], mvarray[l_iter->v].co);
-    }
+  int i;
+  const MLoop *l_iter = loopstart;
+  float area;
+  float(*vertexcos)[3] = BLI_array_alloca(vertexcos, (size_t)mpoly->totloop);
 
-    /* finally calculate the area */
-    area = area_poly_v3((const float(*)[3])vertexcos, (unsigned int)mpoly->totloop);
-
-    return area;
+  /* pack vertex cos into an array for area_poly_v3 */
+  for (i = 0; i < mpoly->totloop; i++, l_iter++) {
+    copy_v3_v3(vertexcos[i], mvarray[l_iter->v].co);
   }
+
+  /* finally calculate the area */
+  area = area_poly_v3((const float(*)[3])vertexcos, (unsigned int)mpoly->totloop);
+
+  return area;
 }
 
 float BKE_mesh_calc_area(const Mesh *me)

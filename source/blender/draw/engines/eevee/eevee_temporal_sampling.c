@@ -171,7 +171,7 @@ void EEVEE_temporal_sampling_update_matrices(EEVEE_Data *vedata)
 
   double ht_point[2];
   double ht_offset[2] = {0.0, 0.0};
-  uint ht_primes[2] = {2, 3};
+  const uint ht_primes[2] = {2, 3};
 
   BLI_halton_2d(ht_primes, ht_offset, effects->taa_current_sample - 1, ht_point);
 
@@ -212,7 +212,9 @@ int EEVEE_temporal_sampling_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data
    * Reset for each "redraw". When rendering using ogl render,
    * we accumulate the redraw inside the drawing loop in eevee_draw_scene().
    **/
-  effects->taa_render_sample = 1;
+  if (DRW_state_is_opengl_render()) {
+    effects->taa_render_sample = 1;
+  }
   effects->bypass_drawing = false;
 
   EEVEE_temporal_sampling_create_view(vedata);

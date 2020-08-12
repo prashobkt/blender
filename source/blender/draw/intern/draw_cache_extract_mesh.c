@@ -3611,12 +3611,14 @@ static void compute_normalize_edge_vectors(float auv[2][2],
   normalize_v3(av[1]);
 }
 
-static short v2_to_short_angle(float v[2])
+static short v2_to_short_angle(const float v[2])
 {
   return atan2f(v[1], v[0]) * (float)M_1_PI * SHRT_MAX;
 }
 
-static void edituv_get_stretch_angle(float auv[2][2], float av[2][3], UVStretchAngle *r_stretch)
+static void edituv_get_stretch_angle(float auv[2][2],
+                                     const float av[2][3],
+                                     UVStretchAngle *r_stretch)
 {
   /* Send UV's to the shader and let it compute the aspect corrected angle. */
   r_stretch->uv_angles[0] = v2_to_short_angle(auv[0]);
@@ -4044,8 +4046,7 @@ static bool bvh_overlap_cb(void *userdata, int index_a, int index_b, int UNUSED(
     return false;
   }
 
-  return (isect_tri_tri_epsilon_v3(
-              UNPACK3(tri_a_co), UNPACK3(tri_b_co), ix_pair[0], ix_pair[1], data->epsilon) &&
+  return (isect_tri_tri_v3(UNPACK3(tri_a_co), UNPACK3(tri_b_co), ix_pair[0], ix_pair[1]) &&
           /* if we share a vertex, check the intersection isn't a 'point' */
           ((verts_shared == 0) || (len_squared_v3v3(ix_pair[0], ix_pair[1]) > data->epsilon)));
 }

@@ -361,8 +361,8 @@ GPUBatch *DRW_cache_fullscreen_quad_get(void)
   if (!SHC.drw_fullscreen_quad) {
     /* Use a triangle instead of a real quad */
     /* https://www.slideshare.net/DevCentralAMD/vertex-shader-tricks-bill-bilodeau - slide 14 */
-    float pos[3][2] = {{-1.0f, -1.0f}, {3.0f, -1.0f}, {-1.0f, 3.0f}};
-    float uvs[3][2] = {{0.0f, 0.0f}, {2.0f, 0.0f}, {0.0f, 2.0f}};
+    const float pos[3][2] = {{-1.0f, -1.0f}, {3.0f, -1.0f}, {-1.0f, 3.0f}};
+    const float uvs[3][2] = {{0.0f, 0.0f}, {2.0f, 0.0f}, {0.0f, 2.0f}};
 
     /* Position Only 2D format */
     static GPUVertFormat format = {0};
@@ -400,7 +400,7 @@ GPUBatch *DRW_cache_quad_get(void)
 
     int v = 0;
     int flag = VCLASS_EMPTY_SCALED;
-    float p[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+    const float p[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
     for (int a = 0; a < 4; a++) {
       GPU_vertbuf_vert_set(vbo, v++, &(Vert){{p[a][0], p[a][1], 0.0f}, flag});
     }
@@ -421,7 +421,7 @@ GPUBatch *DRW_cache_quad_wires_get(void)
 
     int v = 0;
     int flag = VCLASS_EMPTY_SCALED;
-    float p[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+    const float p[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
     for (int a = 0; a < 5; a++) {
       GPU_vertbuf_vert_set(vbo, v++, &(Vert){{p[a % 4][0], p[a % 4][1], 0.0f}, flag});
     }
@@ -1650,7 +1650,7 @@ GPUBatch *DRW_cache_light_area_square_lines_get(void)
     int flag = VCLASS_LIGHT_AREA_SHAPE;
     for (int a = 0; a < 4; a++) {
       for (int b = 0; b < 2; b++) {
-        float p[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+        const float p[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
         float x = p[(a + b) % 4][0];
         float y = p[(a + b) % 4][1];
         GPU_vertbuf_vert_set(vbo, v++, &(Vert){{x * 0.5f, y * 0.5f, 0.0f}, flag});
@@ -2426,7 +2426,7 @@ static float x_axis_name[4][2] = {
     {-0.9f * S_X, 1.0f * S_Y},
     {1.0f * S_X, -1.0f * S_Y},
 };
-#define X_LEN (sizeof(x_axis_name) / (sizeof(float) * 2))
+#define X_LEN (sizeof(x_axis_name) / (sizeof(float[2])))
 #undef S_X
 #undef S_Y
 
@@ -2440,7 +2440,7 @@ static float y_axis_name[6][2] = {
     {0.0f * S_X, -0.1f * S_Y},
     {0.0f * S_X, -1.0f * S_Y},
 };
-#define Y_LEN (sizeof(y_axis_name) / (sizeof(float) * 2))
+#define Y_LEN (sizeof(y_axis_name) / (sizeof(float[2])))
 #undef S_X
 #undef S_Y
 
@@ -2458,7 +2458,7 @@ static float z_axis_name[10][2] = {
     {-1.00f * S_X, -1.00f * S_Y},
     {1.00f * S_X, -1.00f * S_Y},
 };
-#define Z_LEN (sizeof(z_axis_name) / (sizeof(float) * 2))
+#define Z_LEN (sizeof(z_axis_name) / (sizeof(float[2])))
 #undef S_X
 #undef S_Y
 
@@ -2485,7 +2485,7 @@ static float axis_marker[8][2] = {
     {-S_X, 0.f}
 #endif
 };
-#define MARKER_LEN (sizeof(axis_marker) / (sizeof(float) * 2))
+#define MARKER_LEN (sizeof(axis_marker) / (sizeof(float[2])))
 #define MARKER_FILL_LAYER 6
 #undef S_X
 #undef S_Y
@@ -2659,7 +2659,7 @@ GPUBatch *DRW_cache_camera_frame_get(void)
     GPU_vertbuf_data_alloc(vbo, v_len);
 
     int v = 0;
-    float p[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
+    const float p[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, -1.0f}};
     /* Frame */
     for (int a = 0; a < 4; a++) {
       for (int b = 0; b < 2; b++) {
@@ -2740,7 +2740,7 @@ GPUBatch *DRW_cache_camera_tria_wire_get(void)
     GPU_vertbuf_data_alloc(vbo, v_len);
 
     int v = 0;
-    float p[3][2] = {{-1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f}};
+    const float p[3][2] = {{-1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f}};
     for (int a = 0; a < 3; a++) {
       for (int b = 0; b < 2; b++) {
         float x = p[(a + b) % 3][0];
@@ -3416,8 +3416,8 @@ GPUBatch *DRW_cache_cursor_get(bool crosshair_lines)
     const int vert_len = segments + 8;
     const int index_len = vert_len + 5;
 
-    uchar red[3] = {255, 0, 0};
-    uchar white[3] = {255, 255, 255};
+    const uchar red[3] = {255, 0, 0};
+    const uchar white[3] = {255, 255, 255};
 
     static GPUVertFormat format = {0};
     static struct {

@@ -2234,16 +2234,15 @@ static const CDT_input *modify_input_for_near_edge_ends(const CDT_input *input, 
     new_input->epsilon = input->epsilon;
     new_input->verts_len = input->verts_len;
     new_input->vert_coords = (float(*)[2])MEM_malloc_arrayN(
-        new_input->verts_len, 2 * sizeof(float), __func__);
+        new_input->verts_len, sizeof(float[2]), __func__);
     /* We don't do it now, but may decide to change coords of snapped verts. */
     memmove(new_input->vert_coords,
             input->vert_coords,
-            (size_t)new_input->verts_len * sizeof(float) * 2);
+            sizeof(float[2]) * (size_t)new_input->verts_len);
 
     if (edges_len > 0) {
       new_input->edges_len = new_tot_con_edges;
-      new_input->edges = (int(*)[2])MEM_malloc_arrayN(
-          new_tot_con_edges, 2 * sizeof(int), __func__);
+      new_input->edges = (int(*)[2])MEM_malloc_arrayN(new_tot_con_edges, sizeof(int[2]), __func__);
     }
 
     if (input->faces_len > 0) {
@@ -4601,8 +4600,13 @@ static double orient2d(const double *pa, const double *pb, const double *pc)
  *  returned value has the correct sign.  Hence, incircle() is usually quite
  *  fast, but will run more slowly when the input points are cocircular or
  *  nearly so.
- */
-
+ *
+ * This function is allowed to be long for two reasons. Firstly, it was taken
+ * from an external source and only slightly adapted, and keeping its original
+ * form will make integration of upstream changes easier. Secondly, it is very
+ * sensitive to floating point errors, and refactoring may break it in subtle
+ * and hard to detect ways.
+ * NOLINTNEXTLINE: readability-function-size */
 static double incircleadapt(
     const double *pa, const double *pb, const double *pc, const double *pd, double permanent)
 {

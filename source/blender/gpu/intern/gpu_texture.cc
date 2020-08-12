@@ -43,7 +43,7 @@
 #include "GPU_platform.h"
 #include "GPU_texture.h"
 
-#include "gpu_context_private.h"
+#include "gpu_context_private.hh"
 
 #define WARN_NOT_BOUND(_tex) \
   { \
@@ -312,31 +312,28 @@ static eGPUDataFormat gpu_get_data_format_from_tex_format(eGPUTextureFormat tex_
   if (ELEM(tex_format, GPU_DEPTH_COMPONENT24, GPU_DEPTH_COMPONENT16, GPU_DEPTH_COMPONENT32F)) {
     return GPU_DATA_FLOAT;
   }
-  else if (ELEM(tex_format, GPU_DEPTH24_STENCIL8, GPU_DEPTH32F_STENCIL8)) {
+  if (ELEM(tex_format, GPU_DEPTH24_STENCIL8, GPU_DEPTH32F_STENCIL8)) {
     return GPU_DATA_UNSIGNED_INT_24_8;
   }
-  else {
-    /* Integer formats */
-    if (ELEM(tex_format, GPU_RG16I, GPU_R16I, GPU_RG16UI, GPU_R8UI, GPU_R16UI, GPU_R32UI)) {
-      if (ELEM(tex_format, GPU_R8UI, GPU_R16UI, GPU_RG16UI, GPU_R32UI)) {
-        return GPU_DATA_UNSIGNED_INT;
-      }
-      else {
-        return GPU_DATA_INT;
-      }
+
+  /* Integer formats */
+  if (ELEM(tex_format, GPU_RG16I, GPU_R16I, GPU_RG16UI, GPU_R8UI, GPU_R16UI, GPU_R32UI)) {
+    if (ELEM(tex_format, GPU_R8UI, GPU_R16UI, GPU_RG16UI, GPU_R32UI)) {
+      return GPU_DATA_UNSIGNED_INT;
     }
-    /* Byte formats */
-    else if (ELEM(tex_format, GPU_R8)) {
-      return GPU_DATA_UNSIGNED_BYTE;
-    }
-    /* Special case */
-    else if (ELEM(tex_format, GPU_R11F_G11F_B10F)) {
-      return GPU_DATA_10_11_11_REV;
-    }
-    else {
-      return GPU_DATA_FLOAT;
-    }
+
+    return GPU_DATA_INT;
   }
+  /* Byte formats */
+  if (ELEM(tex_format, GPU_R8)) {
+    return GPU_DATA_UNSIGNED_BYTE;
+  }
+  /* Special case */
+  if (ELEM(tex_format, GPU_R11F_G11F_B10F)) {
+    return GPU_DATA_10_11_11_REV;
+  }
+
+  return GPU_DATA_FLOAT;
 }
 
 /* Definitely not complete, edit according to the gl specification. */
@@ -347,51 +344,50 @@ static GLenum gpu_get_gl_dataformat(eGPUTextureFormat data_type,
     *format_flag |= GPU_FORMAT_DEPTH;
     return GL_DEPTH_COMPONENT;
   }
-  else if (ELEM(data_type, GPU_DEPTH24_STENCIL8, GPU_DEPTH32F_STENCIL8)) {
+  if (ELEM(data_type, GPU_DEPTH24_STENCIL8, GPU_DEPTH32F_STENCIL8)) {
     *format_flag |= GPU_FORMAT_DEPTH | GPU_FORMAT_STENCIL;
     return GL_DEPTH_STENCIL;
   }
+
+  /* Integer formats */
+  if (ELEM(data_type, GPU_R8UI, GPU_RG16I, GPU_R16I, GPU_RG16UI, GPU_R16UI, GPU_R32UI)) {
+    *format_flag |= GPU_FORMAT_INTEGER;
+
+    switch (gpu_get_component_count(data_type)) {
+      case 1:
+        return GL_RED_INTEGER;
+        break;
+      case 2:
+        return GL_RG_INTEGER;
+        break;
+      case 3:
+        return GL_RGB_INTEGER;
+        break;
+      case 4:
+        return GL_RGBA_INTEGER;
+        break;
+    }
+  }
+  else if (ELEM(data_type, GPU_R8)) {
+    *format_flag |= GPU_FORMAT_FLOAT;
+    return GL_RED;
+  }
   else {
-    /* Integer formats */
-    if (ELEM(data_type, GPU_R8UI, GPU_RG16I, GPU_R16I, GPU_RG16UI, GPU_R16UI, GPU_R32UI)) {
-      *format_flag |= GPU_FORMAT_INTEGER;
+    *format_flag |= GPU_FORMAT_FLOAT;
 
-      switch (gpu_get_component_count(data_type)) {
-        case 1:
-          return GL_RED_INTEGER;
-          break;
-        case 2:
-          return GL_RG_INTEGER;
-          break;
-        case 3:
-          return GL_RGB_INTEGER;
-          break;
-        case 4:
-          return GL_RGBA_INTEGER;
-          break;
-      }
-    }
-    else if (ELEM(data_type, GPU_R8)) {
-      *format_flag |= GPU_FORMAT_FLOAT;
-      return GL_RED;
-    }
-    else {
-      *format_flag |= GPU_FORMAT_FLOAT;
-
-      switch (gpu_get_component_count(data_type)) {
-        case 1:
-          return GL_RED;
-          break;
-        case 2:
-          return GL_RG;
-          break;
-        case 3:
-          return GL_RGB;
-          break;
-        case 4:
-          return GL_RGBA;
-          break;
-      }
+    switch (gpu_get_component_count(data_type)) {
+      case 1:
+        return GL_RED;
+        break;
+      case 2:
+        return GL_RG;
+        break;
+      case 3:
+        return GL_RGB;
+        break;
+      case 4:
+        return GL_RGBA;
+        break;
     }
   }
 
@@ -618,6 +614,13 @@ static float *GPU_texture_rescale_3d(
 static bool gpu_texture_check_capacity(
     GPUTexture *tex, GLenum proxy, GLenum internalformat, GLenum data_format, GLenum data_type)
 {
+  if (proxy == GL_PROXY_TEXTURE_CUBE_MAP_ARRAY_ARB &&
+      GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_MAC, GPU_DRIVER_ANY)) {
+    /* Special fix for T79703. */
+    /* Depth has already been checked. */
+    return tex->w <= GPU_max_cube_map_size();
+  }
+
   if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_WIN, GPU_DRIVER_ANY) ||
       GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_MAC, GPU_DRIVER_OFFICIAL) ||
       GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_UNIX, GPU_DRIVER_OFFICIAL)) {
@@ -667,31 +670,30 @@ static bool gpu_texture_check_capacity(
 
     return true;
   }
-  else {
-    switch (proxy) {
-      case GL_PROXY_TEXTURE_1D:
-        glTexImage1D(proxy, 0, internalformat, tex->w, 0, data_format, data_type, NULL);
-        break;
-      case GL_PROXY_TEXTURE_1D_ARRAY:
-      case GL_PROXY_TEXTURE_2D:
-      case GL_PROXY_TEXTURE_CUBE_MAP:
-        glTexImage2D(proxy, 0, internalformat, tex->w, tex->h, 0, data_format, data_type, NULL);
-        break;
-      case GL_PROXY_TEXTURE_2D_ARRAY:
-      case GL_PROXY_TEXTURE_3D:
-        glTexImage3D(
-            proxy, 0, internalformat, tex->w, tex->h, tex->d, 0, data_format, data_type, NULL);
-        break;
-      case GL_PROXY_TEXTURE_CUBE_MAP_ARRAY_ARB:
-        glTexImage3D(
-            proxy, 0, internalformat, tex->w, tex->h, tex->d * 6, 0, data_format, data_type, NULL);
-        break;
-    }
-    int width = 0;
-    glGetTexLevelParameteriv(proxy, 0, GL_TEXTURE_WIDTH, &width);
 
-    return (width > 0);
+  switch (proxy) {
+    case GL_PROXY_TEXTURE_1D:
+      glTexImage1D(proxy, 0, internalformat, tex->w, 0, data_format, data_type, NULL);
+      break;
+    case GL_PROXY_TEXTURE_1D_ARRAY:
+    case GL_PROXY_TEXTURE_2D:
+    case GL_PROXY_TEXTURE_CUBE_MAP:
+      glTexImage2D(proxy, 0, internalformat, tex->w, tex->h, 0, data_format, data_type, NULL);
+      break;
+    case GL_PROXY_TEXTURE_2D_ARRAY:
+    case GL_PROXY_TEXTURE_3D:
+      glTexImage3D(
+          proxy, 0, internalformat, tex->w, tex->h, tex->d, 0, data_format, data_type, NULL);
+      break;
+    case GL_PROXY_TEXTURE_CUBE_MAP_ARRAY_ARB:
+      glTexImage3D(
+          proxy, 0, internalformat, tex->w, tex->h, tex->d * 6, 0, data_format, data_type, NULL);
+      break;
   }
+  int width = 0;
+  glGetTexLevelParameteriv(proxy, 0, GL_TEXTURE_WIDTH, &width);
+
+  return (width > 0);
 }
 
 /* This tries to allocate video memory for a given texture

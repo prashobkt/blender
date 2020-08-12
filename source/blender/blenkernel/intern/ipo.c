@@ -156,7 +156,7 @@ static AdrBit2Path ob_layer_bits[] = {
 /* quick macro for returning the appropriate array for adrcode_bitmaps_to_paths() */
 #define RET_ABP(items) \
   { \
-    *tot = sizeof(items) / sizeof(AdrBit2Path); \
+    *tot = ARRAY_SIZE(items); \
     return items; \
   } \
   (void)0
@@ -515,9 +515,8 @@ static const char *mtex_adrcodes_to_paths(int adrcode, int *UNUSED(array_index))
     BLI_snprintf(buf, 128, "%s.%s", base, prop);
     return buf;
   }
-  else {
-    return NULL;
-  }
+
+  return NULL;
 }
 
 /* Texture types */
@@ -1072,10 +1071,9 @@ static char *get_rna_access(ID *id,
 
     return NULL;
   }
-  else {
-    if (array_index) {
-      *array_index = dummy_index;
-    }
+
+  if (array_index) {
+    *array_index = dummy_index;
   }
 
   /* 'buf' _must_ be initialized in this block */

@@ -601,7 +601,7 @@ static void drw_shgroup_bone_custom_empty(ArmatureDrawContext *ctx,
                                           const float color[4],
                                           Object *custom)
 {
-  float final_color[4] = {color[0], color[1], color[2], 1.0f};
+  const float final_color[4] = {color[0], color[1], color[2], 1.0f};
   float mat[4][4];
   mul_m4_m4m4(mat, ctx->ob->obmat, bone_mat);
 
@@ -1078,7 +1078,7 @@ static void edbo_compute_bbone_child(bArmature *arm)
 }
 
 /* A version of BKE_pchan_bbone_spline_setup() for previewing editmode curve settings. */
-static void ebone_spline_preview(EditBone *ebone, float result_array[MAX_BBONE_SUBDIV][4][4])
+static void ebone_spline_preview(EditBone *ebone, const float result_array[MAX_BBONE_SUBDIV][4][4])
 {
   BBoneSplineParameters param;
   EditBone *prev, *next;
