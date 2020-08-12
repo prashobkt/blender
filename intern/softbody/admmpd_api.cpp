@@ -97,6 +97,8 @@ static inline void options_from_object(
   op->grav = Eigen::Vector3d(0,0,sb->admmpd_gravity);
   op->max_threads = sb->admmpd_maxthreads;
   op->linsolver = std::max(0, std::min(LINSOLVER_NUM-1, sb->admmpd_linsolver));
+  op->strain_limit[0] = std::min(1.f, sb->admmpd_strainlimit_min);
+  op->strain_limit[1] = std::max(1.f, sb->admmpd_strainlimit_max);
 
   if (!skip_require_reset)
   {

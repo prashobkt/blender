@@ -12,7 +12,6 @@ using namespace Eigen;
 
 Lame::Lame()
 {
-	m_limit = Vector2d(-999,999);
 	set_from_youngs_poisson(10000000,0.399);
 }
 
@@ -135,6 +134,9 @@ void EnergyTerm::update_tri(
 {
 	Lame lame;
 	lame.set_from_youngs_poisson(options->youngs,options->poisson);
+	Vector2d limit = options->strain_limit;
+	limit[0] = std::min(limit[0], 1.0);
+	limit[1] = std::max(limit[1], 1.0);
 
 	(void)(options);
 	typedef Matrix<double,2,3> Matrix23d;
@@ -155,15 +157,15 @@ void EnergyTerm::update_tri(
 	zi_T = (kv*p + w2*zi_T) / (w2 + kv);
 
 	// Apply strain limiting
-	bool check_strain = lame.m_limit[0] > 0.0 || lame.m_limit[1] < 99.0;
+	bool check_strain = limit[0] > 0.0 || limit[1] < 99.0;
 	if (check_strain)
 	{
 		double l_col0 = zi_T.col(0).norm();
 		double l_col1 = zi_T.col(1).norm();
-		if (l_col0 < lame.m_limit[0]) { zi_T.col(0) *= ( lame.m_limit[0]/l_col0 ); }
-		if (l_col1 < lame.m_limit[0]) { zi_T.col(1) *= ( lame.m_limit[0]/l_col1 ); }
-		if (l_col0 > lame.m_limit[1]) { zi_T.col(0) *= ( lame.m_limit[1]/l_col0 ); }
-		if (l_col1 > lame.m_limit[1]) { zi_T.col(1) *= ( lame.m_limit[1]/l_col1 ); }
+		if (l_col0 < limit[0]) { zi_T.col(0) *= ( limit[0]/l_col0 ); }
+		if (l_col1 < limit[0]) { zi_T.col(1) *= ( limit[0]/l_col1 ); }
+		if (l_col0 > limit[1]) { zi_T.col(0) *= ( limit[1]/l_col0 ); }
+		if (l_col1 > limit[1]) { zi_T.col(1) *= ( limit[1]/l_col1 ); }
 	}
 
 	ui += (Dix - zi_T.transpose());

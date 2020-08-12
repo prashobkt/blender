@@ -3134,10 +3134,12 @@ SoftBody *sbNew(Scene *scene)
   sb->admmpd_youngs_exp = 6;
   sb->admmpd_poisson = 0.399;
   sb->admmpd_density_kgm3 = 1522;
-  sb->admmpd_ck_exp = 6;
+  sb->admmpd_ck_exp = 7;
   sb->admmpd_pk_exp = 4;
   sb->admmpd_floor_z = -999;
   sb->admmpd_gravity = -9.8;
+  sb->admmpd_strainlimit_min = 0; // no compression limit
+  sb->admmpd_strainlimit_max = 100; // 100x stretch limit
   sb->admmpd_maxthreads = -1;
   sb->admmpd_loglevel = 1; // low
   sb->admmpd_linsolver = 1; // PCG

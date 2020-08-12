@@ -231,6 +231,8 @@ typedef struct SoftBody {
   float admmpd_pk_exp; // goal stiffness exponent (10^n)
   float admmpd_floor_z; // floor position
   float admmpd_gravity; // in m/s^2
+  float admmpd_strainlimit_min; // [0,1]
+  float admmpd_strainlimit_max; // [1,100]
   int admmpd_maxthreads; // -1 = auto
   int admmpd_loglevel; // 0=none, 1=low, 2=high
   int admmpd_linsolver; // global step

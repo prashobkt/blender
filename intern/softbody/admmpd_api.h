@@ -58,13 +58,13 @@ int admmpd_update_solver(ADMMPDInterfaceData*, Scene*, Object*, float (*vertexCo
 // to internal vertex position and velocity
 void admmpd_copy_from_object(ADMMPDInterfaceData*, Object*);
 
-// Copies ADMM-PD data to SoftBody::bpoint and vertexCos
+// Copies ADMM-PD data to SoftBody::bpoint and vertexCos.
+// If vertexCos is NULL, it is ignored.
 void admmpd_copy_to_object(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3]);
 
 // Sets the obstacle data for collisions.
 // Update obstacles has a different interface because of the
-// complexity of grabbing obstacle mesh data. We'll just do
-// that in softbody.c
+// complexity of grabbing obstacle mesh data. We'll leave that in softbody.c
 void admmpd_update_obstacles(
     ADMMPDInterfaceData*,
     float *in_verts_0,

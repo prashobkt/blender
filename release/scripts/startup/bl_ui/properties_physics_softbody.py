@@ -92,11 +92,17 @@ class PHYSICS_PT_softbody_object(PhysicButtonsPanel, Panel):
         elif softbody.solver_mode=='ADMMPD':
 
             col = flow.column()
+            col.prop(softbody, "admmpd_init_mode")
             col.prop(softbody, "admmpd_material")
             col.prop(softbody, "admmpd_embed_res")
             col.prop(softbody, "admmpd_youngs_exp")
             col.prop(softbody, "admmpd_poisson")
             col.prop(softbody, "admmpd_density_kgm3")
+
+            if softbody.admmpd_init_mode == 'CLOTH':
+                col.prop(softbody, "admmpd_strainlimit_min")
+                col.prop(softbody, "admmpd_strainlimit_max")
+
 
 
 class PHYSICS_PT_softbody_simulation(PhysicButtonsPanel, Panel):
@@ -422,7 +428,6 @@ class PHYSICS_PT_softbody_solver(PhysicButtonsPanel, Panel):
         elif softbody.solver_mode == 'ADMMPD':
 
             col = flow.column(align=True)
-            col.prop(softbody, "admmpd_init_mode")
             col.prop(softbody, "admmpd_linsolver")
             col.prop(softbody, "admmpd_substeps")
             col.prop(softbody, "admmpd_max_admm_iters")

@@ -76,6 +76,7 @@ struct Options {
     double floor; // floor location
     double collision_thickness;
     bool self_collision; // process self collisions
+    Eigen::Vector2d strain_limit; // min=[-inf,1], max=[1,inf]
     Eigen::Vector3d grav;
     Options() :
         timestep_s(1.0/24.0),
@@ -98,6 +99,7 @@ struct Options {
         floor(-std::numeric_limits<double>::max()),
         collision_thickness(1e-6),
         self_collision(false),
+        strain_limit(0,100),
         grav(0,0,-9.8)
         {}
 };

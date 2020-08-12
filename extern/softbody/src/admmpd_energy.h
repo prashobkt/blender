@@ -16,7 +16,6 @@ public:
 	double m_mu;
 	double m_lambda;
 	double m_bulk_mod;
-	Eigen::Vector2d m_limit; // [min,max]
 	void set_from_youngs_poisson(double youngs, double poisson);
 	Lame();
 };
