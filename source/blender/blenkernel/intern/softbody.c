@@ -3647,8 +3647,9 @@ void sbCustomRead(struct Object *ob)
     return;
   }
 
+  // ADMM-PD data is not currently written to file.
+  // Instead, we'll create new data when a .blend file is loaded.
   sb->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), "SoftBody_admmpd");
-  sb->admmpd->idata = NULL;
 }
 
 /* simulates one step. framenr is in frames */

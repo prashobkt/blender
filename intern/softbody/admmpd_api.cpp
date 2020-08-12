@@ -581,7 +581,7 @@ static inline void admmpd_update_goals(ADMMPDInterfaceData *iface, Object *ob, f
   for (int i=0; i<nv; i++) {
     double k = 0.1;
     if ((ob->softflag & OB_SB_GOAL) && (defgroup_index != -1)) {
-      MDeformWeight *dw = BKE_defvert_find_index(me->dvert, defgroup_index);
+      MDeformWeight *dw = BKE_defvert_find_index(&(me->dvert[i]), defgroup_index);
       k = dw ? dw->weight : 0.0f;
     }
 
@@ -631,12 +631,11 @@ static inline void update_selfcollision_group(ADMMPDInterfaceData *iface, Object
   // Otherwise, we need to set which vertices are to be tested.
   int nv = me->totvert;
   for (int i=0; i<nv; i++) {
-    MDeformWeight *dw = BKE_defvert_find_index(me->dvert, defgroup_idx_selfcollide);
+    MDeformWeight *dw = BKE_defvert_find_index(&(me->dvert[i]), defgroup_idx_selfcollide);
     float wi = dw ? dw->weight : 0.0f;
-    //printf("idx %d, w %f\n", i, wi);
-    //if (wi > 1e-2f) { // I guess we can use the weight as a threshold...
-    //  iface->idata->data->col.selfcollision_verts.emplace(i);
-    //}
+    if (wi > 1e-2f) { // I guess we can use the weight as a threshold...
+      iface->idata->data->col.selfcollision_verts.emplace(i);
+    }
   }
 }
 
