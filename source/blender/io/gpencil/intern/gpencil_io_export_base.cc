@@ -193,7 +193,12 @@ void GpencilExporter::set_out_filename(char *filename)
   BLI_path_abs(out_filename_, BKE_main_blendfile_path(bmain));
 }
 
-/* Convert to screen space. */
+/**
+ * Convert to screenspace
+ * \param co: 3D position
+ * \param r_co: 2D position
+ * \return False if error
+ */
 bool GpencilExporter::gpencil_3d_point_to_screen_space(const float co[3], float r_co[2])
 {
   float parent_co[3];
@@ -285,6 +290,11 @@ bool GpencilExporter::is_stroke_thickness_constant(struct bGPDstroke *gps)
   return true;
 }
 
+/**
+ * Get radius of point
+ * \param gps: Stroke
+ * \return Radius in pixels
+ */
 float GpencilExporter::stroke_point_radius_get(struct bGPDstroke *gps)
 {
   const bGPDlayer *gpl = gpl_current_get();
@@ -328,6 +338,7 @@ std::string GpencilExporter::rgb_to_hex(float color[3])
 
 /**
  * Convert a color to gray scale.
+ * \param color: Color to convert
  */
 void GpencilExporter::rgb_to_grayscale(float color[3])
 {

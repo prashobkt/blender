@@ -161,6 +161,7 @@ void GpencilExporterSVG::create_document_header(void)
                 "#000000");
   }
 }
+
 /* Main layer loop. */
 void GpencilExporterSVG::export_layers(void)
 {
@@ -333,8 +334,6 @@ void GpencilExporterSVG::export_layers(void)
 /**
  * Export a point
  * \param gpl_node: Node of the layer.
- * \param gps: Stroke to export.
- * \param diff_mat_: Transformation matrix.
  */
 void GpencilExporterSVG::export_point(pugi::xml_node gpl_node)
 {
@@ -359,10 +358,8 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node)
 }
 
 /**
- * Export a stroke using path
+ * Export a stroke using SVG path
  * \param gpl_node: Node of the layer.
- * \param gps: Stroke to export.
- * \param diff_mat_: Transformation matrix.
  * \param is_fill: True if the stroke is only fill
  */
 void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool is_fill)
@@ -416,8 +413,6 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
 /**
  * Export a stroke using polyline or polygon
  * \param gpl_node: Node of the layer.
- * \param gps: Stroke to export.
- * \param diff_mat_: Transformation matrix.
  * \param is_fill: True if the stroke is only fill
  */
 void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const bool is_fill)
@@ -470,6 +465,11 @@ void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const b
   gps_node.append_attribute("points").set_value(txt.c_str());
 }
 
+/**
+ * Set color SVG string for stroke
+ * \param gps_node: Stroke node
+ * @param is_fill: True if the stroke is only fill
+ */
 void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is_fill)
 {
   bGPDlayer *gpl = gpl_current_get();
@@ -512,6 +512,16 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is
   }
 }
 
+/**
+ * Create a SVG rectangle
+ * \param node: Parent node
+ * \param x: X location
+ * \param y: Y location
+ * \param width: width of the recntagle
+ * \param height: Height of the rectangle
+ * \param thickness: Thickness of the line
+ * \param hexcolor: Color of the line
+ */
 void GpencilExporterSVG::create_rect(pugi::xml_node node,
                                      float x,
                                      float y,
@@ -532,6 +542,15 @@ void GpencilExporterSVG::create_rect(pugi::xml_node node,
   }
 }
 
+/**
+ * Create SVG text
+ * \param node: Parent node
+ * \param x: X location
+ * \param y: Y location
+ * \param text: Text to include
+ * \param size: Size of th etext
+ * \param hexcolor: Color of the text
+ */
 void GpencilExporterSVG::create_text(pugi::xml_node node,
                                      float x,
                                      float y,
