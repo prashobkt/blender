@@ -256,7 +256,7 @@ void Solver::solve_local_step(
 	data->Dx.noalias() = data->D * data->x;
 	int ne = data->indices.size();
 	BLI_assert(ne > 0);
-  	LocalStepThreadData thread_data = {.options=options, .data=data};
+  	LocalStepThreadData thread_data = {options, data};
 	TaskParallelSettings settings;
 	BLI_parallel_range_settings_defaults(&settings);
 	BLI_task_parallel_range(0, ne, &thread_data, parallel_zu_update, &settings);

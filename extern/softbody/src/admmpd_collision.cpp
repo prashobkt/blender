@@ -255,15 +255,15 @@ int EmbeddedMeshCollision::detect(
 
 	std::vector<std::vector<Eigen::Vector2i> > per_thread_results;
 	DetectThreadData thread_data = {
-		.mesh = mesh,
-		.options = options,
-		.data = data,
-		.collision = this,
-		.obsdata = &obsdata,
-		.x0 = x0,
-		.x1 = x1,
-		.per_vertex_pairs = &per_vertex_pairs,
-		.per_thread_results = &per_thread_results
+		mesh,
+		options,
+		data,
+		this,
+		&obsdata,
+		x0,
+		x1,
+		&per_vertex_pairs,
+		&per_thread_results
 	};
 
 	// The pooling is a little unusual here.

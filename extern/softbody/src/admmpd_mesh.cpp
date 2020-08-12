@@ -330,12 +330,12 @@ bool EmbeddedMesh::compute_embedding()
 	tree.init(tet_aabbs);
 
 	FindTetThreadData thread_data = {
-		.tree = &tree,
-		.emb_mesh = this,
-		.lat_V0 = &lat_V0,
-		.lat_T = &lat_T,
-		.emb_barys = &emb_barys,
-		.emb_v_to_tet = &emb_v_to_tet
+		&tree,
+		this,
+		&lat_V0,
+		&lat_T,
+		&emb_barys,
+		&emb_v_to_tet
 	};
 	TaskParallelSettings settings;
 	BLI_parallel_range_settings_defaults(&settings);
