@@ -100,6 +100,8 @@
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
 
+#include "UI_interface_icons.h"
+
 #include "CLG_log.h"
 
 /* for menu/popup icons etc etc*/
@@ -1761,18 +1763,6 @@ static void move_to_collection_menus_free(MoveToCollectionData **menu)
   *menu = NULL;
 }
 
-/* TODO (Nathan): Place this in a more ideal location. */
-static int collection_color_to_icon(Collection *collection)
-{
-  int icon = ICON_NONE;
-
-  if (collection->color != COLLECTION_COLOR_NONE) {
-    icon = ICON_COLLECTION_COLOR_01 + (collection->color - 1);
-  }
-
-  return icon;
-}
-
 static void move_to_collection_menu_create(bContext *C, uiLayout *layout, void *menu_v)
 {
   MoveToCollectionData *menu = menu_v;
@@ -1792,7 +1782,7 @@ static void move_to_collection_menu_create(bContext *C, uiLayout *layout, void *
   Scene *scene = CTX_data_scene(C);
   const int icon = (menu->collection == scene->master_collection) ?
                        ICON_SCENE_DATA :
-                       collection_color_to_icon(menu->collection);
+                       UI_collection_color_icon_get(menu->collection);
   uiItemIntO(layout, name, icon, menu->ot->idname, "collection_index", menu->index);
 
   for (MoveToCollectionData *submenu = menu->submenus.first; submenu != NULL;
@@ -1803,7 +1793,7 @@ static void move_to_collection_menu_create(bContext *C, uiLayout *layout, void *
 
 static void move_to_collection_menus_items(uiLayout *layout, MoveToCollectionData *menu)
 {
-  const int icon = collection_color_to_icon(menu->collection);
+  const int icon = UI_collection_color_icon_get(menu->collection);
 
   if (BLI_listbase_is_empty(&menu->submenus)) {
     uiItemIntO(layout,

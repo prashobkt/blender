@@ -2365,6 +2365,17 @@ int UI_idcode_icon_get(const int idcode)
   }
 }
 
+int UI_collection_color_icon_get(const Collection *collection)
+{
+  int icon = ICON_NONE;
+
+  if (collection->color != COLLECTION_COLOR_NONE) {
+    icon = ICON_COLLECTION_COLOR_01 + (collection->color - 1);
+  }
+
+  return icon;
+}
+
 /* draws icon with dpi scale factor */
 void UI_icon_draw(float x, float y, int icon_id)
 {
