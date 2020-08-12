@@ -5016,7 +5016,7 @@ void BKE_fluid_modifier_create_type_data(struct FluidModifierData *fmd)
     fmd->domain->grid_scale = 1.0f;
     fmd->domain->vector_scale = 1.0f;
     fmd->domain->vector_draw_type = VECTOR_DRAW_NEEDLE;
-    fmd->domain->vector_draw_grid_type = VECTOR_DRAW_GRID_FLUID_VELOCITY;
+    fmd->domain->vector_field = FLUID_DOMAIN_VECTOR_FIELD_VELOCITY;
     fmd->domain->vector_scale_with_magnitude = true;
     fmd->domain->vector_draw_mac_components = VECTOR_DRAW_MAC_X | VECTOR_DRAW_MAC_Y |
                                               VECTOR_DRAW_MAC_Z;
@@ -5269,7 +5269,7 @@ void BKE_fluid_modifier_copy(const struct FluidModifierData *fmd,
     }
     tfds->vector_scale = fds->vector_scale;
     tfds->vector_draw_type = fds->vector_draw_type;
-    tfds->vector_draw_grid_type = fds->vector_draw_grid_type;
+    tfds->vector_field = fds->vector_field;
     tfds->vector_scale_with_magnitude = fds->vector_scale_with_magnitude;
     tfds->vector_draw_mac_components = fds->vector_draw_mac_components;
     tfds->use_coba = fds->use_coba;

@@ -305,19 +305,19 @@ static bool get_smoke_velocity_field(FluidDomainSettings *fds,
                                      float **r_velocity_y,
                                      float **r_velocity_z)
 {
-  const char grid_type = fds->vector_draw_grid_type;
-  switch (grid_type) {
-    case VECTOR_DRAW_GRID_FLUID_VELOCITY:
+  const char vector_field = fds->vector_field;
+  switch (vector_field) {
+    case FLUID_DOMAIN_VECTOR_FIELD_VELOCITY:
       *r_velocity_x = manta_get_velocity_x(fds->fluid);
       *r_velocity_y = manta_get_velocity_y(fds->fluid);
       *r_velocity_z = manta_get_velocity_z(fds->fluid);
       break;
-    case VECTOR_DRAW_GRID_GUIDE_VELOCITY:
+    case FLUID_DOMAIN_VECTOR_FIELD_GUIDE_VELOCITY:
       *r_velocity_x = manta_get_guide_velocity_x(fds->fluid);
       *r_velocity_y = manta_get_guide_velocity_y(fds->fluid);
       *r_velocity_z = manta_get_guide_velocity_z(fds->fluid);
       break;
-    case VECTOR_DRAW_GRID_FORCE:
+    case FLUID_DOMAIN_VECTOR_FIELD_FORCE:
       *r_velocity_x = manta_get_force_x(fds->fluid);
       *r_velocity_y = manta_get_force_y(fds->fluid);
       *r_velocity_z = manta_get_force_z(fds->fluid);
@@ -443,7 +443,7 @@ void DRW_smoke_ensure_velocity(FluidModifierData *fmd)
     float *vel_x = NULL, *vel_y = NULL, *vel_z = NULL;
 
     if (!get_smoke_velocity_field(fds, &vel_x, &vel_y, &vel_z)) {
-      fds->vector_draw_grid_type = VECTOR_DRAW_GRID_FLUID_VELOCITY;
+      fds->vector_field = FLUID_DOMAIN_VECTOR_FIELD_VELOCITY;
       get_smoke_velocity_field(fds, &vel_x, &vel_y, &vel_z);
     }
 

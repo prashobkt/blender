@@ -1351,18 +1351,18 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  static const EnumPropertyItem vector_draw_grid_items[] = {
-      {VECTOR_DRAW_GRID_FLUID_VELOCITY,
+  static const EnumPropertyItem vector_field_items[] = {
+      {FLUID_DOMAIN_VECTOR_FIELD_VELOCITY,
        "FLUID_VELOCITY",
        0,
        "Fluid Velocity",
-       "Display fluid velocity grid"},
-      {VECTOR_DRAW_GRID_GUIDE_VELOCITY,
+       "Velocity field of the fluid domain"},
+      {FLUID_DOMAIN_VECTOR_FIELD_GUIDE_VELOCITY,
        "GUIDE_VELOCITY",
        0,
        "Guide Velocity",
-       "Display guide velocity grid"},
-      {VECTOR_DRAW_GRID_FORCE, "FORCE", 0, "Force", "Display external forces"},
+       "Guide velocity field of the fluid domain"},
+      {FLUID_DOMAIN_VECTOR_FIELD_FORCE, "FORCE", 0, "Force", "Force field of the fluid domain"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -2506,10 +2506,10 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Display Type", "");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
-  prop = RNA_def_property(srna, "vector_grid_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "vector_draw_grid_type");
-  RNA_def_property_enum_items(prop, vector_draw_grid_items);
-  RNA_def_property_ui_text(prop, "Grid Type", "Type of vector grid to be displayed");
+  prop = RNA_def_property(srna, "vector_field", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "vector_field");
+  RNA_def_property_enum_items(prop, vector_field_items);
+  RNA_def_property_ui_text(prop, "Field", "Vector field to be represented by the display vectors");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
   prop = RNA_def_property(srna, "vector_scale_with_magnitude", PROP_BOOLEAN, PROP_NONE);

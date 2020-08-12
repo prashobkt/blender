@@ -1341,9 +1341,9 @@ class PHYSICS_PT_viewport_display_debug(PhysicButtonsPanel, Panel):
         col = flow.column()
         col.active = domain.show_velocity
         col.prop(domain, "vector_display_type", text="Display As")
-        col.prop(domain, "vector_grid_type", text="Grid Type")
+        col.prop(domain, "vector_field", text="Field")
 
-        if not domain.use_guide and domain.vector_grid_type == 'GUIDE_VELOCITY':
+        if not domain.use_guide and domain.vector_field == 'GUIDE_VELOCITY':
             note = layout.split()
             note.label(icon='INFO', text="Enable Guides first! Defaulting to Fluid Velocity.")
         

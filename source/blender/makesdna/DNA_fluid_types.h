@@ -99,10 +99,11 @@ enum {
   VECTOR_DRAW_MAC_Z = (1 << 2),
 };
 
+/* Fluid domain vector fields. */
 enum {
-  VECTOR_DRAW_GRID_FLUID_VELOCITY = 0,
-  VECTOR_DRAW_GRID_GUIDE_VELOCITY = 1,
-  VECTOR_DRAW_GRID_FORCE = 2,
+  FLUID_DOMAIN_VECTOR_FIELD_VELOCITY = 0,
+  FLUID_DOMAIN_VECTOR_FIELD_GUIDE_VELOCITY = 1,
+  FLUID_DOMAIN_VECTOR_FIELD_FORCE = 2,
 };
 
 enum {
@@ -651,7 +652,7 @@ typedef struct FluidDomainSettings {
   char show_gridlines;
   char draw_velocity;
   char vector_draw_type;
-  char vector_draw_grid_type;
+  char vector_field; /* Simulation field used for vector display. */
   char vector_scale_with_magnitude;
   char vector_draw_mac_components;
   char use_coba;

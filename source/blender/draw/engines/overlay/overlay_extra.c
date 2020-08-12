@@ -1430,7 +1430,7 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
     const bool draw_mac_x = (fds->vector_draw_mac_components & VECTOR_DRAW_MAC_X);
     const bool draw_mac_y = (fds->vector_draw_mac_components & VECTOR_DRAW_MAC_Y);
     const bool draw_mac_z = (fds->vector_draw_mac_components & VECTOR_DRAW_MAC_Z);
-    const bool cell_centered = (fds->vector_draw_grid_type == VECTOR_DRAW_GRID_FORCE);
+    const bool cell_centered = (fds->vector_field == FLUID_DOMAIN_VECTOR_FIELD_FORCE);
     int line_count = 1;
     if (use_needle) {
       line_count = 6;
