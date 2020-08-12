@@ -17,7 +17,8 @@
  * All rights reserved.
  */
 #include "IO_abstract_hierarchy_iterator.h"
-#include "blenloader/blendfile_loading_base_test.h"
+
+#include "tests/blendfile_loading_base_test.h"
 
 #include "BLI_math.h"
 #include "DEG_depsgraph.h"
@@ -66,12 +67,12 @@ class TestingHierarchyIterator : public AbstractHierarchyIterator {
   used_writers hair_writers;
   used_writers particle_writers;
 
- public:
   explicit TestingHierarchyIterator(Depsgraph *depsgraph) : AbstractHierarchyIterator(depsgraph)
   {
   }
   virtual ~TestingHierarchyIterator()
   {
+    release_writers();
   }
 
  protected:
@@ -92,7 +93,7 @@ class TestingHierarchyIterator : public AbstractHierarchyIterator {
     return new TestHierarchyWriter("particle", particle_writers);
   }
 
-  void delete_object_writer(AbstractHierarchyWriter *writer) override
+  void release_writer(AbstractHierarchyWriter *writer) override
   {
     delete writer;
   }

@@ -174,7 +174,8 @@ static RenderResult *render_result_from_bake(RenderEngine *engine, int x, int y,
   BLI_addtail(&rr->layers, rl);
 
   /* Add render passes. */
-  render_layer_add_pass(rr, rl, engine->bake.depth, RE_PASSNAME_COMBINED, "", "RGBA");
+  RenderPass *result_pass = render_layer_add_pass(
+      rr, rl, engine->bake.depth, RE_PASSNAME_COMBINED, "", "RGBA");
   RenderPass *primitive_pass = render_layer_add_pass(rr, rl, 4, "BakePrimitive", "", "RGBA");
   RenderPass *differential_pass = render_layer_add_pass(rr, rl, 4, "BakeDifferential", "", "RGBA");
 
@@ -208,6 +209,15 @@ static RenderResult *render_result_from_bake(RenderEngine *engine, int x, int y,
       differential += 4;
       bake_pixel++;
     }
+  }
+
+  /* Initialize tile render result from full image bake result. */
+  for (int ty = 0; ty < h; ty++) {
+    size_t offset = ty * w * engine->bake.depth;
+    size_t bake_offset = ((y + ty) * engine->bake.width + x) * engine->bake.depth;
+    size_t size = w * engine->bake.depth * sizeof(float);
+
+    memcpy(result_pass->rect + offset, engine->bake.result + bake_offset, size);
   }
 
   return rr;
@@ -624,10 +634,6 @@ void RE_engine_frame_set(RenderEngine *engine, int frame, float subframe)
     return;
   }
 
-#ifdef WITH_PYTHON
-  BPy_BEGIN_ALLOW_THREADS;
-#endif
-
   Render *re = engine->re;
   double cfra = (double)frame + (double)subframe;
 
@@ -636,10 +642,6 @@ void RE_engine_frame_set(RenderEngine *engine, int frame, float subframe)
   BKE_scene_graph_update_for_newframe(engine->depsgraph, re->main);
 
   BKE_scene_camera_switch_update(re->scene);
-
-#ifdef WITH_PYTHON
-  BPy_END_ALLOW_THREADS;
-#endif
 }
 
 /* Bake */
@@ -871,7 +873,15 @@ int RE_engine_render(Render *re, int do_all)
         re->draw_lock(re->dlh, 0);
       }
 
+      if (engine->type->flag & RE_USE_GPU_CONTEXT) {
+        DRW_render_context_enable(engine->re);
+      }
+
       type->render(engine, engine->depsgraph);
+
+      if (engine->type->flag & RE_USE_GPU_CONTEXT) {
+        DRW_render_context_disable(engine->re);
+      }
 
       /* Grease pencil render over previous render result.
        *

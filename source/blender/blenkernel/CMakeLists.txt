@@ -100,6 +100,7 @@ set(SRC
   intern/context.c
   intern/crazyspace.c
   intern/curve.c
+  intern/curve_bevel.c
   intern/curve_decimate.c
   intern/curve_deform.c
   intern/curveprofile.c
@@ -107,7 +108,6 @@ set(SRC
   intern/customdata_file.c
   intern/data_transfer.c
   intern/deform.c
-  intern/derived_node_tree.cc
   intern/displist.c
   intern/displist_tangent.c
   intern/dynamicpaint.c
@@ -135,6 +135,7 @@ set(SRC
   intern/idtype.c
   intern/image.c
   intern/image_gen.c
+  intern/image_gpu.c
   intern/image_save.c
   intern/ipo.c
   intern/kelvinlet.c
@@ -188,8 +189,6 @@ set(SRC
   intern/multires_unsubdivide.c
   intern/nla.c
   intern/node.c
-  intern/node_tree_multi_function.cc
-  intern/node_tree_ref.cc
   intern/object.c
   intern/object_deform.c
   intern/object_dupli.c
@@ -298,7 +297,6 @@ set(SRC
   BKE_customdata_file.h
   BKE_data_transfer.h
   BKE_deform.h
-  BKE_derived_node_tree.hh
   BKE_displist.h
   BKE_displist_tangent.h
   BKE_duplilist.h
@@ -359,8 +357,6 @@ set(SRC
   BKE_multires.h
   BKE_nla.h
   BKE_node.h
-  BKE_node_tree_multi_function.hh
-  BKE_node_tree_ref.hh
   BKE_object.h
   BKE_object_deform.h
   BKE_object_facemap.h
@@ -369,6 +365,7 @@ set(SRC
   BKE_packedFile.h
   BKE_paint.h
   BKE_particle.h
+  BKE_persistent_data_handle.hh
   BKE_pbvh.h
   BKE_pointcache.h
   BKE_pointcloud.h

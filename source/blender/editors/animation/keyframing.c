@@ -1116,7 +1116,7 @@ static bool insert_keyframe_value(ReportList *reports,
                                   PointerRNA *ptr,
                                   PropertyRNA *prop,
                                   FCurve *fcu,
-                                  float cfra,
+                                  const AnimationEvalContext *anim_eval_context,
                                   float curval,
                                   eBezTriple_KeyframeType keytype,
                                   eInsertKeyFlags flag)
@@ -1133,13 +1133,15 @@ static bool insert_keyframe_value(ReportList *reports,
     return false;
   }
 
+  float cfra = anim_eval_context->eval_time;
+
   /* adjust frame on which to add keyframe */
   if ((flag & INSERTKEY_DRIVER) && (fcu->driver)) {
     PathResolvedRNA anim_rna;
 
     if (RNA_path_resolved_create(ptr, prop, fcu->array_index, &anim_rna)) {
       /* for making it easier to add corrective drivers... */
-      cfra = evaluate_driver(&anim_rna, fcu->driver, fcu->driver, cfra);
+      cfra = evaluate_driver(&anim_rna, fcu->driver, fcu->driver, anim_eval_context);
     }
     else {
       cfra = 0.0f;
@@ -1205,7 +1207,7 @@ bool insert_keyframe_direct(ReportList *reports,
                             PointerRNA ptr,
                             PropertyRNA *prop,
                             FCurve *fcu,
-                            float cfra,
+                            const AnimationEvalContext *anim_eval_context,
                             eBezTriple_KeyframeType keytype,
                             struct NlaKeyframingContext *nla_context,
                             eInsertKeyFlags flag)
@@ -1277,7 +1279,7 @@ bool insert_keyframe_direct(ReportList *reports,
     MEM_freeN(values);
   }
 
-  return insert_keyframe_value(reports, &ptr, prop, fcu, cfra, curval, keytype, flag);
+  return insert_keyframe_value(reports, &ptr, prop, fcu, anim_eval_context, curval, keytype, flag);
 }
 
 /* Find or create the FCurve based on the given path, and insert the specified value into it. */
@@ -1289,7 +1291,7 @@ static bool insert_keyframe_fcurve_value(Main *bmain,
                                          const char group[],
                                          const char rna_path[],
                                          int array_index,
-                                         float cfra,
+                                         const AnimationEvalContext *anim_eval_context,
                                          float curval,
                                          eBezTriple_KeyframeType keytype,
                                          eInsertKeyFlags flag)
@@ -1323,10 +1325,33 @@ static bool insert_keyframe_fcurve_value(Main *bmain,
     update_autoflags_fcurve_direct(fcu, prop);
 
     /* insert keyframe */
-    return insert_keyframe_value(reports, ptr, prop, fcu, cfra, curval, keytype, flag);
+    return insert_keyframe_value(
+        reports, ptr, prop, fcu, anim_eval_context, curval, keytype, flag);
   }
 
   return false;
+}
+
+static AnimationEvalContext nla_time_remap(const AnimationEvalContext *anim_eval_context,
+                                           PointerRNA *id_ptr,
+                                           AnimData *adt,
+                                           bAction *act,
+                                           ListBase *nla_cache,
+                                           NlaKeyframingContext **r_nla_context)
+{
+  if (adt && adt->action == act) {
+    /* Get NLA context for value remapping. */
+    *r_nla_context = BKE_animsys_get_nla_keyframing_context(
+        nla_cache, id_ptr, adt, anim_eval_context, false);
+
+    /* Apply NLA-mapping to frame. */
+    const float remapped_frame = BKE_nla_tweakedit_remap(
+        adt, anim_eval_context->eval_time, NLATIME_CONVERT_UNMAP);
+    return BKE_animsys_eval_context_construct_at(anim_eval_context, remapped_frame);
+  }
+
+  *r_nla_context = NULL;
+  return *anim_eval_context;
 }
 
 /**
@@ -1349,7 +1374,7 @@ int insert_keyframe(Main *bmain,
                     const char group[],
                     const char rna_path[],
                     int array_index,
-                    float cfra,
+                    const AnimationEvalContext *anim_eval_context,
                     eBezTriple_KeyframeType keytype,
                     ListBase *nla_cache,
                     eInsertKeyFlags flag)
@@ -1396,15 +1421,8 @@ int insert_keyframe(Main *bmain,
 
   /* apply NLA-mapping to frame to use (if applicable) */
   adt = BKE_animdata_from_id(id);
-
-  if (adt && adt->action == act) {
-    /* Get NLA context for value remapping. */
-    nla_context = BKE_animsys_get_nla_keyframing_context(
-        nla_cache ? nla_cache : &tmp_nla_cache, &id_ptr, adt, cfra, false);
-
-    /* Apply NLA-mapping to frame. */
-    cfra = BKE_nla_tweakedit_remap(adt, cfra, NLATIME_CONVERT_UNMAP);
-  }
+  const AnimationEvalContext remapped_context = nla_time_remap(
+      anim_eval_context, &id_ptr, adt, act, nla_cache ? nla_cache : &tmp_nla_cache, &nla_context);
 
   /* Obtain values to insert. */
   float value_buffer[RNA_MAX_ARRAY_LENGTH];
@@ -1438,7 +1456,7 @@ int insert_keyframe(Main *bmain,
                                            group,
                                            rna_path,
                                            array_index,
-                                           cfra,
+                                           &remapped_context,
                                            values[array_index],
                                            keytype,
                                            flag)) {
@@ -1461,7 +1479,7 @@ int insert_keyframe(Main *bmain,
                                                   group,
                                                   rna_path,
                                                   array_index,
-                                                  cfra,
+                                                  &remapped_context,
                                                   values[array_index],
                                                   keytype,
                                                   flag);
@@ -1480,7 +1498,7 @@ int insert_keyframe(Main *bmain,
                                               group,
                                               rna_path,
                                               array_index,
-                                              cfra,
+                                              &remapped_context,
                                               values[array_index],
                                               keytype,
                                               flag);
@@ -1498,7 +1516,7 @@ int insert_keyframe(Main *bmain,
                                             group,
                                             rna_path,
                                             array_index,
-                                            cfra,
+                                            &remapped_context,
                                             values[array_index],
                                             keytype,
                                             flag);
@@ -2378,7 +2396,8 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
   PropertyRNA *prop = NULL;
   char *path;
   uiBut *but;
-  float cfra = (float)CFRA;
+  const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
+      CTX_data_depsgraph_pointer(C), (float)CFRA);
   bool changed = false;
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
@@ -2404,7 +2423,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
 
       if (fcu) {
         changed = insert_keyframe_direct(
-            op->reports, ptr, prop, fcu, cfra, ts->keyframe_type, NULL, 0);
+            op->reports, ptr, prop, fcu, &anim_eval_context, ts->keyframe_type, NULL, 0);
       }
       else {
         BKE_report(op->reports,
@@ -2420,8 +2439,14 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
       fcu = BKE_fcurve_find_by_rna_context_ui(C, &ptr, prop, index, NULL, NULL, &driven, &special);
 
       if (fcu && driven) {
-        changed = insert_keyframe_direct(
-            op->reports, ptr, prop, fcu, cfra, ts->keyframe_type, NULL, INSERTKEY_DRIVER);
+        changed = insert_keyframe_direct(op->reports,
+                                         ptr,
+                                         prop,
+                                         fcu,
+                                         &anim_eval_context,
+                                         ts->keyframe_type,
+                                         NULL,
+                                         INSERTKEY_DRIVER);
       }
     }
     else {
@@ -2464,7 +2489,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
                                    group,
                                    path,
                                    index,
-                                   cfra,
+                                   &anim_eval_context,
                                    ts->keyframe_type,
                                    NULL,
                                    flag) != 0);
@@ -2772,7 +2797,10 @@ bool fcurve_frame_has_keyframe(FCurve *fcu, float frame, short filter)
 }
 
 /* Returns whether the current value of a given property differs from the interpolated value. */
-bool fcurve_is_changed(PointerRNA ptr, PropertyRNA *prop, FCurve *fcu, float frame)
+bool fcurve_is_changed(PointerRNA ptr,
+                       PropertyRNA *prop,
+                       FCurve *fcu,
+                       const AnimationEvalContext *anim_eval_context)
 {
   PathResolvedRNA anim_rna;
   anim_rna.ptr = ptr;
@@ -2783,7 +2811,7 @@ bool fcurve_is_changed(PointerRNA ptr, PropertyRNA *prop, FCurve *fcu, float fra
   int count, index = fcu->array_index;
   float *values = setting_get_rna_values(&ptr, prop, buffer, RNA_MAX_ARRAY_LENGTH, &count);
 
-  float fcurve_val = calculate_fcurve(&anim_rna, fcu, frame);
+  float fcurve_val = calculate_fcurve(&anim_rna, fcu, anim_eval_context);
   float cur_val = (index >= 0 && index < count) ? values[index] : 0.0f;
 
   if (values != buffer) {
@@ -2990,6 +3018,9 @@ bool ED_autokeyframe_property(
     bContext *C, Scene *scene, PointerRNA *ptr, PropertyRNA *prop, int rnaindex, float cfra)
 {
   Main *bmain = CTX_data_main(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(depsgraph,
+                                                                                    cfra);
   ID *id;
   bAction *action;
   FCurve *fcu;
@@ -2997,8 +3028,11 @@ bool ED_autokeyframe_property(
   bool special;
   bool changed = false;
 
+  /* for entire array buttons we check the first component, it's not perfect
+   * but works well enough in typical cases */
+  const int rnaindex_check = (rnaindex == -1) ? 0 : rnaindex;
   fcu = BKE_fcurve_find_by_rna_context_ui(
-      C, ptr, prop, rnaindex, NULL, &action, &driven, &special);
+      C, ptr, prop, rnaindex_check, NULL, &action, &driven, &special);
 
   if (fcu == NULL) {
     return changed;
@@ -3010,7 +3044,8 @@ bool ED_autokeyframe_property(
       ReportList *reports = CTX_wm_reports(C);
       ToolSettings *ts = scene->toolsettings;
 
-      changed = insert_keyframe_direct(reports, *ptr, prop, fcu, cfra, ts->keyframe_type, NULL, 0);
+      changed = insert_keyframe_direct(
+          reports, *ptr, prop, fcu, &anim_eval_context, ts->keyframe_type, NULL, 0);
       WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
     }
   }
@@ -3023,7 +3058,7 @@ bool ED_autokeyframe_property(
       ToolSettings *ts = scene->toolsettings;
 
       changed = insert_keyframe_direct(
-          reports, *ptr, prop, fcu, cfra, ts->keyframe_type, NULL, INSERTKEY_DRIVER);
+          reports, *ptr, prop, fcu, &anim_eval_context, ts->keyframe_type, NULL, INSERTKEY_DRIVER);
       WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
     }
   }
@@ -3047,7 +3082,7 @@ bool ED_autokeyframe_property(
                                 ((fcu->grp) ? (fcu->grp->name) : (NULL)),
                                 fcu->rna_path,
                                 rnaindex,
-                                cfra,
+                                &anim_eval_context,
                                 ts->keyframe_type,
                                 NULL,
                                 flag) != 0;

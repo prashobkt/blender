@@ -27,7 +27,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "GPU_draw.h"
 #include "GPU_glew.h"
 #include "GPU_immediate.h"
 #include "GPU_select.h"
@@ -205,12 +204,11 @@ static int depth_id_cmp(const void *v1, const void *v2)
   if (d1->id < d2->id) {
     return -1;
   }
-  else if (d1->id > d2->id) {
+  if (d1->id > d2->id) {
     return 1;
   }
-  else {
-    return 0;
-  }
+
+  return 0;
 }
 
 static int depth_cmp(const void *v1, const void *v2)
@@ -219,12 +217,11 @@ static int depth_cmp(const void *v1, const void *v2)
   if (d1->depth < d2->depth) {
     return -1;
   }
-  else if (d1->depth > d2->depth) {
+  if (d1->depth > d2->depth) {
     return 1;
   }
-  else {
-    return 0;
-  }
+
+  return 0;
 }
 
 /* depth sorting */
@@ -320,7 +317,7 @@ void gpu_select_pick_begin(uint (*buffer)[4], uint bufsize, const rcti *input, c
     glDepthFunc(GL_LEQUAL);
 
     float viewport[4];
-    glGetFloatv(GL_VIEWPORT, viewport);
+    GPU_viewport_size_get_f(viewport);
 
     ps->src.clip_rect = *input;
     ps->src.rect_len = rect_len;
@@ -330,7 +327,7 @@ void gpu_select_pick_begin(uint (*buffer)[4], uint bufsize, const rcti *input, c
     ps->gl.clip_readpixels[2] = BLI_rcti_size_x(&ps->src.clip_rect);
     ps->gl.clip_readpixels[3] = BLI_rcti_size_y(&ps->src.clip_rect);
 
-    glViewport(UNPACK4(ps->gl.clip_readpixels));
+    GPU_viewport(UNPACK4(ps->gl.clip_readpixels));
 
     /* It's possible we don't want to clear depth buffer,
      * so existing elements are masked by current z-buffer. */

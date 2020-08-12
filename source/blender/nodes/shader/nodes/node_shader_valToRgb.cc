@@ -121,9 +121,8 @@ static int gpu_shader_valtorgb(GPUMaterial *mat,
   if (coba->ipotype == COLBAND_INTERP_CONSTANT) {
     return GPU_stack_link(mat, node, "valtorgb_nearest", in, out, tex, GPU_constant(&layer));
   }
-  else {
-    return GPU_stack_link(mat, node, "valtorgb", in, out, tex, GPU_constant(&layer));
-  }
+
+  return GPU_stack_link(mat, node, "valtorgb", in, out, tex, GPU_constant(&layer));
 }
 
 class ColorBandFunction : public blender::fn::MultiFunction {
@@ -148,7 +147,7 @@ class ColorBandFunction : public blender::fn::MultiFunction {
         params.uninitialized_single_output<blender::Color4f>(1, "Color");
     blender::MutableSpan<float> alphas = params.uninitialized_single_output<float>(2, "Alpha");
 
-    for (uint i : mask) {
+    for (int64_t i : mask) {
       blender::Color4f color;
       BKE_colorband_evaluate(&color_band_, values[i], color);
       colors[i] = color;
@@ -157,7 +156,7 @@ class ColorBandFunction : public blender::fn::MultiFunction {
   }
 };
 
-static void sh_node_valtorgb_expand_in_mf_network(blender::bke::NodeMFNetworkBuilder &builder)
+static void sh_node_valtorgb_expand_in_mf_network(blender::nodes::NodeMFNetworkBuilder &builder)
 {
   bNode &bnode = builder.bnode();
   const ColorBand *color_band = (const ColorBand *)bnode.storage;

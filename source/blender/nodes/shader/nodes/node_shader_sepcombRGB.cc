@@ -80,7 +80,7 @@ class SeparateRGBFunction : public blender::fn::MultiFunction {
     blender::MutableSpan<float> gs = params.uninitialized_single_output<float>(2, "G");
     blender::MutableSpan<float> bs = params.uninitialized_single_output<float>(3, "B");
 
-    for (uint i : mask) {
+    for (int64_t i : mask) {
       blender::Color4f color = colors[i];
       rs[i] = color.r;
       gs[i] = color.g;
@@ -89,7 +89,7 @@ class SeparateRGBFunction : public blender::fn::MultiFunction {
   }
 };
 
-static void sh_node_seprgb_expand_in_mf_network(blender::bke::NodeMFNetworkBuilder &builder)
+static void sh_node_seprgb_expand_in_mf_network(blender::nodes::NodeMFNetworkBuilder &builder)
 {
   static SeparateRGBFunction fn;
   builder.set_matching_fn(fn);
@@ -146,7 +146,7 @@ static int gpu_shader_combrgb(GPUMaterial *mat,
   return GPU_stack_link(mat, node, "combine_rgb", in, out);
 }
 
-static void sh_node_combrgb_expand_in_mf_network(blender::bke::NodeMFNetworkBuilder &builder)
+static void sh_node_combrgb_expand_in_mf_network(blender::nodes::NodeMFNetworkBuilder &builder)
 {
   static blender::fn::CustomMF_SI_SI_SI_SO<float, float, float, blender::Color4f> fn{
       "Combine RGB", [](float r, float g, float b) { return blender::Color4f(r, g, b, 1.0f); }};

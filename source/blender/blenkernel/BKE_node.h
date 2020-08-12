@@ -17,8 +17,7 @@
  * All rights reserved.
  */
 
-#ifndef __BKE_NODE_H__
-#define __BKE_NODE_H__
+#pragma once
 
 /** \file
  * \ingroup bke
@@ -106,18 +105,18 @@ typedef struct bNodeSocketTemplate {
  * However, achieving this requires quite a few changes currently. */
 #ifdef __cplusplus
 namespace blender {
-namespace bke {
+namespace nodes {
 class SocketMFNetworkBuilder;
 class NodeMFNetworkBuilder;
-}  // namespace bke
+}  // namespace nodes
 namespace fn {
 class MFDataType;
 }
 }  // namespace blender
 
-using NodeExpandInMFNetworkFunction = void (*)(blender::bke::NodeMFNetworkBuilder &builder);
+using NodeExpandInMFNetworkFunction = void (*)(blender::nodes::NodeMFNetworkBuilder &builder);
 using SocketGetMFDataTypeFunction = blender::fn::MFDataType (*)();
-using SocketExpandInMFNetworkFunction = void (*)(blender::bke::SocketMFNetworkBuilder &builder);
+using SocketExpandInMFNetworkFunction = void (*)(blender::nodes::SocketMFNetworkBuilder &builder);
 
 #else
 typedef void *NodeExpandInMFNetworkFunction;
@@ -1331,6 +1330,8 @@ int ntreeTexExecTree(struct bNodeTree *ntree,
 #define SIM_NODE_EMIT_PARTICLES 1009
 #define SIM_NODE_TIME 1010
 #define SIM_NODE_PARTICLE_ATTRIBUTE 1011
+#define SIM_NODE_AGE_REACHED_EVENT 1012
+#define SIM_NODE_KILL_PARTICLE 1013
 
 /** \} */
 
@@ -1343,6 +1344,8 @@ int ntreeTexExecTree(struct bNodeTree *ntree,
 #define FN_NODE_FLOAT_COMPARE 1202
 #define FN_NODE_GROUP_INSTANCE_ID 1203
 #define FN_NODE_COMBINE_STRINGS 1204
+#define FN_NODE_OBJECT_TRANSFORMS 1205
+#define FN_NODE_RANDOM_FLOAT 1206
 
 /** \} */
 
@@ -1364,5 +1367,3 @@ extern struct bNodeSocketType NodeSocketTypeUndefined;
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __BKE_NODE_H__ */

@@ -17,8 +17,7 @@
  * All rights reserved.
  */
 
-#ifndef __BKE_FCURVE_H__
-#define __BKE_FCURVE_H__
+#pragma once
 
 /** \file
  * \ingroup bke
@@ -36,6 +35,7 @@ struct FCurve;
 struct FModifier;
 
 struct AnimData;
+struct AnimationEvalContext;
 struct BezTriple;
 struct LibraryForeachIDData;
 struct PathResolvedRNA;
@@ -281,10 +281,12 @@ float evaluate_fcurve_only_curve(struct FCurve *fcu, float evaltime);
 float evaluate_fcurve_driver(struct PathResolvedRNA *anim_rna,
                              struct FCurve *fcu,
                              struct ChannelDriver *driver_orig,
-                             float evaltime);
+                             const struct AnimationEvalContext *anim_eval_context);
 bool BKE_fcurve_is_empty(struct FCurve *fcu);
 /* evaluate fcurve and store value */
-float calculate_fcurve(struct PathResolvedRNA *anim_rna, struct FCurve *fcu, float evaltime);
+float calculate_fcurve(struct PathResolvedRNA *anim_rna,
+                       struct FCurve *fcu,
+                       const struct AnimationEvalContext *anim_eval_context);
 
 /* ************* F-Curve Samples API ******************** */
 
@@ -312,5 +314,3 @@ void fcurve_store_samples(
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __BKE_FCURVE_H__*/

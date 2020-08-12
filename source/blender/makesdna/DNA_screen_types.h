@@ -21,8 +21,7 @@
  * \ingroup DNA
  */
 
-#ifndef __DNA_SCREEN_TYPES_H__
-#define __DNA_SCREEN_TYPES_H__
+#pragma once
 
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
@@ -68,6 +67,8 @@ typedef struct bScreen {
   short winid;
   /** User-setting for which editors get redrawn during anim playback. */
   short redraws_flag;
+
+  char statusbar_info[256];
 
   /** Temp screen in a temp window, don't save (like user prefs). */
   char temp;
@@ -703,5 +704,3 @@ enum {
   /* Only editor overlays (currently gizmos only!) should be redrawn. */
   RGN_DRAW_EDITOR_OVERLAYS = 32,
 };
-
-#endif /* __DNA_SCREEN_TYPES_H__ */

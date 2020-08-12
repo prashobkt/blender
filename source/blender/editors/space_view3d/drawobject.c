@@ -69,7 +69,7 @@ static const float cosval[CIRCLE_RESOL] = {
     0.82076344,  0.91895781,  0.97952994,  1.00000000,
 };
 
-static void circball_array_fill(float verts[CIRCLE_RESOL][3],
+static void circball_array_fill(const float verts[CIRCLE_RESOL][3],
                                 const float cent[3],
                                 float rad,
                                 const float tmat[4][4])
@@ -126,7 +126,7 @@ void ED_draw_object_facemap(Depsgraph *depsgraph,
     }
   }
 
-  glFrontFace((ob->transflag & OB_NEG_SCALE) ? GL_CW : GL_CCW);
+  GPU_front_facing(ob->transflag & OB_NEG_SCALE);
 
   /* Just to create the data to pass to immediate mode, grr! */
   const int *facemap_data = CustomData_get_layer(&me->pdata, CD_FACEMAP);

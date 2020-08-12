@@ -16,8 +16,7 @@
  * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
  * All rights reserved.
  */
-#ifndef __BKE_SCREEN_H__
-#define __BKE_SCREEN_H__
+#pragma once
 
 /** \file
  * \ingroup bke
@@ -73,7 +72,7 @@ typedef struct SpaceType {
 
   /* Initial allocation, after this WM will call init() too. Some editors need
    * area and scene data (e.g. frame range) to set their initial scrolling. */
-  struct SpaceLink *(*new)(const struct ScrArea *area, const struct Scene *scene);
+  struct SpaceLink *(*create)(const struct ScrArea *area, const struct Scene *scene);
   /* not free spacelink itself */
   void (*free)(struct SpaceLink *sl);
 
@@ -142,7 +141,13 @@ typedef struct ARegionType {
   void (*exit)(struct wmWindowManager *wm, struct ARegion *region);
   /* draw entirely, view changes should be handled here */
   void (*draw)(const struct bContext *C, struct ARegion *region);
-  /* Handler to draw overlays. This handler is called every draw loop. */
+  /**
+   * Handler to draw overlays. This handler is called every draw loop.
+   *
+   * \note Some editors should return early if the interface is locked
+   * (check with #CTX_wm_interface_locked) to avoid accessing scene data
+   * that another thread may be modifying
+   */
   void (*draw_overlay)(const struct bContext *C, struct ARegion *region);
   /* optional, compute button layout before drawing for dynamic size */
   void (*layout)(const struct bContext *C, struct ARegion *region);
@@ -429,6 +434,4 @@ void BKE_screen_header_alignment_reset(struct bScreen *screen);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

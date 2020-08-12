@@ -37,6 +37,7 @@
 #include "DNA_collection_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_pointcloud_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_vfont_types.h"
 
@@ -61,7 +62,9 @@
 #include "BLI_hash.h"
 #include "BLI_strict_flags.h"
 
-/* Dupli-Geometry */
+/* -------------------------------------------------------------------- */
+/** \name Internal Duplicate Context
+ * \{ */
 
 typedef struct DupliContext {
   Depsgraph *depsgraph;
@@ -91,7 +94,9 @@ typedef struct DupliGenerator {
 
 static const DupliGenerator *get_dupli_generator(const DupliContext *ctx);
 
-/* create initial context for root object */
+/**
+ * Create initial context for root object.
+ */
 static void init_context(DupliContext *r_ctx,
                          Depsgraph *depsgraph,
                          Scene *scene,
@@ -118,7 +123,9 @@ static void init_context(DupliContext *r_ctx,
   r_ctx->duplilist = NULL;
 }
 
-/* create sub-context for recursive duplis */
+/**
+ * Create sub-context for recursive duplis.
+ */
 static void copy_dupli_context(
     DupliContext *r_ctx, const DupliContext *ctx, Object *ob, const float mat[4][4], int index)
 {
@@ -140,10 +147,15 @@ static void copy_dupli_context(
   r_ctx->gen = get_dupli_generator(r_ctx);
 }
 
-/* generate a dupli instance
- * mat is transform of the object relative to current context (including object obmat)
+/**
+ * Generate a dupli instance.
+ *
+ * \param mat: is transform of the object relative to current context (including #Object.obmat).
  */
-static DupliObject *make_dupli(const DupliContext *ctx, Object *ob, float mat[4][4], int index)
+static DupliObject *make_dupli(const DupliContext *ctx,
+                               Object *ob,
+                               const float mat[4][4],
+                               int index)
 {
   DupliObject *dob;
   int i;
@@ -201,8 +213,10 @@ static DupliObject *make_dupli(const DupliContext *ctx, Object *ob, float mat[4]
   return dob;
 }
 
-/* recursive dupli objects
- * space_mat is the local dupli space (excluding dupli object obmat!)
+/**
+ * Recursive dupli objects.
+ *
+ * \param space_mat: is the local dupli space (excluding dupli #Object.obmat).
  */
 static void make_recursive_duplis(const DupliContext *ctx,
                                   Object *ob,
@@ -219,7 +233,11 @@ static void make_recursive_duplis(const DupliContext *ctx,
   }
 }
 
-/* ---- Child Duplis ---- */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Internal Child Duplicates (Used by Other Functions)
+ * \{ */
 
 typedef void (*MakeChildDuplisFunc)(const DupliContext *ctx, void *userdata, Object *child);
 
@@ -235,7 +253,9 @@ static bool is_child(const Object *ob, const Object *parent)
   return false;
 }
 
-/* create duplis from every child in scene or collection */
+/**
+ * Create duplis from every child in scene or collection.
+ */
 static void make_child_duplis(const DupliContext *ctx,
                               void *userdata,
                               MakeChildDuplisFunc make_child_duplis_cb)
@@ -278,9 +298,12 @@ static void make_child_duplis(const DupliContext *ctx,
   }
 }
 
-/*---- Implementations ----*/
+/** \} */
 
-/* OB_DUPLICOLLECTION */
+/* -------------------------------------------------------------------- */
+/** \name Dupli-Collection Implementation (#OB_DUPLICOLLECTION)
+ * \{ */
+
 static void make_duplis_collection(const DupliContext *ctx)
 {
   Object *ob = ctx->object;
@@ -320,7 +343,12 @@ static const DupliGenerator gen_dupli_collection = {
     make_duplis_collection /* make_duplis */
 };
 
-/* OB_DUPLIVERTS */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Dupli-Vertices Implementation (#OB_DUPLIVERTS for Geometry)
+ * \{ */
+
 typedef struct VertexDupliData {
   Mesh *me_eval;
   BMEditMesh *edit_mesh;
@@ -446,7 +474,12 @@ static const DupliGenerator gen_dupli_verts = {
     make_duplis_verts /* make_duplis */
 };
 
-/* OB_DUPLIVERTS - FONT */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Dupli-Vertices Implementation (#OB_DUPLIVERTS for 3D Text)
+ * \{ */
+
 static Object *find_family_object(
     Main *bmain, const char *family, size_t family_len, unsigned int ch, GHash *family_gh)
 {
@@ -523,7 +556,7 @@ static void make_duplis_font(const DupliContext *ctx)
   /* Safety check even if it might fail badly when called for original object. */
   const bool is_eval_curve = DEG_is_evaluated_id(&cu->id);
 
-  /* advance matching BLI_strncpy_wchar_from_utf8 */
+  /* Advance matching BLI_str_utf8_as_utf32. */
   for (a = 0; a < text_len; a++, ct++) {
 
     /* XXX That G.main is *really* ugly, but not sure what to do here...
@@ -573,7 +606,74 @@ static const DupliGenerator gen_dupli_verts_font = {
     make_duplis_font /* make_duplis */
 };
 
-/* OB_DUPLIFACES */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Dupli-Vertices Implementation (#OB_DUPLIVERTS for #PointCloud)
+ * \{ */
+
+static void make_child_duplis_pointcloud(const DupliContext *ctx,
+                                         void *UNUSED(userdata),
+                                         Object *child)
+{
+  const Object *parent = ctx->object;
+  const PointCloud *pointcloud = parent->data;
+  const float(*co)[3] = pointcloud->co;
+  const float *radius = pointcloud->radius;
+  const float(*rotation)[4] = NULL; /* TODO: add optional rotation attribute. */
+  const float(*orco)[3] = NULL;     /* TODO: add optional texture coordinate attribute. */
+
+  /* Relative transform from parent to child space. */
+  float child_imat[4][4];
+  mul_m4_m4m4(child_imat, child->imat, parent->obmat);
+
+  for (int i = 0; i < pointcloud->totpoint; i++) {
+    /* Transform matrix from point position, radius and rotation. */
+    float quat[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+    float size[3] = {1.0f, 1.0f, 1.0f};
+    if (radius) {
+      copy_v3_fl(size, radius[i]);
+    }
+    if (rotation) {
+      copy_v4_v4(quat, rotation[i]);
+    }
+
+    float space_mat[4][4];
+    loc_quat_size_to_mat4(space_mat, co[i], quat, size);
+
+    /* Make offset relative to child object using relative child transform,
+     * and apply object matrix after local vertex transform. */
+    mul_mat3_m4_v3(child_imat, space_mat[3]);
+
+    /* Create dupli object. */
+    float obmat[4][4];
+    mul_m4_m4m4(obmat, child->obmat, space_mat);
+    DupliObject *dob = make_dupli(ctx, child, obmat, i);
+    if (orco) {
+      copy_v3_v3(dob->orco, orco[i]);
+    }
+
+    /* Recursion. */
+    make_recursive_duplis(ctx, child, space_mat, i);
+  }
+}
+
+static void make_duplis_pointcloud(const DupliContext *ctx)
+{
+  make_child_duplis(ctx, NULL, make_child_duplis_pointcloud);
+}
+
+static const DupliGenerator gen_dupli_verts_pointcloud = {
+    OB_DUPLIVERTS,         /* type */
+    make_duplis_pointcloud /* make_duplis */
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Dupli-Faces Implementation (#OB_DUPLIFACES)
+ * \{ */
+
 typedef struct FaceDupliData {
   Mesh *me_eval;
   int totface;
@@ -728,7 +828,12 @@ static const DupliGenerator gen_dupli_faces = {
     make_duplis_faces /* make_duplis */
 };
 
-/* OB_DUPLIPARTS */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Dupli-Particles Implementation (#OB_DUPLIPARTS)
+ * \{ */
+
 static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem *psys)
 {
   Scene *scene = ctx->scene;
@@ -955,13 +1060,12 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
         if (psys_get_particle_state(&sim, a, &state, 0) == 0) {
           continue;
         }
-        else {
-          float tquat[4];
-          normalize_qt_qt(tquat, state.rot);
-          quat_to_mat4(pamat, tquat);
-          copy_v3_v3(pamat[3], state.co);
-          pamat[3][3] = 1.0f;
-        }
+
+        float tquat[4];
+        normalize_qt_qt(tquat, state.rot);
+        quat_to_mat4(pamat, tquat);
+        copy_v3_v3(pamat[3], state.co);
+        pamat[3][3] = 1.0f;
       }
 
       if (part->ren_as == PART_DRAW_GR && psys->part->draw & PART_DRAW_WHOLE_GR) {
@@ -1077,9 +1181,12 @@ static const DupliGenerator gen_dupli_particles = {
     make_duplis_particles /* make_duplis */
 };
 
-/* ------------- */
+/** \} */
 
-/* select dupli generator from given context */
+/* -------------------------------------------------------------------- */
+/** \name Dupli-Generator Selector For The Given Context
+ * \{ */
+
 static const DupliGenerator *get_dupli_generator(const DupliContext *ctx)
 {
   int transflag = ctx->object->transflag;
@@ -1098,12 +1205,15 @@ static const DupliGenerator *get_dupli_generator(const DupliContext *ctx)
   if (transflag & OB_DUPLIPARTS) {
     return &gen_dupli_particles;
   }
-  else if (transflag & OB_DUPLIVERTS) {
+  if (transflag & OB_DUPLIVERTS) {
     if (ctx->object->type == OB_MESH) {
       return &gen_dupli_verts;
     }
-    else if (ctx->object->type == OB_FONT) {
+    if (ctx->object->type == OB_FONT) {
       return &gen_dupli_verts_font;
+    }
+    if (ctx->object->type == OB_POINTCLOUD) {
+      return &gen_dupli_verts_pointcloud;
     }
   }
   else if (transflag & OB_DUPLIFACES) {
@@ -1118,9 +1228,15 @@ static const DupliGenerator *get_dupli_generator(const DupliContext *ctx)
   return NULL;
 }
 
-/* ---- ListBase dupli container implementation ---- */
+/** \} */
 
-/* Returns a list of DupliObject */
+/* -------------------------------------------------------------------- */
+/** \name Dupli-Container Implementation
+ * \{ */
+
+/**
+ * \return a #ListBase of #DupliObject.
+ */
 ListBase *object_duplilist(Depsgraph *depsgraph, Scene *sce, Object *ob)
 {
   ListBase *duplilist = MEM_callocN(sizeof(ListBase), "duplilist");
@@ -1139,3 +1255,5 @@ void free_object_duplilist(ListBase *lb)
   BLI_freelistN(lb);
   MEM_freeN(lb);
 }
+
+/** \} */
