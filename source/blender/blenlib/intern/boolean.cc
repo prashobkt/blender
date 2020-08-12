@@ -157,6 +157,11 @@ class TriMeshTopology {
   {
     return vert_edges_.lookup(v);
   }
+
+  Map<Edge, Vector<int> *>::ItemIterator edge_tri_map_items() const
+  {
+    return edge_tri_.items();
+  }
 };
 
 TriMeshTopology::TriMeshTopology(const Mesh &tm)
@@ -1225,6 +1230,52 @@ static bool patch_cell_graph_ok(const CellsInfo &cinfo, const PatchesInfo &pinfo
     }
     if (patch.cell_above >= cinfo.tot_cell() || patch.cell_below >= cinfo.tot_cell()) {
       std::cout << "Patch/Cell graph has bad cell index at Patch " << p << "\n";
+      return false;
+    }
+  }
+  return true;
+}
+
+/* Is trimesh tm PWN ("piecewise constant winding number")?
+ * See Zhou et al. paper for exact definition, but roughly
+ * means that the faces connect so as to form closed volumes.
+ * The actual definition says that if you calculate the
+ * generalized winding number of every point not exactly on
+ * the mesh, it will always be an integer.
+ * Necessary (but not sufficient) conditions that a mesh be PWN:
+ *    No edges with a non-zero sum of incident face directions.
+ * I think that cases like Klein bottles are likly to satisfy
+ * this without being PWN. So this routine will be only
+ * approximately right.
+ */
+static bool is_pwn(const Mesh &tm, const TriMeshTopology &tmtopo)
+{
+  constexpr int dbg_level = 0;
+  for (auto item : tmtopo.edge_tri_map_items()) {
+    const Edge &edge = item.key;
+    int tot_orient = 0;
+    /* For each face t attached to edge, add +1 if the edge
+     * is positively in t, and -1 if negatively in t.
+     */
+    for (int t : *item.value) {
+      const Face &face = *tm.face(t);
+      BLI_assert(face.size() == 3);
+      for (int i : face.index_range()) {
+        if (face[i] == edge.v0()) {
+          if (face[(i + 1) % 3] == edge.v1()) {
+            ++tot_orient;
+          }
+          else {
+            BLI_assert(face[(i + 3 - 1) % 3] == edge.v1());
+            --tot_orient;
+          }
+        }
+      }
+    }
+    if (tot_orient != 0) {
+      if (dbg_level > 0) {
+        std::cout << "edge causing non-pwn: " << edge << "\n";
+      }
       return false;
     }
   }
@@ -2941,6 +2992,9 @@ Mesh boolean_trimesh(Mesh &tm_in,
   }
   auto si_shape_fn = [shape_fn, tm_si](int t) { return shape_fn(tm_si.face(t)->orig); };
   TriMeshTopology tm_si_topo(tm_si);
+  if (!is_pwn(tm_si, tm_si_topo)) {
+    std::cout << "Input is not PWN, boolean may not work\n";
+  }
   PatchesInfo pinfo = find_patches(tm_si, tm_si_topo);
   CellsInfo cinfo = find_cells(tm_si, tm_si_topo, pinfo);
   finish_patch_cell_graph(tm_si, cinfo, pinfo, tm_si_topo, arena);
