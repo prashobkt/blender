@@ -1761,7 +1761,19 @@ static void move_to_collection_menus_free(MoveToCollectionData **menu)
   *menu = NULL;
 }
 
-static void move_to_collection_menu_create(bContext *UNUSED(C), uiLayout *layout, void *menu_v)
+/* TODO (Nathan): Place this in a more ideal location. */
+static int collection_color_to_icon(Collection *collection)
+{
+  int icon = ICON_NONE;
+
+  if (collection->color != COLLECTION_COLOR_NONE) {
+    icon = ICON_COLLECTION_COLOR_01 + (collection->color - 1);
+  }
+
+  return icon;
+}
+
+static void move_to_collection_menu_create(bContext *C, uiLayout *layout, void *menu_v)
 {
   MoveToCollectionData *menu = menu_v;
   const char *name = BKE_collection_ui_name_get(menu->collection);
@@ -1777,23 +1789,16 @@ static void move_to_collection_menu_create(bContext *UNUSED(C), uiLayout *layout
 
   uiItemS(layout);
 
-  uiItemIntO(layout, name, ICON_SCENE_DATA, menu->ot->idname, "collection_index", menu->index);
+  Scene *scene = CTX_data_scene(C);
+  const int icon = (menu->collection == scene->master_collection) ?
+                       ICON_SCENE_DATA :
+                       collection_color_to_icon(menu->collection);
+  uiItemIntO(layout, name, icon, menu->ot->idname, "collection_index", menu->index);
 
   for (MoveToCollectionData *submenu = menu->submenus.first; submenu != NULL;
        submenu = submenu->next) {
     move_to_collection_menus_items(layout, submenu);
   }
-}
-
-static int collection_color_to_icon(Collection *collection)
-{
-  int icon = ICON_NONE;
-
-  if (collection->color != COLLECTION_COLOR_NONE) {
-    icon = ICON_COLLECTION_COLOR_01 + (collection->color - 1);
-  }
-
-  return icon;
 }
 
 static void move_to_collection_menus_items(uiLayout *layout, MoveToCollectionData *menu)
