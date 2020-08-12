@@ -85,9 +85,8 @@ typedef struct Cloth {
   unsigned int primitive_num;    /* Number of triangles for cloth and edges for hair. */
   unsigned char old_solver_type; /* unused, only 1 solver here */
   unsigned char pad2;
-  short pad3;
-  struct BVHTree *bvhtree;     /* collision tree for this cloth object */
-  struct BVHTree *bvhselftree; /* collision tree for this cloth object */
+  short bvh_elem_type;
+  struct BVHTree *bvhtree; /* collision tree for this cloth object */
   struct MVertTri *tri;
   struct Implicit_Data *implicit; /* our implicit solver connects to this pointer */
   struct EdgeSet *edgeset;        /* used for selfcollisions */
@@ -292,7 +291,7 @@ void clothModifier_do(struct ClothModifierData *clmd,
 int cloth_uses_vgroup(struct ClothModifierData *clmd);
 
 // needed for collision.c
-void bvhtree_update_from_cloth(struct ClothModifierData *clmd, bool moving, bool self);
+void bvhtree_update_from_cloth(Cloth *cloth, bool moving);
 
 // needed for button_object.c
 void cloth_clear_cache(struct Object *ob, struct ClothModifierData *clmd, float framenr);

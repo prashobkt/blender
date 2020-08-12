@@ -1073,6 +1073,13 @@ static void rna_def_cloth_collision_settings(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  static const EnumPropertyItem prop_collision_element[] = {
+      {COL_TRIANGLES, "TRIANGLES", 0, "Triangles", "Collide the triangles of the cloth"},
+      {COL_EDGES, "EDGES", 0, "Edges", "Collide the edges of the cloth"},
+      //{COL_VERTS, "VERTICES", 0, "Vertices", "Collide the vertices of the cloth"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "ClothCollisionSettings", NULL);
   RNA_def_struct_ui_text(
       srna,
@@ -1096,6 +1103,12 @@ static void rna_def_cloth_collision_settings(BlenderRNA *brna)
       "Minimum Distance",
       "Minimum distance between collision objects before collision response takes effect");
   RNA_def_property_update(prop, 0, "rna_cloth_update");
+
+  prop = RNA_def_property(srna, "collision_element", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, prop_collision_element);
+  RNA_def_property_enum_sdna(prop, NULL, "elem_type");
+  RNA_def_property_ui_text(
+      prop, "Collision Element", "Mesh element that will be used for collision");
 
   prop = RNA_def_property(srna, "friction", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0f, 80.0f);
@@ -1134,15 +1147,6 @@ static void rna_def_cloth_collision_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_self_collision", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", CLOTH_COLLSETTINGS_FLAG_SELF);
   RNA_def_property_ui_text(prop, "Enable Self Collision", "Enable self collisions");
-  RNA_def_property_update(prop, 0, "rna_cloth_update");
-
-  prop = RNA_def_property(srna, "self_distance_min", PROP_FLOAT, PROP_DISTANCE);
-  RNA_def_property_float_sdna(prop, NULL, "selfepsilon");
-  RNA_def_property_range(prop, 0.001f, 0.1f);
-  RNA_def_property_ui_text(
-      prop,
-      "Self Minimum Distance",
-      "Minimum distance between cloth faces before collision response takes effect");
   RNA_def_property_update(prop, 0, "rna_cloth_update");
 
   prop = RNA_def_property(srna, "self_friction", PROP_FLOAT, PROP_NONE);

@@ -326,6 +326,8 @@ class PHYSICS_PT_cloth_collision(PhysicButtonsPanel, Panel):
 
         col = flow.column()
         col.prop(cloth, "collision_quality", text="Quality")
+        col.prop(cloth, "collision_element", slider=True, text="Element")
+        col.prop(cloth, "distance_min", slider=True, text="Distance")
 
 
 class PHYSICS_PT_cloth_object_collision(PhysicButtonsPanel, Panel):
@@ -349,9 +351,6 @@ class PHYSICS_PT_cloth_object_collision(PhysicButtonsPanel, Panel):
         layout.active = cloth.use_collision and cloth_panel_enabled(md)
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
-
-        col = flow.column()
-        col.prop(cloth, "distance_min", slider=True, text="Distance")
 
         col = flow.column()
         col.prop(cloth, "impulse_clamp")
@@ -385,9 +384,6 @@ class PHYSICS_PT_cloth_self_collision(PhysicButtonsPanel, Panel):
 
         col = flow.column()
         col.prop(cloth, "self_friction", text="Friction")
-
-        col = flow.column()
-        col.prop(cloth, "self_distance_min", slider=True, text="Distance")
 
         col = flow.column()
         col.prop(cloth, "self_impulse_clamp")

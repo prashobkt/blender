@@ -177,6 +177,12 @@ typedef struct ClothSimSettings {
 
 } ClothSimSettings;
 
+enum {
+  COL_TRIANGLES = 0,
+  COL_EDGES = 1,
+  //COL_VERTS = 1,
+};
+
 typedef struct ClothCollSettings {
   /** E.g. pointer to temp memory for collisions. */
   struct LinkNode *collision_list;
@@ -188,8 +194,8 @@ typedef struct ClothCollSettings {
   float friction;
   /** Collision restitution on contact with other object. */
   float damping;
+  int elem_type;
   /** For selfcollision. */
-  float selfepsilon;
   float repel_force DNA_DEPRECATED;
   float distance_repel DNA_DEPRECATED;
   /** Collision flags defined in BKE_cloth.h. */

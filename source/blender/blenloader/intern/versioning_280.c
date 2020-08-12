@@ -2946,14 +2946,6 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         if (ob->pd) {
           ob->pd->pdef_cfrict = 5.0f;
         }
-
-        LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-          if (md->type == eModifierType_Cloth) {
-            ClothModifierData *clmd = (ClothModifierData *)md;
-
-            clmd->coll_parms->selfepsilon = 0.015f;
-          }
-        }
       }
     }
 
