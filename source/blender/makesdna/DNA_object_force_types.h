@@ -234,6 +234,7 @@ typedef struct SoftBody {
   int admmpd_maxthreads; // -1 = auto
   int admmpd_loglevel; // 0=none, 1=low, 2=high
   int admmpd_linsolver; // global step
+  char admmpd_namedVG_selfcollision[64];
 //  int admmpd_pad; // padding
 
 

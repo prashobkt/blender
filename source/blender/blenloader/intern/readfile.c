@@ -152,6 +152,7 @@
 #include "BKE_sequencer.h"
 #include "BKE_shader_fx.h"
 #include "BKE_simulation.h"
+#include "BKE_softbody.h"
 #include "BKE_sound.h"
 #include "BKE_volume.h"
 #include "BKE_workspace.h"
@@ -5687,6 +5688,11 @@ static void direct_link_object(BlendDataReader *reader, Object *ob)
     sb->bpoint = NULL;  // init pointers so it gets rebuilt nicely
     sb->bspring = NULL;
     sb->scratch = NULL;
+    sb->admmpd = NULL;
+
+    /* Re-alloc or read custom data structs */
+    sbCustomRead(ob);
+
     /* although not used anymore */
     /* still have to be loaded to be compatible with old files */
     BLO_read_pointer_array(reader, (void **)&sb->keys);

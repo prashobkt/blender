@@ -602,6 +602,13 @@ static void rna_SoftBodySettings_spring_vgroup_set(PointerRNA *ptr, const char *
   rna_object_vgroup_name_set(ptr, value, sb->namedVG_Spring_K, sizeof(sb->namedVG_Spring_K));
 }
 
+static void rna_SoftBodySettings_selfcollide_vgroup_set(PointerRNA *ptr, const char *value)
+{
+  SoftBody *sb = (SoftBody *)ptr->data;
+  rna_object_vgroup_name_set(ptr, value,
+    sb->admmpd_namedVG_selfcollision, sizeof(sb->admmpd_namedVG_selfcollision));
+}
+
 static char *rna_SoftBodySettings_path(PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
@@ -1937,6 +1944,12 @@ static void rna_def_softbody(BlenderRNA *brna)
   prop = RNA_def_property(srna, "admmpd_self_collision", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "admmpd_self_collision", OB_SB_SELF);
   RNA_def_property_ui_text(prop, "Self Collision", "Enable self collisions (slow)");
+  RNA_def_property_update(prop, 0, "rna_softbody_update");
+
+  prop = RNA_def_property(srna, "vertex_group_selfcollide", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, NULL, "admmpd_namedVG_selfcollision");
+  RNA_def_property_ui_text(prop, "Self Collide VG", "Optional vertex group for self collision vertices");
+  RNA_def_property_string_funcs(prop, NULL, NULL, "rna_SoftBodySettings_selfcollide_vgroup_set");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   prop = RNA_def_property(srna, "admmpd_ck_exp", PROP_FLOAT, PROP_NONE);

@@ -327,7 +327,7 @@ class PHYSICS_PT_softbody_admmpdcollision(PhysicButtonsPanel, Panel):
     bl_parent_id = 'PHYSICS_PT_softbody'
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
-  
+
     @classmethod
     def poll(cls, context):
         md = context.soft_body
@@ -340,9 +340,17 @@ class PHYSICS_PT_softbody_admmpdcollision(PhysicButtonsPanel, Panel):
         md = context.soft_body
         softbody = md.settings
         layout.enabled = softbody_panel_enabled(md)
-        layout.prop(softbody, "admmpd_self_collision")
+        ob = context.object
+
         layout.prop(softbody, "admmpd_ck_exp")
         layout.prop(softbody, "admmpd_floor_z")
+        layout.prop(softbody, "admmpd_self_collision")
+        flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
+        col = flow.column()
+        col.active = softbody.admmpd_self_collision
+        col.prop_search(softbody, "vertex_group_selfcollide", ob, "vertex_groups")
+
+
 
 class PHYSICS_PT_softbody_collision(PhysicButtonsPanel, Panel):
     bl_label = "Self Collision"

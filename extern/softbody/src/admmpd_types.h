@@ -140,6 +140,7 @@ public:
         Eigen::MatrixXd Ap;
     } ls;
     struct CollisionData {
+        std::set<int> selfcollision_verts; // inds to test self collision
         std::vector<Eigen::AlignedBox<double,3> > prim_boxes;
         AABBTree<double,3> prim_tree;
     } col;

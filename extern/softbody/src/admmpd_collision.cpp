@@ -221,8 +221,18 @@ int EmbeddedMeshCollision::detect(
 			}
 		}
 
+		// We perform self collision if the self_collision flag is true and either:
+		// a) the set of vertices (vertex group) to do self collision is empty
+		// b) the vertex is in the set of self collision vertices
+		bool do_self_collision = td->options->self_collision;
+		if (do_self_collision) {
+			if (td->data->col.selfcollision_verts.size()>0) {
+				do_self_collision = td->data->col.selfcollision_verts.count(vi)>0;
+			}
+		}
+
 		// Detect against self
-		if (td->options->self_collision)
+		if (do_self_collision)
 		{
 			std::pair<bool,VFCollisionPair> pt_hit_self =
 				td->collision->detect_against_self(

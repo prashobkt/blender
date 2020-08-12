@@ -73,13 +73,9 @@ void admmpd_update_obstacles(
     unsigned int *in_faces,
     int nf);
 
-// Updates goal positions
-void admmpd_update_goals(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3]);
-
-// Performs a time step. Object is passed
-// only to update settings if they have changed.
+// Performs a time step. Object and vertexCos are not changed.
 // Returns 1 on success, 0 on error
-int admmpd_solve(ADMMPDInterfaceData*, Object*);
+int admmpd_solve(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3]);
 
 #ifdef __cplusplus
 }
