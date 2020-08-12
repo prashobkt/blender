@@ -1226,22 +1226,32 @@ class _defs_sculpt:
 
     @ToolDef.from_fn
     def mask_border():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.mask_box_gesture")
+            layout.prop(props, "use_front_faces_only", expand=False)
+
         return dict(
             idname="builtin.box_mask",
             label="Box Mask",
             icon="ops.sculpt.border_mask",
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
     def mask_lasso():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.mask_lasso_gesture")
+            layout.prop(props, "use_front_faces_only", expand=False)
+
         return dict(
             idname="builtin.lasso_mask",
             label="Lasso Mask",
             icon="ops.sculpt.lasso_mask",
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
@@ -1257,6 +1267,8 @@ class _defs_sculpt:
                 layout.prop(props, "surface_smooth_current_vertex", expand=False)
             elif props.type == 'SHARPEN':
                 layout.prop(props, "sharpen_smooth_ratio", expand=False)
+                layout.prop(props, "sharpen_intensify_detail_strength", expand=False)
+                layout.prop(props, "sharpen_curvature_smooth_iterations", expand=False)
 
         return dict(
             idname="builtin.mesh_filter",
@@ -1276,6 +1288,7 @@ class _defs_sculpt:
             layout.prop(props, "cloth_mass")
             layout.prop(props, "cloth_damping")
             layout.prop(props, "use_face_sets")
+            layout.prop(props, "use_collisions")
 
         return dict(
             idname="builtin.cloth_filter",
