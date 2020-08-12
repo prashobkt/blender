@@ -217,7 +217,7 @@ typedef struct SoftBody {
 
   /* ADMM-PD settings */
   int solver_mode; // 0=legacy, 1=admmpd
-  int admmpd_init_mode; // 0=embedded, 1=tetgen
+  int admmpd_mesh_mode; // 0=embedded, 1=tetgen, 2=cloth
   int admmpd_substeps; // break time step into smaller bits
   int admmpd_max_admm_iters; // max solver iterations
   int admmpd_self_collision; // 0 or 1

@@ -316,7 +316,7 @@ int admmpd_mesh_needs_update(ADMMPDInterfaceData *iface, Object *ob)
   if (!mesh) { return 0; }
 
   // Mode or topology change?
-  int mode = ob->soft->admmpd_init_mode;
+  int mode = ob->soft->admmpd_mesh_mode;
   int mesh_type = iface->idata->mesh->type();
   if (mode != mesh_type) { return 1; }
   if (!iface->idata->mesh->rest_facet_verts()) { return 1; }
@@ -335,7 +335,7 @@ int admmpd_update_mesh(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos
   if (!iface->idata)
     iface->idata = (ADMMPDInternalData*)MEM_callocN(sizeof(ADMMPDInternalData), "ADMMPD_idata");
 
-  int mode = ob->soft->admmpd_init_mode;
+  int mode = ob->soft->admmpd_mesh_mode;
   iface->idata->mesh.reset();
 
   // Try to initialize the mesh

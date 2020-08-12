@@ -3124,7 +3124,7 @@ SoftBody *sbNew(Scene *scene)
   sb = MEM_callocN(sizeof(SoftBody), "softbody");
 
   sb->solver_mode = SOLVER_MODE_ADMMPD;
-  sb->admmpd_init_mode = 0; // embedded
+  sb->admmpd_mesh_mode = 0; // embedded
   sb->admmpd_substeps = 1;
   sb->admmpd_max_admm_iters = 20;
   sb->admmpd_self_collision = 0;
@@ -3138,8 +3138,8 @@ SoftBody *sbNew(Scene *scene)
   sb->admmpd_pk_exp = 4;
   sb->admmpd_floor_z = -999;
   sb->admmpd_gravity = -9.8;
-  sb->admmpd_strainlimit_min = 0; // no compression limit
-  sb->admmpd_strainlimit_max = 100; // 100x stretch limit
+  sb->admmpd_strainlimit_min = 0; // no compression
+  sb->admmpd_strainlimit_max = 100; // 100x stretch
   sb->admmpd_maxthreads = -1;
   sb->admmpd_loglevel = 1; // low
   sb->admmpd_linsolver = 1; // PCG

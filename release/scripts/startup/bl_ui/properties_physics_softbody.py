@@ -58,7 +58,8 @@ class PHYSICS_PT_softbody(PhysicButtonsPanel, Panel):
     
         if softbody.solver_mode=='LEGACY':
             layout.prop(softbody, "collision_collection")
-
+        elif softbody.solver_mode=='ADMMPD':
+            layout.prop(softbody, "admmpd_mesh_mode")
 
 class PHYSICS_PT_softbody_object(PhysicButtonsPanel, Panel):
     bl_label = "Object"
@@ -92,17 +93,18 @@ class PHYSICS_PT_softbody_object(PhysicButtonsPanel, Panel):
         elif softbody.solver_mode=='ADMMPD':
 
             col = flow.column()
-            col.prop(softbody, "admmpd_init_mode")
-            col.prop(softbody, "admmpd_material")
-            col.prop(softbody, "admmpd_embed_res")
+
+            if softbody.admmpd_mesh_mode == 'EMBEDDED':
+                col.prop(softbody, "admmpd_material")
+
             col.prop(softbody, "admmpd_youngs_exp")
             col.prop(softbody, "admmpd_poisson")
             col.prop(softbody, "admmpd_density_kgm3")
 
-            if softbody.admmpd_init_mode == 'CLOTH':
-                col.prop(softbody, "admmpd_strainlimit_min")
+            if softbody.admmpd_mesh_mode == 'CLOTH':
                 col.prop(softbody, "admmpd_strainlimit_max")
-
+            elif softbody.admmpd_mesh_mode == 'EMBEDDED':
+                col.prop(softbody, "admmpd_embed_res")
 
 
 class PHYSICS_PT_softbody_simulation(PhysicButtonsPanel, Panel):
@@ -338,7 +340,7 @@ class PHYSICS_PT_softbody_admmpdcollision(PhysicButtonsPanel, Panel):
     def poll(cls, context):
         md = context.soft_body
         softbody = md.settings
-        return (softbody.solver_mode=='ADMMPD')
+        return (softbody.solver_mode=='ADMMPD' and softbody.admmpd_mesh_mode == 'EMBEDDED')
 
     def draw(self, context):
         layout = self.layout

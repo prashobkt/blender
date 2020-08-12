@@ -1850,8 +1850,8 @@ static void rna_def_softbody(BlenderRNA *brna)
 
   /* ADMM-PD settings */
 
-  prop = RNA_def_property(srna, "admmpd_init_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "admmpd_init_mode");
+  prop = RNA_def_property(srna, "admmpd_mesh_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "admmpd_mesh_mode");
   RNA_def_property_enum_items(prop, admmpd_initmode_items);
   RNA_def_property_ui_text(prop, "Mesh Mode", "ADMM-PD initialization mode");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
@@ -1908,16 +1908,10 @@ static void rna_def_softbody(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
-  prop = RNA_def_property(srna, "admmpd_strainlimit_min", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "admmpd_strainlimit_min");
-  RNA_def_property_range(prop, 0.0f, 1.f);
-  RNA_def_property_ui_text(prop, "Min Strain Limit", "Limits compression: higher reduces compression");
-  RNA_def_property_update(prop, 0, "rna_softbody_update");
-
   prop = RNA_def_property(srna, "admmpd_strainlimit_max", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "admmpd_strainlimit_max");
   RNA_def_property_range(prop, 1.0f, 100.f);
-  RNA_def_property_ui_text(prop, "Max Strain Limit", "Limits stetch: lower reduces stretching");
+  RNA_def_property_ui_text(prop, "Strain Limit", "Limits stetch: lower reduces stretching");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   prop = RNA_def_property(srna, "admmpd_loglevel", PROP_ENUM, PROP_NONE);
