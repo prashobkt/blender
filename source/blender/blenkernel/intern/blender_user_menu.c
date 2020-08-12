@@ -50,7 +50,7 @@ void BKE_blender_user_menu_free_list(ListBase *lb)
   BLI_listbase_clear(lb);
 }
 
-bUserMenusGroup *BKE_blender_user_menus_group_find(ListBase *lb, char *idname)
+bUserMenusGroup *BKE_blender_user_menus_group_find(ListBase *lb, const char *idname)
 {
   LISTBASE_FOREACH (bUserMenusGroup *, umg, lb) {
     if ((STREQ(idname, umg->idname))) {
@@ -81,7 +81,9 @@ void BKE_blender_user_menus_group_idname_update(bUserMenusGroup *umg)
                  sizeof(umg->idname));
 }
 
-void BKE_blender_user_menus_group_idname_update_keymap(wmWindowManager *wm, char *old, char *new)
+void BKE_blender_user_menus_group_idname_update_keymap(wmWindowManager *wm,
+                                                       const char *UNUSED(old),
+                                                       const char *UNUSED(new))
 {
   wmKeyConfig *kc;
   wmKeyMap *km;
