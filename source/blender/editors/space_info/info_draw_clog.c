@@ -49,7 +49,11 @@ enum eTextViewContext_LineFlag clog_line_draw_data(struct TextViewContext *tvc,
                                                    uchar r_icon_fg[4],
                                                    uchar r_icon_bg[4])
 {
+  const SpaceInfo *sinfo = tvc->arg1;
+  const CLG_LogRecordList *records = tvc->arg2;
   const CLG_LogRecord *record = tvc->iter;
+  const CLG_LogRecord *active_record = BLI_findlink((const struct ListBase *)records,
+                                                    sinfo->active_index);
   int data_flag = 0;
 
   /* Same text color no matter what type of record. */
@@ -57,13 +61,19 @@ enum eTextViewContext_LineFlag clog_line_draw_data(struct TextViewContext *tvc,
   data_flag = TVC_LINE_FG_SIMPLE;
 
   /* Zebra striping for background, only for deselected records. */
-  if (tvc->iter_tmp % 2) {
-    UI_GetThemeColor4ubv(TH_BACK, bg);
+  if (record->flag & CLG_SELECT) {
+    int bg_id = (record == active_record) ? TH_INFO_ACTIVE : TH_INFO_SELECTED;
+    UI_GetThemeColor4ubv(bg_id, bg);
   }
   else {
-    float col_alternating[4];
-    UI_GetThemeColor4fv(TH_ROW_ALTERNATE, col_alternating);
-    UI_GetThemeColorBlend4ubv(TH_BACK, TH_ROW_ALTERNATE, col_alternating[3], bg);
+    if (tvc->iter_tmp % 2) {
+      UI_GetThemeColor4ubv(TH_BACK, bg);
+    }
+    else {
+      float col_alternating[4];
+      UI_GetThemeColor4fv(TH_ROW_ALTERNATE, col_alternating);
+      UI_GetThemeColorBlend4ubv(TH_BACK, TH_ROW_ALTERNATE, col_alternating[3], bg);
+    }
   }
 
   /* Icon color and background depend of record type. */
@@ -107,12 +117,10 @@ enum eTextViewContext_LineFlag clog_line_draw_data(struct TextViewContext *tvc,
     *r_icon = ICON_NONE;
   }
 
-  /* how to implement selection with logs?
-    if (record->flag & RPT_SELECT) {
-      icon_fg_id = TH_INFO_SELECTED;
-      icon_bg_id = TH_INFO_SELECTED_TEXT;
-    }
-  */
+  if (record->flag & CLG_SELECT) {
+    icon_fg_id = TH_INFO_SELECTED;
+    icon_bg_id = TH_INFO_SELECTED_TEXT;
+  }
 
   if (*r_icon != ICON_NONE) {
     UI_GetThemeColor4ubv(icon_fg_id, r_icon_fg);

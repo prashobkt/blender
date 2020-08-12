@@ -18,7 +18,6 @@
  * \ingroup spinfo
  */
 
-#include <BKE_report.h>
 #include <assert.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -41,11 +40,18 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "../../../../intern/clog/CLG_log.h"
+#include "CLG_log.h"
 #include "info_intern.h"
+
+bool ED_operator_info_clog_active(bContext *C)
+{
+  const SpaceInfo *sinfo = CTX_wm_space_info(C);
+  return ED_operator_info_active(C) && sinfo->view == INFO_VIEW_CLOG;
+}
 
 bool is_log_record_visible(const CLG_LogRecord *record, const SpaceInfo *sinfo)
 {
+  UNUSED_VARS(record, sinfo);
   return true;
 }
 
@@ -181,7 +187,7 @@ void INFO_OT_clog_select_pick(wmOperatorType *ot)
   ot->idname = "INFO_OT_clog_select_pick";
 
   /* api callbacks */
-  ot->poll = ED_operator_info_active;
+  ot->poll = ED_operator_info_clog_active;
   ot->invoke = select_clog_pick_invoke;
   ot->exec = select_clog_pick_exec;
 
@@ -232,7 +238,7 @@ void INFO_OT_clog_select_all(wmOperatorType *ot)
   ot->idname = "INFO_OT_clog_select_all";
 
   /* api callbacks */
-  ot->poll = ED_operator_info_active;
+  ot->poll = ED_operator_info_clog_active;
   ot->exec = clog_select_all_exec;
 
   /* properties */
@@ -245,7 +251,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ARegion *region = CTX_wm_region(C);
   CLG_LogRecordList *records = CLG_log_records_get();
-  CLG_LogRecord *report_min, *report_max;
+  CLG_LogRecord *record_min, *record_max;
   rcti rect;
 
   WM_operator_properties_border_to_rcti(op, &rect);
@@ -262,39 +268,39 @@ static int box_select_exec(bContext *C, wmOperator *op)
   }
 
   BLI_assert(sinfo->view == INFO_VIEW_CLOG);
-  report_min = info_text_pick(sinfo, region, NULL, rect.ymax);
-  report_max = info_text_pick(sinfo, region, NULL, rect.ymin);
+  record_min = info_text_pick(sinfo, region, NULL, rect.ymax);
+  record_max = info_text_pick(sinfo, region, NULL, rect.ymin);
 
-  if (report_min == NULL && report_max == NULL) {
+  if (record_min == NULL && record_max == NULL) {
     log_records_select_all(records, sinfo, SEL_DESELECT);
   }
   else {
     /* get the first record if none found */
-    if (report_min == NULL) {
+    if (record_min == NULL) {
       // printf("find_min\n");
       LISTBASE_FOREACH (CLG_LogRecord *, record, records) {
         if (is_log_record_visible(record, sinfo)) {
-          report_min = record;
+          record_min = record;
           break;
         }
       }
     }
 
-    if (report_max == NULL) {
+    if (record_max == NULL) {
       // printf("find_max\n");
       for (CLG_LogRecord *record = records->last; record; record = record->prev) {
         if (is_log_record_visible(record, sinfo)) {
-          report_max = record;
+          record_max = record;
           break;
         }
       }
     }
 
-    if (report_min == NULL || report_max == NULL) {
+    if (record_min == NULL || record_max == NULL) {
       return OPERATOR_CANCELLED;
     }
 
-    for (CLG_LogRecord *record = report_min; (record != report_max->next); record = record->next) {
+    for (CLG_LogRecord *record = record_min; (record != record_max->next); record = record->next) {
       if (!is_log_record_visible(record, sinfo)) {
         continue;
       }
@@ -320,7 +326,7 @@ void INFO_OT_clog_select_box(wmOperatorType *ot)
   ot->modal = WM_gesture_box_modal;
   ot->cancel = WM_gesture_box_cancel;
 
-  ot->poll = ED_operator_info_active;
+  ot->poll = ED_operator_info_clog_active;
 
   /* flags */
   /* ot->flag = OPTYPE_REGISTER; */
@@ -334,13 +340,11 @@ static int clog_delete_exec(bContext *C, wmOperator *UNUSED(op))
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   CLG_LogRecordList *records = CLG_log_records_get();
-  int clog_mask = info_report_mask(sinfo);
 
-  CLG_LogRecord *record, *report_next;
+  CLG_LogRecord *record, *record_next;
 
   for (record = records->first; record;) {
-
-    report_next = record->next;
+    record_next = record->next;
 
     if (is_log_record_visible(record, sinfo) && (record->flag & CLG_SELECT)) {
       printf("NOT IMPLEMENTED YET");
@@ -349,7 +353,7 @@ static int clog_delete_exec(bContext *C, wmOperator *UNUSED(op))
       //      MEM_freeN(record);
     }
 
-    record = report_next;
+    record = record_next;
   }
   info_area_tag_redraw(C);
 
@@ -359,12 +363,12 @@ static int clog_delete_exec(bContext *C, wmOperator *UNUSED(op))
 void INFO_OT_clog_delete(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Delete Reports";
-  ot->description = "Delete selected records";
+  ot->name = "Delete Log Records";
+  ot->description = "Delete selected log records";
   ot->idname = "INFO_OT_clog_delete";
 
   /* api callbacks */
-  ot->poll = ED_operator_info_active;
+  ot->poll = ED_operator_info_clog_active;
   ot->exec = clog_delete_exec;
 
   /* flags */
@@ -401,12 +405,12 @@ static int clog_copy_exec(bContext *C, wmOperator *UNUSED(op))
 void INFO_OT_clog_copy(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Copy Reports to Clipboard";
-  ot->description = "Copy selected records to Clipboard";
+  ot->name = "Copy Log Message to Clipboard";
+  ot->description = "Copy selected log records to Clipboard";
   ot->idname = "INFO_OT_clog_copy";
 
   /* api callbacks */
-  ot->poll = ED_operator_info_active;
+  ot->poll = ED_operator_info_clog_active;
   ot->exec = clog_copy_exec;
 
   /* flags */

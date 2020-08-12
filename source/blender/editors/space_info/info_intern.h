@@ -32,6 +32,7 @@ struct SpaceInfo;
 struct wmOperatorType;
 struct TextViewContext;
 struct TextLine;
+struct CLG_LogRecord;
 
 #define INDEX_INVALID -1
 
@@ -81,7 +82,7 @@ void INFO_OT_report_delete(struct wmOperatorType *ot);
 void INFO_OT_report_copy(struct wmOperatorType *ot);
 
 /* info_clog.c */
-void INFO_OT_clog_select_pick(struct wmOperatorType *ot); /* report selection */
+void INFO_OT_clog_select_pick(struct wmOperatorType *ot); /* log selection */
 void INFO_OT_clog_select_all(struct wmOperatorType *ot);
 void INFO_OT_clog_select_box(struct wmOperatorType *ot);
 
@@ -89,6 +90,7 @@ void INFO_OT_clog_delete(struct wmOperatorType *ot);
 void INFO_OT_clog_copy(struct wmOperatorType *ot);
 
 /* info_draw_report.c */
+bool ED_operator_info_report_active(struct bContext *C);
 enum eTextViewContext_LineFlag report_line_draw_data(struct TextViewContext *tvc,
                                                      struct TextLine *text_line,
                                                      uchar fg[4],
@@ -101,6 +103,7 @@ void report_textview_end(struct TextViewContext *tvc);
 int report_textview_step(struct TextViewContext *tvc);
 void report_textview_line_get(struct TextViewContext *tvc, struct ListBase *text_lines);
 /* info_draw_clog.c */
+bool ED_operator_info_clog_active(struct bContext *C);
 enum eTextViewContext_LineFlag clog_line_draw_data(struct TextViewContext *tvc,
                                                    struct TextLine *text_line,
                                                    uchar fg[4],
@@ -112,5 +115,7 @@ int clog_textview_begin(struct TextViewContext *tvc);
 void clog_textview_end(struct TextViewContext *tvc);
 int clog_textview_step(struct TextViewContext *tvc);
 void clog_textview_line_get(struct TextViewContext *tvc, struct ListBase *text_lines);
+bool is_log_record_visible(const struct CLG_LogRecord *record, const struct SpaceInfo *sinfo);
+
 #define IS_REPORT_VISIBLE(report, report_mask, search_string) \
   (info_filter_text(report, search_string) && ((report)->type & report_mask))

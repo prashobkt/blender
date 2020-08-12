@@ -44,6 +44,12 @@
 #include "CLG_log.h"
 #include "info_intern.h"
 
+bool ED_operator_info_report_active(bContext *C)
+{
+  const SpaceInfo *sinfo = CTX_wm_space_info(C);
+  return ED_operator_info_active(C) && sinfo->view == INFO_VIEW_REPORTS;
+}
+
 /** Redraw every possible space info */
 void info_area_tag_redraw(const bContext *C)
 {
@@ -139,7 +145,7 @@ void INFO_OT_report_replay(wmOperatorType *ot)
   ot->idname = "INFO_OT_report_replay";
 
   /* api callbacks */
-  ot->poll = ED_operator_info_active;
+  ot->poll = ED_operator_info_report_active;
   ot->exec = report_replay_exec;
 
   /* flags */
@@ -251,7 +257,7 @@ void INFO_OT_report_select_pick(wmOperatorType *ot)
   ot->idname = "INFO_OT_report_select_pick";
 
   /* api callbacks */
-  ot->poll = ED_operator_info_active;
+  ot->poll = ED_operator_info_report_active;
   ot->invoke = select_report_pick_invoke;
   ot->exec = select_report_pick_exec;
 
@@ -303,7 +309,7 @@ void INFO_OT_report_select_all(wmOperatorType *ot)
   ot->idname = "INFO_OT_report_select_all";
 
   /* api callbacks */
-  ot->poll = ED_operator_info_active;
+  ot->poll = ED_operator_info_report_active;
   ot->exec = report_select_all_exec;
 
   /* properties */
@@ -392,7 +398,7 @@ void INFO_OT_report_select_box(wmOperatorType *ot)
   ot->modal = WM_gesture_box_modal;
   ot->cancel = WM_gesture_box_cancel;
 
-  ot->poll = ED_operator_info_active;
+  ot->poll = ED_operator_info_report_active;
 
   /* flags */
   /* ot->flag = OPTYPE_REGISTER; */
@@ -436,7 +442,7 @@ void INFO_OT_report_delete(wmOperatorType *ot)
   ot->idname = "INFO_OT_report_delete";
 
   /* api callbacks */
-  ot->poll = ED_operator_info_active;
+  ot->poll = ED_operator_info_report_active;
   ot->exec = report_delete_exec;
 
   /* flags */
@@ -481,7 +487,7 @@ void INFO_OT_report_copy(wmOperatorType *ot)
   ot->idname = "INFO_OT_report_copy";
 
   /* api callbacks */
-  ot->poll = ED_operator_info_active;
+  ot->poll = ED_operator_info_report_active;
   ot->exec = report_copy_exec;
 
   /* flags */
