@@ -450,7 +450,7 @@ int textview_draw(TextViewContext *tvc,
 
       if (do_draw) {
         data_flag = tvc->line_draw_data(tvc, text_lines.first, fg, bg, &icon, icon_fg, icon_bg);
-        assert(data_flag & TVC_LINE_FG_SIMPLE || data_flag & TVC_LINE_FG_COMPLEX);
+        BLI_assert(data_flag & TVC_LINE_FG_SIMPLE || data_flag & TVC_LINE_FG_COMPLEX);
       }
 
       TextLine *text_line_iter = text_lines.last;
