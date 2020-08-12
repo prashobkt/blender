@@ -254,7 +254,7 @@ void BKE_curveprofile_remove_by_flag(CurveProfile *profile, const short flag)
 CurveProfilePoint *BKE_curveprofile_insert(CurveProfile *profile, float x, float y)
 {
   CurveProfilePoint *new_pt = NULL;
-  float new_loc[2] = {x, y};
+  const float new_loc[2] = {x, y};
 
   /* Don't add more control points  than the maximum size of the higher resolution table. */
   if (profile->path_len == PROF_TABLE_MAX - 1) {
@@ -266,8 +266,8 @@ CurveProfilePoint *BKE_curveprofile_insert(CurveProfile *profile, float x, float
   float min_distance = FLT_MAX;
   int i_insert = 0;
   for (int i = 0; i < profile->path_len - 1; i++) {
-    float loc1[2] = {profile->path[i].x, profile->path[i].y};
-    float loc2[2] = {profile->path[i + 1].x, profile->path[i + 1].y};
+    const float loc1[2] = {profile->path[i].x, profile->path[i].y};
+    const float loc2[2] = {profile->path[i + 1].x, profile->path[i + 1].y};
 
     distance = dist_squared_to_line_segment_v2(new_loc, loc1, loc2);
     if (distance < min_distance) {
@@ -689,9 +689,8 @@ static int sort_points_curvature(const void *in_a, const void *in_b)
   if (a->bezt_curvature > b->bezt_curvature) {
     return 0;
   }
-  else {
-    return 1;
-  }
+
+  return 1;
 }
 
 /**
@@ -1040,7 +1039,7 @@ void BKE_curveprofile_update(CurveProfile *profile, const int update_flags)
  * Also sets the number of segments used for the display preview of the locations
  * of the sampled points.
  */
-void BKE_curveprofile_initialize(CurveProfile *profile, short segments_len)
+void BKE_curveprofile_init(CurveProfile *profile, short segments_len)
 {
   if (segments_len != profile->segments_len) {
     profile->flag |= PROF_DIRTY_PRESET;
@@ -1055,7 +1054,7 @@ void BKE_curveprofile_initialize(CurveProfile *profile, short segments_len)
  * Gives the distance to the next point in the widgets sampled table, in other words the length
  * of the \a 'i' edge of the table.
  *
- * \note Requires curveprofile_initialize or #BKE_curveprofile_update call before to fill table.
+ * \note Requires #BKE_curveprofile_init or #BKE_curveprofile_update call before to fill table.
  */
 static float curveprofile_distance_to_next_table_point(const CurveProfile *profile, int i)
 {
@@ -1067,7 +1066,7 @@ static float curveprofile_distance_to_next_table_point(const CurveProfile *profi
 /**
  * Calculates the total length of the profile from the curves sampled in the table.
  *
- * \note Requires curveprofile_initialize or #BKE_curveprofile_update call before to fill table.
+ * \note Requires #BKE_curveprofile_init or #BKE_curveprofile_update call before to fill table.
  */
 float BKE_curveprofile_total_length(const CurveProfile *profile)
 {
@@ -1082,7 +1081,7 @@ float BKE_curveprofile_total_length(const CurveProfile *profile)
  * Samples evenly spaced positions along the curve profile's table (generated from path). Fills
  * an entire table at once for a speedup if all of the results are going to be used anyway.
  *
- * \note Requires curveprofile_initialize or #BKE_curveprofile_update call before to fill table.
+ * \note Requires #BKE_curveprofile_init or #BKE_curveprofile_update call before to fill table.
  * \note Working, but would conflict with "Sample Straight Edges" option, so this is unused for
  * now.
  */
@@ -1145,7 +1144,7 @@ void BKE_curveprofile_create_samples_even_spacing(CurveProfile *profile,
  * Travels down (length_portion * path) length and returns the position at that point.
  *
  * \param length_portion: The portion (0 to 1) of the path's full length to sample at.
- * \note Requires curveprofile_initialize or #BKE_curveprofile_update call before to fill table.
+ * \note Requires #BKE_curveprofile_init or #BKE_curveprofile_update call before to fill table.
  */
 void BKE_curveprofile_evaluate_length_portion(const CurveProfile *profile,
                                               float length_portion,
