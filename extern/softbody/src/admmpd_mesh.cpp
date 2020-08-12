@@ -228,8 +228,8 @@ bool EmbeddedMesh::compute_embedding()
 	{
 		(void)(tls);
 		FindTetThreadData *td = (FindTetThreadData*)userdata;
-		const MatrixXd *emb_V0 = td->emb_mesh->rest_facet_verts();
-		Vector3d pt = emb_V0->row(i);
+		const MatrixXd *emb_x0 = td->emb_mesh->rest_facet_verts();
+		Vector3d pt = emb_x0->row(i);
 		PointInTetMeshTraverse<double> traverser(
 				pt,
 				td->lat_V0,
@@ -421,18 +421,26 @@ bool EmbeddedMesh::linearize_pins(
 			q.emplace_back(qi[i]*ki);
 		}
 
+		double btb = 1;//bary.dot(bary);
+
 		if (replicate)
 		{
 			for (int i=0; i<3; ++i)
 			{
 				for (int j=0; j<4; ++j)
-					trips.emplace_back(p_idx*3+i, tet[j]*3+i, bary[j]*ki);
+				{
+					double wi = bary[j]/btb;
+					trips.emplace_back(p_idx*3+i, tet[j]*3+i, wi*ki);
+				}
 			}
 		}
 		else
 		{
 			for (int j=0; j<4; ++j)
-				trips.emplace_back(p_idx, tet[j], bary[j]*ki);	
+			{
+				double wi = bary[j]/btb;
+				trips.emplace_back(p_idx, tet[j], wi*ki);
+			}
 		}
 	}
 

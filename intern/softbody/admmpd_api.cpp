@@ -88,8 +88,8 @@ static inline void options_from_object(
   // Set options that don't require a re-initialization
   op->max_admm_iters = std::max(1,sb->admmpd_max_admm_iters);
   op->min_res = std::max(0.f,sb->admmpd_converge_eps);
-  op->mult_pk = std::max(0.f,std::min(1.f,sb->admmpd_goalstiff));
-  op->mult_ck = std::max(0.f,std::min(1.f,sb->admmpd_collisionstiff));
+  op->pk = std::pow(10.f, sb->admmpd_pk_exp);
+  op->ck = std::pow(10.f, sb->admmpd_ck_exp);
   op->floor = sb->admmpd_floor_z;
   op->self_collision = sb->admmpd_self_collision;
   op->log_level = std::max(0, std::min(LOGLEVEL_NUM-1, sb->admmpd_loglevel));
@@ -106,7 +106,7 @@ static inline void options_from_object(
       op->timestep_s = (1.0/fps) / float(std::max(1,sb->admmpd_substeps));
     }
     op->density_kgm3 = std::max(1.f,sb->admmpd_density_kgm3);
-    op->youngs = std::pow(10.f, std::max(0.f,sb->admmpd_youngs_exp));
+    op->youngs = std::pow(10.f, sb->admmpd_youngs_exp);
     op->poisson = std::max(0.f,std::min(0.499f,sb->admmpd_poisson));
     op->elastic_material = std::max(0, std::min(ELASTIC_NUM-1, sb->admmpd_material));
     op->substeps = std::max(1,sb->admmpd_substeps);

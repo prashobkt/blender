@@ -93,6 +93,7 @@ Collision::detect_against_obs(
 	(void)(mesh);
 	(void)(options);
 	(void)(data);
+	(void)(pt_t0);
 
 	std::pair<bool,VFCollisionPair> ret = 
 		std::make_pair(false, VFCollisionPair());
@@ -320,6 +321,9 @@ void EmbeddedMeshCollision::update_bvh(
 	const Eigen::MatrixXd *x1,
 	bool sort)
 {
+	(void)(options);
+	(void)(x0);
+
 	if (!mesh)
 		return;
 
@@ -360,7 +364,11 @@ EmbeddedMeshCollision::detect_against_self(
 	const Eigen::MatrixXd *x0,
 	const Eigen::MatrixXd *x1) const
 {
-	(void)(pt_t0); (void)(x0);
+	(void)(pt_t0);
+	(void)(x0);
+	(void)(options);
+	(void)(data);
+
 	std::pair<bool,VFCollisionPair> ret = 
 		std::make_pair(false, VFCollisionPair());
 
@@ -516,6 +524,7 @@ void EmbeddedMeshCollision::linearize(
 	std::vector<Eigen::Triplet<double> > *trips,
 	std::vector<double> *d) const
 {
+	(void)(data);
 	BLI_assert(x != NULL);
 	BLI_assert(x->cols() == 3);
 

@@ -334,13 +334,9 @@ void Solver::init_matrices(
 	data->D.setFromTriplets(trips.begin(), trips.end());
 	data->DtW2 = data->D.transpose() * W2;
 	data->A = data->DtW2 * data->D;
-	data->A_diag_max = 0;
 	for (int i=0; i<nx; ++i)
 	{
 		data->A.coeffRef(i,i) += data->m[i]/dt2;
-		double Aii = data->A.coeff(i,i);
-		if (Aii > data->A_diag_max)
-			data->A_diag_max = Aii;
 	}
 
 	// ADMM dual/lagrange

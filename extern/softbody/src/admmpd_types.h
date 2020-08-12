@@ -67,8 +67,8 @@ struct Options {
     int collision_mode;
     int substeps; // used externally, ignore in solve()
     double gs_omega; // Gauss-Seidel relaxation
-    double mult_ck; // stiffness multiplier for constraints
-    double mult_pk; // (global) stiffness multiplier for pins
+    double ck; // collision stiffness
+    double pk; // pin stiffness
     double min_res; // exit tolerance for global step
     double youngs; // Young's modulus // TODO variable per-tet
     double poisson; // Poisson ratio // TODO variable per-tet
@@ -89,8 +89,8 @@ struct Options {
         collision_mode(COLLISIONMODE_DISCRETE),
         substeps(1),
         gs_omega(1),
-        mult_ck(3),
-        mult_pk(3),
+        ck(10000),
+        pk(10000),
         min_res(1e-6),
         youngs(1000000),
         poisson(0.399),
@@ -117,7 +117,6 @@ public:
     RowSparseMatrix<double> DtW2; // D'W'W
     RowSparseMatrix<double> A; // M + DtW'WD
     RowSparseMatrix<double> W; // weight matrix
-    double A_diag_max; // Max coeff of diag of A
     // Set in append_energies:
     std::vector<std::set<int> > energies_graph; // per-vertex adjacency list (graph)
 	std::vector<Eigen::Vector3i> indices; // per-energy index into D (row, num rows, type)

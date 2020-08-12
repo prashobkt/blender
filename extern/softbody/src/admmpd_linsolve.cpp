@@ -42,12 +42,11 @@ void LDLT::init_solve(
 
 	// If we've changed the stiffness but not the pins,
 	// the P matrix is still changing
-	double pk = options->mult_pk * data->A_diag_max;
-	if (std::abs(pk-data->ls.last_pk) > 1e-8 && trips.size()>0)
+	if (std::abs(options->pk-data->ls.last_pk) > 1e-8 && trips.size()>0)
 		new_P = true;
 
 	// Compute P
-	data->ls.last_pk = pk;
+	data->ls.last_pk = options->pk;
 	int np = q_coeffs.size()/3;
 	SparseMatrix<double> P;
 	MatrixXd q;
@@ -72,13 +71,11 @@ void LDLT::init_solve(
 			q(i,1) = q_coeffs[i*3+1];
 			q(i,2) = q_coeffs[i*3+2];
 		}
-		data->ls.Ptq = pk * P.transpose() * q;
+		data->ls.Ptq = options->pk * P.transpose() * q;
 	}
 
 	if (!data->ls.ldlt_A_PtP)
 		data->ls.ldlt_A_PtP = std::make_unique<Cholesky>();
-
-std::cout << "factoring" << std::endl;
 
 	// Compute A + P'P and factorize:
 	// 1) A not computed
@@ -88,7 +85,7 @@ std::cout << "factoring" << std::endl;
 		data->ls.A_PtP.nonZeros()==0 ||
 		new_P)
 	{
-		data->ls.A_PtP = SparseMatrix<double>(data->A) + pk * P.transpose()*P;
+		data->ls.A_PtP = SparseMatrix<double>(data->A) + options->pk * P.transpose()*P;
 		data->ls.ldlt_A_PtP->compute(data->ls.A_PtP);
 		if(data->ls.ldlt_A_PtP->info() != Eigen::Success)
 			throw_err("init_solve","facorization failed");
@@ -149,9 +146,8 @@ void LDLT::solve(
 
 	// Otherwise we have to solve the full system:
 	// (A + PtP + CtC) x = b + Ptq + Ctd
-	double ck = options->mult_ck * data->A_diag_max;
-	data->ls.A_PtP_CtC_3 = data->ls.A_PtP_3 + ck * C.transpose()*C;
-	VectorXd Ctd3 = ck * C.transpose() * d;
+	data->ls.A_PtP_CtC_3 = data->ls.A_PtP_3 + options->ck * C.transpose()*C;
+	VectorXd Ctd3 = options->ck * C.transpose() * d;
 	VectorXd rhs3(nx*3);
 	for (int i=0; i<nx; ++i)
 	{
@@ -240,8 +236,8 @@ void ConjugateGradients::solve(
 	};
 
 	// Linearize collision constraints
-	RowSparseMatrix<double> C;
-	VectorXd d;
+	RowSparseMatrix<double> C(1,nx*3);
+	VectorXd d = VectorXd::Zero(1);
 	if (collision != nullptr)
 	{
 		std::vector<double> d_coeffs;
@@ -254,11 +250,6 @@ void ConjugateGradients::solve(
 			C.resize(nc,nx*3);
 			C.setFromTriplets(trips.begin(),trips.end());		
 		}
-	}
-	else
-	{
-		C.resize(1,nx*3);
-		d = VectorXd::Zero(1);
 	}
 
 	// Compute RHS
@@ -277,9 +268,8 @@ void ConjugateGradients::solve(
 
 	// Otherwise we have to replicate the system
 	// (A + PtP + CtC) x = Mxbar + DtW2(z-u) + Ptq
-	double ck = options->mult_ck * data->A_diag_max;
-	data->ls.A_PtP_CtC_3 = data->ls.A_PtP_3 + ck * C.transpose()*C;
-	map_vector_to_matrix(ck*C.transpose()*d, data->ls.Ctd);
+	data->ls.A_PtP_CtC_3 = data->ls.A_PtP_3 + options->ck * C.transpose()*C;
+	map_vector_to_matrix(options->ck*C.transpose()*d, data->ls.Ctd);
 	data->ls.rhs.noalias() += data->ls.Ctd;
 
 	// Grab refs for convenience

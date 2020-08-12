@@ -3134,8 +3134,8 @@ SoftBody *sbNew(Scene *scene)
   sb->admmpd_youngs_exp = 6;
   sb->admmpd_poisson = 0.399;
   sb->admmpd_density_kgm3 = 1522;
-  sb->admmpd_collisionstiff = 1;
-  sb->admmpd_goalstiff = 0.7;
+  sb->admmpd_ck_exp = 4;
+  sb->admmpd_pk_exp = 4;
   sb->admmpd_floor_z = -999;
   sb->admmpd_gravity = -9.8;
   sb->admmpd_maxthreads = -1;
@@ -3648,7 +3648,9 @@ static void sbObjectStep_admmpd(
                   int numVerts)
 {
   if (!ob)
+  { printf("no obj\n");
     return;
+  }
 
   if (ob->type != OB_MESH) {
     CLOG_ERROR(&LOG, "ADMM-PD only works with mesh object types");
@@ -3657,11 +3659,15 @@ static void sbObjectStep_admmpd(
 
   Mesh *me = ob->data;
   if (!me)
+  { printf("no mesh\n");
     return;
+  }
 
   SoftBody *sb = ob->soft;
   if (!sb)
+  { printf("no sb\n");
     return;
+  }
 
   if (!sb->admmpd) {
     CLOG_ERROR(&LOG, "No ADMM-PD data");
@@ -3740,7 +3746,7 @@ static void sbObjectStep_admmpd(
   // Read from cache
   {
     bool can_write_cache = DEG_is_active(depsgraph);
-    bool can_simulate = (framenr == sb->last_frame + 1) &&
+    bool can_simulate = //(framenr == sb->last_frame + 1) &&
                         !(cache->flag & PTCACHE_BAKED) &&
                         can_write_cache;
     // Copies cache into softbody bpoint
@@ -3814,13 +3820,14 @@ void sbObjectStep(struct Depsgraph *depsgraph,
 {
 
   SoftBody *sb = ob->soft;
-  if (!sb)
-    return;
-
-  if (sb->solver_mode == SOLVER_MODE_ADMMPD) {
-    sbObjectStep_admmpd(depsgraph,scene,ob,cfra,vertexCos,numVerts);
+  if (!sb) {
     return;
   }
+
+//  if (sb->solver_mode == SOLVER_MODE_ADMMPD) {
+//    sbObjectStep_admmpd(depsgraph,scene,ob,cfra,vertexCos,numVerts);
+//    return;
+//  }
 
   PointCache *cache;
   PTCacheID pid;
@@ -3837,9 +3844,11 @@ void sbObjectStep(struct Depsgraph *depsgraph,
 
   /* check for changes in mesh, should only happen in case the mesh
    * structure changes during an animation */
-  if (sb->bpoint && numVerts != sb->totpoint) {
-    BKE_ptcache_invalidate(cache);
-    return;
+  if (sb->solver_mode == SOLVER_MODE_LEGACY) {
+    if (sb->bpoint && numVerts != sb->totpoint) {
+      BKE_ptcache_invalidate(cache);
+      return;
+    }
   }
 
   /* clamp frame ranges */
@@ -3852,27 +3861,68 @@ void sbObjectStep(struct Depsgraph *depsgraph,
   }
 
   /* verify if we need to create the softbody data */
-  if (sb->bpoint == NULL ||
-      ((ob->softflag & OB_SB_EDGES) && !ob->soft->bspring && object_has_edges(ob))) {
+  if (sb->solver_mode == SOLVER_MODE_ADMMPD) {
+    // If it's the first frame, we probably want to intialize.
+    bool is_first_frame = framenr == startframe;
 
-    switch (ob->type) {
-      case OB_MESH:
-        mesh_to_softbody(scene, ob);
-        break;
-      case OB_LATTICE:
-        lattice_to_softbody(scene, ob);
-        break;
-      case OB_CURVE:
-      case OB_SURF:
-        curve_surf_to_softbody(scene, ob);
-        break;
-      default:
-        renew_softbody(scene, ob, numVerts, 0);
-        break;
+    // Do we need to initialize the ADMM-PD mesh?
+    // a) Has never been initialized.
+    // b) The mesh topology has changed.
+    // TODO: ob->obmat or vertexCos change.
+    int init_mesh = 0;
+    if (is_first_frame || admmpd_mesh_needs_update(sb->admmpd, ob)) {
+      init_mesh = admmpd_update_mesh(sb->admmpd, ob, vertexCos);
+      if (!init_mesh) {
+        CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
+        return;
+      }
+    }
+    // Do we need to initialize the ADMM-PD solver?
+    // a) Has never been initialized
+    // b) Some settings require re-initialization
+    // c) The mesh has changed
+    int init_solver = 0;
+    if (is_first_frame || init_mesh ||
+        admmpd_solver_needs_update(sb->admmpd, scene, ob)) {
+      init_solver = admmpd_update_solver(sb->admmpd, scene, ob, vertexCos);
+      if (!init_solver) {
+        CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
+        return;
+      }
     }
 
-    softbody_update_positions(ob, sb, vertexCos, numVerts);
-    softbody_reset(ob, sb, vertexCos, numVerts);
+    // In case of paramter change, ob->soft->bpoint has not
+    // been set yet. So we need to resize which can be done
+    // in the copy_to_object function while leaving vertexCos to null.
+    admmpd_copy_to_object(sb->admmpd,ob,NULL);
+
+    if (init_mesh || init_solver) {
+      BKE_ptcache_invalidate(cache);
+    }
+  }
+  else if (sb->solver_mode == SOLVER_MODE_LEGACY) {
+    if (sb->bpoint == NULL ||
+        ((ob->softflag & OB_SB_EDGES) && !ob->soft->bspring && object_has_edges(ob))) {
+
+      switch (ob->type) {
+        case OB_MESH:
+          mesh_to_softbody(scene, ob);
+          break;
+        case OB_LATTICE:
+          lattice_to_softbody(scene, ob);
+          break;
+        case OB_CURVE:
+        case OB_SURF:
+          curve_surf_to_softbody(scene, ob);
+          break;
+        default:
+          renew_softbody(scene, ob, numVerts, 0);
+          break;
+      }
+
+      softbody_update_positions(ob, sb, vertexCos, numVerts);
+      softbody_reset(ob, sb, vertexCos, numVerts);
+    }
   }
 
   /* still no points? go away */
@@ -3883,7 +3933,12 @@ void sbObjectStep(struct Depsgraph *depsgraph,
     BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
 
     /* first frame, no simulation to do, just set the positions */
-    softbody_update_positions(ob, sb, vertexCos, numVerts);
+    if (sb->solver_mode == SOLVER_MODE_ADMMPD) {
+      admmpd_copy_from_object(sb->admmpd,ob);
+    }
+    else if (sb->solver_mode == SOLVER_MODE_LEGACY) {
+      softbody_update_positions(ob, sb, vertexCos, numVerts);
+    }
 
     BKE_ptcache_validate(cache, framenr);
     cache->flag &= ~PTCACHE_REDO_NEEDED;
@@ -3902,7 +3957,18 @@ void sbObjectStep(struct Depsgraph *depsgraph,
 
   if (cache_result == PTCACHE_READ_EXACT || cache_result == PTCACHE_READ_INTERPOLATED ||
       (!can_simulate && cache_result == PTCACHE_READ_OLD)) {
-    softbody_to_object(ob, vertexCos, numVerts, sb->local);
+
+    if (sb->solver_mode == SOLVER_MODE_ADMMPD) {
+      // We have read the cache into softbody, so we
+      // need to pass it to ADMM-PD
+      admmpd_copy_from_object(sb->admmpd,ob);
+      // Now that we have the updated ADMM-PD vertices, we have
+      // to map the surface vertices (vertexCos) to their deformed location.
+      admmpd_copy_to_object(sb->admmpd,ob,vertexCos);
+    }
+    else if (sb->solver_mode == SOLVER_MODE_LEGACY) {
+      softbody_to_object(ob, vertexCos, numVerts, sb->local);
+    }
 
     BKE_ptcache_validate(cache, framenr);
 
@@ -3938,18 +4004,25 @@ void sbObjectStep(struct Depsgraph *depsgraph,
     BKE_ptcache_write(&pid, startframe);
   }
 
-  softbody_update_positions(ob, sb, vertexCos, numVerts);
-
-  /* checking time: */
-  dtime = framedelta * timescale;
-
-  /* do simulation */
-  softbody_step(depsgraph, scene, ob, sb, dtime);
-
-  softbody_to_object(ob, vertexCos, numVerts, 0);
+  if (sb->solver_mode == SOLVER_MODE_ADMMPD) {
+    admmpd_copy_from_object(sb->admmpd,ob);
+    update_collider_admmpd(depsgraph, sb->collision_group, ob); // collision objects -> admmpd
+    admmpd_update_goals(sb->admmpd, ob, vertexCos); // goal positions -> admmpd
+    if (!admmpd_solve(sb->admmpd,ob)) {
+      CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
+    }
+    admmpd_copy_to_object(sb->admmpd,ob,vertexCos);
+  }
+  else if (sb->solver_mode == SOLVER_MODE_LEGACY) {
+    softbody_update_positions(ob, sb, vertexCos, numVerts);
+    /* checking time: */
+    dtime = framedelta * timescale;
+    /* do simulation */
+    softbody_step(depsgraph, scene, ob, sb, dtime);
+    softbody_to_object(ob, vertexCos, numVerts, 0);
+  }
 
   BKE_ptcache_validate(cache, framenr);
   BKE_ptcache_write(&pid, framenr);
-
   sbStoreLastFrame(depsgraph, ob, framenr);
 }

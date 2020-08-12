@@ -159,7 +159,7 @@ class PHYSICS_PT_softbody_goal(PhysicButtonsPanel, Panel):
         layout.prop_search(softbody, "vertex_group_goal", ob, "vertex_groups", text="Vertex Group")
 
         if softbody.solver_mode == 'ADMMPD':
-            layout.prop(softbody, "admmpd_goalstiff")
+            layout.prop(softbody, "admmpd_pk_exp")
 
 
 class PHYSICS_PT_softbody_goal_strengths(PhysicButtonsPanel, Panel):
@@ -341,7 +341,7 @@ class PHYSICS_PT_softbody_admmpdcollision(PhysicButtonsPanel, Panel):
         softbody = md.settings
         layout.enabled = softbody_panel_enabled(md)
         layout.prop(softbody, "admmpd_self_collision")
-        layout.prop(softbody, "admmpd_collisionstiff")
+        layout.prop(softbody, "admmpd_ck_exp")
         layout.prop(softbody, "admmpd_floor_z")
 
 class PHYSICS_PT_softbody_collision(PhysicButtonsPanel, Panel):

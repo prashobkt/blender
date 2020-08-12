@@ -227,8 +227,8 @@ typedef struct SoftBody {
   float admmpd_youngs_exp; // Youngs mod exponent
   float admmpd_poisson; // Poisson ratio
   float admmpd_density_kgm3; // unit-density of object
-  float admmpd_collisionstiff; // 0 to 1
-  float admmpd_goalstiff; // 0 to 1
+  float admmpd_ck_exp; // collision stiffness exponent (10^n)
+  float admmpd_pk_exp; // goal stiffness exponent (10^n)
   float admmpd_floor_z; // floor position
   float admmpd_gravity; // in m/s^2
   int admmpd_maxthreads; // -1 = auto

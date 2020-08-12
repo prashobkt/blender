@@ -1883,7 +1883,7 @@ static void rna_def_softbody(BlenderRNA *brna)
   prop = RNA_def_property(srna, "admmpd_youngs_exp", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "admmpd_youngs_exp");
   RNA_def_property_range(prop, 1.f, 10.f);
-  RNA_def_property_ui_text(prop, "Young's Mod", "Young's modulus exponent: 10^(n)");
+  RNA_def_property_ui_text(prop, "Young's Mod", "Young's modulus exponent: 10^n");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
@@ -1939,16 +1939,16 @@ static void rna_def_softbody(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Self Collision", "Enable self collisions (slow)");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
-  prop = RNA_def_property(srna, "admmpd_collisionstiff", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "admmpd_collisionstiff");
-  RNA_def_property_range(prop, 0.0f, 10.0f);
-  RNA_def_property_ui_text(prop, "Stiffness", "Stiffness of collision springs");
+  prop = RNA_def_property(srna, "admmpd_ck_exp", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "admmpd_ck_exp");
+  RNA_def_property_range(prop, -1000.0f, 1000.0f);
+  RNA_def_property_ui_text(prop, "Stiffness", "Exponent of collision spring stiffness: 10^n");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
-  prop = RNA_def_property(srna, "admmpd_goalstiff", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, NULL, "admmpd_goalstiff");
-  RNA_def_property_range(prop, 0.0f, 10.0f);
-  RNA_def_property_ui_text(prop, "Stiffness", "Stiffness of goal springs");
+  prop = RNA_def_property(srna, "admmpd_pk_exp", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "admmpd_pk_exp");
+  RNA_def_property_range(prop, -1000.0f, 1000.0f);
+  RNA_def_property_ui_text(prop, "Stiffness", "Exponent of goal position stiffness: 10^n");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   /* General Settings */
