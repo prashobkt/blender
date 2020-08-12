@@ -1916,7 +1916,7 @@ static void rna_def_softbody(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "admmpd_embed_res", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "admmpd_embed_res");
-  RNA_def_property_range(prop, 1.f, 5.f);
+  RNA_def_property_range(prop, 1.f, 10.f);
   RNA_def_property_ui_text(prop, "Lattice Resolution", "Max depth of lattice subdivisions");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, 0, "rna_softbody_update");

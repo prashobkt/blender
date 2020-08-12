@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <set>
 #include <iostream>
+#include <algorithm>
 #include "BLI_assert.h"
 #include "BLI_task.h"
 
@@ -22,9 +23,7 @@ static void gather_octree_tets(
 	Octree<double,3>::Node *node,
 	const MatrixXd *emb_V,
 	const MatrixXi *emb_F,
-	Eigen::VectorXi *emb_v_to_tet,
-    Eigen::MatrixXd *emb_barys,
-	Discregrid::CubicLagrangeDiscreteGrid *sdf,
+	const Discregrid::CubicLagrangeDiscreteGrid *sdf,
 	std::vector<Vector3d> &verts,
 	std::vector<RowVector4i> &tets
 	)
@@ -57,7 +56,7 @@ static void gather_octree_tets(
 	}
 	for (int i=0; i<8; ++i)
 	{
-		gather_octree_tets(node->children[i],emb_V,emb_F,emb_v_to_tet,emb_barys,sdf,verts,tets);
+		gather_octree_tets(node->children[i],emb_V,emb_F,sdf,verts,tets);
 	}
 
 } // end gather octree tets
@@ -78,24 +77,19 @@ bool EmbeddedMesh::create(
 	(void)(tets);
 	(void)(nt);
 
-	MicroTimer t;
-
-	AlignedBox<double,3> domain;
-	std::vector<double> verts_dbl(nv*3);
+//	std::vector<std::set<int> > mesh_faces;
+//	std::vector<std::set<int> > mesh_vertices;
+	std::vector<AlignedBox<double,3> > emb_leaves(nf);
 	emb_V0.resize(nv,3);
+	emb_F.resize(nf,3);
+
 	for (int i=0; i<nv; ++i)
 	{
 		emb_V0(i,0) = verts[i*3+0];
 		emb_V0(i,1) = verts[i*3+1];
 		emb_V0(i,2) = verts[i*3+2];
-		verts_dbl[i*3+0] = verts[i*3+0];
-		verts_dbl[i*3+1] = verts[i*3+1];
-		verts_dbl[i*3+2] = verts[i*3+2];
-		domain.extend(emb_V0.row(i).transpose());
 	}
 
-	emb_F.resize(nf,3);
-	std::vector<AlignedBox<double,3> > emb_leaves(nf);
 	for (int i=0; i<nf; ++i)
 	{
 		emb_F(i,0) = faces[i*3+0];
@@ -107,82 +101,60 @@ bool EmbeddedMesh::create(
 		box.extend(emb_V0.row(emb_F(i,2)).transpose());
 		box.extend(box.min()-Vector3d::Ones()*1e-4);
 		box.extend(box.max()+Vector3d::Ones()*1e-4);
-	}
 
-//	std::cout << "T CREATE BOXES: " << t.elapsed_ms() << std::endl;
-	t.reset();
+		// This code works just fine and does what I want:
+		// splits a triangle mesh into multiple meshes
+		// based on connectivity. However, it isn't as helpful
+		// in practice as I hoped.
+//		std::vector<int> in_mesh;
+//		for (int j=0; j<(int)mesh_vertices.size(); ++j)
+//		{
+//			if (mesh_vertices[j].count(faces[i*3+0]) ||
+//				mesh_vertices[j].count(faces[i*3+1]) ||
+//				mesh_vertices[j].count(faces[i*3+2]))
+//					in_mesh.emplace_back(j);
+//		}
+//
+//		// If it's in no mesh, create a new one
+//		if (in_mesh.size()==0)
+//		{
+//			mesh_vertices.emplace_back(std::set<int>());
+//			mesh_faces.emplace_back(std::set<int>());
+//			mesh_vertices.back().emplace(faces[i*3+0]);
+//			mesh_vertices.back().emplace(faces[i*3+1]);
+//			mesh_vertices.back().emplace(faces[i*3+2]);
+//			mesh_faces.back().emplace(i);
+//			continue;
+//		}
+//
+//		// Otherwise, combine meshes if in muliple
+//		for (int j=0; j<(int)in_mesh.size(); ++j)
+//		{
+//			int mesh0 = in_mesh[0];
+//			int meshj = in_mesh[j];
+//			if (j==0) // insert into lowest index mesh
+//			{
+//				mesh_vertices[mesh0].emplace(faces[i*3+0]);
+//				mesh_vertices[mesh0].emplace(faces[i*3+1]);
+//				mesh_vertices[mesh0].emplace(faces[i*3+2]);
+//				mesh_faces[mesh0].emplace(i);
+//				continue;
+//			}
+//			// Merge meshes if shared stencil
+//			mesh_faces[mesh0].insert(mesh_faces[meshj].begin(), mesh_faces[meshj].end());
+//			mesh_vertices[mesh0].insert(mesh_vertices[meshj].begin(), mesh_vertices[meshj].end());
+//			mesh_faces.erase(mesh_faces.begin()+meshj);
+//			mesh_vertices.erase(mesh_vertices.begin()+meshj);
+//		}
 
- 	// Create the signed distance field for inside/outside tests
-	{
-		Discregrid::TriangleMesh tm(verts_dbl.data(), faces, nv, nf);
-		Discregrid::MeshDistance md(tm);
-		domain.max() += 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
-		domain.min() -= 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
-		std::array<unsigned int, 3> resolution;
-		resolution[0] = 30; resolution[1] = 30; resolution[2] = 30;
-		emb_sdf = Discregrid::CubicLagrangeDiscreteGrid(domain, resolution);
-		auto func = Discregrid::DiscreteGrid::ContinuousFunction{};
-		func = [&md](Eigen::Vector3d const& xi) {
-			return md.signedDistanceCached(xi);
-		};
-		emb_sdf.addFunction(func, false);
-	}
+	} // end loop faces
 
-//	std::cout << "T SDF: " << t.elapsed_ms() << std::endl;
-	t.reset();
-
-	// Create a tree of the facets
+	// Compute SDF and tree on the full mesh.
+	compute_sdf(&emb_V0, &emb_F, &emb_sdf);
 	emb_rest_facet_tree.init(emb_leaves);
 
-	// Create an octree to generate the tets from
-	Octree<double,3> octree;
-	octree.init(&emb_V0,&emb_F,options.max_subdiv_levels);
-
-//	std::cout << "T OCTREE AND BVH TREE INIT: " << t.elapsed_ms() << std::endl;
-	t.reset();
-
-	emb_v_to_tet.resize(nv);
-	emb_v_to_tet.array() = -1;
-   	emb_barys.resize(nv,4);
-	emb_barys.setZero();
-
-	std::vector<Vector3d> lat_verts;
-	std::vector<RowVector4i> lat_tets;
-	Octree<double,3>::Node *root = octree.root().get();
-	gather_octree_tets(
-		root,
-		&emb_V0,
-		&emb_F,
-		&emb_v_to_tet,
-		&emb_barys,
-		&emb_sdf,
-		lat_verts,
-		lat_tets);
-	geom::merge_close_vertices(lat_verts,lat_tets);
-
-//	std::cout << "T GATHER TETS: " << t.elapsed_ms() << std::endl;
-	t.reset();
-
-	int nlv = lat_verts.size();
-	lat_V0.resize(nlv,3);
-	for (int i=0; i<nlv; ++i)
-	{
-		for(int j=0; j<3; ++j){
-			lat_V0(i,j) = lat_verts[i][j];
-		}
-	}
-	int nlt = lat_tets.size();
-	lat_T.resize(nlt,4);
-	for(int i=0; i<nlt; ++i){
-		for(int j=0; j<4; ++j){
-			lat_T(i,j) = lat_tets[i][j];
-		}
-	}
-
+	compute_lattice();
 	compute_embedding();
-
-//	std::cout << "T COMPUTE EMBEDDING: " << t.elapsed_ms() << std::endl;
-	t.reset();
 
 	// Verify embedding is correct
 	for (int i=0; i<nv; ++i)
@@ -208,6 +180,80 @@ bool EmbeddedMesh::create(
 		throw_err("create","Did not set verts");
 
 	return true;
+}
+
+void EmbeddedMesh::compute_sdf(
+	const Eigen::MatrixXd *emb_v,
+	const Eigen::MatrixXi *emb_f,
+	SDFType *sdf) const
+{
+	Matrix<double,Dynamic,Dynamic,RowMajor> v_rm = *emb_v;
+	Matrix<unsigned int,Dynamic,Dynamic,RowMajor> f_rm = emb_f->cast<unsigned int>();
+
+	Vector3d min_x(v_rm.col(0).minCoeff(), v_rm.col(1).minCoeff(), v_rm.col(2).minCoeff());
+	Vector3d max_x(v_rm.col(0).maxCoeff(), v_rm.col(1).maxCoeff(), v_rm.col(2).maxCoeff());
+	AlignedBox<double,3> domain;
+	domain.extend(min_x);
+	domain.extend(max_x);
+	domain.max() += 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
+	domain.min() -= 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
+
+	Discregrid::TriangleMesh tm(v_rm.data(), f_rm.data(), v_rm.rows(), f_rm.rows());
+	Discregrid::MeshDistance md(tm);
+	std::array<unsigned int, 3> resolution;
+	resolution[0] = 30; resolution[1] = 30; resolution[2] = 30;
+	*sdf = Discregrid::CubicLagrangeDiscreteGrid(domain, resolution);
+	auto func = Discregrid::DiscreteGrid::ContinuousFunction{};
+	func = [&md](Eigen::Vector3d const& xi) {
+		return md.signedDistanceCached(xi);
+	};
+	sdf->addFunction(func, false);
+}
+
+bool EmbeddedMesh::compute_lattice()
+{
+	// Create subset of faces
+//	if (emb_faces.size()==0) { return false; }
+//	MatrixXi F(emb_faces.size(),3);
+//	int f_count = 0;
+//	for (std::set<int>::const_iterator it = emb_faces.begin();
+//		it != emb_faces.end(); ++it)
+//	{
+//		F.row(f_count) = emb_F.row(*it);
+//		f_count++;
+//	}
+	MatrixXi &F = emb_F;
+
+	// Create an octree to generate the tets from
+	Octree<double,3> octree;
+	octree.init(&emb_V0,&F,options.max_subdiv_levels);
+
+	std::vector<Vector3d> lat_verts;
+	std::vector<RowVector4i> lat_tets;
+	Octree<double,3>::Node *root = octree.root().get();
+	gather_octree_tets(
+		root,
+		&emb_V0,
+		&F,
+		&emb_sdf,
+		lat_verts,
+		lat_tets);
+
+	geom::merge_close_vertices(lat_verts,lat_tets);
+	int nlv = lat_verts.size();
+	int nlt = lat_tets.size();
+	int prev_lv = lat_V0.rows();
+	int prev_lt = lat_T.rows();
+	lat_V0.conservativeResize(prev_lv+nlv,3);
+	lat_T.conservativeResize(prev_lt+nlt,4);
+
+	for (int i=0; i<nlv; ++i)
+		lat_V0.row(prev_lv+i) = lat_verts[i];
+
+	for (int i=0; i<nlt; ++i)
+		lat_T.row(prev_lt+i) = lat_tets[i];
+
+	return nlt>0;
 }
 
 bool EmbeddedMesh::compute_embedding()
@@ -259,8 +305,9 @@ bool EmbeddedMesh::compute_embedding()
 	}
 
 	emb_barys.resize(nv,4);
-	emb_barys.setOnes();
+	emb_barys.setZero();
 	emb_v_to_tet.resize(nv);
+	emb_v_to_tet.array() = -1;
 	int nt = lat_T.rows();
 
 	// BVH tree for finding point-in-tet and computing
@@ -421,15 +468,13 @@ bool EmbeddedMesh::linearize_pins(
 			q.emplace_back(qi[i]*ki);
 		}
 
-		double btb = 1;//bary.dot(bary);
-
 		if (replicate)
 		{
 			for (int i=0; i<3; ++i)
 			{
 				for (int j=0; j<4; ++j)
 				{
-					double wi = bary[j]/btb;
+					double wi = bary[j];
 					trips.emplace_back(p_idx*3+i, tet[j]*3+i, wi*ki);
 				}
 			}
@@ -438,7 +483,7 @@ bool EmbeddedMesh::linearize_pins(
 		{
 			for (int j=0; j<4; ++j)
 			{
-				double wi = bary[j]/btb;
+				double wi = bary[j];
 				trips.emplace_back(p_idx, tet[j], wi*ki);
 			}
 		}

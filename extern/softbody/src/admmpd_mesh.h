@@ -90,6 +90,14 @@ protected:
 
     bool compute_embedding();
 
+    // Computes the tet mesh on a subset of faces
+    bool compute_lattice();
+
+    void compute_sdf(
+        const Eigen::MatrixXd *emb_v,
+        const Eigen::MatrixXi *emb_f,
+        SDFType *sdf) const;
+
 public:
 
     int type() const { return MESHTYPE_EMBEDDED; }
