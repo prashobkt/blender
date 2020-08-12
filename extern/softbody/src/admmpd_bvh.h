@@ -93,7 +93,6 @@ protected:
 	typedef Eigen::AlignedBox<T,DIM> AABB;
 	typedef Eigen::Matrix<T,DIM,1> VecType;
 	typedef Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic> MatrixXT;
-	static const int nchild = std::pow(2,DIM);
 public:
 
 	// Removes all BVH data

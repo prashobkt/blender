@@ -64,7 +64,7 @@ private:
 
 	friend class TriangleMesh;
 	IncidentFaceContainer(unsigned int v, TriangleMesh const* mesh) 
-		: m_v(v), m_mesh(mesh) {}
+		: m_mesh(mesh), m_v(v) {}
 
 	TriangleMesh const* m_mesh;
 	unsigned int m_v;

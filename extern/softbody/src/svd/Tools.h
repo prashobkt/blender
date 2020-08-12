@@ -45,12 +45,12 @@ Sample usage:
 #ifndef JIXIE_SVD_TOOLS_H
 #define JIXIE_SVD_TOOLS_H
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+//#pragma GCC diagnostic push
+//#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include <Eigen/SVD>
-#pragma GCC diagnostic pop
+//#pragma GCC diagnostic pop
 
 #include <mmintrin.h>
 #include <xmmintrin.h>
