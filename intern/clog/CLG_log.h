@@ -277,7 +277,7 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
           if (log_level > _lg_ty->level) { \
             break; \
           } \
-          __attribute__((fallthrough)); \
+          ATTR_FALLTHROUGH; \
         default: \
           CLG_logf(_lg_ty, \
                    severity, \
@@ -306,7 +306,7 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
           if (log_level > _lg_ty->level) { \
             break; \
           } \
-          __attribute__((fallthrough)); \
+          ATTR_FALLTHROUGH; \
         default: \
           CLG_log_str( \
               _lg_ty, severity, log_level, __FILE__ ":" STRINGIFY(__LINE__), __func__, str); \
@@ -335,7 +335,7 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
           if (log_level > _lg_ty->level) { \
             break; \
           } \
-          __attribute__((fallthrough)); \
+          ATTR_FALLTHROUGH; \
         default: { \
           const char *_str = str; \
           CLG_log_str( \
