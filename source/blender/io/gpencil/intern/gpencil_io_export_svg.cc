@@ -427,8 +427,6 @@ void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const b
   if (!is_thickness_const) {
     avg_pressure = stroke_average_pressure_get(gps);
   }
-  /* Scale value to get better result in SVG. */
-  avg_pressure *= 2.0F;
 
   /* Get the thickness in pixels using a simple 1 point stroke. */
   bGPDstroke *gps_temp = BKE_gpencil_stroke_duplicate(gps, false);
@@ -448,7 +446,7 @@ void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const b
   color_string_set(gps_node, is_fill);
 
   if (gp_style_is_stroke() && !is_fill) {
-    gps_node.append_attribute("stroke-width").set_value(radius);
+    gps_node.append_attribute("stroke-width").set_value(radius * 2.0f);
   }
 
   std::string txt;
