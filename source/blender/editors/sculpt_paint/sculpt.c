@@ -196,7 +196,7 @@ void SCULPT_vertex_normal_get(SculptSession *ss, int index, float no[3])
   }
 }
 
-static const float *sculpt_vertex_persistent_co_get(SculptSession *ss, int index)
+const float *SCULPT_vertex_persistent_co_get(SculptSession *ss, int index)
 {
   if (ss->persistent_base) {
     return ss->persistent_base[index].co;
@@ -204,7 +204,7 @@ static const float *sculpt_vertex_persistent_co_get(SculptSession *ss, int index
   return SCULPT_vertex_co_get(ss, index);
 }
 
-static void sculpt_vertex_persistent_normal_get(SculptSession *ss, int index, float no[3])
+void SCULPT_vertex_persistent_normal_get(SculptSession *ss, int index, float no[3])
 {
   if (ss->persistent_base) {
     copy_v3_v3(no, ss->persistent_base[index].no);
@@ -581,7 +581,8 @@ static bool sculpt_check_unique_face_set_for_edge_in_base_mesh(SculptSession *ss
           p1 = vert_map->indices[i];
           break;
         }
-        else if (p2 == -1) {
+
+        if (p2 == -1) {
           p2 = vert_map->indices[i];
           break;
         }
@@ -1125,6 +1126,7 @@ static bool sculpt_tool_needs_original(const char sculpt_tool)
               SCULPT_TOOL_DRAW_SHARP,
               SCULPT_TOOL_ELASTIC_DEFORM,
               SCULPT_TOOL_SMOOTH,
+              SCULPT_TOOL_BOUNDARY,
               SCULPT_TOOL_POSE);
 }
 
@@ -1134,6 +1136,7 @@ static bool sculpt_tool_is_proxy_used(const char sculpt_tool)
               SCULPT_TOOL_SMOOTH,
               SCULPT_TOOL_LAYER,
               SCULPT_TOOL_POSE,
+              SCULPT_TOOL_BOUNDARY,
               SCULPT_TOOL_CLOTH,
               SCULPT_TOOL_PAINT,
               SCULPT_TOOL_SMEAR,
@@ -2337,6 +2340,7 @@ static float brush_strength(const Sculpt *sd,
 
     case SCULPT_TOOL_ELASTIC_DEFORM:
     case SCULPT_TOOL_POSE:
+    case SCULPT_TOOL_BOUNDARY:
       return root_alpha * feather;
 
     default:
@@ -2966,7 +2970,7 @@ static void do_draw_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
 
   /* XXX - this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
    * initialize before threads so they can do curve mapping. */
-  BKE_curvemapping_initialize(brush->curve);
+  BKE_curvemapping_init(brush->curve);
 
   /* Threaded loop over nodes. */
   SculptThreadedTaskData data = {
@@ -3043,7 +3047,7 @@ static void do_draw_sharp_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int to
 
   /* XXX - this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
    * initialize before threads so they can do curve mapping. */
-  BKE_curvemapping_initialize(brush->curve);
+  BKE_curvemapping_init(brush->curve);
 
   /* Threaded loop over nodes. */
   SculptThreadedTaskData data = {
@@ -3273,7 +3277,7 @@ static void do_slide_relax_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int t
     return;
   }
 
-  BKE_curvemapping_initialize(brush->curve);
+  BKE_curvemapping_init(brush->curve);
 
   SculptThreadedTaskData data = {
       .sd = sd,
@@ -4341,9 +4345,9 @@ static void do_layer_brush_task_cb_ex(void *__restrict userdata,
       float normal[3];
 
       if (use_persistent_base) {
-        sculpt_vertex_persistent_normal_get(ss, vi, normal);
+        SCULPT_vertex_persistent_normal_get(ss, vi, normal);
         mul_v3_fl(normal, brush->height);
-        madd_v3_v3v3fl(final_co, sculpt_vertex_persistent_co_get(ss, vi), normal, *disp_factor);
+        madd_v3_v3v3fl(final_co, SCULPT_vertex_persistent_co_get(ss, vi), normal, *disp_factor);
       }
       else {
         normal_short_to_float_v3(normal, orig_data.no);
@@ -5509,19 +5513,28 @@ static void do_brush_action(Sculpt *sd, Object *ob, Brush *brush, UnifiedPaintSe
   /* Pose needs all nodes because it applies all symmetry iterations at the same time and the IK
    * chain can grow to any area of the model. */
   /* This can be optimized by filtering the nodes after calculating the chain. */
-  if (ELEM(brush->sculpt_tool, SCULPT_TOOL_ELASTIC_DEFORM, SCULPT_TOOL_POSE)) {
+  if (ELEM(brush->sculpt_tool,
+           SCULPT_TOOL_ELASTIC_DEFORM,
+           SCULPT_TOOL_POSE,
+           SCULPT_TOOL_BOUNDARY)) {
     BKE_pbvh_search_gather(ss->pbvh, NULL, NULL, &nodes, &totnode);
   }
   else if (brush->sculpt_tool == SCULPT_TOOL_CLOTH) {
-    SculptSearchSphereData data = {
-        .ss = ss,
-        .sd = sd,
-        .radius_squared = square_f(ss->cache->radius * (1.0 + brush->cloth_sim_limit)),
-        .original = false,
-        .ignore_fully_ineffective = false,
-        .center = ss->cache->initial_location,
-    };
-    BKE_pbvh_search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data, &nodes, &totnode);
+    if (brush->cloth_simulation_area_type == BRUSH_CLOTH_SIMULATION_AREA_LOCAL) {
+      SculptSearchSphereData data = {
+          .ss = ss,
+          .sd = sd,
+          .radius_squared = square_f(ss->cache->initial_radius * (1.0 + brush->cloth_sim_limit)),
+          .original = false,
+          .ignore_fully_ineffective = false,
+          .center = ss->cache->initial_location,
+      };
+      BKE_pbvh_search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data, &nodes, &totnode);
+    }
+    else {
+      /* Gobal simulation, get all nodes. */
+      BKE_pbvh_search_gather(ss->pbvh, NULL, NULL, &nodes, &totnode);
+    }
   }
   else {
     const bool use_original = sculpt_tool_needs_original(brush->sculpt_tool) ? true :
@@ -5683,6 +5696,9 @@ static void do_brush_action(Sculpt *sd, Object *ob, Brush *brush, UnifiedPaintSe
       case SCULPT_TOOL_SLIDE_RELAX:
         do_slide_relax_brush(sd, ob, nodes, totnode);
         break;
+      case SCULPT_TOOL_BOUNDARY:
+        SCULPT_do_boundary_brush(sd, ob, nodes, totnode);
+        break;
       case SCULPT_TOOL_CLOTH:
         SCULPT_do_cloth_brush(sd, ob, nodes, totnode);
         break;
@@ -5717,8 +5733,10 @@ static void do_brush_action(Sculpt *sd, Object *ob, Brush *brush, UnifiedPaintSe
     }
 
     /* The cloth brush adds the gravity as a regular force and it is processed in the solver. */
-    if (ss->cache->supports_gravity &&
-        !ELEM(brush->sculpt_tool, SCULPT_TOOL_CLOTH, SCULPT_TOOL_DRAW_FACE_SETS)) {
+    if (ss->cache->supports_gravity && !ELEM(brush->sculpt_tool,
+                                             SCULPT_TOOL_CLOTH,
+                                             SCULPT_TOOL_DRAW_FACE_SETS,
+                                             SCULPT_TOOL_BOUNDARY)) {
       do_gravity(sd, ob, nodes, totnode, sd->gravity_factor);
     }
 
@@ -5770,6 +5788,7 @@ static void sculpt_combine_proxies_task_cb(void *__restrict userdata,
                              SCULPT_TOOL_ROTATE,
                              SCULPT_TOOL_THUMB,
                              SCULPT_TOOL_ELASTIC_DEFORM,
+                             SCULPT_TOOL_BOUNDARY,
                              SCULPT_TOOL_POSE);
 
   PBVHVertexIter vd;
@@ -6231,6 +6250,8 @@ static const char *sculpt_tool_name(Sculpt *sd)
       return "Multi-plane Scrape Brush";
     case SCULPT_TOOL_SLIDE_RELAX:
       return "Slide/Relax Brush";
+    case SCULPT_TOOL_BOUNDARY:
+      return "Boundary Brush";
     case SCULPT_TOOL_CLOTH:
       return "Cloth Brush";
     case SCULPT_TOOL_DRAW_FACE_SETS:
@@ -6257,6 +6278,12 @@ void SCULPT_cache_free(StrokeCache *cache)
 
   if (cache->pose_ik_chain) {
     SCULPT_pose_ik_chain_free(cache->pose_ik_chain);
+  }
+
+  for (int i = 0; i < PAINT_SYMM_AREAS; i++) {
+    if (cache->bdata[i]) {
+      SCULPT_boundary_data_free(cache->bdata[i]);
+    }
   }
 
   if (cache->cloth_sim) {
@@ -6390,7 +6417,7 @@ static void sculpt_update_cache_invariants(
         brush = br;
         cache->saved_smooth_size = BKE_brush_size_get(scene, brush);
         BKE_brush_size_set(scene, brush, size);
-        BKE_curvemapping_initialize(brush->curve);
+        BKE_curvemapping_init(brush->curve);
       }
     }
   }
@@ -6458,7 +6485,7 @@ static void sculpt_update_cache_invariants(
 
 #define PIXEL_INPUT_THRESHHOLD 5
   if (brush->sculpt_tool == SCULPT_TOOL_ROTATE) {
-    cache->dial = BLI_dial_initialize(cache->initial_mouse, PIXEL_INPUT_THRESHHOLD);
+    cache->dial = BLI_dial_init(cache->initial_mouse, PIXEL_INPUT_THRESHHOLD);
   }
 
 #undef PIXEL_INPUT_THRESHHOLD
@@ -6487,6 +6514,7 @@ static bool sculpt_needs_delta_from_anchored_origin(Brush *brush)
   return ELEM(brush->sculpt_tool,
               SCULPT_TOOL_GRAB,
               SCULPT_TOOL_POSE,
+              SCULPT_TOOL_BOUNDARY,
               SCULPT_TOOL_THUMB,
               SCULPT_TOOL_ELASTIC_DEFORM) ||
          SCULPT_is_cloth_deform_brush(brush);
@@ -6530,6 +6558,7 @@ static void sculpt_update_brush_delta(UnifiedPaintSettings *ups, Object *ob, Bru
            SCULPT_TOOL_CLAY_THUMB,
            SCULPT_TOOL_SNAKE_HOOK,
            SCULPT_TOOL_POSE,
+           SCULPT_TOOL_BOUNDARY,
            SCULPT_TOOL_THUMB) ||
       sculpt_brush_use_topology_rake(ss, brush)) {
     float grab_location[3], imat[4][4], delta[3], loc[3];
@@ -6818,6 +6847,7 @@ static bool sculpt_needs_connectivity_info(const Sculpt *sd,
           (brush->sculpt_tool == SCULPT_TOOL_SMOOTH) || (brush->autosmooth_factor > 0) ||
           ((brush->sculpt_tool == SCULPT_TOOL_MASK) && (brush->mask_tool == BRUSH_MASK_SMOOTH)) ||
           (brush->sculpt_tool == SCULPT_TOOL_POSE) ||
+          (brush->sculpt_tool == SCULPT_TOOL_BOUNDARY) ||
           (brush->sculpt_tool == SCULPT_TOOL_SLIDE_RELAX) ||
           (brush->sculpt_tool == SCULPT_TOOL_CLOTH) || (brush->sculpt_tool == SCULPT_TOOL_SMEAR) ||
           (brush->sculpt_tool == SCULPT_TOOL_DRAW_FACE_SETS));
@@ -7208,11 +7238,16 @@ static void sculpt_restore_mesh(Sculpt *sd, Object *ob)
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
+  /* For the cloth brush it makes more sense to not restore the mesh state to keep running the
+   * simulation from the previous state. */
+  if (brush->sculpt_tool == SCULPT_TOOL_CLOTH) {
+    return;
+  }
+
   /* Restore the mesh before continuing with anchored stroke. */
   if ((brush->flag & BRUSH_ANCHORED) ||
       ((brush->sculpt_tool == SCULPT_TOOL_GRAB ||
-        brush->sculpt_tool == SCULPT_TOOL_ELASTIC_DEFORM ||
-        brush->sculpt_tool == SCULPT_TOOL_CLOTH) &&
+        brush->sculpt_tool == SCULPT_TOOL_ELASTIC_DEFORM) &&
        BKE_brush_use_size_pressure(brush)) ||
       (brush->flag & BRUSH_DRAG_DOT)) {
 
@@ -8155,6 +8190,14 @@ void SCULPT_geometry_preview_lines_update(bContext *C, SculptSession *ss, float 
     return;
   }
 
+  if (!ss->deform_modifiers_active) {
+    return;
+  }
+
+  if (BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS) {
+    return;
+  }
+
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
 
   if (!ss->pmap) {
@@ -8942,7 +8985,7 @@ static void SCULPT_OT_mask_by_color(wmOperatorType *ot)
       "preserve_previous_mask",
       false,
       "Preserve Previous Mask",
-      "Preserve the previous mask and add or substract the new one generated by the colors");
+      "Preserve the previous mask and add or subtract the new one generated by the colors");
 
   RNA_def_float(ot->srna,
                 "threshold",

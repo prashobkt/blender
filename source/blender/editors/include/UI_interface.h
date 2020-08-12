@@ -21,8 +21,7 @@
  * \ingroup editorui
  */
 
-#ifndef __UI_INTERFACE_H__
-#define __UI_INTERFACE_H__
+#pragma once
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_sys_types.h" /* size_t */
@@ -58,6 +57,7 @@ struct bNodeSocket;
 struct bNodeTree;
 struct bScreen;
 struct rcti;
+struct uiButSearch;
 struct uiFontStyle;
 struct uiList;
 struct uiStyle;
@@ -101,7 +101,7 @@ typedef struct uiPopupBlockHandle uiPopupBlockHandle;
 /* use for clamping popups within the screen */
 #define UI_SCREEN_MARGIN 10
 
-/* uiBlock->dt and uiBut->dt */
+/** #uiBlock.emboss and #uiBut.emboss */
 enum {
   UI_EMBOSS = 0,          /* use widget style for drawing */
   UI_EMBOSS_NONE = 1,     /* Nothing, only icon and/or text */
@@ -377,12 +377,13 @@ typedef enum {
   UI_BTYPE_SEPR_SPACER = 56 << 9,
   /** Resize handle (resize uilist). */
   UI_BTYPE_GRIP = 57 << 9,
+  UI_BTYPE_DECORATOR = 58 << 9,
 } eButType;
 
 #define BUTTYPE (63 << 9)
 
 /** Gradient types, for color picker #UI_BTYPE_HSVCUBE etc. */
-enum {
+typedef enum eButGradientType {
   UI_GRAD_SV = 0,
   UI_GRAD_HV = 1,
   UI_GRAD_HS = 2,
@@ -392,9 +393,7 @@ enum {
 
   UI_GRAD_V_ALT = 9,
   UI_GRAD_L_ALT = 10,
-};
-
-#define UI_PALETTE_COLOR 20
+} eButGradientType;
 
 /* Drawing
  *
@@ -506,7 +505,7 @@ typedef int (*uiButCompleteFunc)(struct bContext *C, char *str, void *arg);
 /* Search types. */
 typedef struct ARegion *(*uiButSearchCreateFn)(struct bContext *C,
                                                struct ARegion *butregion,
-                                               uiBut *but);
+                                               struct uiButSearch *search_but);
 typedef void (*uiButSearchUpdateFn)(const struct bContext *C,
                                     void *arg,
                                     const char *str,
@@ -543,7 +542,7 @@ typedef bool (*uiMenuStepFunc)(struct bContext *C, int direction, void *arg1);
 bool UI_but_has_tooltip_label(const uiBut *but);
 bool UI_but_is_tool(const uiBut *but);
 bool UI_but_is_utf8(const uiBut *but);
-#define UI_but_is_decorator(but) ((but)->func == ui_but_anim_decorate_cb)
+#define UI_but_is_decorator(but) ((but)->type == UI_BTYPE_DECORATOR)
 
 bool UI_block_is_empty_ex(const uiBlock *block, const bool skip_title);
 bool UI_block_is_empty(const uiBlock *block);
@@ -662,7 +661,7 @@ bool UI_popup_block_name_exists(const struct bScreen *screen, const char *name);
 uiBlock *UI_block_begin(const struct bContext *C,
                         struct ARegion *region,
                         const char *name,
-                        short dt);
+                        char emboss);
 void UI_block_end_ex(const struct bContext *C, uiBlock *block, const int xy[2], int r_xy[2]);
 void UI_block_end(const struct bContext *C, uiBlock *block);
 void UI_block_draw(const struct bContext *C, struct uiBlock *block);
@@ -676,7 +675,7 @@ enum {
 };
 void UI_block_theme_style_set(uiBlock *block, char theme_style);
 char UI_block_emboss_get(uiBlock *block);
-void UI_block_emboss_set(uiBlock *block, char dt);
+void UI_block_emboss_set(uiBlock *block, char emboss);
 bool UI_block_has_search_filter(const uiBlock *block);
 bool UI_block_is_search_only(const uiBlock *block);
 void UI_block_set_search_only(uiBlock *block, bool search_only);
@@ -1945,8 +1944,6 @@ uiLayout *uiLayoutGridFlow(uiLayout *layout,
 uiLayout *uiLayoutBox(uiLayout *layout);
 uiLayout *uiLayoutListBox(uiLayout *layout,
                           struct uiList *ui_list,
-                          struct PointerRNA *ptr,
-                          struct PropertyRNA *prop,
                           struct PointerRNA *actptr,
                           struct PropertyRNA *actprop);
 uiLayout *uiLayoutAbsolute(uiLayout *layout, bool align);
@@ -2597,5 +2594,3 @@ void UI_interface_tag_script_reload(void);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __UI_INTERFACE_H__ */
