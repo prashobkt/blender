@@ -3972,6 +3972,18 @@ static bool rna_id_enum_filter_single(ID *id, void *user_data)
   return (id != user_data);
 }
 
+/* TODO (Nathan): Place this in a more ideal location. */
+static int collection_color_to_icon(Collection *collection)
+{
+  int icon = ICON_NONE;
+
+  if (collection->color != COLLECTION_COLOR_NONE) {
+    icon = ICON_COLLECTION_COLOR_01 + (collection->color - 1);
+  }
+
+  return icon;
+}
+
 /* Generic itemf's for operators that take library args */
 static const EnumPropertyItem *rna_id_itemf(bContext *UNUSED(C),
                                             PointerRNA *UNUSED(ptr),
@@ -3993,6 +4005,12 @@ static const EnumPropertyItem *rna_id_itemf(bContext *UNUSED(C),
     if (local == false || !ID_IS_LINKED(id)) {
       item_tmp.identifier = item_tmp.name = id->name + 2;
       item_tmp.value = i++;
+
+      /* Show collection color tag icons in menus. */
+      if (GS(id->name) == ID_GR) {
+        item_tmp.icon = collection_color_to_icon((Collection *)id);
+      }
+
       RNA_enum_item_add(&item, &totitem, &item_tmp);
     }
   }
