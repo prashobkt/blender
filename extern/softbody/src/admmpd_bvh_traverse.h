@@ -162,44 +162,6 @@ public:
 	bool stop_traversing(const AABB &aabb, int prim);
 };
 
-// Check if a tet intersects a triangle mesh
-// with tri-tri collision tests
-template <typename T>
-class TetIntersectsMeshTraverse : public Traverser<T,3>
-{
-protected:
-	using typename Traverser<T,3>::AABB;
-	typedef Eigen::Matrix<T,3,1> VecType;
-	typedef Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic> MatrixXType;
-
-	const MatrixXType *prim_verts;
-	const Eigen::MatrixXi *prim_inds;
-	VecType points[4]; // verts of the tet with proper winding (0,1,2,3)
-	float p0[3], p1[3], p2[3], p3[3]; // points casted to floats
-	std::vector<std::vector<float*> > tet_faces;
-	AABB tet_aabb;
-
-public:
-	struct Output {
-		int hit_face; // first found
-		int ray_hit_count;
-		Output() : hit_face(-1) {}
-	} output;
-
-	TetIntersectsMeshTraverse(
-		const VecType points_[4],
-		const MatrixXType *prim_verts_,
-		const Eigen::MatrixXi *prim_inds_);
-
-	void traverse(
-		const AABB &left_aabb, bool &go_left,
-		const AABB &right_aabb, bool &go_right,
-		bool &go_left_first);
-
-	// Returns true if intersection
-	bool stop_traversing(const AABB &aabb, int prim);
-};
-
 } // namespace admmpd
 
 #endif // ADMMPD_BVH_TRAVERSE_H_

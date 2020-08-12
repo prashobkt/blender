@@ -32,9 +32,6 @@ add_subdirectory(glew-mx)
 add_subdirectory(eigen)
 add_subdirectory(sky)
 
-
-
-
 add_subdirectory(softbody)
 
 if(WITH_AUDASPACE)
@@ -84,6 +81,10 @@ endif()
 
 if(WITH_TETGEN)
   add_subdirectory(tetgen)
+endif()
+
+if(WITH_CODEC_FFMPEG)
+  add_subdirectory(ffmpeg)
 endif()
 
 if(UNIX AND NOT APPLE)

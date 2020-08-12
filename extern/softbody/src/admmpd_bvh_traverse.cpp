@@ -201,102 +201,6 @@ bool NearestTriangleTraverse<T>::stop_traversing(const AABB &aabb, int prim)
 	return false;
 }
 
-template <typename T>
-TetIntersectsMeshTraverse<T>::TetIntersectsMeshTraverse(
-	const VecType points_[4],
-	const MatrixXType *prim_verts_,
-	const Eigen::MatrixXi *prim_inds_) :
-		prim_verts(prim_verts_),
-		prim_inds(prim_inds_)
-{
-	for (int i=0; i<4; ++i)
-		points[i] = points_[i];
-
-	BLI_assert(prim_verts->cols()==3);
-	BLI_assert(prim_inds->cols()==3);
-
-	for(int i=0; i<3; ++i)
-	{
-		p0[i] = (float)points[0][i];
-		p1[i] = (float)points[1][i];
-		p2[i] = (float)points[2][i];
-		p3[i] = (float)points[3][i];
-	}
-
-	tet_faces.resize(4,std::vector<float*>());
-	tet_faces[0] = {p0,p1,p2};
-	tet_faces[1] = {p0,p2,p3};
-	tet_faces[2] = {p0,p3,p1};
-	tet_faces[3] = {p1,p2,p3};
-
-	tet_aabb.setEmpty();
-	for (int i=0; i<4; ++i)
-		tet_aabb.extend(points[i]);
-
-} // end point in mesh constructor
-
-template <typename T>
-void TetIntersectsMeshTraverse<T>::traverse(
-	const AABB &left_aabb, bool &go_left,
-	const AABB &right_aabb, bool &go_right,
-	bool &go_left_first )
-{
-	go_left = false;
-	go_right = false;
-
-	if (tet_aabb.intersects(left_aabb))
-		go_left = true;
-	if (tet_aabb.intersects(right_aabb))
-		go_right = true;
-
-	go_left_first = true;
-	if (go_right && !go_left)
-		go_left_first = false;
-
-} // end point in mesh traverse
-
-template <typename T>
-bool TetIntersectsMeshTraverse<T>::stop_traversing(
-		const AABB &aabb, int prim )
-{
-	bool tet_hits_aabb = tet_aabb.intersects(aabb);
-	if(!tet_hits_aabb)
-	{
-		return false;
-	}
-
-	// Get the vertices of the face in float arrays
-	// to interface with Blender kernels.
-	BLI_assert(prim >= 0 && prim < prim_inds->rows());
-	RowVector3i q_f = prim_inds->row(prim);
-	float q0[3], q1[3], q2[3];
-	for (int i=0; i<3; ++i)
-	{
-		q0[i] = (float)prim_verts->operator()(q_f[0],i);
-		q1[i] = (float)prim_verts->operator()(q_f[1],i);
-		q2[i] = (float)prim_verts->operator()(q_f[2],i);
-	}
-
-	// If the tet-aabb intersects the triangle-aabb, then test
-	// the four faces of the tet against the triangle.
-	for (int i=0; i<4; ++i)
-	{
-		float r_i1[3] = {0,0,0};
-		float r_i2[3] = {0,0,0};
-		const std::vector<float*> &f = tet_faces[i];
-		bool hit = isect_tri_tri_epsilon_v3(
-			f[0], f[1], f[2], q0, q1, q2, r_i1, r_i2, 1e-8);
-		if (hit)
-		{
-			output.hit_face = prim;
-			return true;
-		}
-	}
-
-	return false; // multi-hit, so keep traversing
-
-} // end point in mesh stop traversing
-
 // Compile template types
 template class admmpd::PointInTetMeshTraverse<double>;
 template class admmpd::PointInTetMeshTraverse<float>;
@@ -304,8 +208,6 @@ template class admmpd::PointInTriangleMeshTraverse<double>;
 template class admmpd::PointInTriangleMeshTraverse<float>;
 template class admmpd::NearestTriangleTraverse<double>;
 template class admmpd::NearestTriangleTraverse<float>;
-template class admmpd::TetIntersectsMeshTraverse<double>;
-template class admmpd::TetIntersectsMeshTraverse<float>;
 
 } // namespace admmpd
 
