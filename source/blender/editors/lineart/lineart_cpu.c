@@ -3668,7 +3668,7 @@ void ED_lineart_gpencil_generate_from_chain(Depsgraph *UNUSED(depsgraph),
       continue;
     }
     if (orig_col && rlc->object_ref) {
-      if (!BKE_collection_has_object_recursive(orig_col, (Object *)rlc->object_ref)) {
+      if (!BKE_collection_has_object_recursive_instanced(orig_col, (Object *)rlc->object_ref)) {
         continue;
       }
     }

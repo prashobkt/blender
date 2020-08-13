@@ -77,6 +77,9 @@ typedef struct Collection {
    * collections due to memory usage reasons. */
   ListBase object_cache;
 
+  /* Need this for line art sub-collection selections. */
+  ListBase object_cache_instanced;
+
   /* Runtime. List of collections that are a parent of this
    * datablock. */
   ListBase parents;
@@ -94,6 +97,7 @@ enum {
   COLLECTION_RESTRICT_RENDER = (1 << 3),           /* Disable in renders. */
   COLLECTION_HAS_OBJECT_CACHE = (1 << 4),          /* Runtime: object_cache is populated. */
   COLLECTION_IS_MASTER = (1 << 5), /* Is master collection embedded in the scene. */
+  COLLECTION_HAS_OBJECT_CACHE_INSTANCED = (1 << 4), /* for object_cache_instanced. */
 };
 
 /* Collection->tag */
