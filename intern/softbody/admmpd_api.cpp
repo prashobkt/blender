@@ -282,28 +282,6 @@ static inline int admmpd_init_as_cloth(ADMMPDInterfaceData *iface, Object *ob, f
   return 1;
 }
 
-// Given the mesh, options, and data, initializes the solver
-static inline int admmpd_reinit_solver(ADMMPDInterfaceData *iface)
-{
-  if (!iface) { return 0; }
-  if (!iface->idata) { return 0; }
-  if (!iface->idata->mesh) { return 0; }
-  if (!iface->idata->options) { return 0; }
-  if (!iface->idata->data) { return 0; }
-
-  try {
-    admmpd::Solver().init(
-      iface->idata->mesh.get(),
-      iface->idata->options.get(),
-      iface->idata->data.get());
-  }
-  catch(const std::exception &e) {
-    strcpy_error(iface, e.what());
-    return 0;
-  }
-  return 1;
-}
-
 int admmpd_mesh_needs_update(ADMMPDInterfaceData *iface, Object *ob)
 {
   if (!iface) { return 0; }

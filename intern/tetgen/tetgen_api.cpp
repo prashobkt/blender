@@ -25,34 +25,33 @@ void init_tetgenremeshdata(TetGenRemeshData *data)
 
 // Finds the largest edge length of the mesh and computes the volume
 // if that were an edge of a tet using (e^3 / (6*sqrt(2)))
-static float compute_maxvol(float *verts, unsigned int *faces, int num_faces)
-{
-    auto squared_norm = [](float *v0, float *v1)
-    {
-        return (v0[0]-v1[0])*(v0[0]-v1[0]) +
-            (v0[1]-v1[1])*(v0[1]-v1[1]) +
-            (v0[2]-v1[2])*(v0[2]-v1[2]);
-    };
-    float max_sq_edge_len = 0;
-    for (int i=0; i<num_faces; ++i)
-    {
-        unsigned int f[3] = {faces[i*3], faces[i*3+1], faces[i*3+2]};
-        float v0[3] = {verts[f[0]*3], verts[f[0]*3+1], verts[f[0]*3+2]};
-        float v1[3] = {verts[f[1]*3], verts[f[1]*3+1], verts[f[1]*3+2]};
-        float v2[3] = {verts[f[2]*3], verts[f[2]*3+1], verts[f[2]*3+2]};
-        float max_sq_e = std::max(std::max(
-            squared_norm(v0,v1),
-            squared_norm(v1,v2)),
-            squared_norm(v2,v0));
-
-        if( max_sq_e > max_sq_edge_len)
-            max_sq_edge_len = max_sq_e;
-    }
-
-    double e = std::sqrt(max_sq_edge_len);
-    return (e*e*e) / (6.f*std::sqrt(2.f));
-
-} // end compute maxvol
+//static float compute_maxvol(float *verts, unsigned int *faces, int num_faces)
+//{
+//    auto squared_norm = [](float *v0, float *v1)
+//    {
+//        return (v0[0]-v1[0])*(v0[0]-v1[0]) +
+//            (v0[1]-v1[1])*(v0[1]-v1[1]) +
+//            (v0[2]-v1[2])*(v0[2]-v1[2]);
+//    };
+//    float max_sq_edge_len = 0;
+//    for (int i=0; i<num_faces; ++i)
+//    {
+//        unsigned int f[3] = {faces[i*3], faces[i*3+1], faces[i*3+2]};
+//        float v0[3] = {verts[f[0]*3], verts[f[0]*3+1], verts[f[0]*3+2]};
+//        float v1[3] = {verts[f[1]*3], verts[f[1]*3+1], verts[f[1]*3+2]};
+//        float v2[3] = {verts[f[2]*3], verts[f[2]*3+1], verts[f[2]*3+2]};
+//        float max_sq_e = std::max(std::max(
+//            squared_norm(v0,v1),
+//            squared_norm(v1,v2)),
+//            squared_norm(v2,v0));
+//
+//        if( max_sq_e > max_sq_edge_len)
+//            max_sq_edge_len = max_sq_e;
+//    }
+//
+//    double e = std::sqrt(max_sq_edge_len);
+//    return (e*e*e) / (6.f*std::sqrt(2.f));
+//} // end compute maxvol
 
 static void make_tetgenio(
         float *verts,
@@ -101,11 +100,11 @@ static void make_tetgenio(
 bool tetgen_resmesh(TetGenRemeshData *tg)
 {
 //	float maxvol = compute_maxvol(tg->in_verts, tg->in_faces, tg->in_totfaces);
-    float quality = 1.4;
+//    float quality = 1.4;
 
 	// Set up the switches
 	std::stringstream switches;
-//	switches << "Q"; // quiet
+	switches << "Q"; // quiet
 //    switches << "a" << maxvol;
 //	if (quality>0)
 //        switches << "q" << quality;
