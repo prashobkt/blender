@@ -211,8 +211,8 @@ void OBJWriter::write_poly_normals(OBJMesh &obj_mesh_data) const
  * so. If the polygon is not shaded smooth, write "off".
  */
 void OBJWriter::write_smooth_group(const OBJMesh &obj_mesh_data,
-                                   int &r_last_face_smooth_group,
-                                   uint poly_index) const
+                                   const uint poly_index,
+                                   int &r_last_face_smooth_group) const
 {
   if (!export_params_.export_smooth_groups || !obj_mesh_data.tot_smooth_groups()) {
     return;
@@ -252,9 +252,9 @@ void OBJWriter::write_poly_material(const OBJMesh &obj_mesh_data,
   }
   const MPoly &mpoly = obj_mesh_data.get_ith_poly(poly_index);
   short mat_nr = mpoly.mat_nr;
-  /* Whenever a face with a new material is encountered, write its material and group, otherwise
+  /* Whenever a face with a new material is encountered, write its material and/or group, otherwise
    * pass. */
-  if (r_last_face_mat_nr == mat_nr) {
+  if (r_last_face_mat_nr != mat_nr) {
     const char *mat_name = obj_mesh_data.get_object_material_name(mat_nr + 1);
     if (export_params_.export_material_groups) {
       const char *object_name = obj_mesh_data.get_object_name();
@@ -271,8 +271,8 @@ void OBJWriter::write_poly_material(const OBJMesh &obj_mesh_data,
  * written.
  */
 void OBJWriter::write_vertex_group(const OBJMesh &obj_mesh_data,
-                                   short &last_face_vertex_group,
-                                   uint poly_index) const
+                                   const uint poly_index,
+                                   short &last_face_vertex_group) const
 {
   if (!export_params_.export_vertex_groups) {
     return;
@@ -337,8 +337,8 @@ void OBJWriter::write_poly_elements(const OBJMesh &obj_mesh_data,
     obj_mesh_data.calc_poly_normal_indices(i, normal_indices);
     const MPoly &poly_to_write = obj_mesh_data.get_ith_poly(i);
 
-    write_smooth_group(obj_mesh_data, last_face_smooth_group, i);
-    write_vertex_group(obj_mesh_data, last_face_vertex_group, i);
+    write_smooth_group(obj_mesh_data, i, last_face_smooth_group);
+    write_vertex_group(obj_mesh_data, i, last_face_vertex_group);
     write_poly_material(obj_mesh_data, i, last_face_mat_nr);
     (this->*func_vert_uv_normal_indices)(
         vertex_indices, uv_indices[i], normal_indices, poly_to_write);

@@ -152,7 +152,7 @@ uint OBJMesh::tot_vertices() const
 
 uint OBJMesh::tot_polygons() const
 {
-  return export_mesh_eval_->totface;
+  return export_mesh_eval_->totpoly;
 }
 
 uint OBJMesh::tot_uv_vertices() const
