@@ -33,17 +33,17 @@
 namespace blender::io::obj {
 class OBJNurbs : NonMovable, NonCopyable {
  private:
-  Depsgraph *depsgraph_;
-  Object *export_object_eval_;
-  Curve *export_curve_;
+  const Depsgraph *depsgraph_;
+  const Object *export_object_eval_;
+  const Curve *export_curve_;
 
  public:
   OBJNurbs(Depsgraph *depsgraph, Object *export_object);
 
-  const char *get_curve_name();
-  const ListBase *curve_nurbs();
-  void calc_point_coords(const Nurb *nurb, int vert_index, float r_coords[3]);
-  void get_curve_info(const Nurb *nurb, int &r_nurbs_degree, int &r_curv_num);
+  const char *get_curve_name() const;
+  const ListBase *curve_nurbs() const;
+  void calc_point_coords(const Nurb *nurb, int vert_index, float r_coords[3]) const;
+  void get_curve_info(const Nurb *nurb, int &r_nurbs_degree, int &r_curv_num) const;
 };
 
 }  // namespace blender::io::obj

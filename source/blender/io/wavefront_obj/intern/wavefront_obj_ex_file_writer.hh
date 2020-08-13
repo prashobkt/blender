@@ -60,33 +60,37 @@ class OBJWriter {
 
   bool init_writer(const char *filepath);
 
-  void write_object_name(OBJMesh &obj_mesh_data);
-  void write_mtllib(const char *obj_filepath);
-  void write_vertex_coords(OBJMesh &obj_mesh_data);
-  void write_uv_coords(OBJMesh &obj_mesh_data, Vector<Vector<uint>> &uv_indices);
-  void write_poly_normals(OBJMesh &obj_mesh_data);
-  void write_smooth_group(OBJMesh &obj_mesh_data, int &r_last_face_smooth_group, uint poly_index);
-  void write_poly_material(OBJMesh &obj_mesh_data, short &r_last_face_mat_nr, uint poly_index);
-  void write_vertex_group(OBJMesh &obj_mesh_data,
+  void write_object_name(const OBJMesh &obj_mesh_data) const;
+  void write_mtllib(const char *obj_filepath) const;
+  void write_vertex_coords(const OBJMesh &obj_mesh_data) const;
+  void write_uv_coords(OBJMesh &obj_mesh_data, Vector<Vector<uint>> &uv_indices) const;
+  void write_poly_normals(OBJMesh &obj_mesh_data) const;
+  void write_smooth_group(const OBJMesh &obj_mesh_data,
+                          int &r_last_face_smooth_group,
+                          uint poly_index) const;
+  void write_poly_material(const OBJMesh &obj_mesh_data,
+                           const uint poly_index,
+                           short &r_last_face_mat_nr) const;
+  void write_vertex_group(const OBJMesh &obj_mesh_data,
                           short &r_last_face_vertex_group,
-                          uint poly_index);
-  void write_poly_elements(OBJMesh &obj_mesh_data, Span<Vector<uint>> uv_indices);
-  void write_loose_edges(OBJMesh &obj_mesh_data);
-  void write_nurbs_curve(OBJNurbs &obj_nurbs_data);
+                          uint poly_index) const;
+  void write_poly_elements(const OBJMesh &obj_mesh_data, Span<Vector<uint>> uv_indices) const;
+  void write_loose_edges(const OBJMesh &obj_mesh_data) const;
+  void write_nurbs_curve(const OBJNurbs &obj_nurbs_data) const;
 
-  void update_index_offsets(OBJMesh &obj_mesh_data);
+  void update_index_offsets(const OBJMesh &obj_mesh_data);
 
  private:
-  void write_vert_indices(Span<uint> vert_indices, const MPoly &poly_to_write);
+  void write_vert_indices(Span<uint> vert_indices, const MPoly &poly_to_write) const;
   void write_vert_normal_indices(Span<uint> vert_indices,
                                  Span<uint> normal_indices,
-                                 const MPoly &poly_to_write);
+                                 const MPoly &poly_to_write) const;
   void write_vert_uv_indices(Span<uint> vert_indices,
                              Span<uint> uv_indices,
-                             const MPoly &poly_to_write);
+                             const MPoly &poly_to_write) const;
   void write_vert_uv_normal_indices(Span<uint> vert_indices,
                                     Span<uint> uv_indices,
                                     Span<uint> normal_indices,
-                                    const MPoly &poly_to_write);
+                                    const MPoly &poly_to_write) const;
 };
 }  // namespace blender::io::obj

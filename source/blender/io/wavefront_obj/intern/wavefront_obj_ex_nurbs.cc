@@ -40,12 +40,12 @@ OBJNurbs::OBJNurbs(Depsgraph *depsgraph, Object *export_object)
   export_curve_ = static_cast<Curve *>(export_object_eval_->data);
 }
 
-const char *OBJNurbs::get_curve_name()
+const char *OBJNurbs::get_curve_name() const
 {
   return export_object_eval_->id.name + 2;
 }
 
-const ListBase *OBJNurbs::curve_nurbs()
+const ListBase *OBJNurbs::curve_nurbs() const
 {
   return &export_curve_->nurb;
 }
@@ -53,8 +53,9 @@ const ListBase *OBJNurbs::curve_nurbs()
 /**
  * Get coordinates of a vertex at given point index.
  */
-void OBJNurbs::calc_point_coords(const Nurb *nurb, int vert_index, float r_coords[3])
+void OBJNurbs::calc_point_coords(const Nurb *nurb, const int vert_index, float r_coords[3]) const
 {
+  // TODO ankitm add world transform. 
   BPoint *bpoint = nurb->bp;
   bpoint += vert_index;
   copy_v3_v3(r_coords, bpoint->vec);
@@ -63,7 +64,7 @@ void OBJNurbs::calc_point_coords(const Nurb *nurb, int vert_index, float r_coord
 /**
  * Get nurbs' degree and number of "curv" points of a nurb.
  */
-void OBJNurbs::get_curve_info(const Nurb *nurb, int &r_nurbs_degree, int &r_curv_num)
+void OBJNurbs::get_curve_info(const Nurb *nurb, int &r_nurbs_degree, int &r_curv_num) const
 {
   r_nurbs_degree = nurb->orderu - 1;
   /* "curv_num" is the number of control points in a nurbs.

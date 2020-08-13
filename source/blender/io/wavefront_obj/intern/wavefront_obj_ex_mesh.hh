@@ -89,24 +89,24 @@ class OBJMesh : NonMovable, NonCopyable {
   uint tot_smooth_groups() const;
   int ith_smooth_group(int poly_index) const;
 
-  void ensure_mesh_normals();
-  void ensure_mesh_edges();
+  void ensure_mesh_normals() const;
+  void ensure_mesh_edges() const;
   void calc_smooth_groups();
-  Material *get_object_material(short mat_nr);
-  const MPoly &get_ith_poly(uint i);
+  const Material *get_object_material(const short mat_nr) const;
+  const MPoly &get_ith_poly(const uint i) const;
 
-  const char *get_object_name();
-  const char *get_object_data_name();
-  const char *get_object_material_name(short mat_nr);
+  const char *get_object_name() const;
+  const char *get_object_data_name() const;
+  const char *get_object_material_name(const short mat_nr) const;
 
-  void calc_vertex_coords(float r_coords[3], uint vert_index);
-  void calc_poly_vertex_indices(Vector<uint> &r_poly_vertex_indices, uint poly_index);
+  void calc_vertex_coords(const uint vert_index, float r_coords[3]) const;
+  void calc_poly_vertex_indices(const uint poly_index, Vector<uint> &r_poly_vertex_indices) const;
   void store_uv_coords_and_indices(Vector<std::array<float, 2>> &r_uv_coords,
                                    Vector<Vector<uint>> &r_uv_indices);
-  void calc_poly_normal(float r_poly_normal[3], uint poly_index);
-  void calc_vertex_normal(float r_vertex_normal[3], uint vert_index);
-  void calc_poly_normal_indices(Vector<uint> &r_normal_indices, uint poly_index);
-  const char *get_poly_deform_group_name(const MPoly &mpoly, short &r_last_vertex_group);
+  void calc_poly_normal(const uint poly_index, float r_poly_normal[3]) const;
+  void calc_vertex_normal(const uint vert_index, float r_vertex_normal[3]) const;
+  void calc_poly_normal_indices(const uint poly_index, Vector<uint> &r_normal_indices) const;
+  const char *get_poly_deform_group_name(const MPoly &mpoly, short &r_last_vertex_group) const;
   Array<int, 2> calc_edge_vert_indices(const uint edge_index) const;
 
  private:

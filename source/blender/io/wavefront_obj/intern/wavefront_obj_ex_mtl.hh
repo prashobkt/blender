@@ -37,25 +37,17 @@ class MTLWriter {
   /**
    * One of the object's materials, to be exported.
    */
-  Material *export_mtl_;
+  const Material *export_mtl_;
   /**
    * First Principled-BSDF node encountered in the object's node tree.
    */
   bNode *bsdf_node_;
 
  public:
-  MTLWriter(const char *obj_filepath)
-  {
-    BLI_strncpy(mtl_filepath_, obj_filepath, FILE_MAX);
-    BLI_path_extension_replace(mtl_filepath_, FILE_MAX, ".mtl");
-  }
+  MTLWriter(const char *obj_filepath);
+  ~MTLWriter();
 
-  ~MTLWriter()
-  {
-    fclose(mtl_outfile_);
-  }
-
-  void append_materials(OBJMesh &mesh_to_export);
+  void append_materials(const OBJMesh &mesh_to_export);
 
  private:
   void init_bsdf_node(const char *object_name);

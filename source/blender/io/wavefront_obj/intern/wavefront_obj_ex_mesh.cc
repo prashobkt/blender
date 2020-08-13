@@ -196,12 +196,12 @@ int OBJMesh::ith_smooth_group(int poly_index) const
   return poly_smooth_groups_[poly_index];
 }
 
-void OBJMesh::ensure_mesh_normals()
+void OBJMesh::ensure_mesh_normals() const
 {
   BKE_mesh_ensure_normals(export_mesh_eval_);
 }
 
-void OBJMesh::ensure_mesh_edges()
+void OBJMesh::ensure_mesh_edges() const
 {
   BKE_mesh_calc_edges(export_mesh_eval_, true, false);
   BKE_mesh_calc_edges_loose(export_mesh_eval_);
@@ -233,12 +233,12 @@ void OBJMesh::calc_smooth_groups()
 /**
  * Return mat_nr-th material of the object.
  */
-Material *OBJMesh::get_object_material(short mat_nr)
+const Material *OBJMesh::get_object_material(const short mat_nr) const
 {
   return BKE_object_material_get(export_object_eval_, mat_nr);
 }
 
-const MPoly &OBJMesh::get_ith_poly(uint i)
+const MPoly &OBJMesh::get_ith_poly(const uint i) const
 {
   return export_mesh_eval_->mpoly[i];
 }
@@ -246,7 +246,7 @@ const MPoly &OBJMesh::get_ith_poly(uint i)
 /**
  * Get object name as it appears in the outliner.
  */
-const char *OBJMesh::get_object_name()
+const char *OBJMesh::get_object_name() const
 {
   return export_object_eval_->id.name + 2;
 }
@@ -254,7 +254,7 @@ const char *OBJMesh::get_object_name()
 /**
  * Get object's mesh name.
  */
-const char *OBJMesh::get_object_data_name()
+const char *OBJMesh::get_object_data_name() const
 {
   return export_mesh_eval_->id.name + 2;
 }
@@ -262,7 +262,7 @@ const char *OBJMesh::get_object_data_name()
 /**
  * Get object's material (at the given index) name.
  */
-const char *OBJMesh::get_object_material_name(short mat_nr)
+const char *OBJMesh::get_object_material_name(short mat_nr) const
 {
   Material *mat = BKE_object_material_get(export_object_eval_, mat_nr);
   return mat->id.name + 2;
@@ -271,7 +271,7 @@ const char *OBJMesh::get_object_material_name(short mat_nr)
 /**
  * Calculate coordinates of a vertex at the given index.
  */
-void OBJMesh::calc_vertex_coords(float r_coords[3], uint vert_index)
+void OBJMesh::calc_vertex_coords(const uint vert_index, float r_coords[3]) const
 {
   copy_v3_v3(r_coords, export_mesh_eval_->mvert[vert_index].co);
   mul_m4_v3(world_and_axes_transform_, r_coords);
@@ -281,7 +281,8 @@ void OBJMesh::calc_vertex_coords(float r_coords[3], uint vert_index)
 /**
  * Calculate vertex indices of all vertices of a polygon at the given index.
  */
-void OBJMesh::calc_poly_vertex_indices(Vector<uint> &r_poly_vertex_indices, uint poly_index)
+void OBJMesh::calc_poly_vertex_indices(const uint poly_index,
+                                       Vector<uint> &r_poly_vertex_indices) const
 {
   const MPoly &mpoly = export_mesh_eval_->mpoly[poly_index];
   const MLoop *mloop = &export_mesh_eval_->mloop[mpoly.loopstart];
@@ -346,7 +347,7 @@ void OBJMesh::store_uv_coords_and_indices(Vector<std::array<float, 2>> &r_uv_coo
 /**
  * Calculate face normal of a polygon at given index.
  */
-void OBJMesh::calc_poly_normal(float r_poly_normal[3], uint poly_index)
+void OBJMesh::calc_poly_normal(const uint poly_index, float r_poly_normal[3]) const
 {
   const MPoly &poly_to_write = export_mesh_eval_->mpoly[poly_index];
   const MLoop &mloop = export_mesh_eval_->mloop[poly_to_write.loopstart];
@@ -360,7 +361,7 @@ void OBJMesh::calc_poly_normal(float r_poly_normal[3], uint poly_index)
  *
  * Should be used when a mesh is shaded smooth.
  */
-void OBJMesh::calc_vertex_normal(float r_vertex_normal[3], uint vert_index)
+void OBJMesh::calc_vertex_normal(const uint vert_index, float r_vertex_normal[3]) const
 {
   normal_short_to_float_v3(r_vertex_normal, export_mesh_eval_->mvert[vert_index].no);
   mul_mat3_m4_v3(world_and_axes_transform_, r_vertex_normal);
@@ -369,7 +370,7 @@ void OBJMesh::calc_vertex_normal(float r_vertex_normal[3], uint vert_index)
 /**
  * Calculate face normal indices of all vertices in a polygon.
  */
-void OBJMesh::calc_poly_normal_indices(Vector<uint> &r_normal_indices, uint poly_index)
+void OBJMesh::calc_poly_normal_indices(const uint poly_index, Vector<uint> &r_normal_indices) const
 {
   r_normal_indices.resize(export_mesh_eval_->mpoly[poly_index].totloop);
   if (export_params_.export_smooth_groups && tot_smooth_groups_ > 0) {
@@ -398,7 +399,8 @@ void OBJMesh::calc_poly_normal_indices(Vector<uint> &r_normal_indices, uint poly
  * \param r_last_vertex_group stores the index of the vertex group found in last iteration,
  * indexing into Object->defbase.
  */
-const char *OBJMesh::get_poly_deform_group_name(const MPoly &mpoly, short &r_last_vertex_group)
+const char *OBJMesh::get_poly_deform_group_name(const MPoly &mpoly,
+                                                short &r_last_vertex_group) const
 {
   const MLoop *mloop = &export_mesh_eval_->mloop[mpoly.loopstart];
   /* Indices of the vector index into deform groups of an object; values are the number of vertex

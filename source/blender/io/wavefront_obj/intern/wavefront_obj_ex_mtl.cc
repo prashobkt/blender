@@ -144,6 +144,18 @@ static const char *get_image_filepath(const bNode *tex_node)
   return nullptr;
 }
 
+MTLWriter::MTLWriter(const char *obj_filepath)
+{
+  BLI_strncpy(mtl_filepath_, obj_filepath, FILE_MAX);
+  BLI_path_extension_replace(mtl_filepath_, FILE_MAX, ".mtl");
+  /* File is opened when a material is to be appended. */
+}
+
+MTLWriter::~MTLWriter()
+{
+  fclose(mtl_outfile_);
+}
+
 /**
  * Find the Principled-BSDF from the object's node tree & initialise class member.
  */
@@ -314,7 +326,7 @@ void MTLWriter::write_curr_material(const char *object_name)
 /**
  * Append an object's materials to the .mtl file.
  */
-void MTLWriter::append_materials(OBJMesh &mesh_to_export)
+void MTLWriter::append_materials(const OBJMesh &mesh_to_export)
 {
   mtl_outfile_ = fopen(mtl_filepath_, "a");
   if (!mtl_outfile_) {
