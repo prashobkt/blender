@@ -21,6 +21,7 @@
  * \ingroup obj
  */
 
+#include "BKE_image.h"
 #include "BKE_material.h"
 #include "BKE_node.h"
 
@@ -129,17 +130,29 @@ static const bNode *get_node_of_type(Span<const nodes::OutputSocketRef *> socket
 
 /**
  * From a texture image shader node, get the image's filepath.
- * Filepath is the exact string the node contains, relative or absolute.
+ * Returned filepath is stripped of inital "//". If packed image is found,
+ * Only the leaf file name is given.
  */
 static const char *get_image_filepath(const bNode *tex_node)
 {
   if (tex_node) {
     Image *tex_image = reinterpret_cast<Image *>(tex_node->id);
-    if (tex_image) {
-      if (tex_image->filepath[0] != '\0') {
-        return tex_image->filepath;
-      }
+    if (!tex_image || !BKE_image_has_filepath(tex_image)) {
+      return nullptr;
     }
+    const char *path = tex_image->filepath;
+    if (BKE_image_has_packedfile(tex_image)) {
+      /* Put image in the same directory as the MTL file. */
+      path = BLI_path_slash_rfind(path) + 1;
+      fprintf(stderr,
+              "Packed image found:'%s'. Unpack and place the image in the same "
+              "directory as the MTL file.\n",
+              path);
+    }
+    if (path[0] == '/' && path[1] == '/') {
+      path += 2;
+    }
+    return path;
   }
   return nullptr;
 }
@@ -148,7 +161,7 @@ MTLWriter::MTLWriter(const char *obj_filepath)
 {
   BLI_strncpy(mtl_filepath_, obj_filepath, FILE_MAX);
   BLI_path_extension_replace(mtl_filepath_, FILE_MAX, ".mtl");
-  /* File is opened when a material is to be appended. */
+  /* File is opened when a material is appended. */
 }
 
 MTLWriter::~MTLWriter()
