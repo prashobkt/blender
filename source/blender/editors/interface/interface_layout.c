@@ -5177,6 +5177,11 @@ static void layout_free_and_hide_buttons(uiLayout *layout)
 
 static bool button_matches_search_filter(uiBut *but, char *search_filter)
 {
+  /* Do the shorter checks first, in case the check returns true. */
+  if (BLI_strcasestr(but->str, search_filter)) {
+    return true;
+  }
+
   if (but->optype != NULL) {
     if (BLI_strcasestr(but->optype->name, search_filter)) {
       return true;
@@ -5184,10 +5189,6 @@ static bool button_matches_search_filter(uiBut *but, char *search_filter)
   }
 
   if (but->rnaprop != NULL) {
-    /* Do the shorter checks first, in case the check returns true. */
-    if (BLI_strcasestr(but->str, search_filter)) {
-      return true;
-    }
     if (BLI_strcasestr(RNA_property_ui_name(but->rnaprop), search_filter)) {
       return true;
     }
@@ -5208,7 +5209,15 @@ static bool block_search_filter_tag_buttons(uiBlock *block)
 {
   bool has_result = false;
   LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
-    if (button_matches_search_filter(but, block->search_filter)) {
+    /* First match regular buttons. */
+    if (!ELEM(but->type, UI_BTYPE_LABEL) &&
+        button_matches_search_filter(but, block->search_filter)) {
+      has_result = true;
+      but->flag |= UI_SEARCH_FILTER_MATCHES;
+    }
+    /* Then match their labels. */
+    if (but->label_but != NULL &&
+        button_matches_search_filter(but->label_but, block->search_filter)) {
       has_result = true;
       but->flag |= UI_SEARCH_FILTER_MATCHES;
     }
