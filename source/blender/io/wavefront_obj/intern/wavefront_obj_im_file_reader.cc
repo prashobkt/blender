@@ -257,7 +257,7 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
                                 GlobalVertices &global_vertices)
 {
   if (!obj_file_.good()) {
-    fprintf(stderr, "Cannot read from file:%s.\n", import_params_.filepath);
+    fprintf(stderr, "Cannot read from OBJ file:%s.\n", import_params_.filepath);
     return;
   }
 
@@ -467,7 +467,7 @@ MTLParser::MTLParser(StringRef mtl_library, StringRefNull obj_filepath)
 void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
 {
   if (!mtl_file_.good()) {
-    fprintf(stderr, "Cannot read from file:%s\n", mtl_file_path_);
+    fprintf(stderr, "Cannot read from MTL file:%s\n", mtl_file_path_);
   }
 
   string line;

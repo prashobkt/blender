@@ -217,14 +217,14 @@ void ShaderNodetreeWrap::add_image_textures(Main *bmain)
       /* No Image texture node of this map type to add in this material. */
       continue;
     }
-    unique_node_ptr tex_node{add_node_to_tree(SH_NODE_TEX_IMAGE)};
-    unique_node_ptr vector_node{add_node_to_tree(SH_NODE_MAPPING)};
-    unique_node_ptr normal_map_node = nullptr;
+    unique_node_ptr image_texture{add_node_to_tree(SH_NODE_TEX_IMAGE)};
+    unique_node_ptr mapping{add_node_to_tree(SH_NODE_MAPPING)};
     unique_node_ptr texture_coordinate(add_node_to_tree(SH_NODE_TEX_COORD));
+    unique_node_ptr normal_map = nullptr;
     if (texture_map.key == "map_Bump") {
-      normal_map_node.reset(add_node_to_tree(SH_NODE_NORMAL_MAP));
+      normal_map.reset(add_node_to_tree(SH_NODE_NORMAL_MAP));
       set_property_of_socket(
-          SOCK_FLOAT, "Strength", {mtl_mat_->map_Bump_strength}, normal_map_node.get());
+          SOCK_FLOAT, "Strength", {mtl_mat_->map_Bump_strength}, normal_map.get());
     }
 
     if (!set_img_filepath(bmain, texture_map.value, image_texture.get())) {
@@ -232,17 +232,18 @@ void ShaderNodetreeWrap::add_image_textures(Main *bmain)
       continue;
     }
     set_property_of_socket(
-        SOCK_VECTOR, "Location", {texture_map.value.translation, 3}, vector_node.get());
-    set_property_of_socket(SOCK_VECTOR, "Scale", {texture_map.value.scale, 3}, vector_node.get());
+        SOCK_VECTOR, "Location", {texture_map.value.translation, 3}, mapping.get());
+    set_property_of_socket(SOCK_VECTOR, "Scale", {texture_map.value.scale, 3}, mapping.get());
 
-    link_sockets(std::move(vector_node), "Vector", tex_node.get(), "Vector");
-    if (normal_map_node) {
-      link_sockets(std::move(tex_node), "Color", normal_map_node.get(), "Color");
-      link_sockets(std::move(normal_map_node), "Normal", bsdf_.get(), "Normal");
     link_sockets(std::move(texture_coordinate), "UV", mapping.get(), "Vector");
+    link_sockets(std::move(mapping), "Vector", image_texture.get(), "Vector");
+    if (normal_map) {
+      link_sockets(std::move(image_texture), "Color", normal_map.get(), "Color");
+      link_sockets(std::move(normal_map), "Normal", bsdf_.get(), "Normal");
     }
     else {
-      link_sockets(std::move(tex_node), "Color", bsdf_.get(), texture_map.value.dest_socket_id);
+      link_sockets(
+          std::move(image_texture), "Color", bsdf_.get(), texture_map.value.dest_socket_id);
     }
   }
 }
