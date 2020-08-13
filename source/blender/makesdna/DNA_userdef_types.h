@@ -497,7 +497,7 @@ typedef struct bTheme {
   ThemeWireColor tarm[20];
   /*ThemeWireColor tobj[20];*/
 
-  ThemeCollectionColor collection_color[10];
+  ThemeCollectionColor collection_color[8];
 
   int active_theme_area;
   char _pad0[4];
