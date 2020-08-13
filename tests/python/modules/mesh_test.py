@@ -54,7 +54,7 @@ print = functools.partial(print, flush=True)
 
 class ModifierSpec:
     """
-    Holds one modifier and its parameters.
+    Holds a Generate or Deform or Physics modifier type and its parameters.
     """
 
     def __init__(self, modifier_name: str, modifier_type: str, modifier_parameters: dict, frame_end=0):
@@ -125,7 +125,8 @@ class OperatorSpec:
 
 class ObjectOperatorSpec:
     """
-    Holds an object operator and its parameters.
+    Holds an object operator and its parameters. Helper class for DeformModifierSpec.
+    Needed to support operations in Object Mode and not Edit Mode which is supported by OperatorSpec.
     """
 
     def __init__(self, operator_name: str, operator_parameters: dict):
@@ -143,21 +144,22 @@ class ObjectOperatorSpec:
 
 class DeformModifierSpec:
     """
-    Holds a modifier and object operator.
+    Holds a list of deform modifier and ObjectOperatorSpec.
+    For deform modifiers which have an object operator
     """
-    def __init__(self, frame_number: int, modifier_list: list, obj_operator_spec: ObjectOperatorSpec = None):
+    def __init__(self, frame_number: int, modifier_list: list, object_operator_spec: ObjectOperatorSpec = None):
         """
         Constructs a Deform Modifier spec (for user input)
         :param frame_number: int - the frame at which animated keyframe is inserted
-        :param modifier_spec: ModifierSpec - contains modifiers
-        :param obj_operator_spec: ObjectOperatorSpec - contains object operators
+        :param modifier_list: ModifierSpec - contains modifiers
+        :param object_operator_spec: ObjectOperatorSpec - contains object operators
         """
         self.frame_number = frame_number
         self.modifier_list = modifier_list
-        self.obj_operator_spec = obj_operator_spec
+        self.object_operator_spec = object_operator_spec
 
     def __str__(self):
-        return "Modifier: " + str(self.modifier_list) + " with object operator " + str(self.obj_operator_spec)
+        return "Modifier: " + str(self.modifier_list) + " with object operator " + str(self.object_operator_spec)
 
 
 class MeshTest:
@@ -171,6 +173,7 @@ class MeshTest:
         """
         Constructs a MeshTest object. Raises a KeyError if objects with names expected_object_name
         or test_object_name don't exist.
+        :param test_name: str - unique test name identifier.
         :param test_object: str - Name of object of mesh type to run the operations on.
         :param expected_object: str - Name of object of mesh type that has the expected
                                 geometry after running the operations.
@@ -178,8 +181,8 @@ class MeshTest:
         :param apply_modifier: bool - True if we want to apply the modifiers right after adding them to the object.
                                     - True if we want to apply the modifier to a list of modifiers, after some operation.
                                This affects operations of type ModifierSpec and DeformModifierSpec.
+        :param threshold : exponent: To allow variations and accept difference to a certain degree.
 
-        :param test_name: str - unique test name identifier.
         """
         if operations_stack is None:
             operations_stack = []
@@ -226,7 +229,7 @@ class MeshTest:
         objects = bpy.data.objects
         self.expected_object = objects[expected_object_name]
 
-    def add_modifier(self, modifier_spec: ModifierSpec):
+    def add_modifier_to_stack(self, modifier_spec: ModifierSpec):
         """
         Add a modifier to the operations stack.
         :param modifier_spec: modifier to add to the operations stack
@@ -235,7 +238,7 @@ class MeshTest:
         if self.verbose:
             print("Added modifier {}".format(modifier_spec))
 
-    def add_operator(self, operator_spec: OperatorSpec):
+    def add_operator_to_stack(self, operator_spec: OperatorSpec):
         """
         Adds an operator to the operations stack.
         :param operator_spec: OperatorSpec - operator to add to the operations stack.
@@ -320,7 +323,7 @@ class MeshTest:
 
     def set_parameters(self, modifier, modifier_parameters):
         """
-        Outer interface for _set_parameters_util
+        Wrapper for _set_parameters_util
         """
         settings = []
         modifier_copy = modifier
@@ -461,8 +464,6 @@ class MeshTest:
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_mode(type=operator.select_mode)
         mesh_operator = getattr(bpy.ops.mesh, operator.operator_name)
-        if not mesh_operator:
-            raise AttributeError("No mesh operator {}".format(operator.operator_name))
         retval = mesh_operator(**operator.operator_parameters)
         if retval != {'FINISHED'}:
             raise RuntimeError("Unexpected operator return value: {}".format(retval))
@@ -478,30 +479,29 @@ class MeshTest:
         bpy.ops.object.mode_set(mode='OBJECT')
         object_operator = getattr(bpy.ops.object, operator.operator_name)
         retval = object_operator(**operator.operator_parameters)
-        print(retval)
-        if not object_operator:
-            raise AttributeError("No object operator {} found!".format(operator.operator_name))
-
         if retval != {'FINISHED'}:
             raise RuntimeError("Unexpected operator return value: {}".format(retval))
         if self.verbose:
             print("Applied operator {}".format(operator))
 
-    def _apply_modifier_operator(self, test_object, operation):
+    def _apply_deform_modifier(self, test_object, operation: list):
+        """
+        param: operation: list: List of modifiers or combination of modifier and object operator.
+        """
 
         scene = bpy.context.scene
         scene.frame_set(1)
         bpy.ops.object.mode_set(mode='OBJECT')
-        mod_ops_list = operation.modifier_list
+        modifier_operations_list = operation.modifier_list
         modifier_names = []
-        ops_ops = operation.obj_operator_spec
-        for mod_ops in mod_ops_list:
-            if isinstance(mod_ops, ModifierSpec):
-                self._add_modifier(test_object, mod_ops)
-                modifier_names.append(mod_ops.modifier_name)
+        object_operations = operation.object_operator_spec
+        for modifier_operations in modifier_operations_list:
+            if isinstance(modifier_operations, ModifierSpec):
+                self._add_modifier(test_object, modifier_operations)
+                modifier_names.append(modifier_operations.modifier_name)
 
-        if isinstance(ops_ops, ObjectOperatorSpec):
-            self._apply_object_operator(ops_ops)
+        if isinstance(object_operations, ObjectOperatorSpec):
+            self._apply_object_operator(object_operations)
 
         print("NAME", list(test_object.modifiers))
 
@@ -547,7 +547,7 @@ class MeshTest:
                 self._apply_object_operator(operation)
 
             elif isinstance(operation, DeformModifierSpec):
-                self._apply_modifier_operator(evaluated_test_object, operation)
+                self._apply_deform_modifier(evaluated_test_object, operation)
 
             elif isinstance(operation, ParticleSystemSpec):
                 self._apply_particle_system(evaluated_test_object, operation)
@@ -614,11 +614,11 @@ class OperatorTest:
              7) operator_parameters: dict - {name : val} dictionary containing operator parameters.
         """
         self.operator_tests = operator_tests
-        self._check_for_unique()
+        self._check_for_unique_test_name()
         self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
         self._failed_tests_list = []
 
-    def _check_for_unique(self):
+    def _check_for_unique_test_name(self):
         """
         Check if the test name is unique
         """
@@ -639,6 +639,8 @@ class OperatorTest:
         :param test_name: str - name of test
         :return: bool - True if test is successful. False otherwise.
         """
+        if len(case) != 7:
+            raise ValueError("Expected exactly 7 parameters for each test case, got {}".format(len(case)))
         case = self.operator_tests[0]
         len_test = len(self.operator_tests)
         count = 0
@@ -650,8 +652,6 @@ class OperatorTest:
         if count == len_test:
             raise Exception("No test {} found!".format(test_name))
 
-        if len(case) != 7:
-            raise ValueError("Expected exactly 7 parameters for each test case, got {}".format(len(case)))
         select_mode = case[0]
         selection = case[1]
         test_name = case[2]
@@ -663,7 +663,7 @@ class OperatorTest:
         operator_spec = OperatorSpec(operator_name, operator_parameters, select_mode, selection)
 
         test = MeshTest(test_name, test_object_name, expected_object_name)
-        test.add_operator(operator_spec)
+        test.add_operator_to_stack(operator_spec)
 
         success = test.run_test()
         if test.is_test_updated():
@@ -729,13 +729,13 @@ class ModifierTest:
         """
 
         self.modifier_tests = modifier_tests
-        self._check_for_unique()
+        self._check_for_unique_test_name()
         self.apply_modifiers = apply_modifiers
         self.threshold = threshold
         self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
         self._failed_tests_list = []
 
-    def _check_for_unique(self):
+    def _check_for_unique_test_name(self):
         """
         Check if the test name is unique
         """
@@ -756,6 +756,8 @@ class ModifierTest:
         :param test_name: str - name of test
         :return: bool - True if test passed, False otherwise.
         """
+        if len(case) != 4:
+            raise ValueError("Expected exactly 4 parameters for each test case, got {}".format(len(case)))
         case = self.modifier_tests[0]
         len_test = len(self.modifier_tests)
         count = 0
@@ -767,9 +769,6 @@ class ModifierTest:
         if count == len_test:
             raise Exception("No test {} found!".format(test_name))
 
-        if len(case) != 4:
-            print(len(case))
-            raise ValueError("Expected exactly 4 parameters for each test case, got {}".format(len(case)))
         test_name = case[0]
         test_object_name = case[1]
         expected_object_name = case[2]
@@ -780,7 +779,7 @@ class ModifierTest:
             test.apply_modifier = True
 
         for modifier_spec in spec_list:
-            test.add_modifier(modifier_spec)
+            test.add_modifier_to_stack(modifier_spec)
 
         success = test.run_test()
         if test.is_test_updated():
@@ -836,19 +835,20 @@ class DeformModifierTest:
     >>> deform_test.run_all_tests()
     """
 
-    def __init__(self, deform_tests: list, apply_modifiers=False, threshold=None):
+    def __init__(self, deform_tests: list, apply_modifiers=False):
         """
         Construct a deform modifier test.
         Each test is made up of a MeshTest Class with its parameters
+        :param: deform_test: list: List of modifiers can be added.
+                                 Tt consists of a ModifierSpec and ObjectOperatorSpec
         """
         self.deform_tests = deform_tests
-        self._check_for_unique()
+        self._check_for_unique_test_name()
         self.apply_modifiers = apply_modifiers
-        self.threshold = threshold
         self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
         self._failed_tests_list = []
 
-    def _check_for_unique(self):
+    def _check_for_unique_test_name(self):
         """
         Check if the test name is unique
         """
