@@ -5,6 +5,7 @@
 
 #include <limits>
 #include <functional>
+#include <thread>
 //#include <omp.h>
 
 using namespace Eigen;
@@ -16,7 +17,7 @@ MeshDistance::MeshDistance(TriangleMesh const& mesh, bool precompute_normals)
 	: m_bsh(mesh.vertex_data(), mesh.face_data()), m_mesh(mesh), thread_map(nullptr)
 	, m_precomputed_normals(precompute_normals)
 {
-	auto max_threads = omp_get_max_threads();
+	auto max_threads = std::max(1,(int)std::thread::hardware_concurrency());
 	m_queues.resize(max_threads);
 	m_nearest_face.resize(max_threads);
 	m_cache.resize(max_threads, FunctionValueCache([&](Vector3d const& xi){ return signedDistance(xi);}, 10000u));
