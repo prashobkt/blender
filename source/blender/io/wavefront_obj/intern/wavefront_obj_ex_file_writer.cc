@@ -55,6 +55,7 @@ void OBJWriter::write_vert_uv_normal_indices(Span<uint> vert_indices,
  * Write one line of polygon indices as f v1//vn1 v2//vn2 ... .
  */
 void OBJWriter::write_vert_normal_indices(Span<uint> vert_indices,
+                                          Span<uint> uv_indices,
                                           Span<uint> normal_indices,
                                           const MPoly &poly_to_write) const
 {
@@ -73,6 +74,7 @@ void OBJWriter::write_vert_normal_indices(Span<uint> vert_indices,
  */
 void OBJWriter::write_vert_uv_indices(Span<uint> vert_indices,
                                       Span<uint> uv_indices,
+                                      Span<uint> normal_indices,
                                       const MPoly &poly_to_write) const
 {
   fprintf(outfile_, "f");
@@ -88,7 +90,10 @@ void OBJWriter::write_vert_uv_indices(Span<uint> vert_indices,
 /**
  *  Write one line of polygon indices as f v1 v2 ... .
  */
-void OBJWriter::write_vert_indices(Span<uint> vert_indices, const MPoly &poly_to_write) const
+void OBJWriter::write_vert_indices(Span<uint> vert_indices,
+                                   Span<uint> uv_indices,
+                                   Span<uint> normal_indices,
+                                   const MPoly &poly_to_write) const
 {
   fprintf(outfile_, "f");
   for (uint j = 0; j < poly_to_write.totloop; j++) {
@@ -302,59 +307,41 @@ void OBJWriter::write_poly_elements(const OBJMesh &obj_mesh_data,
   /* -1 has no significant value, it could have been any negative number. */
   short last_face_mat_nr = -1;
 
+  void (OBJWriter::*func_vert_uv_normal_indices)(Span<uint> vert_indices,
+                                                 Span<uint> uv_indices,
+                                                 Span<uint> normal_indices,
+                                                 const MPoly &poly_to_write) const = nullptr;
   if (export_params_.export_normals) {
     if (export_params_.export_uv && (obj_mesh_data.tot_uv_vertices() > 0)) {
       /* Write both normals and UV indices. */
-      for (uint i = 0; i < obj_mesh_data.tot_polygons(); i++) {
-        obj_mesh_data.calc_poly_vertex_indices(i, vertex_indices);
-        obj_mesh_data.calc_poly_normal_indices(i, normal_indices);
-        const MPoly &poly_to_write = obj_mesh_data.get_ith_poly(i);
-
-        write_smooth_group(obj_mesh_data, last_face_smooth_group, i);
-        write_vertex_group(obj_mesh_data, last_face_vertex_group, i);
-        write_poly_material(obj_mesh_data, i, last_face_mat_nr);
-        write_vert_uv_normal_indices(vertex_indices, uv_indices[i], normal_indices, poly_to_write);
-      }
+      func_vert_uv_normal_indices = &OBJWriter::write_vert_uv_normal_indices;
     }
     else {
       /* Write normals indices. */
-      for (uint i = 0; i < obj_mesh_data.tot_polygons(); i++) {
-        obj_mesh_data.calc_poly_vertex_indices(i, vertex_indices);
-        obj_mesh_data.calc_poly_normal_indices(i, normal_indices);
-        const MPoly &poly_to_write = obj_mesh_data.get_ith_poly(i);
-
-        write_smooth_group(obj_mesh_data, last_face_smooth_group, i);
-        write_vertex_group(obj_mesh_data, last_face_vertex_group, i);
-        write_poly_material(obj_mesh_data, i, last_face_mat_nr);
-        write_vert_normal_indices(vertex_indices, normal_indices, poly_to_write);
-      }
+      func_vert_uv_normal_indices = &OBJWriter::write_vert_normal_indices;
     }
   }
   else {
     /* Write UV indices. */
     if (export_params_.export_uv && (obj_mesh_data.tot_uv_vertices() > 0)) {
-      for (uint i = 0; i < obj_mesh_data.tot_polygons(); i++) {
-        obj_mesh_data.calc_poly_vertex_indices(i, vertex_indices);
-        const MPoly &poly_to_write = obj_mesh_data.get_ith_poly(i);
-
-        write_smooth_group(obj_mesh_data, last_face_smooth_group, i);
-        write_vertex_group(obj_mesh_data, last_face_vertex_group, i);
-        write_poly_material(obj_mesh_data, i, last_face_mat_nr);
-        write_vert_uv_indices(vertex_indices, uv_indices[i], poly_to_write);
-      }
+      func_vert_uv_normal_indices = &OBJWriter::write_vert_uv_indices;
     }
     else {
       /* Write neither normals nor UV indices. */
-      for (uint i = 0; i < obj_mesh_data.tot_polygons(); i++) {
-        obj_mesh_data.calc_poly_vertex_indices(i, vertex_indices);
-        const MPoly &poly_to_write = obj_mesh_data.get_ith_poly(i);
-
-        write_smooth_group(obj_mesh_data, last_face_smooth_group, i);
-        write_vertex_group(obj_mesh_data, last_face_vertex_group, i);
-        write_poly_material(obj_mesh_data, i, last_face_mat_nr);
-        write_vert_indices(vertex_indices, poly_to_write);
-      }
+      func_vert_uv_normal_indices = &OBJWriter::write_vert_indices;
     }
+  }
+
+  for (uint i = 0; i < obj_mesh_data.tot_polygons(); i++) {
+    obj_mesh_data.calc_poly_vertex_indices(i, vertex_indices);
+    obj_mesh_data.calc_poly_normal_indices(i, normal_indices);
+    const MPoly &poly_to_write = obj_mesh_data.get_ith_poly(i);
+
+    write_smooth_group(obj_mesh_data, last_face_smooth_group, i);
+    write_vertex_group(obj_mesh_data, last_face_vertex_group, i);
+    write_poly_material(obj_mesh_data, i, last_face_mat_nr);
+    (this->*func_vert_uv_normal_indices)(
+        vertex_indices, uv_indices[i], normal_indices, poly_to_write);
   }
 }
 

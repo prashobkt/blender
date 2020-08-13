@@ -70,21 +70,15 @@ OBJMesh::OBJMesh(Depsgraph *depsgraph, const OBJExportParams &export_params, Obj
       if (export_params_.export_triangulated_mesh) {
         triangulate_mesh_eval();
       }
-      tot_poly_normals_ = export_mesh_eval_->totpoly;
-      if (tot_poly_normals_ <= 0) {
-        tot_poly_normals_ = 0;
-      }
       break;
     }
     case OB_CURVE: {
-      tot_poly_normals_ = 0;
       break;
     }
     default: {
       break;
     }
   }
-  tot_vertices_ = export_mesh_eval_->totvert;
   store_world_axes_transform();
 }
 
@@ -153,12 +147,12 @@ void OBJMesh::store_world_axes_transform()
 
 uint OBJMesh::tot_vertices() const
 {
-  return tot_vertices_;
+  return export_mesh_eval_->totvert;
 }
 
 uint OBJMesh::tot_polygons() const
 {
-  return tot_poly_normals_;
+  return export_mesh_eval_->totface;
 }
 
 uint OBJMesh::tot_uv_vertices() const
@@ -325,7 +319,7 @@ void OBJMesh::store_uv_coords_and_indices(Vector<std::array<float, 2>> &r_uv_coo
       if (uv_vert->separate) {
         tot_uv_vertices_ += 1;
       }
-      if (UNLIKELY(tot_uv_vertices_ == 0)) {
+      if (tot_uv_vertices_ == 0) {
         return;
       }
       const uint vertices_in_poly = (uint)mpoly[uv_vert->poly_index].totloop;

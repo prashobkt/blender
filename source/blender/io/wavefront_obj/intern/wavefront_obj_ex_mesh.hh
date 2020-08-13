@@ -57,14 +57,6 @@ class OBJMesh : NonMovable, NonCopyable {
   float world_and_axes_transform_[4][4] = {};
 
   /**
-   * Total vertices in a mesh.
-   */
-  uint tot_vertices_ = 0;
-  /**
-   * Total polygons (and thus normals) in a mesh.
-   */
-  uint tot_poly_normals_ = 0;
-  /**
    * Total UV vertices in a mesh's texture map.
    */
   uint tot_uv_vertices_ = 0;
