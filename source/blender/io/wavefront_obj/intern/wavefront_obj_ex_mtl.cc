@@ -45,7 +45,6 @@ static void copy_property_from_node(MutableSpan<float> r_property,
                                     const bNode *curr_node,
                                     const char *identifier)
 {
-  BLI_assert(curr_node);
   if (!curr_node) {
     return;
   }

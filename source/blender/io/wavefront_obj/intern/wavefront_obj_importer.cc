@@ -72,7 +72,7 @@ void OBJParser::print_obj_data(Span<std::unique_ptr<Geometry>> all_geometries,
       printf("\n");
     }
     printf("\nvert_index/uv_vert_index^\n");
-    for (StringRef b : curr_ob->material_name_) {
+    for (StringRef b : curr_ob->material_names_) {
       printf("%s ", b.data());
     }
     printf("\nmat names^\n");

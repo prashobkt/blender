@@ -193,13 +193,14 @@ void MeshFromGeometry::create_uv_verts()
 void MeshFromGeometry::create_materials(Main *bmain,
                                         const Map<std::string, MTLMaterial> &materials)
 {
-  for (const Map<std::string, MTLMaterial>::Item &curr_mat : materials.items()) {
+  for (StringRef material_name : mesh_geometry_.material_names()) {
+    const MTLMaterial &curr_mat = materials.lookup_as(material_name);
     BKE_object_material_slot_add(bmain, blender_object_.get());
-    Material *mat = BKE_material_add(bmain, curr_mat.key.c_str());
+    Material *mat = BKE_material_add(bmain, material_name.data());
     BKE_object_material_assign(
         bmain, blender_object_.get(), mat, blender_object_.get()->totcol, BKE_MAT_ASSIGN_USERPREF);
 
-    ShaderNodetreeWrap mat_wrap{bmain, curr_mat.value};
+    ShaderNodetreeWrap mat_wrap{bmain, curr_mat};
     mat->use_nodes = true;
     mat->nodetree = mat_wrap.get_nodetree();
   }

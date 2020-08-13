@@ -114,7 +114,7 @@ class Geometry {
  private:
   eGeometryType geom_type_ = GEOM_MESH;
   std::string geometry_name_{};
-  Vector<std::string> material_name_{};
+  Vector<std::string> material_names_{};
   /**
    * Indices in the vector range from zero to total vertices in a geomery.
    * Values range from zero to total coordinates in the global list.
@@ -147,6 +147,8 @@ class Geometry {
   int tot_loops() const;
   int tot_normals() const;
 
+  Span<std::string> material_names() const;
+
   const NurbsElement &nurbs_elem() const;
   const std::string &group() const;
 
@@ -164,6 +166,7 @@ struct tex_map_XX {
   float3 translation = {0.0f, 0.0f, 0.0f};
   float3 scale = {1.0f, 1.0f, 1.0f};
   std::string image_path{};
+  std::string mtl_dir_path;
 };
 
 /**

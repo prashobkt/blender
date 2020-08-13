@@ -436,7 +436,7 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
       /* Curves mark their end this way. */
     }
     else if (line_key == "usemtl") {
-      current_geometry->material_name_.append(string(rest_line));
+      current_geometry->material_names_.append(string(rest_line));
     }
   }
 }
@@ -452,11 +452,12 @@ Span<std::string> OBJParser::mtl_libraries() const
 /**
  * Open material library file.
  */
-MTLParser::MTLParser(StringRef mtl_library, StringRefNull obj_filepath) : mtl_library_(mtl_library)
+MTLParser::MTLParser(StringRef mtl_library, StringRefNull obj_filepath)
 {
   char obj_file_dir[FILE_MAXDIR];
   BLI_split_dir_part(obj_filepath.data(), obj_file_dir, FILE_MAXDIR);
-  BLI_path_join(mtl_file_path_, FILE_MAX, obj_file_dir, mtl_library_.data(), NULL);
+  BLI_path_join(mtl_file_path_, FILE_MAX, obj_file_dir, mtl_library.data(), NULL);
+  BLI_split_dir_part(mtl_file_path_, mtl_dir_path_, FILE_MAXDIR);
   mtl_file_.open(mtl_file_path_);
 }
 
@@ -519,7 +520,7 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
         /* No supported texture map found. */
         continue;
       }
-      tex_map_XX &tex_map = current_mtlmaterial->texture_maps.lookup(string(rest_line));
+      tex_map_XX &tex_map = current_mtlmaterial->texture_maps.lookup(string(line_key));
       Vector<string_view> str_map_xx_split{};
       split_by_char(rest_line, ' ', str_map_xx_split);
 
@@ -547,6 +548,7 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
       }
 
       tex_map.image_path = str_map_xx_split.last();
+      tex_map.mtl_dir_path = mtl_dir_path_;
     }
   }
 }

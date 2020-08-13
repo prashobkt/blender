@@ -109,6 +109,11 @@ int Geometry::tot_normals() const
   return tot_normals_;
 }
 
+Span<std::string> Geometry::material_names() const
+{
+  return material_names_;
+}
+
 const NurbsElement &Geometry::nurbs_elem() const
 {
   return nurbs_element_;

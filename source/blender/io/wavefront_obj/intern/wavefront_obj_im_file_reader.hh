@@ -46,8 +46,8 @@ class OBJParser {
 
 class MTLParser {
  private:
-  StringRef mtl_library_;
-  char mtl_file_path_[FILE_MAX]{};
+  char mtl_file_path_[FILE_MAX];
+  char mtl_dir_path_[FILE_MAX];
   std::ifstream mtl_file_;
 
  public:

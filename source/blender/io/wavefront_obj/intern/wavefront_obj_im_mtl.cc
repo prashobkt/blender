@@ -90,24 +90,31 @@ static std::string replace_all_occurences(StringRef path, StringRef to_remove, S
  * Load image for Image Texture node.
  * Return success if Image can be loaded successfully.
  */
-static bool set_img_filepath(Main *bmain, StringRef value, bNode *r_node)
+static bool set_img_filepath(Main *bmain, const tex_map_XX &tex_map, bNode *r_node)
 {
   BLI_assert(r_node);
-  Image *tex_image = BKE_image_load(bmain, value.data());
+  std::string tex_file_path{tex_map.mtl_dir_path + tex_map.image_path};
+  Image *tex_image = BKE_image_load(bmain, tex_file_path.c_str());
   if (!tex_image) {
-    fprintf(stderr, "Cannot load image file:'%s'", value.data());
+    /* Could be absolute, so load the image directly. */
+    fprintf(stderr, "Cannot load image file:'%s'\n", tex_file_path.c_str());
+    tex_image = BKE_image_load(bmain, tex_map.image_path.c_str());
+  }
+  if (!tex_image) {
+    fprintf(stderr, "Cannot load image file:'%s'\n", tex_map.image_path.c_str());
     /* Remove quotes from the filename which has now been added to filepath. */
-    std::string no_quote_path{replace_all_occurences(value, "\"", "")};
+    std::string no_quote_path{replace_all_occurences(tex_file_path, "\"", "")};
     tex_image = BKE_image_load(nullptr, no_quote_path.c_str());
-    fprintf(stderr, "Cannot load image file:'%s'", no_quote_path.data());
+    fprintf(stderr, "Cannot load image file:'%s'\n", no_quote_path.data());
     if (!tex_image) {
       std::string no_underscore_path{replace_all_occurences(no_quote_path, "_", " ")};
       tex_image = BKE_image_load(nullptr, no_underscore_path.c_str());
-      fprintf(stderr, "Cannot load image file:'%s'", no_underscore_path.data());
+      fprintf(stderr, "Cannot load image file:'%s'\n", no_underscore_path.data());
     }
   }
   BLI_assert(tex_image);
-  if (!tex_image) {
+  if (tex_image) {
+    fprintf(stderr, "Loaded image from:'%s'\n", tex_image->filepath);
     r_node->id = reinterpret_cast<ID *>(tex_image);
     return true;
   }
@@ -187,8 +194,10 @@ void ShaderNodetreeWrap::link_sockets(unique_node_ptr from_node,
  */
 void ShaderNodetreeWrap::set_bsdf_socket_values()
 {
-  set_property_of_socket(SOCK_FLOAT, "Specular", {mtl_mat_->Ns}, bsdf_.get());
-  /* Only one value is taken for Metallic. */
+  const float specular_exponent{1 - sqrt(mtl_mat_->Ns) / 30};
+  set_property_of_socket(SOCK_FLOAT, "Roughness", {specular_exponent}, bsdf_.get());
+  /* Only one value is taken for Metallic and Specular. */
+  set_property_of_socket(SOCK_FLOAT, "Specular", {mtl_mat_->Ks[0]}, bsdf_.get());
   set_property_of_socket(SOCK_FLOAT, "Metallic", {mtl_mat_->Ka[0]}, bsdf_.get());
   set_property_of_socket(SOCK_FLOAT, "IOR", {mtl_mat_->Ni}, bsdf_.get());
   set_property_of_socket(SOCK_FLOAT, "Alpha", {mtl_mat_->d}, bsdf_.get());
@@ -202,7 +211,8 @@ void ShaderNodetreeWrap::set_bsdf_socket_values()
  */
 void ShaderNodetreeWrap::add_image_textures(Main *bmain)
 {
-  for (const Map<std::string, tex_map_XX>::Item texture_map : mtl_mat_->texture_maps.items()) {
+  for (const Map<std::string, tex_map_XX>::Item &texture_map : mtl_mat_->texture_maps.items()) {
+
     if (texture_map.value.image_path.empty()) {
       /* No Image texture node of this map type to add in this material. */
       continue;
@@ -210,13 +220,14 @@ void ShaderNodetreeWrap::add_image_textures(Main *bmain)
     unique_node_ptr tex_node{add_node_to_tree(SH_NODE_TEX_IMAGE)};
     unique_node_ptr vector_node{add_node_to_tree(SH_NODE_MAPPING)};
     unique_node_ptr normal_map_node = nullptr;
+    unique_node_ptr texture_coordinate(add_node_to_tree(SH_NODE_TEX_COORD));
     if (texture_map.key == "map_Bump") {
       normal_map_node.reset(add_node_to_tree(SH_NODE_NORMAL_MAP));
       set_property_of_socket(
           SOCK_FLOAT, "Strength", {mtl_mat_->map_Bump_strength}, normal_map_node.get());
     }
 
-    if (!set_img_filepath(bmain, texture_map.value.image_path, tex_node.get())) {
+    if (!set_img_filepath(bmain, texture_map.value, image_texture.get())) {
       /* Image cannot be added, so don't link image texture, vector, normal map nodes. */
       continue;
     }
@@ -228,6 +239,7 @@ void ShaderNodetreeWrap::add_image_textures(Main *bmain)
     if (normal_map_node) {
       link_sockets(std::move(tex_node), "Color", normal_map_node.get(), "Color");
       link_sockets(std::move(normal_map_node), "Normal", bsdf_.get(), "Normal");
+    link_sockets(std::move(texture_coordinate), "UV", mapping.get(), "Vector");
     }
     else {
       link_sockets(std::move(tex_node), "Color", bsdf_.get(), texture_map.value.dest_socket_id);
