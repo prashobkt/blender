@@ -83,8 +83,10 @@ MeshDistance::distance(Vector3d const& x, Vector3d* nearest_point,
 {
 	using namespace std::placeholders;
 
+	int thread_num = get_thread_num();
+
 	auto dist_candidate = std::numeric_limits<double>::max();
-	auto f = m_nearest_face[get_thread_num()];
+	auto f = m_nearest_face[thread_num];
 	if (f < m_mesh.nFaces())
 	{
 		auto t = std::array<Vector3d const*, 3>{
@@ -115,11 +117,11 @@ MeshDistance::distance(Vector3d const& x, Vector3d* nearest_point,
 		return d0_2 < d1_2;
 	};
 
-	while (!m_queues[get_thread_num()].empty())
-		m_queues[get_thread_num()].pop();
+	while (!m_queues[thread_num].empty())
+		m_queues[thread_num].pop();
 	m_bsh.traverseDepthFirst(pred, cb, pless);
 
-	f = m_nearest_face[get_thread_num()];
+	f = m_nearest_face[thread_num];
 	if (nearest_point)
 	{
 		auto t = std::array<Vector3d const*, 3>{

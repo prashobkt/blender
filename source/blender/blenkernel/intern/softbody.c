@@ -3123,7 +3123,7 @@ SoftBody *sbNew(Scene *scene)
   SoftBody *sb;
   sb = MEM_callocN(sizeof(SoftBody), "softbody");
 
-  sb->solver_mode = SOLVER_MODE_ADMMPD;
+  sb->solver_mode = SOLVER_MODE_LEGACY;//SOLVER_MODE_ADMMPD;
   sb->admmpd_mesh_mode = 0; // embedded
   sb->admmpd_substeps = 1;
   sb->admmpd_max_admm_iters = 20;
