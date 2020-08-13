@@ -18,7 +18,6 @@
  * \ingroup spconsole
  */
 
-#include <DNA_text_types.h>
 #include <string.h>
 
 #include "BLI_blenlib.h"
@@ -38,37 +37,48 @@
 #include "console_intern.h"
 
 #include "../space_info/textview.h"
-#include "../space_text/text_format.h"
 
-#define TABNUMBER 4
-
-static enum eTextViewContext_LineFlag console_line_draw_data(TextViewContext *tvc,
-                                                             TextLine *text_line,
-                                                             uchar fg[4],
-                                                             uchar UNUSED(bg[4]),
-                                                             int *UNUSED(icon),
-                                                             uchar UNUSED(icon_fg[4]),
-                                                             uchar UNUSED(icon_bg[4]))
+static enum eTextViewContext_LineDrawFlag console_line_draw_data(TextViewContext *tvc,
+                                                                 uchar fg[4],
+                                                                 uchar UNUSED(bg[4]),
+                                                                 int *UNUSED(icon),
+                                                                 uchar UNUSED(icon_fg[4]),
+                                                                 uchar UNUSED(icon_bg[4]))
 {
   const ConsoleLine *cl = tvc->iter;
   int fg_id = TH_TEXT;
 
   switch (cl->type) {
     case CONSOLE_LINE_OUTPUT:
+      ATTR_FALLTHROUGH;
     case CONSOLE_LINE_INPUT: {
-      TextFormatType *py_formatter = ED_text_format_get_by_extension("py");
-      TextLine *text_line_iter = text_line;
-      while (text_line_iter) {
-        py_formatter->format_line(text_line_iter, TABNUMBER, false);
-        text_line_iter = text_line_iter->next;
-      }
-      /* workaround: formatter formats also prompt >>> ... what is not desirable but current
+      /* know issue: formatter formats also input prompt >>> ... what is not desirable but current
        * implementation treats it as keyword, so no big deal */
-      // SpaceConsole *sc = (SpaceConsole *)tvc->arg1;
-      // for (int i = 0; i < text_line->len && i < strlen(sc->prompt); ++i) {
-      //   text_line->format[i] = FMT_TYPE_DEFAULT;
-      // }
-      return TVC_LINE_FG_COMPLEX;
+      /* There is only one line. */
+      if (!cl->prev && !cl->next) {
+        return TVC_LINE_FG_SYNTAX_START | TVC_LINE_FG_SYNTAX_END | TVC_LINE_FG_SYNTAX_PYTHON;
+      }
+      /* First line. */
+      if (!cl->prev) {
+        return TVC_LINE_FG_SYNTAX_START | TVC_LINE_FG_SYNTAX_PYTHON;
+      }
+      /* Last line (user input line) - single >>> */
+      if (!cl->next && cl->prev && cl->prev->type != cl->type) {
+        return TVC_LINE_FG_SYNTAX_START | TVC_LINE_FG_SYNTAX_END | TVC_LINE_FG_SYNTAX_PYTHON;
+      }
+      /* Last line (user input line) - multiline ... */
+      if (!cl->next) {
+        return TVC_LINE_FG_SYNTAX_END | TVC_LINE_FG_SYNTAX_PYTHON;
+      }
+      /* Previous line is not input. */
+      if (cl->prev && cl->prev->type != cl->type) {
+        return TVC_LINE_FG_SYNTAX_START | TVC_LINE_FG_SYNTAX_PYTHON;
+      }
+      /* Next line is not input. */
+      if (cl->next && cl->next->type != cl->type) {
+        return TVC_LINE_FG_SYNTAX_END | TVC_LINE_FG_SYNTAX_PYTHON;
+      }
+      return TVC_LINE_FG_SYNTAX_PYTHON;
     }
     case CONSOLE_LINE_INFO:
       fg_id = TH_CONSOLE_INFO;
@@ -121,33 +131,22 @@ static void console_textview_end(TextViewContext *tvc)
   (void)sc;
 }
 
-/** one step for console is printing one "chunk" at a time. Chunk is line with the same type */
 static int console_textview_step(TextViewContext *tvc)
 {
-  const ConsoleLine *cl_current = tvc->iter;
-  const ConsoleLine *cl_iter = tvc->iter;
-  do {
-    cl_iter = cl_iter->prev;
-  } while (cl_iter && cl_iter->type == cl_current->type);
-  tvc->iter = cl_iter;
-
-  return (tvc->iter != NULL);
+  const ConsoleLine *cl = tvc->iter;
+  return ((tvc->iter = (void *)(cl)->prev) != NULL);
 }
 
-static void console_textview_line_get(TextViewContext *tvc, ListBase *text_lines)
+static void console_textview_line_get(TextViewContext *tvc,
+                                      char **r_line,
+                                      int *r_len,
+                                      bool *owns_memory)
 {
-  const ConsoleLine *cl_current = tvc->iter;
-  const ConsoleLine *cl_iter = tvc->iter;
-  BLI_assert(BLI_listbase_is_empty(text_lines));
-  do {
-    TextLine *text_line = MEM_callocN(sizeof(*text_line), __func__);
-    text_line->line = cl_iter->line;
-    text_line->len = cl_iter->len;
-    BLI_addhead(text_lines, text_line);
-    BLI_assert(cl_iter->line[cl_iter->len] == '\0' &&
-               (cl_iter->len == 0 || cl_iter->line[cl_iter->len - 1] != '\0'));
-    cl_iter = cl_iter->prev;
-  } while (cl_iter && cl_iter->type == cl_current->type);
+  const ConsoleLine *cl = tvc->iter;
+  *r_line = cl->line;
+  *r_len = cl->len;
+  *owns_memory = false;
+  BLI_assert(cl->line[cl->len] == '\0' && (cl->len == 0 || cl->line[cl->len - 1] != '\0'));
 }
 
 static void console_cursor_wrap_offset(
@@ -242,7 +241,7 @@ static int console_textview_main__internal(SpaceConsole *sc,
   tvc.end = console_textview_end;
 
   tvc.step = console_textview_step;
-  tvc.lines_get = console_textview_line_get;
+  tvc.line_get = console_textview_line_get;
   tvc.line_draw_data = console_line_draw_data;
   tvc.draw_cursor = console_textview_draw_cursor;
   tvc.const_colors = console_textview_const_colors;

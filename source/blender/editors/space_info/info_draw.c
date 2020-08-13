@@ -21,9 +21,6 @@
  * \ingroup spinfo
  */
 
-#include <BLI_blenlib.h>
-#include <DNA_text_types.h>
-#include <MEM_guardedalloc.h>
 #include <CLG_log.h>
 #include <limits.h>
 #include <string.h>
@@ -33,14 +30,9 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "BKE_report.h"
-
 #include "UI_interface.h"
-#include "UI_resources.h"
 #include "UI_view2d.h"
 
-#include "../space_text/text_format.h"
-#include "GPU_framebuffer.h"
 #include "info_intern.h"
 #include "textview.h"
 
@@ -70,8 +62,6 @@ static int info_textview_main__internal(const SpaceInfo *sinfo,
                                         void **r_mval_pick_item,
                                         int *r_mval_pick_offset)
 {
-  int ret = 0;
-
   const View2D *v2d = &region->v2d;
 
   TextViewContext tvc = {0};
@@ -82,7 +72,7 @@ static int info_textview_main__internal(const SpaceInfo *sinfo,
   switch (sinfo->view) {
     case INFO_VIEW_CLOG:
       tvc.begin = clog_textview_begin;
-      tvc.lines_get = clog_textview_line_get;
+      tvc.line_get = clog_textview_line_get;
       tvc.line_draw_data = clog_line_draw_data;
       tvc.end = clog_textview_end;
       tvc.step = clog_textview_step;
@@ -90,7 +80,7 @@ static int info_textview_main__internal(const SpaceInfo *sinfo,
       break;
     case INFO_VIEW_REPORTS:
       tvc.begin = report_textview_begin;
-      tvc.lines_get = report_textview_line_get;
+      tvc.line_get = report_textview_line_get;
       tvc.line_draw_data = report_line_draw_data;
       tvc.end = report_textview_end;
       tvc.step = report_textview_step;
@@ -111,9 +101,7 @@ static int info_textview_main__internal(const SpaceInfo *sinfo,
 
   info_textview_draw_rect_calc(region, &tvc.draw_rect, &tvc.draw_rect_outer);
 
-  ret = textview_draw(&tvc, do_draw, mval, r_mval_pick_item, r_mval_pick_offset);
-
-  return ret;
+  return textview_draw(&tvc, do_draw, mval, r_mval_pick_item, r_mval_pick_offset);
 }
 
 void *info_text_pick(const SpaceInfo *sinfo,

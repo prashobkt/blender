@@ -20,32 +20,21 @@
 
 #include <BLI_blenlib.h>
 #include <DNA_text_types.h>
-#include <MEM_guardedalloc.h>
-#include <limits.h>
 #include <string.h>
 
-#include "BKE_report.h"
 #include "BLI_utildefines.h"
-#include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 #include "GPU_framebuffer.h"
-#include "UI_interface.h"
 #include "UI_resources.h"
-#include "UI_view2d.h"
 #include "info_intern.h"
 #include "textview.h"
 
-#include "../space_text/text_format.h"
-
-#define TABNUMBER 4
-
-enum eTextViewContext_LineFlag report_line_draw_data(TextViewContext *tvc,
-                                                     TextLine *text_line,
-                                                     uchar fg[4],
-                                                     uchar bg[4],
-                                                     int *r_icon,
-                                                     uchar r_icon_fg[4],
-                                                     uchar r_icon_bg[4])
+enum eTextViewContext_LineDrawFlag report_line_draw_data(TextViewContext *tvc,
+                                                         uchar fg[4],
+                                                         uchar bg[4],
+                                                         int *r_icon,
+                                                         uchar r_icon_fg[4],
+                                                         uchar r_icon_bg[4])
 {
   const Report *report = tvc->iter;
   const SpaceInfo *sinfo = tvc->arg1;
@@ -55,14 +44,13 @@ enum eTextViewContext_LineFlag report_line_draw_data(TextViewContext *tvc,
   int data_flag = 0;
 
   if (report->flag & RPT_PYTHON) {
-    TextFormatType *py_formatter = ED_text_format_get_by_extension("py");
-    py_formatter->format_line(text_line, TABNUMBER, false);
-    data_flag = TVC_LINE_FG_COMPLEX;
+    /* this is enough for single line syntax highlighting */
+    data_flag |= TVC_LINE_FG_SYNTAX_PYTHON | TVC_LINE_FG_SYNTAX_START | TVC_LINE_FG_SYNTAX_END;
   }
   else {
     /* Same text color no matter what type of report. */
     UI_GetThemeColor4ubv((report->flag & RPT_SELECT) ? TH_INFO_SELECTED_TEXT : TH_TEXT, fg);
-    data_flag = TVC_LINE_FG_SIMPLE;
+    data_flag |= TVC_LINE_FG_SIMPLE;
   }
 
   /* Zebra striping for background, only for deselected reports. */
@@ -217,11 +205,14 @@ int report_textview_step(TextViewContext *tvc)
   return true;
 }
 
-void report_textview_line_get(TextViewContext *tvc, ListBase *text_lines)
+void report_textview_line_get(struct TextViewContext *tvc,
+                              char **r_line,
+                              int *r_len,
+                              bool *owns_memory)
 {
   const Report *report = tvc->iter;
-  TextLine *text_line = MEM_callocN(sizeof(*text_line), __func__);
-  text_line->line = report->message + tvc->iter_char_begin;
-  text_line->len = tvc->iter_char_end - tvc->iter_char_begin;
-  BLI_addhead(text_lines, text_line);
+
+  *r_line = (char *)(report->message + tvc->iter_char_begin);
+  *r_len = tvc->iter_char_end - tvc->iter_char_begin;
+  *owns_memory = false;
 }

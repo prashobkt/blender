@@ -19,7 +19,9 @@
  */
 
 #include "MEM_guardedalloc.h"
+#include <BKE_global.h>
 #include <BLI_blenlib.h>
+#include <CLG_log.h>
 #include <DNA_text_types.h>
 #include <ED_text.h>
 #include <UI_resources.h>
@@ -38,7 +40,12 @@
 #include "UI_interface.h"
 #include "UI_interface_icons.h"
 
+#include "../space_text/text_format.h"
 #include "textview.h"
+
+static CLG_LogRef LOG = {"space_info.textview"};
+
+#define PYTHON_TABNUMBER 4
 
 static void textview_font_begin(const int font_id, const int lheight)
 {
@@ -65,7 +72,6 @@ typedef struct TextViewDrawState {
   /* Bottom of view == 0, top of file == combine chars, end of line is lower then start. */
   int *mval_pick_offset;
   const int *mval;  // [2]
-  bool do_draw;
 } TextViewDrawState;
 
 BLI_INLINE void textview_step_sel(TextViewDrawState *tds, const int step)
@@ -137,6 +143,45 @@ static int textview_wrap_offsets(
   return j;
 }
 
+/** Do not draw, just advance the height. */
+static bool textview_draw_string_dry_run(TextViewDrawState *tds, const char *str, int str_len)
+{
+  int tot_lines; /* Total number of lines for wrapping. */
+  int *offsets;  /* Offsets of line beginnings for wrapping. */
+
+  str_len = textview_wrap_offsets(str, str_len, tds->columns, &tot_lines, &offsets);
+
+  const int line_height = (tot_lines * tds->lheight) + (tds->row_vpadding * 2);
+  const int line_bottom = tds->xy[1];
+  const int line_top = line_bottom + line_height;
+
+  const int y_next = line_top;
+  if (tds->mval_pick_offset && tds->mval[1] != INT_MAX && line_bottom <= tds->mval[1]) {
+    if (y_next >= tds->mval[1]) {
+      int ofs = 0;
+
+      /* Wrap. */
+      if (tot_lines > 1) {
+        int iofs = (int)((float)(y_next - tds->mval[1]) / tds->lheight);
+        ofs += offsets[MIN2(iofs, tot_lines - 1)];
+      }
+
+      /* Last part. */
+      ofs += BLI_str_utf8_offset_from_column(str + ofs,
+                                             (int)floor((float)tds->mval[0] / tds->cwidth));
+
+      CLAMP(ofs, 0, str_len);
+      *tds->mval_pick_offset += str_len - ofs;
+    }
+    else {
+      *tds->mval_pick_offset += str_len + 1;
+    }
+  }
+  tds->xy[1] = y_next;
+  MEM_freeN(offsets);
+  return true;
+}
+
 /**
  * return false if the last line is off the screen
  * should be able to use this for any string type.
@@ -144,56 +189,28 @@ static int textview_wrap_offsets(
  * if fg == NULL, then text_line->format will be used
  */
 static bool textview_draw_string(TextViewDrawState *tds,
-                                 TextLine *text_line,
+                                 const char *str,
+                                 const char *str_format,
+                                 int str_len,
                                  const uchar fg[4],
                                  const uchar bg[4],
-                                 int icon,
+                                 const int icon,
                                  const uchar icon_fg[4],
                                  const uchar icon_bg[4],
                                  const uchar bg_sel[4])
 {
+  BLI_assert(str_format != NULL || fg != NULL);
   int tot_lines; /* Total number of lines for wrapping. */
   int *offsets;  /* Offsets of line beginnings for wrapping. */
-  const char *str = text_line->line;
-  const char *str_format = text_line->format;
-  int str_len = text_line->len;
 
   str_len = textview_wrap_offsets(str, str_len, tds->columns, &tot_lines, &offsets);
 
-  int line_height = (tot_lines * tds->lheight) + (tds->row_vpadding * 2);
-  int line_bottom = tds->xy[1];
-  int line_top = line_bottom + line_height;
+  const int line_height = (tot_lines * tds->lheight) + (tds->row_vpadding * 2);
+  const int line_bottom = tds->xy[1];
+  const int line_top = line_bottom + line_height;
 
-  int y_next = line_top;
+  const int y_next = line_top;
 
-  /* Just advance the height. */
-  if (tds->do_draw == false) {
-    if (tds->mval_pick_offset && tds->mval[1] != INT_MAX && line_bottom <= tds->mval[1]) {
-      if (y_next >= tds->mval[1]) {
-        int ofs = 0;
-
-        /* Wrap. */
-        if (tot_lines > 1) {
-          int iofs = (int)((float)(y_next - tds->mval[1]) / tds->lheight);
-          ofs += offsets[MIN2(iofs, tot_lines - 1)];
-        }
-
-        /* Last part. */
-        ofs += BLI_str_utf8_offset_from_column(str + ofs,
-                                               (int)floor((float)tds->mval[0] / tds->cwidth));
-
-        CLAMP(ofs, 0, str_len);
-        *tds->mval_pick_offset += str_len - ofs;
-      }
-      else {
-        *tds->mval_pick_offset += str_len + 1;
-      }
-    }
-
-    tds->xy[1] = y_next;
-    MEM_freeN(offsets);
-    return true;
-  }
   if (y_next < tds->scroll_ymin) {
     /* Have not reached the drawable area so don't break. */
     tds->xy[1] = y_next;
@@ -347,11 +364,14 @@ static bool textview_draw_string(TextViewDrawState *tds,
 static void textview_clear_text_lines(ListBase *text_lines)
 {
   if (!BLI_listbase_is_empty(text_lines)) {
-    TextLine *text_line_iter = text_lines->first;
+    TextViewContextLine *text_line_iter = text_lines->first;
     while (text_line_iter) {
-      TextLine *text_line_next = text_line_iter->next;
+      TextViewContextLine *text_line_next = text_line_iter->next;
       if (text_line_iter->format) {
         MEM_freeN(text_line_iter->format);
+      }
+      if (text_line_iter->owns_line) {
+        MEM_freeN(text_line_iter->line);
       }
       MEM_freeN(text_line_iter);
       text_line_iter = text_line_next;
@@ -424,13 +444,12 @@ int textview_draw(TextViewContext *tvc,
   tds.sel = sel;
   tds.mval_pick_offset = r_mval_pick_offset;
   tds.mval = mval;
-  tds.do_draw = do_draw;
 
   if (tvc->sel_start != tvc->sel_end) {
     sel[0] = tvc->sel_start;
     sel[1] = tvc->sel_end;
   }
-
+  /* TODO (grzelins) add support for defining syntax colors */
   if (tvc->begin(tvc)) {
     uchar bg_sel[4] = {0};
 
@@ -442,52 +461,85 @@ int textview_draw(TextViewContext *tvc,
     /* provides context for multiline syntax highlighting, can be reset in tvc->step */
     ListBase text_lines = {NULL, NULL};
     do {
+      char *ext_line;
+      int ext_len;
+      bool free_line;
       int data_flag = 0;
       const int y_prev = xy[1];
 
-      tvc->lines_get(tvc, &text_lines);
-      BLI_assert(!BLI_listbase_is_empty(&text_lines));
+      tvc->line_get(tvc, &ext_line, &ext_len, (bool *)&free_line);
 
+      bool is_out_of_view_y;
       if (do_draw) {
-        data_flag = tvc->line_draw_data(tvc, text_lines.first, fg, bg, &icon, icon_fg, icon_bg);
-        BLI_assert(data_flag & TVC_LINE_FG_SIMPLE || data_flag & TVC_LINE_FG_COMPLEX);
-      }
+        data_flag = tvc->line_draw_data(tvc, fg, bg, &icon, icon_fg, icon_bg);
+        BLI_assert((data_flag & TVC_LINE_FG_SIMPLE) || (data_flag & TVC_LINE_FG_SYNTAX));
 
-      TextLine *text_line_iter = text_lines.last;
-      bool is_out_of_view_y = !textview_draw_string(
-          &tds,
-          text_line_iter,
-          (data_flag & TVC_LINE_FG_SIMPLE) ? fg : NULL,
-          (data_flag & TVC_LINE_BG) ? bg : NULL,
-          (data_flag & TVC_LINE_ICON) ? icon : 0,
-          (data_flag & TVC_LINE_ICON_FG) ? icon_fg : NULL,
-          (data_flag & TVC_LINE_ICON_BG) ? icon_bg : NULL,
-          bg_sel);
-      while (text_line_iter->prev && !is_out_of_view_y) {
-        text_line_iter = text_line_iter->prev;
-        is_out_of_view_y |= !textview_draw_string(
-            &tds,
-            text_line_iter,
-            (data_flag & TVC_LINE_FG_SIMPLE) ? fg : NULL,
-            (data_flag & TVC_LINE_BG) ? bg : NULL,
-            0,
-            NULL,
-            NULL,
-            bg_sel);
-      }
+        /* if we want to draw syntax, we need to wait for several lines for proper highlighting */
+        if (data_flag & TVC_LINE_FG_SIMPLE) {
+          is_out_of_view_y = !textview_draw_string(&tds,
+                                                   ext_line,
+                                                   NULL,
+                                                   ext_len,
+                                                   (data_flag & TVC_LINE_FG_SIMPLE) ? fg : NULL,
+                                                   (data_flag & TVC_LINE_BG) ? bg : NULL,
+                                                   (data_flag & TVC_LINE_ICON) ? icon : 0,
+                                                   (data_flag & TVC_LINE_ICON_FG) ? icon_fg : NULL,
+                                                   (data_flag & TVC_LINE_ICON_BG) ? icon_bg : NULL,
+                                                   bg_sel);
+        }
+        else {
+          if (data_flag & TVC_LINE_FG_SYNTAX_END) {
+            textview_clear_text_lines(&text_lines);
+          }
+          if (data_flag & TVC_LINE_FG_SYNTAX) {
+            TextViewContextLine *line = MEM_callocN(sizeof(*line), __func__);
+            /* Move memory from ext_line to line->line */
+            line->line = ext_line;
+            line->owns_line = free_line;
+            free_line = false;
+            line->len = ext_len;
+            BLI_addhead(&text_lines, line);
+          }
+          if (data_flag & TVC_LINE_FG_SYNTAX_START) {
+            if (data_flag & TVC_LINE_FG_SYNTAX_PYTHON) {
+              TextFormatType *py_formatter = ED_text_format_get_by_extension("py");
+              py_formatter->format_line((TextLine *)(text_lines.first), PYTHON_TABNUMBER, true);
+            }
+            else {
+              BLI_assert(0);
+            }
 
-      textview_clear_text_lines(&text_lines);
+            TextViewContextLine *iter_line = text_lines.last;
+            while (iter_line && !is_out_of_view_y) {
+              is_out_of_view_y = !textview_draw_string(
+                  &tds,
+                  iter_line->line,
+                  iter_line->format,
+                  iter_line->len,
+                  NULL,
+                  (data_flag & TVC_LINE_BG) ? bg : NULL,
+                  (data_flag & TVC_LINE_ICON) ? icon : 0,
+                  (data_flag & TVC_LINE_ICON_FG) ? icon_fg : NULL,
+                  (data_flag & TVC_LINE_ICON_BG) ? icon_bg : NULL,
+                  bg_sel);
+              iter_line = iter_line->prev;
+            }
+            textview_clear_text_lines(&text_lines);
+          }
+          /* pass, do not draw line */
+        }
 
-      if (do_draw) {
-        /* We always want the cursor to draw. */
+        /* We always want the cursor to draw, but only in first line. */
         if (tvc->draw_cursor && iter_index == 0) {
           tvc->draw_cursor(tvc, tds.cwidth, tds.columns);
         }
-
-        /* When drawing, if we pass v2d->cur.ymax, then quit. */
-        if (is_out_of_view_y) {
-          break;
-        }
+      }
+      else {
+        is_out_of_view_y = !textview_draw_string_dry_run(&tds, ext_line, ext_len);
+      }
+      /* When drawing, if we pass v2d->cur.ymax, then quit. */
+      if (is_out_of_view_y) {
+        break;
       }
 
       if ((mval[1] != INT_MAX) && (mval[1] >= y_prev && mval[1] <= xy[1])) {
@@ -495,8 +547,16 @@ int textview_draw(TextViewContext *tvc,
         break;
       }
 
+      if (free_line) {
+        MEM_freeN(ext_line);
+      }
       iter_index++;
     } while (tvc->step(tvc));
+
+    if (G.debug & G_DEBUG && !BLI_listbase_is_empty(&text_lines)) {
+      CLOG_WARN(&LOG, "There are not printed lines left:%d!!", BLI_listbase_count(&text_lines));
+    }
+    textview_clear_text_lines(&text_lines);
   }
 
   tvc->end(tvc);
@@ -504,7 +564,6 @@ int textview_draw(TextViewContext *tvc,
   /* Sanity checks (bugs here can be tricky to track down). */
   BLI_assert(tds.lheight == tvc->lheight);
   BLI_assert(tds.row_vpadding == tvc->row_vpadding);
-  BLI_assert(tds.do_draw == do_draw);
 
   xy[1] += tvc->lheight * 2;
 

@@ -185,78 +185,53 @@ int clog_textview_step(struct TextViewContext *tvc)
   return (tvc->iter != NULL);
 }
 
-void clog_textview_line_get(struct TextViewContext *tvc, struct ListBase *text_lines)
+void clog_textview_line_get(struct TextViewContext *tvc,
+                            char **r_line,
+                            int *r_len,
+                            bool *owns_memory)
 {
   const struct CLG_LogRecord *record = tvc->iter;
-  TextLine *text_line = MEM_callocN(sizeof(*text_line), __func__);
-  /* TODO (grzelins) before allocating memory here I must make sure tvc can free it afterwards
-    const SpaceInfo *sinfo = tvc->arg1;
-    const CLG_LogRecordList *records = tvc->arg2;
+  const SpaceInfo *sinfo = tvc->arg1;
 
-    DynStr *dynStr = BLI_dynstr_new();
-    if (sinfo->log_format & INFO_LOG_SHOW_TIMESTAMP) {
-      char timestamp_str[64];
-      const uint64_t timestamp = record->timestamp;
-      snprintf(timestamp_str,
-               sizeof(timestamp_str),
-               "%" PRIu64 ".%03u ",
-               timestamp / 1000,
-               (uint)(timestamp % 1000));
-      BLI_dynstr_appendf(dynStr, "%s", timestamp_str);
+  DynStr *dynStr = BLI_dynstr_new();
+  if (sinfo->log_format & INFO_LOG_SHOW_TIMESTAMP) {
+    char timestamp_str[64];
+    const uint64_t timestamp = record->timestamp;
+    snprintf(timestamp_str,
+             sizeof(timestamp_str),
+             "%" PRIu64 ".%03u ",
+             timestamp / 1000,
+             (uint)(timestamp % 1000));
+    BLI_dynstr_appendf(dynStr, "%s", timestamp_str);
+  }
+  if (sinfo->log_format & INFO_LOG_SHOW_LEVEL) {
+    if (record->severity <= CLG_SEVERITY_VERBOSE) {
+      BLI_dynstr_appendf(
+          dynStr, "%s:%u ", clg_severity_as_text(record->severity), record->verbosity);
     }
-    if (sinfo->log_format & INFO_LOG_SHOW_LEVEL) {
-      if (record->severity <= CLG_SEVERITY_VERBOSE) {
-        BLI_dynstr_appendf(dynStr, "%s:%u ", clg_severity_as_text(record->severity),
-    record->verbosity);
-      }
-      else {
-        BLI_dynstr_appendf(dynStr, "%s ", clg_severity_as_text(record->severity));
-      }
+    else {
+      BLI_dynstr_appendf(dynStr, "%s ", clg_severity_as_text(record->severity));
     }
-    if (sinfo->log_format & INFO_LOG_SHOW_LOG_TYPE) {
-      BLI_dynstr_appendf(dynStr, "(%s) ", record->type->identifier);
-    }
-    if (sinfo->log_format & INFO_LOG_SHOW_FILE_LINE) {
-      const char *file_line = (sinfo->use_short_file_line) ? BLI_path_basename(record->file_line) :
-                              record->file_line;
-      BLI_dynstr_appendf(dynStr, "%s ", file_line);
-    }
-    if (sinfo->log_format & INFO_LOG_SHOW_FUNCTION) {
-      BLI_dynstr_appendf(dynStr, "%s ", record->function);
-    }
-    if (sinfo->log_format & sinfo->use_log_message_new_line) {
-      BLI_dynstr_append(dynStr, "\n");
-    }
+  }
+  if (sinfo->log_format & INFO_LOG_SHOW_LOG_TYPE) {
+    BLI_dynstr_appendf(dynStr, "(%s) ", record->type->identifier);
+  }
+  if (sinfo->log_format & INFO_LOG_SHOW_FILE_LINE) {
+    const char *file_line = (sinfo->use_short_file_line) ? BLI_path_basename(record->file_line) :
+                                                           record->file_line;
+    BLI_dynstr_appendf(dynStr, "%s ", file_line);
+  }
+  if (sinfo->log_format & INFO_LOG_SHOW_FUNCTION) {
+    BLI_dynstr_appendf(dynStr, "%s ", record->function);
+  }
+  if (sinfo->log_format & sinfo->use_log_message_new_line) {
+    BLI_dynstr_append(dynStr, "\n");
+  }
 
-    BLI_dynstr_append(dynStr, record->message);
-    char *cstr = BLI_dynstr_get_cstring(dynStr);
-    Report *report;
-    switch (record->severity) {
-      case CLG_SEVERITY_DEBUG:
-      case CLG_SEVERITY_VERBOSE:
-        report = BKE_report_init(RPT_DEBUG, 0, cstr);
-        break;
-      case CLG_SEVERITY_INFO:
-        report = BKE_report_init(RPT_INFO, 0, cstr);
-        break;
-      case CLG_SEVERITY_WARN:
-        report = BKE_report_init(RPT_WARNING, 0, cstr);
-        break;
-      case CLG_SEVERITY_ERROR:
-      case CLG_SEVERITY_FATAL:
-        report = BKE_report_init(RPT_ERROR, 0, cstr);
-        break;
-      default:
-        report = BKE_report_init(RPT_INFO, 0, cstr);
-        break;
-    }
-    MEM_freeN(cstr);
-    BLI_dynstr_free(dynStr);
-  */
+  BLI_dynstr_append(dynStr, record->message);
 
-  text_line->line = record->message;
-  text_line->len = strlen(record->message);
-  //  text_line->line = record->message + tvc->iter_char_begin;
-  //  text_line->len = tvc->iter_char_end - tvc->iter_char_begin;
-  BLI_addhead(text_lines, text_line);
+  *r_line = BLI_dynstr_get_cstring(dynStr);
+  *r_len = BLI_dynstr_get_len(dynStr);
+  *owns_memory = true;
+  BLI_dynstr_free(dynStr);
 }

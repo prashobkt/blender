@@ -20,14 +20,61 @@
 
 #pragma once
 
-enum eTextViewContext_LineFlag {
+/* add new types as needed */
+typedef enum eTextViewContext_LineDataType {
+  /** Report. */
+  REPORT = 0,
+  /** CLG_LogRecord. */
+  CLG_LOG_RECORD,
+  /** ConsoleLine. */
+  CONSOLE_LINE,
+} eTextViewContext_LineDataType;
+
+/*
+typedef enum eTextViewContext_LineFlag {
+  TVC_SELECT = (1 << 0),
+  TVC_SELECT_ACTIVE = (1 << 1),
+  TVC_SYNTAX_SPLIT = (1 << 2),
+  TVC_SYNTAX_PYTHON = (1 << 4),
+} eTextViewContext_LineFlag;
+*/
+
+typedef struct TextViewContextLine {
+  /* keep in sync with TextLine for seamless casting (mainly for syntax highlighting) */
+  struct TextViewContextLine *next, *prev;
+
+  char *line;
+  /** May be NULL if syntax is off or not yet formatted. */
+  char *format;
+  /** Blen unused. */
+  int len;
+  char _pad0[4];
+  /* TextLine end */
+
+  char owns_line;
+  char _pad1[7];
+  // eTextViewContext_LineDataType customdata_type;
+  /** eTextViewContext_LineFlag. */
+  // int flags;
+  /** Points to original data? */
+  // void *customdata;
+} TextViewContextLine;
+
+enum eTextViewContext_LineDrawFlag {
   TVC_LINE_FG_SIMPLE = (1 << 0),
   TVC_LINE_BG = (1 << 1),
   TVC_LINE_ICON = (1 << 2),
   TVC_LINE_ICON_FG = (1 << 3),
   TVC_LINE_ICON_BG = (1 << 4),
-  TVC_LINE_FG_COMPLEX = (1 << 5),
+  /** Indicate that this syntax for this line should be computed separately
+   * text_format_draw_font_color, FMT_TYPE_SYMBOL, TH_SYNTAX_S */
+  TVC_LINE_FG_SYNTAX_START = (1 << 5),
+  TVC_LINE_FG_SYNTAX_END = (1 << 6),
+  TVC_LINE_FG_SYNTAX_PYTHON = (1 << 7),
+  /* Add more syntax types as needed */
 };
+
+#define TVC_LINE_FG_SYNTAX TVC_LINE_FG_SYNTAX_PYTHON
 
 typedef struct TextViewContext {
   /** Font size scaled by the interface size. */
@@ -54,17 +101,18 @@ typedef struct TextViewContext {
   /* iterator */
   int (*step)(struct TextViewContext *tvcl);
 
-  void (*lines_get)(struct TextViewContext *tvc, struct ListBase *text_lines);
-  enum eTextViewContext_LineFlag (*line_draw_data)(struct TextViewContext *tvc,
-                                                   struct TextLine *text_line,
-                                                   uchar fg[4],
-                                                   uchar bg[4],
-                                                   int *r_icon,
-                                                   uchar r_icon_fg[4],
-                                                   uchar r_icon_bg[4]);
+  //  static void console_textview_line_get(TextViewContext *tvc
+  void (*line_get)(struct TextViewContext *tvc, char **r_line, int *r_len, bool *owns_memory);
+  enum eTextViewContext_LineDrawFlag (*line_draw_data)(struct TextViewContext *tvc,
+                                                       uchar fg[4],
+                                                       uchar bg[4],
+                                                       int *r_icon,
+                                                       uchar r_icon_fg[4],
+                                                       uchar r_icon_bg[4]);
   void (*draw_cursor)(struct TextViewContext *tvc, int cwidth, int columns);
   /* constant theme colors */
   void (*const_colors)(struct TextViewContext *tvc, unsigned char bg_sel[4]);
+  void (*syntax_colors)(struct TextViewContext *tvc, unsigned char bg_sel[4]);
   const void *iter;
   int iter_index;
   /** Used for internal multi-line iteration. */
