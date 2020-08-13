@@ -97,15 +97,16 @@ static void gpencil_export_common_props(wmOperatorType *ot)
                   false,
                   "Gray Scale",
                   "Export in gray scale instead of full color");
-  RNA_def_float(ot->srna,
-                "stroke_sample",
-                0.0f,
-                0.0f,
-                100.0f,
-                "Sampling",
-                "Precision of sampling stroke, set to zero to disable",
-                0.0f,
-                100.0f);
+  RNA_def_float(
+      ot->srna,
+      "stroke_sample",
+      0.0f,
+      0.0f,
+      100.0f,
+      "Sampling",
+      "Precision of sampling stroke, low values gets more precise result, zero to disable",
+      0.0f,
+      100.0f);
 }
 
 static ARegion *get_invoke_region(bContext *C)
@@ -154,13 +155,16 @@ static void ui_gpencil_export_common_settings(uiLayout *layout,
   col = uiLayoutColumn(box, false);
 
   sub = uiLayoutColumn(col, true);
+  uiItemR(sub, imfptr, "stroke_sample", 0, NULL, ICON_NONE);
   uiItemR(sub, imfptr, "use_fill", 0, NULL, ICON_NONE);
   uiItemR(sub, imfptr, "use_normalized_thickness", 0, NULL, ICON_NONE);
-  uiItemR(sub, imfptr, "use_gray_scale", 0, NULL, ICON_NONE);
+
   if (!story) {
     uiItemR(sub, imfptr, "use_clip_camera", 0, NULL, ICON_NONE);
   }
-  uiItemR(sub, imfptr, "stroke_sample", 0, NULL, ICON_NONE);
+  else {
+    uiItemR(sub, imfptr, "use_gray_scale", 0, NULL, ICON_NONE);
+  }
 }
 
 static bool wm_gpencil_export_common_check(bContext *UNUSED(C), wmOperator *op)
