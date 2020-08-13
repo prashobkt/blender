@@ -1598,6 +1598,17 @@ static bool outliner_is_co_within_restrict_columns(const SpaceOutliner *space_ou
   return (view_co_x > region->v2d.cur.xmax - outliner_restrict_columns_width(space_outliner));
 }
 
+static bool outliner_is_co_within_mode_column(SpaceOutliner *space_outliner,
+                                              const float view_mval[2])
+{
+  /* Mode toggles only show in View Layer and Scenes modes. */
+  if (!ELEM(space_outliner->outlinevis, SO_VIEW_LAYER, SO_SCENES)) {
+    return false;
+  }
+
+  return space_outliner->flag & SO_MODE_COLUMN && view_mval[0] < UI_UNIT_X;
+}
+
 /**
  * Action to run when clicking in the outliner,
  *
@@ -1620,7 +1631,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   if (outliner_is_co_within_restrict_columns(space_outliner, region, view_mval[0])) {
     return OPERATOR_CANCELLED;
   }
-  else if (space_outliner->flag & SO_MODE_COLUMN && view_mval[0] < UI_UNIT_X) {
+  else if (outliner_is_co_within_mode_column(space_outliner, view_mval)) {
     return OPERATOR_CANCELLED;
   }
 
