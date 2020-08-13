@@ -283,7 +283,7 @@ typename Octree<T,DIM>::Node* Octree<T,DIM>::create_children(
     const std::vector<int> &queue,
     const std::vector<AABB> &boxes)
 {
-    constexpr int nchild = std::pow(2,DIM);
+    int nchild = std::pow(2,DIM);
     BLI_assert((int)queue.size()>0);
     BLI_assert((int)boxes.size()>0);
     BLI_assert(F != nullptr);
@@ -330,7 +330,7 @@ Octree<T,DIM>::Node::Node() :
     center(VecType::Zero()),
     halfwidth(0)
 {
-    constexpr int nchild = std::pow(2,DIM);
+    int nchild = std::pow(2,DIM);
 	for (int i=0; i<nchild; ++i)
 		children[i] = nullptr;
 }
@@ -338,7 +338,7 @@ Octree<T,DIM>::Node::Node() :
 template<typename T, int DIM>
 Octree<T,DIM>::Node::~Node()
 {
-    constexpr int nchild = std::pow(2,DIM);
+    int nchild = std::pow(2,DIM);
     for (int i=0; i<nchild; ++i)
 	    if (children[i] != nullptr)
 			delete children[i];
