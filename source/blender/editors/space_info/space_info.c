@@ -97,23 +97,31 @@ static SpaceLink *info_create(const ScrArea *UNUSED(area), const Scene *UNUSED(s
 static void info_free(SpaceLink *sl)
 {
   SpaceInfo *sinfo = (SpaceInfo *)sl;
+  if (sinfo->search_filter != NULL) {
+    MEM_freeN(sinfo->search_filter);
+    sinfo->search_filter = NULL;
+  }
   BLI_freelist(&sinfo->filter_log_file_line);
   BLI_freelist(&sinfo->filter_log_type);
   BLI_freelist(&sinfo->filter_log_function);
 }
 
 /* spacetype; init callback */
-static void info_init(struct wmWindowManager *UNUSED(wm), ScrArea *UNUSED(area))
+static void info_init(struct wmWindowManager *UNUSED(wm), ScrArea *area)
 {
-  /*
-    SpaceInfo *sinfo = area->spacedata.first;
-  */
+  SpaceInfo *sinfo = area->spacedata.first;
+  if (sinfo->search_filter == NULL) {
+    sinfo->search_filter = MEM_callocN(sizeof(*sinfo->search_filter), __func__);
+  }
 }
 
 static SpaceLink *info_duplicate(SpaceLink *sl)
 {
   SpaceInfo *sinfo = (SpaceInfo *)sl;
   SpaceInfo *sinfo_new = MEM_dupallocN(sl);
+  if (sinfo->search_filter != NULL){
+    sinfo_new->search_filter = MEM_dupallocN(sinfo->search_filter);
+  }
 
   /* make a copy of source layer */
   BLI_duplicatelist(&sinfo_new->filter_log_file_line, &sinfo->filter_log_file_line);

@@ -33,7 +33,7 @@ struct wmOperatorType;
 struct TextViewContext;
 struct TextLine;
 struct CLG_LogRecord;
-enum eTextViewContext_LineFlag;
+enum eTextViewContext_LineDrawFlag;
 
 #define INDEX_INVALID -1
 
@@ -71,9 +71,8 @@ void info_textview_main(const struct SpaceInfo *sinfo,
                         const struct ReportList *reports);
 
 /* info_report.c */
-void info_area_tag_redraw(const struct bContext *C);
-int info_report_mask(const struct SpaceInfo *sinfo);
-bool info_filter_text(const Report *report, const char *search_string);
+bool is_report_visible(const struct Report *report, const struct SpaceInfo *sinfo);
+// bool info_filter_text(const Report *report, const char *search_string);
 void INFO_OT_report_select_pick(struct wmOperatorType *ot); /* report selection */
 void INFO_OT_report_select_all(struct wmOperatorType *ot);
 void INFO_OT_report_select_box(struct wmOperatorType *ot);
@@ -91,7 +90,6 @@ void INFO_OT_clog_delete(struct wmOperatorType *ot);
 void INFO_OT_clog_copy(struct wmOperatorType *ot);
 
 /* info_draw_report.c */
-bool ED_operator_info_report_active(struct bContext *C);
 enum eTextViewContext_LineDrawFlag report_line_draw_data(struct TextViewContext *tvc,
                                                          uchar fg[4],
                                                          uchar bg[4],
@@ -106,7 +104,7 @@ void report_textview_line_get(struct TextViewContext *tvc,
                               int *r_len,
                               bool *owns_memory);
 /* info_draw_clog.c */
-bool ED_operator_info_clog_active(struct bContext *C);
+bool is_clog_record_visible(const struct CLG_LogRecord *record, const struct SpaceInfo *sinfo);
 enum eTextViewContext_LineDrawFlag clog_line_draw_data(struct TextViewContext *tvc,
                                                        uchar fg[4],
                                                        uchar bg[4],
@@ -120,7 +118,11 @@ void clog_textview_line_get(struct TextViewContext *tvc,
                             char **r_line,
                             int *r_len,
                             bool *owns_memory);
-bool is_log_record_visible(const struct CLG_LogRecord *record, const struct SpaceInfo *sinfo);
 
-#define IS_REPORT_VISIBLE(report, report_mask, search_string) \
-  (info_filter_text(report, search_string) && ((report)->type & report_mask))
+/* info_util.c */
+void info_area_tag_redraw(const struct bContext *C);
+bool info_match_string_filter(const char *search_pattern,
+                              const char *string,
+                              const bool use_match_case,
+                              const bool use_match_glob,
+                              const bool use_match_reverse);

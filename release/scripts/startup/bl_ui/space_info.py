@@ -30,8 +30,11 @@ class INFO_HT_header(Header):
 
         INFO_MT_editor_menus.draw_collapsible(context, layout)
         row = layout.row(align=True)
-        row.prop(sinfo, "filter_text", text="")
-        row.prop(sinfo, "use_match_case", icon="SMALL_CAPS", text="")
+        row.prop(sinfo.search_filter, "search_string", text="")
+        row.prop(sinfo.search_filter, "use_match_reverse", text="")
+        row.prop(sinfo.search_filter, "use_match_case", text="")
+        row.prop(sinfo.search_filter, "use_glob", text="")
+
         layout.separator_spacer()
 
         layout.separator_spacer()
@@ -157,6 +160,7 @@ class INFO_PT_report_type_visibility(Panel):
     bl_space_type = 'INFO'
     bl_region_type = 'HEADER'
     bl_label = "Report Types"
+
     # bl_ui_units_x = 8
 
     def draw(self, context):
@@ -173,9 +177,9 @@ class INFO_PT_report_type_visibility(Panel):
             col.prop(sinfo, "show_report_property", text="Property")
             col.prop(sinfo, "show_report_warning", text="Warning")
             col.prop(sinfo, "show_report_error", text="Error")
-            col.prop(sinfo, "show_report_error_out_of_memory", text="Error")
-            col.prop(sinfo, "show_report_error_invalid_context", text="Error")
-            col.prop(sinfo, "show_report_error_invalid_input", text="Error")
+            col.prop(sinfo, "show_report_error_out_of_memory", text="Error Out of Memory")
+            col.prop(sinfo, "show_report_error_invalid_context", text="Error Invalid Context")
+            col.prop(sinfo, "show_report_error_invalid_input", text="Error Invalid Input")
             layout.separator()
         else:
             layout.label(text="Filter Log Severity")
@@ -191,9 +195,9 @@ class INFO_PT_report_type_visibility(Panel):
                 row = box.row(align=True)
                 row.active = sinfo.use_log_file_line_filter
                 row.prop(filter, "search_string", text="")
-                row.prop(sinfo, "use_match_case", text="", icon='SMALL_CAPS')
-                row.prop(sinfo, "use_match_case", text="", icon='FILTER')
-                # row.prop(path_cmp, "use_glob", text="", icon='FILTER')
+                row.prop(filter, "use_match_reverse", text="")
+                row.prop(filter, "use_match_case", text="")
+                row.prop(filter, "use_glob", text="")
                 row.operator("info.log_file_line_filter_remove", text="", icon='X', emboss=False).index = i
 
             box = layout.box()
@@ -201,9 +205,12 @@ class INFO_PT_report_type_visibility(Panel):
             row.prop(sinfo, "use_log_type_filter", text="Filter Log Type")
             row.operator("info.log_type_filter_add", text="", icon='ADD', emboss=False)
             for i, filter in enumerate(sinfo.filter_log_type):
-                row = box.row()
+                row = box.row(align=True)
                 row.active = sinfo.use_log_type_filter
                 row.prop(filter, "search_string", text="")
+                row.prop(filter, "use_match_reverse", text="")
+                row.prop(filter, "use_match_case", text="")
+                row.prop(filter, "use_glob", text="")
                 row.operator("info.log_type_filter_remove", text="", icon='X', emboss=False).index = i
 
             box = layout.box()
@@ -211,12 +218,14 @@ class INFO_PT_report_type_visibility(Panel):
             row.prop(sinfo, "use_log_function_filter", text="Filter Log Function")
             row.operator("info.log_function_filter_add", text="", icon='ADD', emboss=False)
             for i, filter in enumerate(sinfo.filter_log_function):
-                row = box.row()
+                row = box.row(align=True)
                 row.active = sinfo.use_log_function_filter
                 row.prop(filter, "search_string", text="")
+                row.prop(filter, "use_match_reverse", text="")
+                row.prop(filter, "use_match_case", text="")
+                row.prop(filter, "use_glob", text="")
                 row.operator("info.log_function_filter_remove", text="", icon='X', emboss=False).index = i
 
-            # col = layout.column(align=True)
             row = layout.row(align=True)
             row.prop(sinfo, "use_log_level_filter", text="")
             row.active = sinfo.use_log_level_filter
@@ -236,5 +245,6 @@ classes = (
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
+
     for cls in classes:
         register_class(cls)

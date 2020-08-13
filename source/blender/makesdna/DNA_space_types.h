@@ -105,7 +105,15 @@ enum {
 typedef struct SpaceInfoFilter {
   struct SpaceInfoFilter *next, *prev;
   char search_string[256];
+  char flag;
+  char _pad0[7];
 } SpaceInfoFilter;
+
+typedef enum SpaceInfoFilter_Flag {
+  INFO_FILTER_USE_MATCH_CASE = (1 << 0),
+  INFO_FILTER_USE_GLOB = (1 << 1),
+  INFO_FILTER_USE_MATCH_REVERSE = (1 << 2),
+} SpaceInfoFilter_Flag;
 
 /* Info Header */
 typedef struct SpaceInfo {
@@ -117,20 +125,20 @@ typedef struct SpaceInfo {
   char _pad0[6];
   /* End 'SpaceLink' header. */
 
-  int rpt_mask;
+  /** ReportType. */
+  int report_mask_exclude;
   int active_index;
-  char search_string[64];
   char view;
-  char use_match_case;
-  //  char use_search_glob;  // it can be default
   char use_log_message_new_line;
-  char _pad1[5];
+  char _pad1[6];
 
   int log_format;
   char use_short_file_line;
   /** for boolean properties use_log_*_filter */
   char use_log_filter;
   char _pad2[2];
+
+  SpaceInfoFilter *search_filter;
 
   int log_severity_mask;
   int filter_log_level;

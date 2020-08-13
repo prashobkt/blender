@@ -19,6 +19,7 @@
  */
 
 #include "MEM_guardedalloc.h"
+#include <CLG_log.h>
 
 #include "BLI_listbase.h"
 #include "BLI_math.h"
@@ -179,6 +180,9 @@ static void blo_update_defaults_screen(bScreen *screen,
     else if (area->spacetype == SPACE_INFO) {
       SpaceInfo *sinfo = area->spacedata.first;
       sinfo->report_mask_exclude = RPT_DEBUG_ALL;
+      sinfo->log_severity_mask = CLG_DEFAULT_SEVERITY;
+      sinfo->log_format = INFO_LOG_FORMAT_DEFAULT;
+      sinfo->use_short_file_line = true;
     }
     else if (area->spacetype == SPACE_TEXT) {
       /* Show syntax and line numbers in Script workspace text editor. */

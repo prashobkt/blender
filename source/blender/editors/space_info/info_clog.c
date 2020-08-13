@@ -43,15 +43,96 @@
 #include "CLG_log.h"
 #include "info_intern.h"
 
-bool ED_operator_info_clog_active(bContext *C)
+static bool ED_operator_info_clog_active(bContext *C)
 {
   const SpaceInfo *sinfo = CTX_wm_space_info(C);
   return ED_operator_info_active(C) && sinfo->view == INFO_VIEW_CLOG;
 }
 
-bool is_log_record_visible(const CLG_LogRecord *record, const SpaceInfo *sinfo)
+bool is_clog_record_visible(const CLG_LogRecord *record, const SpaceInfo *sinfo)
 {
-  UNUSED_VARS(record, sinfo);
+  /* general search */
+  const SpaceInfoFilter *search_filter = sinfo->search_filter;
+  if (!info_match_string_filter(search_filter->search_string,
+                                record->message,
+                                search_filter->flag & INFO_FILTER_USE_MATCH_CASE,
+                                search_filter->flag & INFO_FILTER_USE_GLOB,
+                                search_filter->flag & INFO_FILTER_USE_MATCH_REVERSE)) {
+    return false;
+  }
+
+  /* filter log severity (flag like)  */
+  if (!(sinfo->log_severity_mask & INFO_CLOG_SEVERITY_DEBUG) &&
+      record->severity == CLG_SEVERITY_DEBUG) {
+    return false;
+  }
+  if (!(sinfo->log_severity_mask & INFO_CLOG_SEVERITY_VERBOSE) &&
+      record->severity == CLG_SEVERITY_VERBOSE) {
+    return false;
+  }
+  if (!(sinfo->log_severity_mask & INFO_CLOG_SEVERITY_INFO) &&
+      record->severity == CLG_SEVERITY_INFO) {
+    return false;
+  }
+  if (!(sinfo->log_severity_mask & INFO_CLOG_SEVERITY_WARN) &&
+      record->severity == CLG_SEVERITY_WARN) {
+    return false;
+  }
+  if (!(sinfo->log_severity_mask & INFO_CLOG_SEVERITY_ERROR) &&
+      record->severity == CLG_SEVERITY_ERROR) {
+    return false;
+  }
+  if (!(sinfo->log_severity_mask & INFO_CLOG_SEVERITY_FATAL) &&
+      record->severity == CLG_SEVERITY_FATAL) {
+    return false;
+  }
+
+  /* filter verbosity */
+  if (sinfo->use_log_filter & INFO_FILTER_LOG_LEVEL) {
+    if (sinfo->filter_log_level < record->verbosity) {
+      return false;
+    }
+  }
+
+  /* filter log type */
+  if (sinfo->use_log_filter & INFO_FILTER_LOG_TYPE) {
+    LISTBASE_FOREACH (struct SpaceInfoFilter *, filter, &sinfo->filter_log_type) {
+      if (!info_match_string_filter(filter->search_string,
+                                    record->type->identifier,
+                                    filter->flag & INFO_FILTER_USE_MATCH_CASE,
+                                    filter->flag & INFO_FILTER_USE_GLOB,
+                                    filter->flag & INFO_FILTER_USE_MATCH_REVERSE)) {
+        return false;
+      }
+    }
+  }
+
+  /* filter log function */
+  if (sinfo->use_log_filter & INFO_FILTER_LOG_FUNCTION) {
+    LISTBASE_FOREACH (struct SpaceInfoFilter *, filter, &sinfo->filter_log_function) {
+      if (!info_match_string_filter(filter->search_string,
+                                    record->function,
+                                    filter->flag & INFO_FILTER_USE_MATCH_CASE,
+                                    filter->flag & INFO_FILTER_USE_GLOB,
+                                    filter->flag & INFO_FILTER_USE_MATCH_REVERSE)) {
+        return false;
+      }
+    }
+  }
+
+  /* filter file line */
+  if (sinfo->use_log_filter & INFO_FILTER_FILE_LINE) {
+    LISTBASE_FOREACH (struct SpaceInfoFilter *, filter, &sinfo->filter_log_file_line) {
+      if (!info_match_string_filter(filter->search_string,
+                                    record->file_line,
+                                    filter->flag & INFO_FILTER_USE_MATCH_CASE,
+                                    filter->flag & INFO_FILTER_USE_GLOB,
+                                    filter->flag & INFO_FILTER_USE_MATCH_REVERSE)) {
+        return false;
+      }
+    }
+  }
+
   return true;
 }
 
@@ -60,7 +141,7 @@ static void log_records_select_all(CLG_LogRecordList *records, const SpaceInfo *
   if (action == SEL_TOGGLE) {
     action = SEL_SELECT;
     for (CLG_LogRecord *record = records->last; record; record = record->prev) {
-      if (is_log_record_visible(record, sinfo) && (record->flag & CLG_SELECT)) {
+      if (is_clog_record_visible(record, sinfo) && (record->flag & CLG_SELECT)) {
         action = SEL_DESELECT;
         break;
       }
@@ -68,7 +149,7 @@ static void log_records_select_all(CLG_LogRecordList *records, const SpaceInfo *
   }
 
   for (CLG_LogRecord *record = records->last; record; record = record->prev) {
-    if (is_log_record_visible(record, sinfo)) {
+    if (is_clog_record_visible(record, sinfo)) {
       switch (action) {
         case SEL_SELECT:
           record->flag |= CLG_SELECT;
@@ -260,7 +341,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
   const int select = (sel_op != SEL_OP_SUB);
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     LISTBASE_FOREACH (CLG_LogRecord *, record, records) {
-      if (!is_log_record_visible(record, sinfo)) {
+      if (!is_clog_record_visible(record, sinfo)) {
         continue;
       }
       record->flag &= ~CLG_SELECT;
@@ -279,7 +360,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
     if (record_min == NULL) {
       // printf("find_min\n");
       LISTBASE_FOREACH (CLG_LogRecord *, record, records) {
-        if (is_log_record_visible(record, sinfo)) {
+        if (is_clog_record_visible(record, sinfo)) {
           record_min = record;
           break;
         }
@@ -289,7 +370,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
     if (record_max == NULL) {
       // printf("find_max\n");
       for (CLG_LogRecord *record = records->last; record; record = record->prev) {
-        if (is_log_record_visible(record, sinfo)) {
+        if (is_clog_record_visible(record, sinfo)) {
           record_max = record;
           break;
         }
@@ -301,7 +382,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
     }
 
     for (CLG_LogRecord *record = record_min; (record != record_max->next); record = record->next) {
-      if (!is_log_record_visible(record, sinfo)) {
+      if (!is_clog_record_visible(record, sinfo)) {
         continue;
       }
       SET_FLAG_FROM_TEST(record->flag, select, CLG_SELECT);
@@ -346,7 +427,7 @@ static int clog_delete_exec(bContext *C, wmOperator *UNUSED(op))
   for (record = records->first; record;) {
     record_next = record->next;
 
-    if (is_log_record_visible(record, sinfo) && (record->flag & CLG_SELECT)) {
+    if (is_clog_record_visible(record, sinfo) && (record->flag & CLG_SELECT)) {
       printf("NOT IMPLEMENTED YET");
       //      BLI_remlink((struct ListBase *)records, record);
       //      MEM_freeN((void *)record->message);
@@ -387,7 +468,7 @@ static int clog_copy_exec(bContext *C, wmOperator *UNUSED(op))
   char *buf_str;
 
   for (record = records->first; record; record = record->next) {
-    if (is_log_record_visible(record, sinfo) && (record->flag & CLG_SELECT)) {
+    if (is_clog_record_visible(record, sinfo) && (record->flag & CLG_SELECT)) {
       BLI_dynstr_append(buf_dyn, record->message);
       BLI_dynstr_append(buf_dyn, "\n");
     }

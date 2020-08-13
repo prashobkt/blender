@@ -39,15 +39,12 @@
 
 #include "../space_text/text_format.h"
 
-#define TABNUMBER 4
-
-enum eTextViewContext_LineFlag clog_line_draw_data(struct TextViewContext *tvc,
-                                                   struct TextLine *UNUSED(text_line),
-                                                   uchar fg[4],
-                                                   uchar bg[4],
-                                                   int *r_icon,
-                                                   uchar r_icon_fg[4],
-                                                   uchar r_icon_bg[4])
+enum eTextViewContext_LineDrawFlag clog_line_draw_data(struct TextViewContext *tvc,
+                                                       uchar fg[4],
+                                                       uchar bg[4],
+                                                       int *r_icon,
+                                                       uchar r_icon_fg[4],
+                                                       uchar r_icon_bg[4])
 {
   const SpaceInfo *sinfo = tvc->arg1;
   const CLG_LogRecordList *records = tvc->arg2;
@@ -131,17 +128,10 @@ enum eTextViewContext_LineFlag clog_line_draw_data(struct TextViewContext *tvc,
   return data_flag | TVC_LINE_BG;
 }
 
-static bool is_log_visible(const CLG_LogRecord *record, const SpaceInfo *sinfo)
-{
-  /* TODO (grzelins) */
-  UNUSED_VARS(record, sinfo);
-  return true;
-}
-
 static int report_textview_skip__internal(TextViewContext *tvc)
 {
   const SpaceInfo *sinfo = tvc->arg1;
-  while (tvc->iter && !is_log_visible(tvc->iter, sinfo)) {
+  while (tvc->iter && !is_clog_record_visible(tvc->iter, sinfo)) {
     tvc->iter = (void *)((Link *)tvc->iter)->prev;
   }
   return (tvc->iter != NULL);
@@ -163,6 +153,7 @@ int clog_textview_begin(struct TextViewContext *tvc)
   tvc->iter_tmp = 0;
   if (tvc->iter && report_textview_skip__internal(tvc)) {
     /* init the newline iterator */
+    // TODO (grzelins) fix newlines
     //    const Report *report = tvc->iter;
     //    tvc->iter_char_end = report->len;
     //    report_textview_init__internal(tvc);

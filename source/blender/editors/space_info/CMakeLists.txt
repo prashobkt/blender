@@ -39,6 +39,7 @@ set(INC_SYS
 )
 
 set(SRC
+  info_utils.c
   info_draw.c
   info_draw_report.c
   info_draw_clog.c

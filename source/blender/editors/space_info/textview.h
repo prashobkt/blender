@@ -20,25 +20,6 @@
 
 #pragma once
 
-/* add new types as needed */
-typedef enum eTextViewContext_LineDataType {
-  /** Report. */
-  REPORT = 0,
-  /** CLG_LogRecord. */
-  CLG_LOG_RECORD,
-  /** ConsoleLine. */
-  CONSOLE_LINE,
-} eTextViewContext_LineDataType;
-
-/*
-typedef enum eTextViewContext_LineFlag {
-  TVC_SELECT = (1 << 0),
-  TVC_SELECT_ACTIVE = (1 << 1),
-  TVC_SYNTAX_SPLIT = (1 << 2),
-  TVC_SYNTAX_PYTHON = (1 << 4),
-} eTextViewContext_LineFlag;
-*/
-
 typedef struct TextViewContextLine {
   /* keep in sync with TextLine for seamless casting (mainly for syntax highlighting) */
   struct TextViewContextLine *next, *prev;
@@ -53,11 +34,6 @@ typedef struct TextViewContextLine {
 
   char owns_line;
   char _pad1[7];
-  // eTextViewContext_LineDataType customdata_type;
-  /** eTextViewContext_LineFlag. */
-  // int flags;
-  /** Points to original data? */
-  // void *customdata;
 } TextViewContextLine;
 
 enum eTextViewContext_LineDrawFlag {

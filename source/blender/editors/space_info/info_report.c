@@ -44,67 +44,13 @@
 #include "CLG_log.h"
 #include "info_intern.h"
 
-bool ED_operator_info_report_active(bContext *C)
+static bool ED_operator_info_report_active(bContext *C)
 {
   const SpaceInfo *sinfo = CTX_wm_space_info(C);
   return ED_operator_info_active(C) && sinfo->view == INFO_VIEW_REPORTS;
 }
 
-/** Redraw every possible space info */
-void info_area_tag_redraw(const bContext *C)
-{
-  struct wmWindowManager *wm = CTX_wm_manager(C);
-  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-    bScreen *screen = WM_window_get_active_screen(win);
-    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-      if (area->spacetype == SPACE_INFO) {
-        ED_area_tag_redraw(area);
-      }
-    }
-  }
-}
-
-/* return true if substring is found */
-bool info_filter_text(const Report *report, const char *search_string)
-{
-  return strstr(report->message, search_string) != NULL;
-}
-
-static void reports_select_all(ReportList *reports,
-                               int report_mask,
-                               const char *search_string,
-                               int action)
-{
-  if (action == SEL_TOGGLE) {
-    action = SEL_SELECT;
-    for (Report *report = reports->list.last; report; report = report->prev) {
-      if (IS_REPORT_VISIBLE(report, report_mask, search_string) && (report->flag & RPT_SELECT)) {
-        action = SEL_DESELECT;
-        break;
-      }
-    }
-  }
-
-  for (Report *report = reports->list.last; report; report = report->prev) {
-    if (IS_REPORT_VISIBLE(report, report_mask, search_string)) {
-      switch (action) {
-        case SEL_SELECT:
-          report->flag |= RPT_SELECT;
-          break;
-        case SEL_DESELECT:
-          report->flag &= ~RPT_SELECT;
-          break;
-        case SEL_INVERT:
-          report->flag ^= RPT_SELECT;
-          break;
-        default:
-          BLI_assert(0);
-      }
-    }
-  }
-}
-
-int info_report_mask(const SpaceInfo *sinfo)
+static int info_report_mask(const SpaceInfo *sinfo)
 {
   int report_mask = 0;
 
@@ -137,6 +83,55 @@ int info_report_mask(const SpaceInfo *sinfo)
   }
 
   return report_mask;
+}
+
+bool is_report_visible(const Report *report, const SpaceInfo *sinfo)
+{
+  int report_mask = info_report_mask(sinfo);
+  if (!(report_mask & report->type)) {
+    return false;
+  }
+
+  const SpaceInfoFilter *filter = sinfo->search_filter;
+  if (!info_match_string_filter(filter->search_string,
+                                report->message,
+                                filter->flag & INFO_FILTER_USE_MATCH_CASE,
+                                filter->flag & INFO_FILTER_USE_GLOB,
+                                filter->flag & INFO_FILTER_USE_MATCH_REVERSE)) {
+    return false;
+  }
+  return true;
+}
+
+static void reports_select_all(ReportList *reports, SpaceInfo *sinfo, int action)
+{
+  if (action == SEL_TOGGLE) {
+    action = SEL_SELECT;
+    for (Report *report = reports->list.last; report; report = report->prev) {
+      if (is_report_visible(report, sinfo) && (report->flag & RPT_SELECT)) {
+        action = SEL_DESELECT;
+        break;
+      }
+    }
+  }
+
+  for (Report *report = reports->list.last; report; report = report->prev) {
+    if (is_report_visible(report, sinfo)) {
+      switch (action) {
+        case SEL_SELECT:
+          report->flag |= RPT_SELECT;
+          break;
+        case SEL_DESELECT:
+          report->flag &= ~RPT_SELECT;
+          break;
+        case SEL_INVERT:
+          report->flag ^= RPT_SELECT;
+          break;
+        default:
+          BLI_assert(0);
+      }
+    }
+  }
 }
 
 // TODO, get this working again!
@@ -196,10 +191,8 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
   ReportList *reports = CTX_wm_reports(C);
   Report *report = BLI_findlink(&reports->list, report_index);
 
-  const int report_mask = info_report_mask(sinfo);
-
   if (report_index == INDEX_INVALID) {  // click in empty area
-    reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
+    reports_select_all(reports, sinfo, 0);
     info_area_tag_redraw(C);
     return OPERATOR_FINISHED;
   }
@@ -213,7 +206,7 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
   const bool is_active_report_selected = active_report ? active_report->flag & RPT_SELECT : false;
 
   if (deselect_all) {
-    reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
+    reports_select_all(reports, sinfo, 0);
   }
 
   if (active_report == NULL) {
@@ -240,7 +233,7 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
       return OPERATOR_FINISHED;
     }
     else {
-      reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
+      reports_select_all(reports, sinfo, 0);
       report->flag |= RPT_SELECT;
       sinfo->active_index = report_index;
       info_area_tag_redraw(C);
@@ -322,10 +315,9 @@ static int report_select_all_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ReportList *reports = CTX_wm_reports(C);
-  const int report_mask = info_report_mask(sinfo);
 
   int action = RNA_enum_get(op->ptr, "action");
-  reports_select_all(reports, report_mask, sinfo->search_string, action);
+  reports_select_all(reports, sinfo, action);
   info_area_tag_redraw(C);
 
   return OPERATOR_FINISHED;
@@ -352,7 +344,6 @@ static int box_select_exec(bContext *C, wmOperator *op)
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ARegion *region = CTX_wm_region(C);
   ReportList *reports = CTX_wm_reports(C);
-  int report_mask = info_report_mask(sinfo);
   Report *report_min, *report_max;
   rcti rect;
 
@@ -362,7 +353,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
   const int select = (sel_op != SEL_OP_SUB);
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     LISTBASE_FOREACH (Report *, report, &reports->list) {
-      if (!IS_REPORT_VISIBLE(report, report_mask, sinfo->search_string)) {
+      if (!is_report_visible(report, sinfo)) {
         continue;
       }
       report->flag &= ~RPT_SELECT;
@@ -374,14 +365,14 @@ static int box_select_exec(bContext *C, wmOperator *op)
   report_max = info_text_pick(sinfo, region, reports, rect.ymin);
 
   if (report_min == NULL && report_max == NULL) {
-    reports_select_all(reports, report_mask, sinfo->search_string, SEL_DESELECT);
+    reports_select_all(reports, sinfo, 0);
   }
   else {
     /* get the first report if none found */
     if (report_min == NULL) {
       // printf("find_min\n");
       LISTBASE_FOREACH (Report *, report, &reports->list) {
-        if (IS_REPORT_VISIBLE(report, report_mask, sinfo->search_string)) {
+        if (is_report_visible(report, sinfo)) {
           report_min = report;
           break;
         }
@@ -391,7 +382,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
     if (report_max == NULL) {
       // printf("find_max\n");
       for (Report *report = reports->list.last; report; report = report->prev) {
-        if (IS_REPORT_VISIBLE(report, report_mask, sinfo->search_string)) {
+        if (is_report_visible(report, sinfo)) {
           report_max = report;
           break;
         }
@@ -403,7 +394,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
     }
 
     for (Report *report = report_min; (report != report_max->next); report = report->next) {
-      if (!IS_REPORT_VISIBLE(report, report_mask, sinfo->search_string)) {
+      if (!is_report_visible(report, sinfo)) {
         continue;
       }
       SET_FLAG_FROM_TEST(report->flag, select, RPT_SELECT);
@@ -442,16 +433,13 @@ static int report_delete_exec(bContext *C, wmOperator *UNUSED(op))
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ReportList *reports = CTX_wm_reports(C);
-  int report_mask = info_report_mask(sinfo);
-
   Report *report, *report_next;
 
   for (report = reports->list.first; report;) {
 
     report_next = report->next;
 
-    if (IS_REPORT_VISIBLE(report, report_mask, sinfo->search_string) &&
-        (report->flag & RPT_SELECT)) {
+    if (is_report_visible(report, sinfo) && (report->flag & RPT_SELECT)) {
       BLI_remlink(&reports->list, report);
       MEM_freeN((void *)report->message);
       MEM_freeN(report);
@@ -485,16 +473,13 @@ static int report_copy_exec(bContext *C, wmOperator *UNUSED(op))
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ReportList *reports = CTX_wm_reports(C);
-  int report_mask = info_report_mask(sinfo);
-
   Report *report;
 
   DynStr *buf_dyn = BLI_dynstr_new();
   char *buf_str;
 
   for (report = reports->list.first; report; report = report->next) {
-    if (IS_REPORT_VISIBLE(report, report_mask, sinfo->search_string) &&
-        (report->flag & RPT_SELECT)) {
+    if (is_report_visible(report, sinfo) && (report->flag & RPT_SELECT)) {
       BLI_dynstr_append(buf_dyn, report->message);
       BLI_dynstr_append(buf_dyn, "\n");
     }
