@@ -178,7 +178,7 @@ static void blo_update_defaults_screen(bScreen *screen,
     }
     else if (area->spacetype == SPACE_INFO) {
       SpaceInfo *sinfo = area->spacedata.first;
-      sinfo->rpt_mask = RPT_MASK_DEFAULT;
+      sinfo->report_mask_exclude = RPT_DEBUG_ALL;
     }
     else if (area->spacetype == SPACE_TEXT) {
       /* Show syntax and line numbers in Script workspace text editor. */

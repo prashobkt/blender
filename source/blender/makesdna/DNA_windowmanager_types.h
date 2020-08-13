@@ -76,8 +76,6 @@ typedef enum ReportType {
 #define RPT_WARNING_ALL (RPT_WARNING)
 #define RPT_ERROR_ALL \
   (RPT_ERROR | RPT_ERROR_INVALID_INPUT | RPT_ERROR_INVALID_CONTEXT | RPT_ERROR_OUT_OF_MEMORY)
-#define RPT_MASK_DEFAULT \
-  RPT_ERROR_ALL | RPT_INFO_ALL | RPT_WARNING_ALL | RPT_PROPERTY_ALL | RPT_OPERATOR
 
 enum ReportListFlags {
   /* RPT_PRINT = (1 << 0), unused, replaced with logs */

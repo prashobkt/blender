@@ -106,7 +106,37 @@ static void reports_select_all(ReportList *reports,
 
 int info_report_mask(const SpaceInfo *sinfo)
 {
-  return sinfo->rpt_mask;
+  int report_mask = 0;
+
+  if (!(sinfo->report_mask_exclude & RPT_DEBUG)) {
+    report_mask |= RPT_DEBUG_ALL;
+  }
+  if (!(sinfo->report_mask_exclude & RPT_INFO)) {
+    report_mask |= RPT_INFO_ALL;
+  }
+  if (!(sinfo->report_mask_exclude & RPT_OPERATOR)) {
+    report_mask |= RPT_OPERATOR_ALL;
+  }
+  if (!(sinfo->report_mask_exclude & RPT_PROPERTY)) {
+    report_mask |= RPT_PROPERTY_ALL;
+  }
+  if (!(sinfo->report_mask_exclude & RPT_WARNING)) {
+    report_mask |= RPT_WARNING_ALL;
+  }
+  if (!(sinfo->report_mask_exclude & RPT_ERROR)) {
+    report_mask |= RPT_ERROR;
+  }
+  if (!(sinfo->report_mask_exclude & RPT_ERROR_INVALID_CONTEXT)) {
+    report_mask |= RPT_ERROR_INVALID_CONTEXT;
+  }
+  if (!(sinfo->report_mask_exclude & RPT_ERROR_OUT_OF_MEMORY)) {
+    report_mask |= RPT_ERROR_OUT_OF_MEMORY;
+  }
+  if (!(sinfo->report_mask_exclude & RPT_ERROR_INVALID_INPUT)) {
+    report_mask |= RPT_ERROR_INVALID_INPUT;
+  }
+
+  return report_mask;
 }
 
 // TODO, get this working again!

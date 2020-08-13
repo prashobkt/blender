@@ -6022,12 +6022,59 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SpaceInfo");
   RNA_def_struct_ui_text(srna, "Space Info", "Info space data");
 
-  prop = RNA_def_property(srna, "report_mask", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "rpt_mask");
-  RNA_def_property_enum_items(prop, rna_enum_wm_report_items);
-  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
-  RNA_def_property_enum_default(prop, RPT_MASK_DEFAULT);
-  RNA_def_property_ui_text(prop, "Filter Report Type", "");
+  /* reporting display */
+  prop = RNA_def_property(srna, "show_report_debug", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", RPT_DEBUG);
+  RNA_def_property_ui_text(prop, "Show Debug", "Display debug reporting info");
+  RNA_def_property_ui_icon(prop, ICON_SYSTEM, 0);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+
+  prop = RNA_def_property(srna, "show_report_info", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", RPT_INFO);
+  RNA_def_property_ui_text(prop, "Show Info", "Display general information");
+  RNA_def_property_ui_icon(prop, ICON_INFO, 0);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+
+  prop = RNA_def_property(srna, "show_report_operator", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", RPT_OPERATOR);
+  RNA_def_property_ui_text(prop, "Show Operator", "Display the operator log");
+  RNA_def_property_ui_icon(prop, ICON_CHECKMARK, 0);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+
+  prop = RNA_def_property(srna, "show_report_property", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", RPT_PROPERTY);
+  RNA_def_property_ui_text(prop, "Show Property", "Display property change");
+  RNA_def_property_ui_icon(prop, ICON_PROPERTIES, 0);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+
+  prop = RNA_def_property(srna, "show_report_warning", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", RPT_WARNING);
+  RNA_def_property_ui_text(prop, "Show Warn", "Display warnings");
+  RNA_def_property_ui_icon(prop, ICON_ERROR, 0);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+
+  prop = RNA_def_property(srna, "show_report_error", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", RPT_ERROR);
+  RNA_def_property_ui_text(prop, "Show Error", "Display error text");
+  RNA_def_property_ui_icon(prop, ICON_CANCEL, 0);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+
+  prop = RNA_def_property(srna, "show_report_error_invalid_input", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", RPT_ERROR_INVALID_INPUT);
+  RNA_def_property_ui_text(prop, "Show Error", "Display error text");
+  RNA_def_property_ui_icon(prop, ICON_CANCEL, 0);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+
+  prop = RNA_def_property(srna, "show_report_error_invalid_context", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", RPT_ERROR_INVALID_CONTEXT);
+  RNA_def_property_ui_text(prop, "Show Error", "Display error text");
+  RNA_def_property_ui_icon(prop, ICON_CANCEL, 0);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+
+  prop = RNA_def_property(srna, "show_report_error_out_of_memory", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", RPT_ERROR_OUT_OF_MEMORY);
+  RNA_def_property_ui_text(prop, "Show Error", "Display error text");
+  RNA_def_property_ui_icon(prop, ICON_CANCEL, 0);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   static const EnumPropertyItem rna_enum_clog_filter_severity_items[] = {

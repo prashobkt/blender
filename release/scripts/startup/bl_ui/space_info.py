@@ -167,7 +167,15 @@ class INFO_PT_report_type_visibility(Panel):
         if sinfo.view == 'REPORTS':
             layout.label(text="Report Types Visibility")
             col = layout.column(align=True)
-            col.prop(sinfo, "report_mask")
+            col.prop(sinfo, "show_report_debug", text="Debug")
+            col.prop(sinfo, "show_report_info", text="Info")
+            col.prop(sinfo, "show_report_operator", text="Operator")
+            col.prop(sinfo, "show_report_property", text="Property")
+            col.prop(sinfo, "show_report_warning", text="Warning")
+            col.prop(sinfo, "show_report_error", text="Error")
+            col.prop(sinfo, "show_report_error_out_of_memory", text="Error")
+            col.prop(sinfo, "show_report_error_invalid_context", text="Error")
+            col.prop(sinfo, "show_report_error_invalid_input", text="Error")
             layout.separator()
         else:
             layout.label(text="Filter Log Severity")
