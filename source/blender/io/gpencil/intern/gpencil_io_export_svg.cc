@@ -420,6 +420,7 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
  */
 void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const bool do_fill)
 {
+  bGPDlayer *gpl = gpl_current_get();
   bGPDstroke *gps = gps_current_get();
 
   const bool is_thickness_const = is_stroke_thickness_constant(gps);
@@ -449,7 +450,7 @@ void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const b
   color_string_set(gps_node, do_fill);
 
   if (gp_style_is_stroke() && !do_fill) {
-    gps_node.append_attribute("stroke-width").set_value(radius * 2.0f);
+    gps_node.append_attribute("stroke-width").set_value((radius * 2.0f) - gpl->line_change);
   }
 
   std::string txt;
