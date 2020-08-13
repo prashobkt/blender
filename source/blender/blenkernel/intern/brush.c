@@ -1487,6 +1487,11 @@ void BKE_brush_sculpt_reset(Brush *br)
       br->curve_preset = BRUSH_CURVE_POW4;
       br->spacing = 5;
       break;
+    case SCULPT_TOOL_DISPLACEMENT_ERASER:
+      br->curve_preset = BRUSH_CURVE_SMOOTHER;
+      br->spacing = 10;
+      br->alpha = 1.0f;
+      break;
     case SCULPT_TOOL_SLIDE_RELAX:
       br->spacing = 10;
       br->alpha = 1.0f;
@@ -1686,6 +1691,7 @@ void BKE_brush_sculpt_reset(Brush *br)
     case SCULPT_TOOL_PAINT:
     case SCULPT_TOOL_MASK:
     case SCULPT_TOOL_DRAW_FACE_SETS:
+    case SCULPT_TOOL_DISPLACEMENT_ERASER:
       br->add_col[0] = 0.75f;
       br->add_col[1] = 0.75f;
       br->add_col[2] = 0.75f;
