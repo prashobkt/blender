@@ -196,7 +196,7 @@ void GpencilExporterSVG::export_layers(void)
     }
 
     frame_node = main_node.append_child("g");
-    std::string frametxt = "Frame_" + std::to_string(cfra_);
+    std::string frametxt = "blender_frame_" + std::to_string(cfra_);
     frame_node.append_attribute("id").set_value(frametxt.c_str());
 
     /* Clip area. */
@@ -206,7 +206,10 @@ void GpencilExporterSVG::export_layers(void)
     }
 
     pugi::xml_node ob_node = frame_node.append_child("g");
-    ob_node.append_attribute("id").set_value(ob->id.name + 2);
+
+    char obtxt[96];
+    sprintf(obtxt, "blender_object_%s", ob->id.name + 2);
+    ob_node.append_attribute("id").set_value(obtxt);
 
     /* Use evaluated version to get strokes with modifiers. */
     Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
