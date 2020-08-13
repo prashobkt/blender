@@ -1924,7 +1924,6 @@ static void rna_def_softbody(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "admmpd_linsolver");
   RNA_def_property_enum_items(prop, admmpd_linsolver_items);
   RNA_def_property_ui_text(prop, "Linear Solver", "Solver used for global step");
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 
   prop = RNA_def_property(srna, "admmpd_embed_res", PROP_INT, PROP_NONE);
