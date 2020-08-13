@@ -244,7 +244,6 @@ static int wm_gpencil_export_svg_exec(bContext *C, wmOperator *op)
       .region = region,
       .v3d = v3d,
       .obact = ob,
-      .filename = filename,
       .mode = GP_EXPORT_TO_SVG,
       .frame_start = CFRA,
       .frame_end = CFRA,
@@ -260,7 +259,7 @@ static int wm_gpencil_export_svg_exec(bContext *C, wmOperator *op)
 
   /* Do export. */
   WM_cursor_wait(1);
-  bool done = gpencil_io_export(&params);
+  bool done = gpencil_io_export(filename, &params);
   WM_cursor_wait(0);
 
   if (done) {
@@ -291,7 +290,7 @@ static void ui_gpencil_export_svg_settings(uiLayout *layout, PointerRNA *imfptr)
   ui_gpencil_export_common_settings(layout, imfptr, false);
 }
 
-static void wm_gpencil_export_svg_draw(bContext *C, wmOperator *op)
+static void wm_gpencil_export_svg_draw(bContext *UNUSED(C), wmOperator *op)
 {
 
   PointerRNA ptr;
@@ -422,7 +421,6 @@ static int wm_gpencil_export_stb_exec(bContext *C, wmOperator *op)
       .region = region,
       .v3d = v3d,
       .obact = ob,
-      .filename = filename,
       .mode = GP_EXPORT_TO_SVG,
       .frame_start = RNA_int_get(op->ptr, "start"),
       .frame_end = RNA_int_get(op->ptr, "end"),
@@ -446,7 +444,7 @@ static int wm_gpencil_export_stb_exec(bContext *C, wmOperator *op)
 
   /* Do export. */
   WM_cursor_wait(1);
-  bool done = gpencil_io_export(&params);
+  bool done = gpencil_io_export(filename, &params);
   WM_cursor_wait(0);
 
   if (done) {

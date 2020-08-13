@@ -36,8 +36,6 @@ struct GpencilExportParams {
   View3D *v3d;
   /** Grease pencil object. */
   struct Object *obact;
-  /** Output filename.  */
-  char *filename;
   /** Export mode.  */
   short mode;
   /** Start frame.  */
@@ -102,7 +100,7 @@ typedef enum eGpencilExportText {
   GP_EXPORT_TXT_SHOT_FRAME = 3,
 } eGpencilExportText;
 
-bool gpencil_io_export(struct GpencilExportParams *iparams);
+bool gpencil_io_export(const char *filename, struct GpencilExportParams *iparams);
 
 #ifdef __cplusplus
 }

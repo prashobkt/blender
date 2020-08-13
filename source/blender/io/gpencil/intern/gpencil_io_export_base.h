@@ -49,11 +49,11 @@ class GpencilExporter {
                      const bool body,
                      const bool savepage) = 0;
 
+  void set_out_filename(const char *filename);
   void set_frame_number(int value);
   void set_frame_offset(float value[2]);
   void set_frame_ratio(float value[2]);
   void set_frame_box(float value[2]);
-  void set_file_subfix(char *value);
   void set_shot(int value);
 
  protected:
@@ -128,8 +128,6 @@ class GpencilExporter {
   float avg_opacity;
   bool is_camera;
   rctf select_box;
-
-  void set_out_filename(char *filename);
 };
 
 }  // namespace blender::io::gpencil

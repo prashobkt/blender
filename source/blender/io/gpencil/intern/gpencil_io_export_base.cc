@@ -63,7 +63,6 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   params_.region = iparams->region;
   params_.v3d = iparams->v3d;
   params_.C = iparams->C;
-  params_.filename = iparams->filename;
   params_.mode = iparams->mode;
   params_.flag = iparams->flag;
   params_.select = iparams->select;
@@ -129,9 +128,6 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
       offset_[1] = boundbox.ymin;
     }
   }
-
-  /* Prepare output filename with full path. */
-  set_out_filename(params_.filename);
 }
 
 /** Create a list of selected objects sorted from back to front */
@@ -187,7 +183,7 @@ void GpencilExporter::create_object_list(void)
  * \param C: Context.
  * \param filename: Path of the file provided by save dialog.
  */
-void GpencilExporter::set_out_filename(char *filename)
+void GpencilExporter::set_out_filename(const char *filename)
 {
   BLI_strncpy(out_filename_, filename, FILE_MAX);
   BLI_path_abs(out_filename_, BKE_main_blendfile_path(bmain));

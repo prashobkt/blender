@@ -202,7 +202,7 @@ static bool gpencil_export_storyboard(
 }
 
 /* Main export entry point function. */
-bool gpencil_io_export(GpencilExportParams *iparams)
+bool gpencil_io_export(const char *filename, GpencilExportParams *iparams)
 {
   Main *bmain = CTX_data_main(iparams->C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(iparams->C);
@@ -218,6 +218,9 @@ bool gpencil_io_export(GpencilExportParams *iparams)
 
   if (!is_storyboard) {
     GpencilExporterSVG writter = GpencilExporterSVG(iparams);
+    /* Prepare output filename with full path. */
+    writter.set_out_filename(filename);
+
     float no_offset[2] = {0.0f, 0.0f};
     float ratio[2] = {1.0f, 1.0f};
     writter.set_frame_ratio(ratio);
