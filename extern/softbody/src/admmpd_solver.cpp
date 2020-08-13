@@ -68,12 +68,14 @@ bool Solver::init(
 
 	int ne = data->indices.size();
 	int nx = data->x.rows();
-	if (options->log_level >= LOGLEVEL_LOW)
+	if (options->log_level >= LOGLEVEL_LOW) {
 		printf("Solver::init:\n\tNum energy terms: %d\n\tNum verts: %d\n",ne,nx);
+	}
 
 	log.stop_state(SOLVERSTATE_INIT);
-	if (options->log_level >= LOGLEVEL_HIGH)
+	if (options->log_level >= LOGLEVEL_HIGH) {
 		printf("Timings:\n%s", log.to_string().c_str());
+	}
 
 	return true;
 } // end init

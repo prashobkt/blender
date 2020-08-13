@@ -204,10 +204,12 @@ void EmbeddedMesh::compute_sdf(
 	resolution[0] = 30; resolution[1] = 30; resolution[2] = 30;
 	*sdf = Discregrid::CubicLagrangeDiscreteGrid(domain, resolution);
 	auto func = Discregrid::DiscreteGrid::ContinuousFunction{};
+	std::vector<std::thread::id> thread_map;
+	md.set_thread_map(&thread_map);
 	func = [&md](Eigen::Vector3d const& xi) {
 		return md.signedDistanceCached(xi);
 	};
-	sdf->addFunction(func, false);
+	sdf->addFunction(func, &thread_map, false);
 }
 
 bool EmbeddedMesh::compute_lattice()

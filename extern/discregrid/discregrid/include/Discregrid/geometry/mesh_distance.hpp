@@ -41,6 +41,7 @@ namespace std {
 #include <set>
 #include <map>
 #include <unordered_map>
+#include <thread>
 
 #include <Eigen/Dense>
 
@@ -78,6 +79,8 @@ public:
 	double unsignedDistance(Eigen::Vector3d const& x) const;
 	double unsignedDistanceCached(Eigen::Vector3d const& x) const;
 
+	void set_thread_map(std::vector<std::thread::id> *thread_map_) { thread_map = thread_map_; }
+
 private:
 
 	Eigen::Vector3d vertex_normal(unsigned int v) const;
@@ -91,10 +94,13 @@ private:
 	bool predicate(unsigned int node_index, TriangleMeshBSH const& bsh, 
 		Eigen::Vector3d const& x, double& dist) const;
 
+	int get_thread_num() const;
+
 private:
 
-	TriangleMesh const& m_mesh;
 	TriangleMeshBSH m_bsh;
+	TriangleMesh const& m_mesh;
+	mutable std::vector<std::thread::id> *thread_map;
 
 	using FunctionValueCache = LRUCache<Eigen::Vector3d, double>;
 	mutable std::vector<TriangleMeshBSH::TraversalQueue> m_queues;

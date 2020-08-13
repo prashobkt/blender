@@ -5,7 +5,7 @@
 
 #include <limits>
 #include <functional>
-#include <omp.h>
+//#include <omp.h>
 
 using namespace Eigen;
 
@@ -13,7 +13,7 @@ namespace Discregrid
 {
 
 MeshDistance::MeshDistance(TriangleMesh const& mesh, bool precompute_normals)
-	: m_bsh(mesh.vertex_data(), mesh.face_data()), m_mesh(mesh)
+	: m_bsh(mesh.vertex_data(), mesh.face_data()), m_mesh(mesh), thread_map(nullptr)
 	, m_precomputed_normals(precompute_normals)
 {
 	auto max_threads = omp_get_max_threads();
@@ -56,6 +56,25 @@ MeshDistance::MeshDistance(TriangleMesh const& mesh, bool precompute_normals)
 	}
 }
 
+int MeshDistance::get_thread_num() const {
+	//return omp_get_thread_num();
+	if (thread_map == nullptr) {
+		throw std::runtime_error("**Discregride::MeshDistance Error: No thread map set!\n");
+	}
+	int nt = thread_map->size();
+	if (nt == 0) {
+		throw std::runtime_error("**Discregride::MeshDistance Error: Thread map empty!\n");
+	}
+	for (int i=0; i<nt; ++i)
+	{
+		if (thread_map->at(i)==std::this_thread::get_id()) {
+			return i;
+		}
+	}
+	throw std::runtime_error("**Discregride::MeshDistance Error: Thread index not found!\n");
+	return 0;
+}
+
 // Thread-safe.
 double
 MeshDistance::distance(Vector3d const& x, Vector3d* nearest_point, 
@@ -64,7 +83,7 @@ MeshDistance::distance(Vector3d const& x, Vector3d* nearest_point,
 	using namespace std::placeholders;
 
 	auto dist_candidate = std::numeric_limits<double>::max();
-	auto f = m_nearest_face[omp_get_thread_num()];
+	auto f = m_nearest_face[get_thread_num()];
 	if (f < m_mesh.nFaces())
 	{
 		auto t = std::array<Vector3d const*, 3>{
@@ -95,11 +114,11 @@ MeshDistance::distance(Vector3d const& x, Vector3d* nearest_point,
 		return d0_2 < d1_2;
 	};
 
-	while (!m_queues[omp_get_thread_num()].empty())
-		m_queues[omp_get_thread_num()].pop();
+	while (!m_queues[get_thread_num()].empty())
+		m_queues[get_thread_num()].pop();
 	m_bsh.traverseDepthFirst(pred, cb, pless);
 
-	f = m_nearest_face[omp_get_thread_num()];
+	f = m_nearest_face[get_thread_num()];
 	if (nearest_point)
 	{
 		auto t = std::array<Vector3d const*, 3>{
@@ -180,7 +199,7 @@ MeshDistance::callback(unsigned int node_index,
 		{
 			dist_candidate_2 = dist2_;
 			changed = true;
-			m_nearest_face[omp_get_thread_num()] = f;
+			m_nearest_face[get_thread_num()] = f;
 		}
 	}
 	if (changed)
@@ -235,7 +254,7 @@ MeshDistance::signedDistance(Vector3d const& x) const
 double
 MeshDistance::signedDistanceCached(Vector3d const & x) const
 {
-	return m_cache[omp_get_thread_num()](x);
+	return m_cache[get_thread_num()](x);
 }
 
 double
@@ -247,7 +266,7 @@ MeshDistance::unsignedDistance(Vector3d const & x) const
 double
 MeshDistance::unsignedDistanceCached(Vector3d const & x) const
 {
-	return m_ucache[omp_get_thread_num()](x);
+	return m_ucache[get_thread_num()](x);
 }
 
 Vector3d

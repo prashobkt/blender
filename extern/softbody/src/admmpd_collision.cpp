@@ -73,10 +73,12 @@ void Collision::set_obstacles(
 		resolution[0] = 30; resolution[1] = 30; resolution[2] = 30;
 		obsdata.sdf = Discregrid::CubicLagrangeDiscreteGrid(domain, resolution);
 		auto func = Discregrid::DiscreteGrid::ContinuousFunction{};
+		std::vector<std::thread::id> thread_map;
+		md.set_thread_map(&thread_map);
 		func = [&md](Eigen::Vector3d const& xi) {
 			return md.signedDistanceCached(xi);
 		};
-		obsdata.sdf.addFunction(func, false);
+		obsdata.sdf.addFunction(func, &thread_map, false);
 	}
 
 } // end add obstacle

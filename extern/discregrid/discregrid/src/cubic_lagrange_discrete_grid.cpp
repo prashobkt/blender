@@ -11,6 +11,7 @@
 #include <set>
 #include <chrono>
 #include <future>
+#include <thread>
 
 using namespace Eigen;
 
@@ -611,8 +612,8 @@ CubicLagrangeDiscreteGrid::indexToNodePosition(unsigned int l) const
 	auto nv = (n[0] + 1) * (n[1] + 1) * (n[2] + 1);
 	auto ne_x = (n[0] + 0) * (n[1] + 1) * (n[2] + 1);
 	auto ne_y = (n[0] + 1) * (n[1] + 0) * (n[2] + 1);
-	auto ne_z = (n[0] + 1) * (n[1] + 1) * (n[2] + 0);
-	auto ne = ne_x + ne_y + ne_z;
+	//auto ne_z = (n[0] + 1) * (n[1] + 1) * (n[2] + 0);
+	//auto ne = ne_x + ne_y + ne_z;
 
 	auto ijk = Matrix<unsigned int, 3, 1>{};
 	if (l < nv)
@@ -778,8 +779,11 @@ void CubicLagrangeDiscreteGrid::load(std::string const &filename)
 }
 
 unsigned int
-CubicLagrangeDiscreteGrid::addFunction(ContinuousFunction const &func, bool verbose,
-									   SamplePredicate const &pred)
+CubicLagrangeDiscreteGrid::addFunction(
+	ContinuousFunction const &func,
+	std::vector<std::thread::id> *thread_map,
+	bool verbose,
+	SamplePredicate const &pred)
 {
 	using namespace std::chrono;
 
@@ -793,7 +797,7 @@ CubicLagrangeDiscreteGrid::addFunction(ContinuousFunction const &func, bool verb
 	auto ne_z = (n[0] + 1) * (n[1] + 1) * (n[2] + 0);
 	auto ne = ne_x + ne_y + ne_z;
 
-	auto n_nodes = nv + 2 * ne;
+	int n_nodes = nv + 2 * ne;
 
 	m_nodes.push_back({});
 	auto &coeffs = m_nodes.back();
@@ -801,34 +805,82 @@ CubicLagrangeDiscreteGrid::addFunction(ContinuousFunction const &func, bool verb
 
 	std::atomic_uint counter(0u);
 	SpinLock mutex;
-	auto t0 = high_resolution_clock::now();
+	//auto t0 = high_resolution_clock::now();
 
-#pragma omp parallel default(shared)
-	{
-#pragma omp for schedule(static) nowait
-		for (int l = 0; l < static_cast<int>(n_nodes); ++l)
-		{
-			auto x = indexToNodePosition(l);
-			auto &c = coeffs[l];
+	if (!thread_map) {
+		printf("**CubicLagrangeDiscreteGrid::addFunction Error: no thread map.");
+		return 0;
+	}
 
-			if (!pred || pred(x))
+	auto thread_function = [&](int i1, int i2, int t) {
+		thread_map->at(t) = std::this_thread::get_id();
+		for (int i=i1; i<i2; ++i) {
+			auto x = indexToNodePosition(i);
+			auto &c = coeffs[i];
+
+			if (!pred || pred(x)) {
 				c = func(x);
-			else
+			}
+			else {
 				c = std::numeric_limits<double>::max();
-
-			if (verbose && (++counter == n_nodes || duration_cast<milliseconds>(high_resolution_clock::now() - t0).count() > 1000u))
-			{
-				std::async(std::launch::async, [&]() {
-					mutex.lock();
-					t0 = high_resolution_clock::now();
-					std::cout << "\r"
-							  << "Construction " << std::setw(20)
-							  << 100.0 * static_cast<double>(counter) / static_cast<double>(n_nodes) << "%";
-					mutex.unlock();
-				});
 			}
 		}
+	};
+
+	// Launch threads
+	thread_map->clear();
+	std::vector<std::thread> pool;
+	int max_threads = std::min(n_nodes, std::max(1,(int)std::thread::hardware_concurrency()-1));
+	thread_map->resize(max_threads);
+	int slice = std::max((int)std::round((n_nodes+1)/float(max_threads)),1);
+    int i1 = 0;
+    int i2 = std::min(slice, n_nodes);
+	{
+		int t=0;
+		for (; t+1 < max_threads && i1 < n_nodes; ++t) {
+			pool.emplace_back(thread_function, i1, i2, t);
+			i1 = i2;
+			i2 = std::min(i2 + slice, n_nodes);
+		}
+		if (i1 < n_nodes) {
+			pool.emplace_back(thread_function, i1, n_nodes, t);
+		}
 	}
+
+	int nt = pool.size();
+	for (int i=0; i<nt; ++i) {
+		if (pool[i].joinable()) {
+			pool[i].join();
+		}
+	}
+
+	thread_map->clear();
+
+/*
+#pragma omp parallel for
+	for (int l = 0; l < static_cast<int>(n_nodes); ++l)
+	{
+		auto x = indexToNodePosition(l);
+		auto &c = coeffs[l];
+
+		if (!pred || pred(x))
+			c = func(x);
+		else
+			c = std::numeric_limits<double>::max();
+
+		if (verbose && (++counter == n_nodes || duration_cast<milliseconds>(high_resolution_clock::now() - t0).count() > 1000u))
+		{
+			std::async(std::launch::async, [&]() {
+				mutex.lock();
+				t0 = high_resolution_clock::now();
+				std::cout << "\r"
+							<< "Construction " << std::setw(20)
+							<< 100.0 * static_cast<double>(counter) / static_cast<double>(n_nodes) << "%";
+				mutex.unlock();
+			});
+		}
+	}
+*/
 
 	m_cells.push_back({});
 	auto &cells = m_cells.back();
@@ -920,7 +972,7 @@ CubicLagrangeDiscreteGrid::determineShapeFunctions(unsigned int field_id, Eigen:
 
 	auto sd = subdomain(i);
 	i = i_;
-	auto d = sd.diagonal().eval();
+	//auto d = sd.diagonal().eval();
 
 	auto denom = (sd.max() - sd.min()).eval();
 	c0 = Vector3d::Constant(2.0).cwiseQuotient(denom).eval();
@@ -995,7 +1047,7 @@ CubicLagrangeDiscreteGrid::interpolate(unsigned int field_id, Vector3d const &x,
 
 	auto sd = subdomain(i);
 	i = i_;
-	auto d = sd.diagonal().eval();
+	//auto d = sd.diagonal().eval();
 
 	auto denom = (sd.max() - sd.min()).eval();
 	auto c0 = Vector3d::Constant(2.0).cwiseQuotient(denom).eval();
@@ -1097,16 +1149,16 @@ void CubicLagrangeDiscreteGrid::reduceField(unsigned int field_id, Predicate pre
 			cell_map[i] = std::numeric_limits<unsigned int>::max();
 	}
 
-	auto n = Matrix<unsigned int, 3, 1>::Map(m_resolution.data());
+	//auto n = Matrix<unsigned int, 3, 1>::Map(m_resolution.data());
 
-	auto nv = (n[0] + 1) * (n[1] + 1) * (n[2] + 1);
-	auto ne_x = (n[0] + 0) * (n[1] + 1) * (n[2] + 1);
-	auto ne_y = (n[0] + 1) * (n[1] + 0) * (n[2] + 1);
-	auto ne_z = (n[0] + 1) * (n[1] + 1) * (n[2] + 0);
-	auto ne = ne_x + ne_y + ne_z;
+	//auto nv = (n[0] + 1) * (n[1] + 1) * (n[2] + 1);
+	//auto ne_x = (n[0] + 0) * (n[1] + 1) * (n[2] + 1);
+	//auto ne_y = (n[0] + 1) * (n[1] + 0) * (n[2] + 1);
+	//auto ne_z = (n[0] + 1) * (n[1] + 1) * (n[2] + 0);
+	//auto ne = ne_x + ne_y + ne_z;
 
 	// Reduce vertices.
-	auto xi = Vector3d{};
+	//auto xi = Vector3d{};
 	auto z_values = std::vector<uint64_t>(coeffs.size());
 	for (auto l = 0u; l < coeffs.size(); ++l)
 	{

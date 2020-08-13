@@ -17,7 +17,10 @@ public:
 	void save(std::string const& filename) const override;
 	void load(std::string const& filename) override;
 
-	unsigned int addFunction(ContinuousFunction const& func, bool verbose = false,
+	unsigned int addFunction(
+		ContinuousFunction const& func,
+		std::vector<std::thread::id> *thread_map,
+		bool verbose = false,
 		SamplePredicate const& pred = nullptr) override;
 
 

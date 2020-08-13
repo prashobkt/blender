@@ -4,6 +4,8 @@
 #include <fstream>
 #include <array>
 #include <Eigen/Dense>
+#include <thread>
+#include <map>
 
 namespace Discregrid
 {
@@ -32,7 +34,10 @@ public:
 	virtual void save(std::string const& filename) const = 0;
 	virtual void load(std::string const& filename) = 0;
 
-	virtual unsigned int addFunction(ContinuousFunction const& func, bool verbose = false,
+	virtual unsigned int addFunction(
+		ContinuousFunction const& func,
+		std::vector<std::thread::id> *thread_map,
+		bool verbose = false,
 		SamplePredicate const& pred = nullptr) = 0;
 
 	double interpolate(Eigen::Vector3d const& xi, Eigen::Vector3d* gradient = nullptr) const
