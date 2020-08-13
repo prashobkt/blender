@@ -83,7 +83,7 @@ static void gpencil_export_common_props(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna,
                           "selected_object_type",
                           gpencil_export_select_items,
-                          0,
+                          GP_EXPORT_SELECTED,
                           "Object",
                           "Objects included in the export");
 
