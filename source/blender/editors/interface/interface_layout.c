@@ -5175,9 +5175,13 @@ static void layout_free_and_hide_buttons(uiLayout *layout)
   MEM_freeN(layout);
 }
 
-static bool button_matches_search_filter(uiBut *but, char *search_filter)
+/**
+ * Returns true if a button or the data / operator it represents matches the search filter.
+ *
+ * \note It's important to do the shorter checks first for performance.
+ */
+static bool button_matches_search_filter(uiBut *but, const char *search_filter)
 {
-  /* Do the shorter checks first, in case the check returns true. */
   if (BLI_strcasestr(but->str, search_filter)) {
     return true;
   }
@@ -5197,6 +5201,28 @@ static bool button_matches_search_filter(uiBut *but, char *search_filter)
       return true;
     }
 #endif
+
+    /* Search through labels of enum property items if they are in a dropdown menu. */
+    if (but->type == UI_BTYPE_MENU) {
+      PointerRNA *ptr = &but->rnapoin;
+      PropertyRNA *enum_prop = but->rnaprop;
+
+      int items_len;
+      const EnumPropertyItem *enum_items = NULL;
+      bool free;
+      RNA_property_enum_items(NULL, ptr, enum_prop, &enum_items, &items_len, &free);
+
+      if (enum_items != NULL) {
+        for (int i = 0; i < items_len; i++) {
+          if (BLI_strcasestr(enum_items[i].name, search_filter)) {
+            return true;
+          }
+        }
+        if (free) {
+          MEM_freeN((void *)enum_items);
+        }
+      }
+    }
   }
 
   return false;
