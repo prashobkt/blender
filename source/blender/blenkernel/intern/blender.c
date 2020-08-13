@@ -181,7 +181,8 @@ void G_debug_enable(int flags)
   }
 #endif
   if (flags & G_DEBUG_FPE) {
-    main_signal_setup_fpe();
+    // TODO (grzelins) causes linking error on windows
+    // main_signal_setup_fpe();
   }
 
   if (flags & G_DEBUG_MEMORY) {

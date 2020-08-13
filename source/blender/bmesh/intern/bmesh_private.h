@@ -32,7 +32,7 @@
 #ifdef NDEBUG
 /* No error checking for release,
  * it can take most of the CPU time when running some tools. */
-#  define BM_CHECK_ELEMENT(el) (void)(el)
+#  define BM_CHECK_ELEMENT(log_ref, el) (void)(el)
 #else
 int bmesh_elem_check(void *element, const char htype);
 #  define BM_CHECK_ELEMENT(log_ref, el) \

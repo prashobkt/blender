@@ -1074,7 +1074,8 @@ static int arg_handle_debug_fpe_set(int UNUSED(argc),
                                     const char **UNUSED(argv),
                                     void *UNUSED(data))
 {
-  G_debug_enable(G_DEBUG_FPE);
+  // G_debug_enable(G_DEBUG_FPE);
+  main_signal_setup_fpe();
   U.runtime.use_settings_from_command_line |= ARGS_DEBUG;
   return 0;
 }

@@ -85,6 +85,16 @@ extern "C" {
 #  define _CLOG_ATTR_PRINTF_FORMAT(format_param, dots_param)
 #endif
 
+/* workaround: copied from blender\source\blender\blenlib\BLI_compiler_attrs.h to avoid making dependency on blenlib */
+/* Use to suppress '-Wimplicit-fallthrough' (in place of 'break'). */
+#ifndef ATTR_FALLTHROUGH
+#  if defined(__GNUC__) && (__GNUC__ >= 7) /* gcc7.0+ only */
+#    define ATTR_FALLTHROUGH __attribute__((fallthrough))
+#  else
+#    define ATTR_FALLTHROUGH ((void)0)
+#  endif
+#endif
+
 /* For printing timestamp. */
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
