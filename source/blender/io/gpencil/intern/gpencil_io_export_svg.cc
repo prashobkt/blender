@@ -360,9 +360,9 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node)
 /**
  * Export a stroke using SVG path
  * \param gpl_node: Node of the layer.
- * \param is_fill: True if the stroke is only fill
+ * \param do_fill: True if the stroke is only fill
  */
-void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool is_fill)
+void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool do_fill)
 {
   bGPDlayer *gpl = gpl_current_get();
   bGPDstroke *gps = gps_current_get();
@@ -371,7 +371,7 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
 
   float col[3];
   std::string stroke_hex;
-  if (is_fill) {
+  if (do_fill) {
     gps_node.append_attribute("fill-opacity").set_value(fill_color_[3] * gpl->opacity);
 
     interp_v3_v3v3(col, fill_color_, gpl->tintcolor, gpl->tintcolor[3]);
@@ -413,9 +413,9 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
 /**
  * Export a stroke using polyline or polygon
  * \param gpl_node: Node of the layer.
- * \param is_fill: True if the stroke is only fill
+ * \param do_fill: True if the stroke is only fill
  */
-void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const bool is_fill)
+void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const bool do_fill)
 {
   bGPDstroke *gps = gps_current_get();
 
@@ -441,11 +441,11 @@ void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const b
 
   BKE_gpencil_free_stroke(gps_temp);
 
-  pugi::xml_node gps_node = gpl_node.append_child(is_fill || cyclic ? "polygon" : "polyline");
+  pugi::xml_node gps_node = gpl_node.append_child(do_fill || cyclic ? "polygon" : "polyline");
 
-  color_string_set(gps_node, is_fill);
+  color_string_set(gps_node, do_fill);
 
-  if (gp_style_is_stroke() && !is_fill) {
+  if (gp_style_is_stroke() && !do_fill) {
     gps_node.append_attribute("stroke-width").set_value(radius * 2.0f);
   }
 
@@ -454,7 +454,7 @@ void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const b
     if (i > 0) {
       txt.append(" ");
     }
-    bGPDspoint *pt = &gps->points[i];
+    pt = &gps->points[i];
     float screen_co[2];
     gpencil_3d_point_to_screen_space(&pt->x, screen_co);
     txt.append(std::to_string(screen_co[0]) + "," + std::to_string(screen_co[1]));
@@ -466,9 +466,9 @@ void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const b
 /**
  * Set color SVG string for stroke
  * \param gps_node: Stroke node
- * @param is_fill: True if the stroke is only fill
+ * @param do_fill: True if the stroke is only fill
  */
-void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is_fill)
+void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool do_fill)
 {
   bGPDlayer *gpl = gpl_current_get();
   bGPDstroke *gps = gps_current_get();
@@ -477,7 +477,7 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool is
                           gps->caps[1] == GP_STROKE_CAP_ROUND);
 
   float col[3];
-  if (is_fill) {
+  if (do_fill) {
     interp_v3_v3v3(col, fill_color_, gpl->tintcolor, gpl->tintcolor[3]);
     if ((params_.flag & GP_EXPORT_GRAY_SCALE) != 0) {
       rgb_to_grayscale(col);
