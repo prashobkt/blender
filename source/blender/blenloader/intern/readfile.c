@@ -5932,6 +5932,7 @@ static void direct_link_collection(BlendDataReader *reader, Collection *collecti
   collection->flag &= ~COLLECTION_HAS_OBJECT_CACHE;
   collection->tag = 0;
   BLI_listbase_clear(&collection->object_cache);
+  BLI_listbase_clear(&collection->object_cache_instanced);
   BLI_listbase_clear(&collection->parents);
 
 #ifdef USE_COLLECTION_COMPAT_28
