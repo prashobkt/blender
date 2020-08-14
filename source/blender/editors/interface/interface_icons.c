@@ -462,22 +462,13 @@ DEF_ICON_VECTOR_COLORSET_DRAW_NTH(20, 19)
 #  undef DEF_ICON_VECTOR_COLORSET_DRAW_NTH
 
 static void vicon_collection_color_draw(
-    short color, int x, int y, int w, int h, float UNUSED(alpha))
+    short color, int x, int y, int UNUSED(w), int UNUSED(), float UNUSED(alpha))
 {
   bTheme *btheme = UI_GetTheme();
   const ThemeCollectionColor *collection_color = &btheme->collection_color[color - 1];
-  const int c = x + w;
 
-  uint pos = GPU_vertformat_attr_add(
-      immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
-
-  /* XXX: Include alpha into this... */
-  /* normal */
-  immUniformColor3ubv(collection_color->color);
-  immRecti(pos, x, y, c, y + h);
-
-  immUnbindProgram();
+  UI_icon_draw_ex(
+      x, y, ICON_OUTLINER_COLLECTION, U.inv_dpi_fac, 1.0f, 0.0f, collection_color->color, true);
 }
 
 #  define DEF_ICON_COLLECTION_COLOR_DRAW(index, color) \
