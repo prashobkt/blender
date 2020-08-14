@@ -108,8 +108,8 @@ static bool gpencil_io_export_frame(GpencilExporterSVG *exporter,
 }
 
 /* Export full animation in Storyboard mode. */
-static bool gpencil_export_storyboard(
-    Depsgraph *depsgraph, Main *bmain, Scene *scene, GpencilExportParams *iparams, Object *ob)
+static bool gpencil_io_export_storyboard(
+    Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob, GpencilExportParams *iparams)
 {
   Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
   bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
@@ -239,7 +239,7 @@ bool gpencil_io_export(const char *filename, GpencilExportParams *iparams)
   else {
     int oldframe = (int)DEG_get_ctime(depsgraph);
 
-    done |= gpencil_export_storyboard(depsgraph, bmain, scene, iparams, ob);
+    done |= gpencil_io_export_storyboard(bmain, depsgraph, scene, ob, iparams);
 
     /* Return frame state and DB to original state. */
     CFRA = oldframe;
