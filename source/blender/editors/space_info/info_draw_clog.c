@@ -215,7 +215,7 @@ void clog_textview_line_get(struct TextViewContext *tvc,
   if (sinfo->log_format & INFO_CLOG_SHOW_FUNCTION) {
     BLI_dynstr_appendf(dynStr, "%s ", record->function);
   }
-  if (sinfo->log_format & sinfo->use_log_message_new_line) {
+  if (sinfo->use_log_message_new_line) {
     BLI_dynstr_append(dynStr, "\n");
   }
 
