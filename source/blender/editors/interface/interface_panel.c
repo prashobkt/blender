@@ -122,16 +122,33 @@ static bool panel_type_context_poll(ARegion *region,
                                     const PanelType *panel_type,
                                     const char *context);
 
-static void panel_title_color_get(bool show_background, uchar color[4])
+static void panel_title_color_get(const Panel *panel,
+                                  const bool show_background,
+                                  const bool use_search_color,
+                                  const bool region_search_filter_active,
+                                  uchar r_color[4])
 {
-  if (show_background) {
-    UI_GetThemeColor4ubv(TH_TITLE, color);
-  }
-  else {
+  if (!show_background) {
     /* Use menu colors for floating panels. */
     bTheme *btheme = UI_GetTheme();
     const uiWidgetColors *wcol = &btheme->tui.wcol_menu_back;
-    copy_v4_v4_uchar(color, (const uchar *)wcol->text);
+    copy_v4_v4_uchar(r_color, (const uchar *)wcol->text);
+    return;
+  }
+
+  const bool search_match = UI_panel_matches_search_filter(panel);
+
+  if (region_search_filter_active && use_search_color && search_match) {
+    UI_GetThemeColor4ubv(TH_SEARCH_MATCH, r_color);
+  }
+  else {
+
+    UI_GetThemeColor4ubv(TH_TITLE, r_color);
+    if (region_search_filter_active && !search_match) {
+      r_color[0] *= 0.5;
+      r_color[1] *= 0.5;
+      r_color[2] *= 0.5;
+    }
   }
 }
 
@@ -943,8 +960,12 @@ void UI_panel_label_offset(uiBlock *block, int *r_x, int *r_y)
   }
 }
 
-static void ui_draw_aligned_panel_header(
-    uiStyle *style, uiBlock *block, const rcti *rect, char dir, const bool show_background)
+static void ui_draw_aligned_panel_header(uiStyle *style,
+                                         uiBlock *block,
+                                         const rcti *rect,
+                                         char dir,
+                                         const bool show_background,
+                                         const bool region_search_filter_active)
 {
   Panel *panel = block->panel;
   rcti hrect;
@@ -958,7 +979,8 @@ static void ui_draw_aligned_panel_header(
   pnl_icons = (panel->labelofs + (1.1f * PNL_ICON)) / block->aspect + 0.001f;
 
   /* draw text label */
-  panel_title_color_get(show_background, col_title);
+  panel_title_color_get(
+      panel, show_background, is_subpanel, region_search_filter_active, col_title);
   col_title[3] = 255;
 
   hrect = *rect;
@@ -987,7 +1009,8 @@ void ui_draw_aligned_panel(uiStyle *style,
                            uiBlock *block,
                            const rcti *rect,
                            const bool show_pin,
-                           const bool show_background)
+                           const bool show_background,
+                           const bool region_search_filter_active)
 {
   Panel *panel = block->panel;
   rctf itemrect;
@@ -1091,7 +1114,7 @@ void ui_draw_aligned_panel(uiStyle *style,
 #endif
   {
     uchar col_title[4];
-    panel_title_color_get(show_background, col_title);
+    panel_title_color_get(panel, show_background, false, region_search_filter_active, col_title);
 
     GPU_blend(true);
     UI_icon_draw_ex(headrect.xmax - ((PNL_ICON * 2.2f) / block->aspect),
@@ -1111,7 +1134,8 @@ void ui_draw_aligned_panel(uiStyle *style,
     titlerect.xmin += (0.7f * UI_UNIT_X) / block->aspect + 0.001f;
   }
   if (is_closed_x == false) {
-    ui_draw_aligned_panel_header(style, block, &titlerect, 'h', show_background);
+    ui_draw_aligned_panel_header(
+        style, block, &titlerect, 'h', show_background, region_search_filter_active);
 
     if (show_drag) {
       /* itemrect smaller */
@@ -1144,7 +1168,8 @@ void ui_draw_aligned_panel(uiStyle *style,
   }
   else if (is_closed_x) {
     /* draw vertical title */
-    ui_draw_aligned_panel_header(style, block, &headrect, 'v', show_background);
+    ui_draw_aligned_panel_header(
+        style, block, &headrect, 'v', show_background, region_search_filter_active);
     pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   }
   /* an open panel */
@@ -1207,7 +1232,7 @@ void ui_draw_aligned_panel(uiStyle *style,
   }
 
   uchar col_title[4];
-  panel_title_color_get(show_background, col_title);
+  panel_title_color_get(panel, show_background, false, region_search_filter_active, col_title);
 
   /* draw collapse icon */
 

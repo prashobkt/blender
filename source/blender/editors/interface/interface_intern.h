@@ -809,7 +809,8 @@ extern void ui_draw_aligned_panel(struct uiStyle *style,
                                   uiBlock *block,
                                   const rcti *rect,
                                   const bool show_pin,
-                                  const bool show_background);
+                                  const bool show_background,
+                                  const bool region_search_filter_active);
 void ui_panel_set_search_filter_match(struct Panel *panel, const bool value);
 
 /* interface_draw.c */

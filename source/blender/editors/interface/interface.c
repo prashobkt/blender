@@ -1930,8 +1930,12 @@ void UI_block_draw(const bContext *C, uiBlock *block)
         }
       }
     }
-    ui_draw_aligned_panel(
-        &style, block, &rect, UI_panel_category_is_visible(region), show_background);
+    ui_draw_aligned_panel(&style,
+                          block,
+                          &rect,
+                          UI_panel_category_is_visible(region),
+                          show_background,
+                          region->flag & RGN_FLAG_SEARCH_FILTER_ACTIVE);
   }
 
   BLF_batch_draw_begin();
