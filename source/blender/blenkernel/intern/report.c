@@ -322,8 +322,8 @@ Report *BKE_reports_last_displayable(ReportList *reports)
 
 void BKE_reports_move(ReportList *src, ReportList *dst)
 {
-  Report *report;
-  for (report = src->list.first; report; report = report->next) {
+  while (!BLI_listbase_is_empty(&src->list)){
+    Report *report = BLI_pophead(&src->list);
     BLI_addtail(&dst->list, report);
   }
   BLI_listbase_clear(&src->list);
