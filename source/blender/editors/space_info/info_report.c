@@ -232,13 +232,11 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
       info_area_tag_redraw(C);
       return OPERATOR_FINISHED;
     }
-    else {
-      reports_select_all(reports, sinfo, SEL_DESELECT);
-      report->flag |= RPT_SELECT;
-      sinfo->active_index = report_index;
-      info_area_tag_redraw(C);
-      return OPERATOR_FINISHED;
-    }
+    reports_select_all(reports, sinfo, SEL_DESELECT);
+    report->flag |= RPT_SELECT;
+    sinfo->active_index = report_index;
+    info_area_tag_redraw(C);
+    return OPERATOR_FINISHED;
   }
 
   if (extend && (report->flag & RPT_SELECT) && report_index == sinfo->active_index) {

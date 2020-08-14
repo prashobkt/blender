@@ -220,13 +220,11 @@ static int select_clog_pick_exec(bContext *C, wmOperator *op)
       info_area_tag_redraw(C);
       return OPERATOR_FINISHED;
     }
-    else {
-      log_records_select_all(records, sinfo, SEL_DESELECT);
-      record->flag |= CLG_SELECT;
-      sinfo->active_index = clog_index;
-      info_area_tag_redraw(C);
-      return OPERATOR_FINISHED;
-    }
+    log_records_select_all(records, sinfo, SEL_DESELECT);
+    record->flag |= CLG_SELECT;
+    sinfo->active_index = clog_index;
+    info_area_tag_redraw(C);
+    return OPERATOR_FINISHED;
   }
 
   if (extend && (record->flag & CLG_SELECT) && clog_index == sinfo->active_index) {
