@@ -50,6 +50,7 @@ struct CollisionObstacle
 {
   Eigen::VectorXf x0, x1;
   std::vector<unsigned int> F;
+  bool needs_sdf_recompute;
 };
 
 struct ADMMPDInternalData
@@ -520,18 +521,47 @@ void admmpd_update_obstacles(
   if (!iface->idata) { return; }
   if (!iface->idata->collision) { return; }
   if (nf==0 || nv==0) { return; }
-
   int nv3 = nv*3;
-  iface->idata->obs.x0.resize(nv3);
-  iface->idata->obs.x1.resize(nv3);
   int nf3 = nf*3;
-  iface->idata->obs.F.resize(nf3);
+  iface->idata->obs.needs_sdf_recompute = false;
+
+  if (iface->idata->obs.x0.size()!=nv3) {
+    iface->idata->obs.x0.resize(nv3);
+    iface->idata->obs.needs_sdf_recompute = true;
+  }
+
+  if (iface->idata->obs.x1.size()!=nv3) {
+    iface->idata->obs.x1.resize(nv3);
+    iface->idata->obs.needs_sdf_recompute = true;
+  }
+
+  if (iface->idata->obs.F.size()!=nf3) {
+    iface->idata->obs.F.resize(nf3);
+    iface->idata->obs.needs_sdf_recompute = true;
+  }
 
   for (int i=0; i<nv3; ++i) {
+
+    // Change in x?
+    if (!iface->idata->obs.needs_sdf_recompute) {
+      if (std::abs(iface->idata->obs.x0[i]-in_verts_0[i])>1e-8 ||
+          std::abs(iface->idata->obs.x1[i]-in_verts_1[i])>1e-8 ) {
+        iface->idata->obs.needs_sdf_recompute = true;
+      }
+    }
+
     iface->idata->obs.x0[i] = in_verts_0[i];
     iface->idata->obs.x1[i] = in_verts_1[i];
   }
   for (int i=0; i<nf3; ++i) {
+
+    // Change in f?
+    if (!iface->idata->obs.needs_sdf_recompute) {
+      if (iface->idata->obs.F[i] != in_faces[i]) {
+        iface->idata->obs.needs_sdf_recompute = true;
+      }
+    }
+
     iface->idata->obs.F[i] = in_faces[i];
   }
 
@@ -647,10 +677,9 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
   update_selfcollision_group(iface,ob);
 
   // Changing the location of the obstacles requires a recompuation
-  // of the SDF. So we'll only do that if we need to:
+  // of the SDF. So we'll only do that if:
   // a) we are substepping (need to lerp)
-  // b) the obstacle is actually moving
-  // Otherwise, we'll use the end position.
+  // b) the obstacle positions have changed from the last frame
   bool has_obstacles = 
     iface->idata->collision &&
     iface->idata->obs.x0.size() > 0 &&
@@ -661,7 +690,7 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
     iface->idata->options->substeps>1 &&
     (iface->idata->obs.x0-iface->idata->obs.x1).lpNorm<Eigen::Infinity>()>1e-6;
 
-  if (has_obstacles && !lerp_obstacles) {
+  if (has_obstacles && iface->idata->obs.needs_sdf_recompute && !lerp_obstacles) {
     iface->idata->collision->set_obstacles(
       iface->idata->obs.x0.data(),
       iface->idata->obs.x1.data(),
