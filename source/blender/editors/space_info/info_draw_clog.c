@@ -161,10 +161,11 @@ void clog_textview_end(struct TextViewContext *UNUSED(tvc))
 
 int clog_textview_step(struct TextViewContext *tvc)
 {
-  const CLG_LogRecord *record = tvc->iter;
-  tvc->iter = record->prev;
-  // TODO (grzelins) implement skip not visible
-  return (tvc->iter != NULL);
+  tvc->iter = (void *)((Link *)tvc->iter)->prev;
+  if (tvc->iter && clog_textview_skip__internal(tvc)) {
+    return true;
+  }
+  return false;
 }
 
 char *clog_record_sprintfN(const struct CLG_LogRecord *record, const SpaceInfo *sinfo)
