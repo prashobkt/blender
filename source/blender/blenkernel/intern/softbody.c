@@ -3565,9 +3565,8 @@ static void update_collider_admmpd(
   Object *vertexowner)
 {
   SoftBody *sb = vertexowner->soft;
-  if (!sb->admmpd) {
-    return;
-  }
+  if (!sb) { return; }
+  if (!sb->admmpd) { return; }
 
   unsigned int numobjects;
   Object **objects = BKE_collision_objects_create(
@@ -3611,7 +3610,7 @@ static void update_collider_admmpd(
           continue;
 
         for (int j=0; j<cmd->mvert_num; ++j) {
-          int v_idx = j*3 + curr_verts;
+          int v_idx = j*3 + curr_verts*3;
           for (int k=0; k<3; ++k) { 
             obs_v0[v_idx+k] = cmd->x[j].co[k];
             obs_v1[v_idx+k] = cmd->xnew[j].co[k];
@@ -3619,7 +3618,7 @@ static void update_collider_admmpd(
         }
 
         for (int j=0; j<cmd->tri_num; ++j) {
-          int f_idx = j*3 + curr_faces;
+          int f_idx = j*3 + curr_faces*3;
           for (int k=0; k<3; ++k) { 
             obs_faces[f_idx+k] = cmd->tri[j].tri[k] + curr_verts;
           }
