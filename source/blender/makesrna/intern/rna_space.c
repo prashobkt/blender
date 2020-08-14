@@ -6124,27 +6124,27 @@ static void rna_def_space_info(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_short_file_line", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_short_file_line", true);
   RNA_def_property_ui_text(prop, "Shorten File Path", "");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   prop = RNA_def_property(srna, "use_log_level_filter", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_log_filter", INFO_FILTER_CLOG_LEVEL);
   RNA_def_property_ui_text(prop, "Use Log Level Filter", "");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   prop = RNA_def_property(srna, "use_log_file_line_filter", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_log_filter", INFO_FILTER_CLOG_FILE_LINE);
   RNA_def_property_ui_text(prop, "Use Log File Line Filter", "");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   prop = RNA_def_property(srna, "use_log_type_filter", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_log_filter", INFO_FILTER_CLOG_TYPE);
   RNA_def_property_ui_text(prop, "Use Log Type Filter", "");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   prop = RNA_def_property(srna, "use_log_function_filter", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_log_filter", INFO_FILTER_CLOG_FUNCTION);
   RNA_def_property_ui_text(prop, "Use Log Function Filter", "");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   rna_def_space_info_filter(brna);
 
@@ -6152,31 +6152,35 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_property_pointer_sdna(prop, NULL, "search_filter");
   RNA_def_property_struct_type(prop, "SpaceInfoFilter");
   RNA_def_property_ui_text(prop, "General Search", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   prop = RNA_def_property(srna, "filter_log_file_line", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "filter_log_file_line", NULL);
   RNA_def_property_struct_type(prop, "SpaceInfoFilter");
   RNA_def_property_ui_text(prop, "Log File Line Filter", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   prop = RNA_def_property(srna, "filter_log_type", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "filter_log_type", NULL);
   RNA_def_property_struct_type(prop, "SpaceInfoFilter");
   RNA_def_property_ui_text(prop, "Log File Line Filter", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   prop = RNA_def_property(srna, "filter_log_function", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "filter_log_function", NULL);
   RNA_def_property_struct_type(prop, "SpaceInfoFilter");
   RNA_def_property_ui_text(prop, "Log File Line Filter", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   prop = RNA_def_property(srna, "use_log_message_new_line", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_log_message_new_line", true);
   RNA_def_property_ui_text(prop, "Print Log Message In New Line", "");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   prop = RNA_def_property(srna, "filter_log_level", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "filter_log_level");
   RNA_def_property_ui_text(prop, "Filter Log Level", "");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   static const EnumPropertyItem rna_enum_log_format_items[] = {
       {INFO_CLOG_SHOW_TIMESTAMP, "SHOW_TIMESTAMP", 0, "Show Timestamp", ""},
@@ -6193,7 +6197,7 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Log Printing format", "");
   RNA_def_property_flag(prop, PROP_ENUM_FLAG);
   RNA_def_property_enum_default(prop, INFO_CLOG_FORMAT_DEFAULT);
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   static const EnumPropertyItem rna_enum_view_type_items[] = {
       {INFO_VIEW_REPORTS, "REPORTS", 0, "Reports", ""},
@@ -6205,7 +6209,7 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_view_type_items);
   RNA_def_property_ui_text(prop, "View reports or logs", "");
   RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_CHANGE_REPORT_SOURCE, NULL);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
 }
 
 static void rna_def_space_userpref(BlenderRNA *brna)

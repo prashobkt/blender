@@ -256,10 +256,6 @@ static void info_main_region_listener(wmWindow *UNUSED(win),
         /* redraw also but only for report view, could do less redraws by checking the type */
         ED_region_tag_redraw(region);
       }
-      else if (wmn->data == ND_SPACE_INFO_CHANGE_REPORT_SOURCE) {
-        /* TODO (grzelins) cleanup */
-        ED_region_tag_redraw(region);
-      }
       break;
   }
 }

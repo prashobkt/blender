@@ -57,7 +57,7 @@ if (STREQ(search_pattern, "")) {
     return true;
   }
   if (!use_match_glob) {
-    char *(*compare_func)(const char *, const char *) = use_match_case ? BLI_strcasestr : strstr;
+    char *(*compare_func)(const char *, const char *) = use_match_case ? strstr : BLI_strcasestr ;
     bool result = compare_func(string, search_pattern) != NULL;
     if (use_reverse_match) {
       return !result;
