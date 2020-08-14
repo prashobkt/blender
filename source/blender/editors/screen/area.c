@@ -753,6 +753,26 @@ void ED_area_tag_refresh(ScrArea *area)
 
 /* *************************************************************** */
 
+/**
+ * Returns the search string if the space type supports property search.
+ */
+char *ED_area_search_filter_get(const bContext *C)
+{
+  SpaceProperties *sbuts = CTX_wm_space_properties(C);
+  if (sbuts != NULL) {
+    return sbuts->search_string;
+  }
+  return NULL;
+}
+
+void ED_region_search_filter_update(const bContext *C, ARegion *region)
+{
+  const char *search_filter = ED_area_search_filter_get(C);
+  SET_FLAG_FROM_TEST(region->flag, search_filter[0] != '\0', RGN_FLAG_SEARCH_FILTER_ACTIVE);
+}
+
+/* *************************************************************** */
+
 /* use NULL to disable it */
 void ED_area_status_text(ScrArea *area, const char *str)
 {

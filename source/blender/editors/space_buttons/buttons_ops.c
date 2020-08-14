@@ -92,6 +92,7 @@ static int buttons_clear_filter_exec(bContext *C, wmOperator *UNUSED(op))
 
   strcpy(space->search_string, "");
 
+  ED_region_search_filter_update(C, CTX_wm_region(C));
   ED_area_tag_redraw(area);
 
   return OPERATOR_FINISHED;

@@ -30,7 +30,7 @@ class PROPERTIES_HT_header(Header):
         layout.template_header()
 
         layout.separator_spacer()
-        layout.prop(view, "filter_text", icon='VIEWZOOM', text="")
+        layout.prop(view, "search_filter", icon='VIEWZOOM', text="")
         layout.separator_spacer()
         
         row = layout.row()
@@ -51,7 +51,7 @@ class PROPERTIES_PT_navigation_bar(Panel):
 
         layout.scale_x = 1.4
         layout.scale_y = 1.4
-        if view.filter_text:
+        if view.search_filter:
             layout.prop_tabs_enum(view, "context", data_highlight=view, 
                 property_highlight="context_search_filter_active", icon_only=True)
         else:

@@ -682,6 +682,8 @@ enum {
   /** When the user sets the region is hidden,
    * needed for floating regions that may be hidden for other reasons. */
   RGN_FLAG_HIDDEN_BY_USER = (1 << 7),
+  /** Property search filter is active. */
+  RGN_FLAG_SEARCH_FILTER_ACTIVE = (1 << 8),
 };
 
 /** #ARegion.do_draw */

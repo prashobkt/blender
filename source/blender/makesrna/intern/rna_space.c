@@ -1817,6 +1817,14 @@ static void rna_SpaceProperties_context_update(Main *UNUSED(bmain),
   }
 }
 
+static void rna_SpaceProperties_search_filter_update(struct bContext *C,
+                                                     struct PointerRNA *UNUSED(ptr))
+{
+  ARegion *region = CTX_wm_region(C);
+
+  ED_region_search_filter_update(C, region);
+}
+
 /* Space Console */
 static void rna_ConsoleLine_body_get(PointerRNA *ptr, char *value)
 {
@@ -4480,11 +4488,13 @@ static void rna_def_space_properties(BlenderRNA *brna)
   RNA_def_property_update(
       prop, NC_SPACE | ND_SPACE_PROPERTIES, "rna_SpaceProperties_context_update");
 
-  prop = RNA_def_property(srna, "filter_text", PROP_STRING, PROP_NONE);
+  prop = RNA_def_property(srna, "search_filter", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "search_string");
   RNA_def_property_ui_text(prop, "Display Filter", "Live search filtering string");
   RNA_def_property_flag(prop, PROP_TEXTEDIT_UPDATE);
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_PROPERTIES, NULL);
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+  RNA_def_property_update(
+      prop, NC_SPACE | ND_SPACE_PROPERTIES, "rna_SpaceProperties_search_filter_update");
 }
 
 static void rna_def_space_image(BlenderRNA *brna)
