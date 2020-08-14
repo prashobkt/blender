@@ -159,7 +159,10 @@ class INFO_MT_context_menu(Menu):
             layout.operator("info.report_copy", text="Copy")
             layout.operator("info.report_delete", text="Delete")
         else:
-            layout.operator("info.clog_copy", text="Copy Message")
+            layout.operator("info.clog_copy", text="Copy Visible").method = 'COPY_VISIBLE'
+            layout.operator("info.clog_copy", text="Copy Message").method = 'COPY_MESSAGE'
+            layout.operator("info.clog_copy", text="Copy Path").method = 'COPY_PATH'
+            layout.operator("info.clog_copy", text="Copy Basename").method = 'COPY_BASENAME'
             layout.operator("info.clog_delete", text="Delete (mockup)")
 
 

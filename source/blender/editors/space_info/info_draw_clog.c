@@ -167,14 +167,8 @@ int clog_textview_step(struct TextViewContext *tvc)
   return (tvc->iter != NULL);
 }
 
-void clog_textview_text_get(struct TextViewContext *tvc,
-                            char **r_line,
-                            int *r_len,
-                            bool *owns_memory)
+char *clog_record_sprintfN(const struct CLG_LogRecord *record, const SpaceInfo *sinfo)
 {
-  const struct CLG_LogRecord *record = tvc->iter;
-  const SpaceInfo *sinfo = tvc->arg1;
-
   DynStr *dynStr = BLI_dynstr_new();
   if (sinfo->log_format & INFO_CLOG_SHOW_TIMESTAMP) {
     char timestamp_str[64];
@@ -199,8 +193,9 @@ void clog_textview_text_get(struct TextViewContext *tvc,
     BLI_dynstr_appendf(dynStr, "(%s) ", record->type->identifier);
   }
   if (sinfo->log_format & INFO_CLOG_SHOW_FILE_LINE) {
-    const char *file_line = (sinfo->log_format & INFO_CLOG_USE_SHORT_FILTE_LINE) ? BLI_path_basename(record->file_line) :
-                                                           record->file_line;
+    const char *file_line = (sinfo->log_format & INFO_CLOG_USE_SHORT_FILTE_LINE) ?
+                                BLI_path_basename(record->file_line) :
+                                record->file_line;
     BLI_dynstr_appendf(dynStr, "%s ", file_line);
   }
   if (sinfo->log_format & INFO_CLOG_SHOW_FUNCTION) {
@@ -211,9 +206,22 @@ void clog_textview_text_get(struct TextViewContext *tvc,
   }
 
   BLI_dynstr_append(dynStr, record->message);
-
-  *r_line = BLI_dynstr_get_cstring(dynStr);
-  *r_len = BLI_dynstr_get_len(dynStr);
-  *owns_memory = true;
+  char *cstring = BLI_dynstr_get_cstring(dynStr);
   BLI_dynstr_free(dynStr);
+  return cstring;
+}
+
+void clog_textview_text_get(struct TextViewContext *tvc,
+                            char **r_line,
+                            int *r_len,
+                            bool *owns_memory)
+{
+  const struct CLG_LogRecord *record = tvc->iter;
+  const SpaceInfo *sinfo = tvc->arg1;
+
+  char *cstring = clog_record_sprintfN(record, sinfo);
+
+  *r_line = cstring;
+  *r_len = strlen(cstring);
+  *owns_memory = true;
 }

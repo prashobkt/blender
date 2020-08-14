@@ -104,6 +104,7 @@ void report_textview_text_get(struct TextViewContext *tvc,
                               int *r_len,
                               bool *owns_memory);
 /* info_draw_clog.c */
+char *clog_record_sprintfN(const struct CLG_LogRecord *record, const SpaceInfo *sinfo);
 bool is_clog_record_visible(const struct CLG_LogRecord *record, const struct SpaceInfo *sinfo);
 enum eTextViewContext_LineDrawFlag clog_line_draw_data(struct TextViewContext *tvc,
                                                        uchar fg[4],

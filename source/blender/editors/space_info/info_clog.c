@@ -456,10 +456,18 @@ void INFO_OT_clog_delete(wmOperatorType *ot)
   /* properties */
 }
 
-static int clog_copy_exec(bContext *C, wmOperator *UNUSED(op))
+typedef enum ClogCopy {
+  CLOG_COPY_VISBLE = 0,
+  CLOG_COPY_MESSAGE,
+  CLOG_COPY_FILE_LINE,
+  CLOG_COPY_FILE_LINE_SHORT,
+} ClogCopy;
+
+static int clog_copy_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   CLG_LogRecordList *records = CLG_log_records_get();
+  ClogCopy copy_type = RNA_enum_get(op->ptr, "method");
   CLG_LogRecord *record;
 
   DynStr *buf_dyn = BLI_dynstr_new();
@@ -467,8 +475,31 @@ static int clog_copy_exec(bContext *C, wmOperator *UNUSED(op))
 
   for (record = records->first; record; record = record->next) {
     if (is_clog_record_visible(record, sinfo) && (record->flag & CLG_SELECT)) {
-      BLI_dynstr_append(buf_dyn, record->message);
-      BLI_dynstr_append(buf_dyn, "\n");
+      switch (copy_type) {
+        case CLOG_COPY_VISBLE: {
+          char *log = clog_record_sprintfN(record, sinfo);
+          BLI_dynstr_append(buf_dyn, log);
+          BLI_dynstr_append(buf_dyn, "\n");
+          break;
+        }
+        case CLOG_COPY_MESSAGE: {
+          BLI_dynstr_append(buf_dyn, record->message);
+          BLI_dynstr_append(buf_dyn, "\n");
+          break;
+        }
+        case CLOG_COPY_FILE_LINE: {
+          BLI_dynstr_append(buf_dyn, record->file_line);
+          BLI_dynstr_append(buf_dyn, "\n");
+          break;
+        }
+        case CLOG_COPY_FILE_LINE_SHORT: {
+          BLI_dynstr_append(buf_dyn, BLI_path_basename(record->file_line));
+          BLI_dynstr_append(buf_dyn, "\n");
+          break;
+        }
+        default:
+          BLI_assert(false);
+      }
     }
   }
 
@@ -496,4 +527,15 @@ void INFO_OT_clog_copy(wmOperatorType *ot)
   /*ot->flag = OPTYPE_REGISTER;*/
 
   /* properties */
+  static const EnumPropertyItem clog_copy_items[] = {
+      {CLOG_COPY_VISBLE, "COPY_VISIBLE", 0, "", ""},
+      {CLOG_COPY_MESSAGE, "COPY_MESSAGE", 0, "", ""},
+      {CLOG_COPY_FILE_LINE, "COPY_PATH", 0, "", ""},
+      {CLOG_COPY_FILE_LINE_SHORT, "COPY_BASENAME", 0, "", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  PropertyRNA *prop;
+  prop = RNA_def_enum(ot->srna, "method", clog_copy_items, CLOG_COPY_VISBLE, "Method", "");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
