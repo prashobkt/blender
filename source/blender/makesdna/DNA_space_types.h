@@ -129,14 +129,12 @@ typedef struct SpaceInfo {
   int report_mask_exclude;
   int active_index;
   char view;
-  char use_log_message_new_line;
-  char _pad1[6];
+  char _pad1[7];
 
   int log_format;
-  char use_short_file_line;
   /** for boolean properties use_log_*_filter */
   char use_log_filter;
-  char _pad2[2];
+  char _pad2[3];
 
   SpaceInfoFilter *search_filter;
 
@@ -184,10 +182,13 @@ typedef enum eSpaceInfo_logFormat {
   INFO_CLOG_SHOW_LEVEL = (1 << 2),
   INFO_CLOG_SHOW_FILE_LINE = (1 << 3),
   INFO_CLOG_SHOW_FUNCTION = (1 << 4),
+  INFO_CLOG_USE_MESSAGE_NEW_LINE = (1 << 5),
+  INFO_CLOG_USE_SHORT_FILTE_LINE = (1 << 6),
 } eSpaceInfo_logFormat;
 
 #define INFO_CLOG_FORMAT_DEFAULT \
-  INFO_CLOG_SHOW_LEVEL | INFO_CLOG_SHOW_FILE_LINE | INFO_CLOG_SHOW_FUNCTION
+  INFO_CLOG_SHOW_LEVEL | INFO_CLOG_SHOW_FILE_LINE | INFO_CLOG_SHOW_FUNCTION | \
+      INFO_CLOG_USE_MESSAGE_NEW_LINE | INFO_CLOG_USE_SHORT_FILTE_LINE
 
 /** \} */
 

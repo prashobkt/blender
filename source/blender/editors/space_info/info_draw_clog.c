@@ -199,14 +199,14 @@ void clog_textview_text_get(struct TextViewContext *tvc,
     BLI_dynstr_appendf(dynStr, "(%s) ", record->type->identifier);
   }
   if (sinfo->log_format & INFO_CLOG_SHOW_FILE_LINE) {
-    const char *file_line = (sinfo->use_short_file_line) ? BLI_path_basename(record->file_line) :
+    const char *file_line = (sinfo->log_format & INFO_CLOG_USE_SHORT_FILTE_LINE) ? BLI_path_basename(record->file_line) :
                                                            record->file_line;
     BLI_dynstr_appendf(dynStr, "%s ", file_line);
   }
   if (sinfo->log_format & INFO_CLOG_SHOW_FUNCTION) {
     BLI_dynstr_appendf(dynStr, "%s ", record->function);
   }
-  if (sinfo->use_log_message_new_line) {
+  if (sinfo->log_format & INFO_CLOG_USE_MESSAGE_NEW_LINE) {
     BLI_dynstr_append(dynStr, "\n");
   }
 

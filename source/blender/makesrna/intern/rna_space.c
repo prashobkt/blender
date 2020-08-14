@@ -6121,11 +6121,6 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Filter Log Severity", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
-  prop = RNA_def_property(srna, "use_short_file_line", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "use_short_file_line", true);
-  RNA_def_property_ui_text(prop, "Shorten File Path", "");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
-
   prop = RNA_def_property(srna, "use_log_level_filter", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_log_filter", INFO_FILTER_CLOG_LEVEL);
   RNA_def_property_ui_text(prop, "Use Log Level Filter", "");
@@ -6172,11 +6167,6 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Log File Line Filter", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
-  prop = RNA_def_property(srna, "use_log_message_new_line", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "use_log_message_new_line", true);
-  RNA_def_property_ui_text(prop, "Print Log Message In New Line", "");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
-
   prop = RNA_def_property(srna, "filter_log_level", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "filter_log_level");
   RNA_def_property_ui_text(prop, "Filter Log Level", "");
@@ -6196,7 +6186,16 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_log_format_items);
   RNA_def_property_ui_text(prop, "Log Printing format", "");
   RNA_def_property_flag(prop, PROP_ENUM_FLAG);
-  RNA_def_property_enum_default(prop, INFO_CLOG_FORMAT_DEFAULT);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+
+  prop = RNA_def_property(srna, "use_log_message_new_line", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "log_format", INFO_CLOG_USE_MESSAGE_NEW_LINE);
+  RNA_def_property_ui_text(prop, "Print Log Message In New Line", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+
+  prop = RNA_def_property(srna, "use_short_file_line", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "log_format", INFO_CLOG_USE_SHORT_FILTE_LINE);
+  RNA_def_property_ui_text(prop, "Shorten File Path", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   static const EnumPropertyItem rna_enum_view_type_items[] = {
