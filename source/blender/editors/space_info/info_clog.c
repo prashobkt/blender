@@ -88,14 +88,14 @@ bool is_clog_record_visible(const CLG_LogRecord *record, const SpaceInfo *sinfo)
   }
 
   /* filter verbosity */
-  if (sinfo->use_log_filter & INFO_FILTER_LOG_LEVEL) {
+  if (sinfo->use_log_filter & INFO_FILTER_CLOG_LEVEL) {
     if (sinfo->filter_log_level < record->verbosity) {
       return false;
     }
   }
 
   /* filter log type */
-  if (sinfo->use_log_filter & INFO_FILTER_LOG_TYPE) {
+  if (sinfo->use_log_filter & INFO_FILTER_CLOG_TYPE) {
     LISTBASE_FOREACH (struct SpaceInfoFilter *, filter, &sinfo->filter_log_type) {
       if (!info_match_string_filter(filter->search_string,
                                     record->type->identifier,
@@ -108,7 +108,7 @@ bool is_clog_record_visible(const CLG_LogRecord *record, const SpaceInfo *sinfo)
   }
 
   /* filter log function */
-  if (sinfo->use_log_filter & INFO_FILTER_LOG_FUNCTION) {
+  if (sinfo->use_log_filter & INFO_FILTER_CLOG_FUNCTION) {
     LISTBASE_FOREACH (struct SpaceInfoFilter *, filter, &sinfo->filter_log_function) {
       if (!info_match_string_filter(filter->search_string,
                                     record->function,
@@ -121,7 +121,7 @@ bool is_clog_record_visible(const CLG_LogRecord *record, const SpaceInfo *sinfo)
   }
 
   /* filter file line */
-  if (sinfo->use_log_filter & INFO_FILTER_FILE_LINE) {
+  if (sinfo->use_log_filter & INFO_FILTER_CLOG_FILE_LINE) {
     LISTBASE_FOREACH (struct SpaceInfoFilter *, filter, &sinfo->filter_log_file_line) {
       if (!info_match_string_filter(filter->search_string,
                                     record->file_line,

@@ -180,8 +180,8 @@ static void blo_update_defaults_screen(bScreen *screen,
     else if (area->spacetype == SPACE_INFO) {
       SpaceInfo *sinfo = area->spacedata.first;
       sinfo->report_mask_exclude = RPT_DEBUG_ALL;
-      sinfo->log_severity_mask = CLG_DEFAULT_SEVERITY;
-      sinfo->log_format = INFO_LOG_FORMAT_DEFAULT;
+      sinfo->log_severity_mask = INFO_CLOG_SEVERITY_MASK_DEFAULT;
+      sinfo->log_format = INFO_CLOG_FORMAT_DEFAULT;
       sinfo->use_short_file_line = true;
     }
     else if (area->spacetype == SPACE_TEXT) {

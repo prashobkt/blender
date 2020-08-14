@@ -185,7 +185,7 @@ void clog_textview_line_get(struct TextViewContext *tvc,
   const SpaceInfo *sinfo = tvc->arg1;
 
   DynStr *dynStr = BLI_dynstr_new();
-  if (sinfo->log_format & INFO_LOG_SHOW_TIMESTAMP) {
+  if (sinfo->log_format & INFO_CLOG_SHOW_TIMESTAMP) {
     char timestamp_str[64];
     const uint64_t timestamp = record->timestamp;
     snprintf(timestamp_str,
@@ -195,7 +195,7 @@ void clog_textview_line_get(struct TextViewContext *tvc,
              (uint)(timestamp % 1000));
     BLI_dynstr_appendf(dynStr, "%s", timestamp_str);
   }
-  if (sinfo->log_format & INFO_LOG_SHOW_LEVEL) {
+  if (sinfo->log_format & INFO_CLOG_SHOW_LEVEL) {
     if (record->severity <= CLG_SEVERITY_VERBOSE) {
       BLI_dynstr_appendf(
           dynStr, "%s:%u ", clg_severity_as_text(record->severity), record->verbosity);
@@ -204,15 +204,15 @@ void clog_textview_line_get(struct TextViewContext *tvc,
       BLI_dynstr_appendf(dynStr, "%s ", clg_severity_as_text(record->severity));
     }
   }
-  if (sinfo->log_format & INFO_LOG_SHOW_LOG_TYPE) {
+  if (sinfo->log_format & INFO_CLOG_SHOW_LOG_TYPE) {
     BLI_dynstr_appendf(dynStr, "(%s) ", record->type->identifier);
   }
-  if (sinfo->log_format & INFO_LOG_SHOW_FILE_LINE) {
+  if (sinfo->log_format & INFO_CLOG_SHOW_FILE_LINE) {
     const char *file_line = (sinfo->use_short_file_line) ? BLI_path_basename(record->file_line) :
                                                            record->file_line;
     BLI_dynstr_appendf(dynStr, "%s ", file_line);
   }
-  if (sinfo->log_format & INFO_LOG_SHOW_FUNCTION) {
+  if (sinfo->log_format & INFO_CLOG_SHOW_FUNCTION) {
     BLI_dynstr_appendf(dynStr, "%s ", record->function);
   }
   if (sinfo->log_format & sinfo->use_log_message_new_line) {
