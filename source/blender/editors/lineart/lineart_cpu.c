@@ -623,7 +623,7 @@ static LineartRenderElementLinkNode *lineart_memory_get_triangle_space(LineartRe
                                                   render_triangles,
                                                   sizeof(LineartRenderElementLinkNode));
   reln->element_count = 64;
-  reln->additional = 1;
+  reln->flags |= LRT_ELEMENT_IS_ADDITIONAL;
 
   return reln;
 }
@@ -640,7 +640,7 @@ static LineartRenderElementLinkNode *lineart_memory_get_vert_space(LineartRender
                                                   render_vertices,
                                                   sizeof(LineartRenderElementLinkNode));
   reln->element_count = 64;
-  reln->additional = 1;
+  reln->flags |= LRT_ELEMENT_IS_ADDITIONAL;
 
   return reln;
 }
@@ -711,7 +711,7 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
   rt1 = (void *)(((unsigned char *)teln->pointer) + rb->triangle_size * t_count);
 
   LISTBASE_FOREACH (LineartRenderElementLinkNode *, reln, &rb->triangle_buffer_pointers) {
-    if (reln->additional) {
+    if (reln->flags & LRT_ELEMENT_IS_ADDITIONAL) {
       continue;
     }
     ob = reln->object_ref;
@@ -1382,6 +1382,11 @@ static void lineart_geometry_object_load(Object *ob,
       use_mesh = BKE_mesh_new_from_object(NULL, ob, false);
     }
 
+    /* In case curve object is empty */
+    if (!use_mesh) {
+      return;
+    }
+
     mul_m4db_m4db_m4fl_uniq(new_mvp, mvp_mat, ob->obmat);
     mul_m4db_m4db_m4fl_uniq(new_mv, mv_mat, ob->obmat);
 
@@ -1429,6 +1434,11 @@ static void lineart_geometry_object_load(Object *ob,
                                                     sizeof(LineartRenderElementLinkNode));
     reln->element_count = bm->totedge;
     reln->object_ref = orig_ob;
+
+    /* Temp solution for getting clean 2D text, future configuration will allow customizations. */
+    if (ob->type == OB_FONT) {
+      reln->flags |= LRT_ELEMENT_BORDER_ONLY;
+    }
 
     reln = lineart_list_append_pointer_static_sized(&rb->triangle_buffer_pointers,
                                                     &rb->render_data_pool,
@@ -2264,11 +2274,16 @@ static void lineart_compute_scene_contours(LineartRenderBuffer *rb, const float 
     }
 
     if (!add) {
-      if ((result = dot_1 * dot_2) <= 0 && (dot_1 + dot_2)) {
+      if ((result = dot_1 * dot_2) < 0 && (dot_1 + dot_2)) {
         add = 1;
       }
       else if (rb->use_crease && (dot_v3v3_db(rl->tl->gn, rl->tr->gn) < threshold)) {
-        add = 2;
+        if (rl->object_ref && rl->object_ref->type == OB_FONT) {
+          /* No internal lines in a text object. */
+        }
+        else {
+          add = 2;
+        }
       }
       else if (rb->use_material &&
                (rl->tl && rl->tr && rl->tl->material_id != rl->tr->material_id)) {
@@ -2467,7 +2482,7 @@ void ED_lineart_modifier_sync_flag_set(eLineartModifierSyncStatus flag,
 {
   BLI_spin_lock(&lineart_share.lock_render_status);
 
-  if (flag != LRT_RENDER_IDLE) {
+  if (flag != LRT_SYNC_IDLE) {
     while (lineart_share.flag_sync_staus == LRT_SYNC_CLEARING) {
       /* Waiting, no double clearing in a new call. */
     }

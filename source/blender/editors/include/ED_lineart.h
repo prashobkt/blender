@@ -72,12 +72,17 @@ typedef struct LineartRenderTriangleThread {
   struct LineartRenderLine *testing[127];
 } LineartRenderTriangleThread;
 
+typedef enum eLineArtElementNodeFlag {
+  LRT_ELEMENT_IS_ADDITIONAL = (1 << 0),
+  LRT_ELEMENT_BORDER_ONLY = (1 << 1),
+} eLineArtElementNodeFlag;
+
 typedef struct LineartRenderElementLinkNode {
   struct LineartRenderElementLinkNode *next, *prev;
   void *pointer;
   int element_count;
   void *object_ref;
-  char additional;
+  eLineArtElementNodeFlag flags;
 } LineartRenderElementLinkNode;
 
 typedef struct LineartRenderLineSegment {
