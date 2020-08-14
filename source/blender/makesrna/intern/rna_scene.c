@@ -7313,7 +7313,7 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Intersection As Contour",
-      "Treat intersection lines as contour so those lines can be chained together.");
+      "Treat intersection lines as contour so those lines can be chained together");
   RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
   prop = RNA_def_property(srna, "fuzzy_everything", PROP_BOOLEAN, PROP_NONE);
@@ -7321,7 +7321,17 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
   RNA_def_property_boolean_default(prop, 0);
   RNA_def_property_ui_text(prop,
                            "Everything As Contour",
-                           "Treat all lines as contour so those lines can be chained together.");
+                           "Treat all lines as contour so those lines can be chained together");
+  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
+
+  prop = RNA_def_property(srna, "allow_duplication", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_ALLOW_DUPLI_OBJECTS);
+  RNA_def_property_boolean_default(prop, 1);
+  RNA_def_property_ui_text(
+      prop,
+      "Duplicated Objects",
+      "Allow particle objects and face/vertiex duplication to show in line art");
+  /* Also use this update callback to trigger the modifier to clear the frame */
   RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
   prop = RNA_def_property(srna, "crease_threshold", PROP_FLOAT, PROP_NONE);

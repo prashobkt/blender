@@ -754,6 +754,9 @@ class RENDER_PT_lineart_line_types(RenderButtonsPanel, Panel):
         row = layout.row(align=False)
         row.prop(lineart, "fuzzy_everything")
 
+        layout.label(text="Extras:")
+        layout.prop(lineart, "allow_duplication")
+
 
 class RENDER_PT_lineart_baking(RenderButtonsPanel, Panel):
     bl_label = "Baking"

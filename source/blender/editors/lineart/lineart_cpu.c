@@ -1586,12 +1586,19 @@ static void lineart_main_load_geometries(Depsgraph *depsgraph,
   BLI_listbase_clear(&rb->triangle_buffer_pointers);
   BLI_listbase_clear(&rb->vertex_buffer_pointers);
 
-  DEG_OBJECT_ITER_FOR_RENDER_ENGINE_BEGIN (depsgraph, ob) {
+  int flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET |
+              DEG_ITER_OBJECT_FLAG_VISIBLE;
+
+  if (scene->lineart.flags & LRT_ALLOW_DUPLI_OBJECTS) {
+    flags |= DEG_ITER_OBJECT_FLAG_DUPLI;
+  }
+
+  DEG_OBJECT_ITER_BEGIN (depsgraph, ob, flags) {
     int usage = ED_lineart_object_collection_usage_check(scene->master_collection, ob);
 
     lineart_geometry_object_load(ob, view, proj, rb, usage);
   }
-  DEG_OBJECT_ITER_FOR_RENDER_ENGINE_END;
+  DEG_OBJECT_ITER_END;
 }
 
 #define INTERSECT_SORT_MIN_TO_MAX_3(ia, ib, ic, lst) \
