@@ -1201,22 +1201,12 @@ static bool collection_drop_poll(bContext *C,
         case TE_INSERT_BEFORE:
           tselem->flag |= TSE_DRAG_BEFORE;
           changed = true;
-          if (te->prev && outliner_is_collection_tree_element(te->prev)) {
-            *r_tooltip = TIP_("Move between collections");
-          }
-          else {
-            *r_tooltip = TIP_("Move before collection");
-          }
+          *r_tooltip = TIP_("Reorder collection(s)");
           break;
         case TE_INSERT_AFTER:
           tselem->flag |= TSE_DRAG_AFTER;
           changed = true;
-          if (te->next && outliner_is_collection_tree_element(te->next)) {
-            *r_tooltip = TIP_("Move between collections");
-          }
-          else {
-            *r_tooltip = TIP_("Move after collection");
-          }
+          *r_tooltip = TIP_("Reorder collection(s)");
           break;
         case TE_INSERT_INTO:
           tselem->flag |= TSE_DRAG_INTO;
