@@ -27,12 +27,16 @@
 
 #include "DNA_armature_types.h"
 #include "DNA_collection_types.h"
+#include "DNA_constraint_types.h"
+#include "DNA_gpencil_modifier_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_light_types.h"
 #include "DNA_material_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
+#include "DNA_shader_fx_types.h"
 #include "DNA_world_types.h"
 
 #include "BLI_listbase.h"
@@ -1269,17 +1273,44 @@ static void outliner_set_properties_tab(bContext *C, TreeElement *te, TreeStoreE
           RNA_id_pointer_create(tselem->id, &ptr);
           ED_buttons_set_context(C, &ptr, BCONTEXT_CONSTRAINT);
         }
+
+        /* Expand the selected constraint in the properties editor. */
+        if (tselem->type != TSE_CONSTRAINT_BASE) {
+          bConstraint *con = te->directdata;
+          con->ui_expand_flag |= (1 << 0);
+        }
         break;
       }
       case TSE_MODIFIER_BASE:
       case TSE_MODIFIER:
         RNA_id_pointer_create(tselem->id, &ptr);
         ED_buttons_set_context(C, &ptr, BCONTEXT_MODIFIER);
+
+        if (tselem->type != TSE_MODIFIER_BASE) {
+          Object *ob = (Object *)tselem->id;
+
+          if (ob->type == OB_GPENCIL) {
+            GpencilModifierData *md = te->directdata;
+            md->ui_expand_flag |= (1 << 0);
+          }
+          else {
+            ModifierData *md = te->directdata;
+            md->ui_expand_flag |= (1 << 0);
+          }
+        }
+
+        // PropertyRNA *prop = RNA_struct_type_find_property(&RNA_Modifier, "show_expanded");
+        // RNA_property_boolean_set(&ptr, prop, true);
         break;
       case TSE_EFFECT_BASE:
       case TSE_EFFECT:
         RNA_id_pointer_create(tselem->id, &ptr);
         ED_buttons_set_context(C, &ptr, BCONTEXT_SHADERFX);
+
+        if (tselem->type != TSE_EFFECT_BASE) {
+          ShaderFxData *sfx = te->directdata;
+          sfx->ui_expand_flag |= (1 << 0);
+        }
         break;
       case TSE_BONE: {
         bArmature *arm = (bArmature *)tselem->id;
