@@ -69,46 +69,40 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *iparams
   invert_axis_[1] = true;
 }
 
-/* Main write method for SVG format. */
-bool GpencilExporterSVG::write(std::string subfix,
-                               const bool newpage,
-                               const bool body,
-                               const bool savepage)
+void GpencilExporterSVG::add_newpage(void)
+{
+  create_document_header();
+}
+
+void GpencilExporterSVG::add_body(void)
+{
+  export_gpencil_layers();
+}
+
+bool GpencilExporterSVG::write(std::string subfix)
 {
   bool result = true;
-  /* Create new document and add header. */
-  if (newpage) {
-    create_document_header();
-  }
-
-  /* Add body. */
-  if (body) {
-    export_layers();
-  }
-
   /* Save File. */
-  if (savepage) {
-    /* Add frame to filename. */
-    std::string frame_file = out_filename_;
-    size_t found = frame_file.find_last_of(".");
-    if (found != std::string::npos) {
-      frame_file.replace(found, 8, subfix + ".svg");
-    }
+  /* Add frame to filename. */
+  std::string frame_file = out_filename_;
+  size_t found = frame_file.find_last_of(".");
+  if (found != std::string::npos) {
+    frame_file.replace(found, 8, subfix + ".svg");
+  }
 
 /* Support unicode character paths on Windows. */
 #ifdef WIN32
-    char filename_cstr[FILE_MAX];
-    BLI_strncpy(filename_cstr, frame_file.c_str(), FILE_MAX);
+  char filename_cstr[FILE_MAX];
+  BLI_strncpy(filename_cstr, frame_file.c_str(), FILE_MAX);
 
-    UTF16_ENCODE(filename_cstr);
-    std::wstring wstr(filename_cstr_16);
-    result = doc.save_file(wstr.c_str());
+  UTF16_ENCODE(filename_cstr);
+  std::wstring wstr(filename_cstr_16);
+  result = main_doc.save_file(wstr.c_str());
 
-    UTF16_UN_ENCODE(filename_cstr);
+  UTF16_UN_ENCODE(filename_cstr);
 #else
-    result = doc.save_file(frame_file.c_str());
+  result = main_doc.save_file(frame_file.c_str());
 #endif
-  }
 
   return result;
 }
@@ -117,19 +111,19 @@ bool GpencilExporterSVG::write(std::string subfix,
 void GpencilExporterSVG::create_document_header(void)
 {
   /* Add a custom document declaration node. */
-  pugi::xml_node decl = doc.prepend_child(pugi::node_declaration);
+  pugi::xml_node decl = main_doc.prepend_child(pugi::node_declaration);
   decl.append_attribute("version") = "1.0";
   decl.append_attribute("encoding") = "UTF-8";
 
-  pugi::xml_node comment = doc.append_child(pugi::node_comment);
+  pugi::xml_node comment = main_doc.append_child(pugi::node_comment);
   comment.set_value(SVG_EXPORTER_VERSION);
 
-  pugi::xml_node doctype = doc.append_child(pugi::node_doctype);
+  pugi::xml_node doctype = main_doc.append_child(pugi::node_doctype);
   doctype.set_value(
       "svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" "
       "\"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\"");
 
-  main_node = doc.append_child("svg");
+  main_node = main_doc.append_child("svg");
   main_node.append_attribute("version").set_value("1.0");
   main_node.append_attribute("x").set_value("0px");
   main_node.append_attribute("y").set_value("0px");
@@ -153,17 +147,17 @@ void GpencilExporterSVG::create_document_header(void)
 
   /* Scene name. */
   if ((params_.flag & GP_EXPORT_STORYBOARD_MODE) != 0) {
-    create_text(main_node,
-                30.0f,
-                params_.paper_size[1] - 30.0f,
-                std::string(scene->id.name + 2),
-                12.0f,
-                "#000000");
+    add_text(main_node,
+             30.0f,
+             params_.paper_size[1] - 30.0f,
+             std::string(scene->id.name + 2),
+             12.0f,
+             "#000000");
   }
 }
 
 /* Main layer loop. */
-void GpencilExporterSVG::export_layers(void)
+void GpencilExporterSVG::export_gpencil_layers(void)
 {
   const bool is_clipping = is_camera_mode() && (params_.flag & (GP_EXPORT_CLIP_CAMERA |
                                                                 GP_EXPORT_STORYBOARD_MODE)) != 0;
@@ -182,16 +176,16 @@ void GpencilExporterSVG::export_layers(void)
       clip_node.append_attribute("id").set_value(("clip-path" + std::to_string(cfra_)).c_str());
 
       if ((params_.flag & GP_EXPORT_STORYBOARD_MODE) != 0) {
-        create_rect(clip_node,
-                    frame_offset_[0],
-                    frame_offset_[1],
-                    frame_box_[0],
-                    frame_box_[1],
-                    0.0f,
-                    "#000000");
+        add_rect(clip_node,
+                 frame_offset_[0],
+                 frame_offset_[1],
+                 frame_box_[0],
+                 frame_box_[1],
+                 0.0f,
+                 "#000000");
       }
       else {
-        create_rect(clip_node, 0, 0, render_x_, render_y_, 0.0f, "#000000");
+        add_rect(clip_node, 0, 0, render_x_, render_y_, 0.0f, "#000000");
       }
     }
 
@@ -251,26 +245,26 @@ void GpencilExporterSVG::export_layers(void)
         CLAMP_MIN(gps_duplicate->thickness, 1.0f);
 
         if (gps_duplicate->totpoints == 1) {
-          export_point(gpl_node);
+          export_stroke_to_point(gpl_node);
         }
         else {
           bool is_normalized = ((params_.flag & GP_EXPORT_NORM_THICKNESS) != 0) ||
                                is_stroke_thickness_constant(gps);
 
           /* Fill. */
-          if ((gp_style_is_fill()) && (params_.flag & GP_EXPORT_FILL)) {
+          if ((material_is_fill()) && (params_.flag & GP_EXPORT_FILL)) {
             if (is_normalized) {
-              export_stroke_polyline(gpl_node, true);
+              export_stroke_to_polyline(gpl_node, true);
             }
             else {
-              export_stroke_path(gpl_node, true);
+              export_stroke_to_path(gpl_node, true);
             }
           }
 
           /* Stroke. */
-          if (gp_style_is_stroke()) {
+          if (material_is_stroke()) {
             if (is_normalized) {
-              export_stroke_polyline(gpl_node, false);
+              export_stroke_to_polyline(gpl_node, false);
             }
             else {
               bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
@@ -283,7 +277,7 @@ void GpencilExporterSVG::export_layers(void)
                 BKE_gpencil_stroke_sample(gps_perimeter, params_.stroke_sample, false);
               }
 
-              export_stroke_path(gpl_node, false);
+              export_stroke_to_path(gpl_node, false);
 
               BKE_gpencil_free_stroke(gps_perimeter);
             }
@@ -296,13 +290,13 @@ void GpencilExporterSVG::export_layers(void)
 
     /* Frame border. */
     if ((params_.flag & GP_EXPORT_STORYBOARD_MODE) != 0) {
-      create_rect(main_node,
-                  frame_offset_[0],
-                  frame_offset_[1],
-                  frame_box_[0],
-                  frame_box_[1],
-                  6.0f,
-                  "#000000");
+      add_rect(main_node,
+               frame_offset_[0],
+               frame_offset_[1],
+               frame_box_[0],
+               frame_box_[1],
+               6.0f,
+               "#000000");
 
       /* Frame text. */
       if (params_.text_type != GP_EXPORT_TXT_NONE) {
@@ -323,12 +317,12 @@ void GpencilExporterSVG::export_layers(void)
         }
 
         const float font_size = 30.0f;
-        create_text(main_node,
-                    frame_offset_[0] + 5.0f,
-                    frame_offset_[1] + frame_box_[1] + font_size,
-                    std::string(text),
-                    font_size,
-                    "#000000");
+        add_text(main_node,
+                 frame_offset_[0] + 5.0f,
+                 frame_offset_[1] + frame_box_[1] + font_size,
+                 std::string(text),
+                 font_size,
+                 "#000000");
       }
     }
   }
@@ -338,7 +332,7 @@ void GpencilExporterSVG::export_layers(void)
  * Export a point
  * \param gpl_node: Node of the layer.
  */
-void GpencilExporterSVG::export_point(pugi::xml_node gpl_node)
+void GpencilExporterSVG::export_stroke_to_point(pugi::xml_node gpl_node)
 {
   bGPDstroke *gps = gps_current_get();
 
@@ -365,7 +359,7 @@ void GpencilExporterSVG::export_point(pugi::xml_node gpl_node)
  * \param gpl_node: Node of the layer.
  * \param do_fill: True if the stroke is only fill
  */
-void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool do_fill)
+void GpencilExporterSVG::export_stroke_to_path(pugi::xml_node gpl_node, const bool do_fill)
 {
   bGPDlayer *gpl = gpl_current_get();
   bGPDstroke *gps = gps_current_get();
@@ -381,7 +375,7 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
   }
   else {
     gps_node.append_attribute("fill-opacity")
-        .set_value(stroke_color_[3] * stroke_average_opacity() * gpl->opacity);
+        .set_value(stroke_color_[3] * stroke_average_opacity_get() * gpl->opacity);
 
     interp_v3_v3v3(col, stroke_color_, gpl->tintcolor, gpl->tintcolor[3]);
   }
@@ -390,7 +384,7 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
   }
 
   linearrgb_to_srgb_v3_v3(col, col);
-  stroke_hex = rgb_to_hex(col);
+  stroke_hex = rgb_to_hexstr(col);
 
   gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
   gps_node.append_attribute("stroke").set_value("none");
@@ -418,7 +412,7 @@ void GpencilExporterSVG::export_stroke_path(pugi::xml_node gpl_node, const bool 
  * \param gpl_node: Node of the layer.
  * \param do_fill: True if the stroke is only fill
  */
-void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const bool do_fill)
+void GpencilExporterSVG::export_stroke_to_polyline(pugi::xml_node gpl_node, const bool do_fill)
 {
   bGPDlayer *gpl = gpl_current_get();
   bGPDstroke *gps = gps_current_get();
@@ -449,7 +443,7 @@ void GpencilExporterSVG::export_stroke_polyline(pugi::xml_node gpl_node, const b
 
   color_string_set(gps_node, do_fill);
 
-  if (gp_style_is_stroke() && !do_fill) {
+  if (material_is_stroke() && !do_fill) {
     gps_node.append_attribute("stroke-width").set_value((radius * 2.0f) - gpl->line_change);
   }
 
@@ -487,7 +481,7 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool do
       rgb_to_grayscale(col);
     }
     linearrgb_to_srgb_v3_v3(col, col);
-    std::string stroke_hex = rgb_to_hex(col);
+    std::string stroke_hex = rgb_to_hexstr(col);
     gps_node.append_attribute("fill").set_value(stroke_hex.c_str());
     gps_node.append_attribute("stroke").set_value("none");
     gps_node.append_attribute("fill-opacity").set_value(fill_color_[3] * gpl->opacity);
@@ -498,10 +492,10 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool do
       rgb_to_grayscale(col);
     }
     linearrgb_to_srgb_v3_v3(col, col);
-    std::string stroke_hex = rgb_to_hex(col);
+    std::string stroke_hex = rgb_to_hexstr(col);
     gps_node.append_attribute("stroke").set_value(stroke_hex.c_str());
     gps_node.append_attribute("stroke-opacity")
-        .set_value(stroke_color_[3] * stroke_average_opacity() * gpl->opacity);
+        .set_value(stroke_color_[3] * stroke_average_opacity_get() * gpl->opacity);
 
     if (gps->totpoints > 1) {
       gps_node.append_attribute("fill").set_value("none");
@@ -524,13 +518,13 @@ void GpencilExporterSVG::color_string_set(pugi::xml_node gps_node, const bool do
  * \param thickness: Thickness of the line
  * \param hexcolor: Color of the line
  */
-void GpencilExporterSVG::create_rect(pugi::xml_node node,
-                                     float x,
-                                     float y,
-                                     float width,
-                                     float height,
-                                     float thickness,
-                                     std::string hexcolor)
+void GpencilExporterSVG::add_rect(pugi::xml_node node,
+                                  float x,
+                                  float y,
+                                  float width,
+                                  float height,
+                                  float thickness,
+                                  std::string hexcolor)
 {
   pugi::xml_node rect_node = node.append_child("rect");
   rect_node.append_attribute("x").set_value(x);
@@ -553,12 +547,12 @@ void GpencilExporterSVG::create_rect(pugi::xml_node node,
  * \param size: Size of th etext
  * \param hexcolor: Color of the text
  */
-void GpencilExporterSVG::create_text(pugi::xml_node node,
-                                     float x,
-                                     float y,
-                                     std::string text,
-                                     const float size,
-                                     std::string hexcolor)
+void GpencilExporterSVG::add_text(pugi::xml_node node,
+                                  float x,
+                                  float y,
+                                  std::string text,
+                                  const float size,
+                                  std::string hexcolor)
 {
   pugi::xml_node nodetxt = node.append_child("text");
 

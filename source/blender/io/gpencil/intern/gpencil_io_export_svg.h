@@ -42,39 +42,41 @@ class GpencilExporterSVG : public GpencilExporter {
 
  public:
   GpencilExporterSVG(const struct GpencilExportParams *iparams);
-  bool write(std::string subfix, const bool newpage, const bool body, const bool savepage);
+  virtual void add_newpage(void);
+  virtual void add_body(void);
+  virtual bool write(std::string subfix);
 
  protected:
-  void create_rect(pugi::xml_node node,
-                   float x,
-                   float y,
-                   float width,
-                   float height,
-                   float thickness,
-                   std::string hexcolor);
+  void add_rect(pugi::xml_node node,
+                float x,
+                float y,
+                float width,
+                float height,
+                float thickness,
+                std::string hexcolor);
 
-  void create_text(pugi::xml_node node,
-                   float x,
-                   float y,
-                   std::string text,
-                   const float size,
-                   std::string hexcolor);
+  void add_text(pugi::xml_node node,
+                float x,
+                float y,
+                std::string text,
+                const float size,
+                std::string hexcolor);
 
  private:
   /* XML doc. */
-  pugi::xml_document doc;
+  pugi::xml_document main_doc;
   /* Main document node. */
   pugi::xml_node main_node;
   /** Frame node  */
   pugi::xml_node frame_node;
   void create_document_header(void);
-  void export_layers(void);
+  void export_gpencil_layers(void);
 
-  void export_point(pugi::xml_node gpl_node);
+  void export_stroke_to_point(pugi::xml_node gpl_node);
 
-  void export_stroke_path(pugi::xml_node gpl_node, const bool is_fill);
+  void export_stroke_to_path(pugi::xml_node gpl_node, const bool is_fill);
 
-  void export_stroke_polyline(pugi::xml_node gpl_node, const bool is_fill);
+  void export_stroke_to_polyline(pugi::xml_node gpl_node, const bool is_fill);
 
   void color_string_set(pugi::xml_node gps_node, const bool is_fill);
 };

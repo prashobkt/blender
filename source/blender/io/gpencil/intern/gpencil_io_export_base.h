@@ -44,10 +44,9 @@ class GpencilExporter {
 
  public:
   GpencilExporter(const struct GpencilExportParams *iparams);
-  virtual bool write(std::string subfix,
-                     const bool newpage,
-                     const bool body,
-                     const bool savepage) = 0;
+  virtual void add_newpage(void) = 0;
+  virtual void add_body(void) = 0;
+  virtual bool write(std::string subfix) = 0;
 
   void set_out_filename(const char *filename);
   void set_frame_number(int value);
@@ -57,9 +56,10 @@ class GpencilExporter {
   void set_shot(int value);
 
  protected:
+  GpencilExportParams params_;
+
   bool invert_axis_[2];
   float diff_mat_[4][4];
-  GpencilExportParams params_;
   char out_filename_[FILE_MAX];
 
   /* Used for sorting objects. */
@@ -68,6 +68,7 @@ class GpencilExporter {
     struct Object *ob;
   };
 
+  /** List of included objects. */
   std::list<ObjectZ> ob_list_;
 
   /* Data for easy access. */
@@ -80,8 +81,8 @@ class GpencilExporter {
   int winx_, winy_;
   int render_x_, render_y_;
   float camera_ratio_;
-  float offset_[2];
   rctf camera_rect_;
+  float offset_[2];
   float frame_box_[2];
   float frame_offset_[2];
   float frame_ratio_[2];
@@ -93,30 +94,32 @@ class GpencilExporter {
   /* Geometry functions. */
   bool gpencil_3d_point_to_screen_space(const float co[3], float r_co[2]);
 
-  bool is_stroke_thickness_constant(struct bGPDstroke *gps);
   float stroke_average_pressure_get(struct bGPDstroke *gps);
   float stroke_point_radius_get(struct bGPDstroke *gps);
-  void selected_objects_boundbox(void);
   void create_object_list(void);
 
-  std::string rgb_to_hex(float color[3]);
+  std::string rgb_to_hexstr(float color[3]);
   void rgb_to_grayscale(float color[3]);
   std::string to_lower_string(char *input_text);
+
+  struct MaterialGPencilStyle *gp_style_current_get(void);
+  bool material_is_stroke(void);
+  bool material_is_fill(void);
+
+  bool is_stroke_thickness_constant(struct bGPDstroke *gps);
+  bool is_camera_mode(void);
+
+  float stroke_average_opacity_get(void);
 
   struct bGPDlayer *gpl_current_get(void);
   struct bGPDframe *gpf_current_get(void);
   struct bGPDstroke *gps_current_get(void);
-  struct MaterialGPencilStyle *gp_style_current_get(void);
-  bool gp_style_is_stroke(void);
-  bool gp_style_is_fill(void);
-  float stroke_average_opacity(void);
-  bool is_camera_mode(void);
-
   void gpl_current_set(struct bGPDlayer *gpl);
   void gpf_current_set(struct bGPDframe *gpf);
   void gps_current_set(struct Object *ob, struct bGPDstroke *gps, const bool set_colors);
 
-  void get_select_boundbox(rctf *boundbox);
+  void selected_objects_boundbox_set(void);
+  void selected_objects_boundbox_get(rctf *boundbox);
 
  private:
   struct bGPDlayer *gpl_cur;

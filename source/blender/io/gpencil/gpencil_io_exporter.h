@@ -62,6 +62,7 @@ struct GpencilExportParams {
   short text_type;
 };
 
+/* GpencilExportParams->flag. */
 typedef enum eGpencilExportParams_Flag {
   /* Use Storyboard format. */
   GP_EXPORT_STORYBOARD_MODE = (1 << 0),
@@ -79,14 +80,17 @@ typedef enum eGpencilExportParams_Flag {
 
 typedef enum eGpencilExport_Modes {
   GP_EXPORT_TO_SVG = 0,
+  /* Add new export formats here. */
 } eGpencilExport_Modes;
 
+/* Object to be exported. */
 typedef enum eGpencilExportSelect {
   GP_EXPORT_ACTIVE = 0,
   GP_EXPORT_SELECTED = 1,
   GP_EXPORT_VISIBLE = 2,
 } eGpencilExportSelect;
 
+/** Document orientation. */
 typedef enum eGpencilExportPaper {
   GP_EXPORT_PAPER_LANDSCAPE = 0,
   GP_EXPORT_PAPER_PORTRAIT = 1,

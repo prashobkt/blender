@@ -74,7 +74,7 @@ static bool is_keyframe_empty(bContext *C, bGPdata *gpd, int framenum, bool use_
 }
 
 /* Export current frame. */
-static bool gpencil_io_export_frame(GpencilExporterSVG *writter,
+static bool gpencil_io_export_frame(GpencilExporterSVG *exporter,
                                     const GpencilExportParams *iparams,
                                     float frame_offset[2],
                                     const bool newpage,
@@ -85,12 +85,21 @@ static bool gpencil_io_export_frame(GpencilExporterSVG *writter,
   bool result = false;
   switch (iparams->mode) {
     case GP_EXPORT_TO_SVG: {
-      writter->set_frame_number(iparams->framenum);
-      writter->set_frame_offset(frame_offset);
+      exporter->set_frame_number(iparams->framenum);
+      exporter->set_frame_offset(frame_offset);
       std::string subfix = iparams->file_subfix;
-      result = writter->write(subfix, newpage, body, savepage);
+      if (newpage) {
+        exporter->add_newpage();
+      }
+      if (body) {
+        exporter->add_body();
+      }
+      if (savepage) {
+        result = exporter->write(subfix);
+      }
       break;
     }
+    /* Add new export formats here. */
     default:
       break;
   }
@@ -106,13 +115,13 @@ static bool gpencil_export_storyboard(
   bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
   bool done = false;
 
-  GpencilExporterSVG *writter = new GpencilExporterSVG(iparams);
+  GpencilExporterSVG *exporter = new GpencilExporterSVG(iparams);
 
   /* Storyboard only works in camera view. */
   RegionView3D *rv3d = (RegionView3D *)iparams->region->regiondata;
   if ((rv3d == NULL) || (rv3d->persp != RV3D_CAMOB)) {
     printf("Storyboard only allowed in camera view.\n");
-    delete writter;
+    delete exporter;
     return false;
   }
 
@@ -147,13 +156,13 @@ static bool gpencil_export_storyboard(
       continue;
     }
     shot++;
-    writter->set_shot(shot);
+    exporter->set_shot(shot);
 
     if (header) {
-      writter->set_frame_box(frame_box);
-      writter->set_frame_ratio(render_ratio);
+      exporter->set_frame_box(frame_box);
+      exporter->set_frame_ratio(render_ratio);
 
-      pending_save |= gpencil_io_export_frame(writter, iparams, frame_offset, true, false, false);
+      pending_save |= gpencil_io_export_frame(exporter, iparams, frame_offset, true, false, false);
       header = false;
     }
 
@@ -162,7 +171,7 @@ static bool gpencil_export_storyboard(
     sprintf(iparams->file_subfix, "%04d", page);
     iparams->framenum = i;
 
-    pending_save |= gpencil_io_export_frame(writter, iparams, frame_offset, false, true, false);
+    pending_save |= gpencil_io_export_frame(exporter, iparams, frame_offset, false, true, false);
     col++;
 
     if (col > blocks[0]) {
@@ -179,7 +188,7 @@ static bool gpencil_export_storyboard(
     }
 
     if (row > blocks[1]) {
-      done |= gpencil_io_export_frame(writter, iparams, frame_offset, false, false, true);
+      done |= gpencil_io_export_frame(exporter, iparams, frame_offset, false, false, true);
       page++;
       header = true;
       pending_save = false;
@@ -187,16 +196,16 @@ static bool gpencil_export_storyboard(
       copy_v2_v2(frame_offset, gap);
 
       /* Create a new class object per page. */
-      delete writter;
-      writter = new GpencilExporterSVG(iparams);
+      delete exporter;
+      exporter = new GpencilExporterSVG(iparams);
     }
   }
 
   if (pending_save) {
-    done |= gpencil_io_export_frame(writter, iparams, frame_offset, false, false, true);
+    done |= gpencil_io_export_frame(exporter, iparams, frame_offset, false, false, true);
   }
 
-  delete writter;
+  delete exporter;
 
   return done;
 }

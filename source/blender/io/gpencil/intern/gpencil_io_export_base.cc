@@ -118,9 +118,9 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
       offset_[0] = 0.0f;
       offset_[1] = 0.0f;
 
-      selected_objects_boundbox();
+      selected_objects_boundbox_set();
       rctf boundbox;
-      get_select_boundbox(&boundbox);
+      selected_objects_boundbox_get(&boundbox);
 
       render_x_ = boundbox.xmax - boundbox.xmin;
       render_y_ = boundbox.ymax - boundbox.ymin;
@@ -319,7 +319,7 @@ float GpencilExporter::stroke_point_radius_get(struct bGPDstroke *gps)
  * \param color: Original RGB color
  * \return String with the conversion
  */
-std::string GpencilExporter::rgb_to_hex(float color[3])
+std::string GpencilExporter::rgb_to_hexstr(float color[3])
 {
   int r = color[0] * 255.0f;
   int g = color[1] * 255.0f;
@@ -430,17 +430,17 @@ struct MaterialGPencilStyle *GpencilExporter::gp_style_current_get(void)
   return gp_style;
 }
 
-bool GpencilExporter::gp_style_is_stroke(void)
+bool GpencilExporter::material_is_stroke(void)
 {
   return is_stroke;
 }
 
-bool GpencilExporter::gp_style_is_fill(void)
+bool GpencilExporter::material_is_fill(void)
 {
   return is_fill;
 }
 
-float GpencilExporter::stroke_average_opacity(void)
+float GpencilExporter::stroke_average_opacity_get(void)
 {
   return avg_opacity;
 }
@@ -451,7 +451,7 @@ bool GpencilExporter::is_camera_mode(void)
 }
 
 /* Calc selected strokes boundbox. */
-void GpencilExporter::selected_objects_boundbox(void)
+void GpencilExporter::selected_objects_boundbox_set(void)
 {
   const float gap = 10.0f;
   const bGPDspoint *pt;
@@ -500,7 +500,7 @@ void GpencilExporter::selected_objects_boundbox(void)
   select_box.ymax = r_max[1];
 }
 
-void GpencilExporter::get_select_boundbox(rctf *boundbox)
+void GpencilExporter::selected_objects_boundbox_get(rctf *boundbox)
 {
   boundbox->xmin = select_box.xmin;
   boundbox->xmax = select_box.xmax;
