@@ -398,6 +398,9 @@ class OUTLINER_PT_filter(Panel):
         row = sub.row()
         row.label(icon='BLANK1')
         row.prop(space, "use_filter_children", text="Object Children")
+        row = sub.row()
+        row.label(icon='BLANK1')
+        row.prop(space, "use_filter_row_children", text="Row Children")
 
         if bpy.data.meshes:
             row = sub.row()

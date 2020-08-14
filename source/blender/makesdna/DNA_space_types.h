@@ -298,7 +298,7 @@ typedef enum eSpaceOutliner_Filter {
   SO_FILTER_NO_OB_CONTENT = (1 << 3), /* Not only mesh, but modifiers, constraints, ... */
   SO_FILTER_NO_CHILDREN = (1 << 4),
 
-  SO_FILTER_UNUSED_5 = (1 << 5), /* cleared */
+  SO_FILTER_NO_ROW_CHILDREN = (1 << 5),
   SO_FILTER_NO_OB_MESH = (1 << 6),
   SO_FILTER_NO_OB_ARMATURE = (1 << 7),
   SO_FILTER_NO_OB_EMPTY = (1 << 8),
@@ -325,8 +325,8 @@ typedef enum eSpaceOutliner_Filter {
    SO_FILTER_OB_STATE_ACTIVE)
 
 #define SO_FILTER_ANY \
-  (SO_FILTER_NO_OB_CONTENT | SO_FILTER_NO_CHILDREN | SO_FILTER_OB_TYPE | SO_FILTER_OB_STATE | \
-   SO_FILTER_NO_COLLECTION)
+  (SO_FILTER_NO_OB_CONTENT | SO_FILTER_NO_CHILDREN | SO_FILTER_NO_ROW_CHILDREN | \
+   SO_FILTER_OB_TYPE | SO_FILTER_OB_STATE | SO_FILTER_NO_COLLECTION)
 
 /* SpaceOutliner.filter_state */
 typedef enum eSpaceOutliner_StateFilter {

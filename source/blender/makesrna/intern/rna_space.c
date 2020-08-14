@@ -3109,6 +3109,11 @@ static void rna_def_space_outliner(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Show Object Children", "Show children");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_OUTLINER, NULL);
 
+  prop = RNA_def_property(srna, "use_filter_row_children", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "filter", SO_FILTER_NO_ROW_CHILDREN);
+  RNA_def_property_ui_text(prop, "Show Row Children", "Show children on collapsed rows");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_OUTLINER, NULL);
+
   prop = RNA_def_property(srna, "use_filter_collection", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, NULL, "filter", SO_FILTER_NO_COLLECTION);
   RNA_def_property_ui_text(prop, "Show Collections", "Show collections");

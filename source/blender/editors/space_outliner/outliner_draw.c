@@ -3294,7 +3294,8 @@ static void outliner_draw_tree_element(bContext *C,
     offsx += (int)(UI_UNIT_X + UI_fontstyle_string_width(fstyle, te->name));
 
     /* closed item, we draw the icons, not when it's a scene, or master-server list though */
-    if (!TSELEM_OPEN(tselem, space_outliner)) {
+    if (!TSELEM_OPEN(tselem, space_outliner) &&
+        !(space_outliner->filter & SO_FILTER_NO_ROW_CHILDREN)) {
       if (te->subtree.first) {
         if (tselem->type == 0 && te->idcode == ID_SCE) {
           /* pass */
