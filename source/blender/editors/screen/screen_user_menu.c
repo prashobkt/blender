@@ -275,17 +275,17 @@ static void screen_user_menu_draw_submenu(bContext *C, uiLayout *layout, void *a
   screen_user_menu_draw_items(C, layout, lb, false);
 }
 
-bool screen_user_menu_draw_items(const bContext *C, uiLayout *layout, ListBase *lb, bool is_pie)
+bool screen_user_menu_draw_items(const bContext *C, uiLayout *layout, ListBase *lb, char type)
 {
   /* Enable when we have the ability to edit menus. */
   char label[512];
-  const bool show_missing = is_pie;
+  const bool show_missing = type;
   bool is_empty = true;
 
   int i = 0;
 
   LISTBASE_FOREACH (bUserMenuItem *, umi, lb) {
-    if (is_pie && i > 7)
+    if (type == 1 && i > 7)
       return is_empty;
     const char *ui_name = umi->ui_name[0] ? umi->ui_name : NULL;
     if (umi->type == USER_MENU_TYPE_OPERATOR) {
@@ -375,7 +375,7 @@ bool screen_user_menu_draw_items(const bContext *C, uiLayout *layout, ListBase *
   return is_empty;
 }
 
-void screen_user_menu_draw_begin(bContext *C, uiLayout *layout, bool is_pie, bUserMenusGroup *umg)
+void screen_user_menu_draw_begin(bContext *C, uiLayout *layout, char type, bUserMenusGroup *umg)
 {
   uint um_array_len;
   bUserMenu **um_array = ED_screen_user_menus_find_menu(C, &um_array_len, umg);
@@ -391,7 +391,7 @@ void screen_user_menu_draw_begin(bContext *C, uiLayout *layout, bool is_pie, bUs
     MEM_freeN(um_array);
   }
 
-  if (is_empty && !is_pie) {
+  if (is_empty && type == 0) {
     uiItemL(layout, TIP_("No menu items found"), ICON_NONE);
     uiItemL(layout, TIP_("Right click on buttons to add them to this menu"), ICON_NONE);
   }

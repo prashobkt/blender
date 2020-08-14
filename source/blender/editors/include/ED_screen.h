@@ -422,10 +422,10 @@ void ED_screen_user_menu_register(void);
 bool screen_user_menu_draw_items(const struct bContext *C,
                                  struct uiLayout *layout,
                                  struct ListBase *lb,
-                                 bool is_pie);
+                                 char type);
 void screen_user_menu_draw_begin(struct bContext *C,
                                  struct uiLayout *layout,
-                                 bool is_pie,
+                                 char type,
                                  struct bUserMenusGroup *umg);
 
 /* Cache display helpers */

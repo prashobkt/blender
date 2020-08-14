@@ -1197,7 +1197,16 @@ class PREFERENCES_OT_usermenus_add(Operator):
 
 class PREFERENCES_OT_usermenus_remove(Operator):
     bl_idname = "preferences.usermenus_remove"
-    bl_label = "add an user menus group"
+    bl_label = "remove an user menus group"
+
+    @classmethod
+    def poll(self, context):
+        prefs = context.preferences
+        um = prefs.user_menus
+
+        if um.active_group.idname == "QUICK_FAVORITES":
+            return False
+        return True
 
     def execute(self, _context):
         prefs = _context.preferences
@@ -1231,9 +1240,9 @@ class PREFERENCES_OT_menuitem_remove(Operator):
         prefs = context.preferences
         um = prefs.user_menus
         can_remove = um.active_item
-        is_pie = um.active_group.is_pie
+        um_type = um.active_group.type
 
-        if is_pie and can_remove:
+        if um_type == "PIE" and can_remove:
             if not can_remove.parent:
                 return False
         return can_remove
@@ -1256,11 +1265,11 @@ class PREFERENCES_OT_menuitem_up(Operator):
         prefs = context.preferences
         um = prefs.user_menus
         current = um.active_item
-        is_pie = um.active_group.is_pie
+        um_type = um.active_group.type
         if not current:
             return False
         
-        if is_pie:
+        if um_type == "PIE":
             if not current.parent:
                 return False
             prev_item = current.prev
@@ -1292,12 +1301,12 @@ class PREFERENCES_OT_menuitem_down(Operator):
     def poll(self, context):
         prefs = context.preferences
         um = prefs.user_menus
-        is_pie = um.active_group.is_pie
+        um_type = um.active_group.type
         current = um.active_item
         if not current:
             return False
         
-        if is_pie:
+        if um_type == "PIE":
             if not current.parent:
                 return False
             next_item = current.next

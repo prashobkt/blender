@@ -2636,7 +2636,7 @@ class WM_OT_call_user_menu(Operator):
         umg = um.get_group(idname=self.name)
 
         layout = menu.layout
-        if umg.is_pie:
+        if umg.type == "PIE":
             layout = layout.menu_pie()
         um.draw_menu(context=context, layout=layout, menu=umg)
 
@@ -2646,7 +2646,7 @@ class WM_OT_call_user_menu(Operator):
         wm = context.window_manager
         umg = um.get_group(idname=self.name)
 
-        if umg.is_pie:
+        if umg.type == "PIE":
             wm.popup_menu_pie(draw_func=self.draw_menu, title=umg.name, event=event)
         else:
             wm.popup_menu(self.draw_menu, title=umg.name)

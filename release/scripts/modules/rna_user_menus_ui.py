@@ -73,7 +73,7 @@ def draw_button(context, box, item, index):
     row.prop(item, "is_selected", icon=item.icon, text=name, toggle=1)
     if item.type == "SUBMENU":
         sm = item.get_submenu()
-        if um.active_group.is_pie and index >= 0:
+        if um.active_group.type == "PIE" and index >= 0:
             row.operator("preferences.pie_menuitem_add", text="", icon='ADD').index = index
             row.operator("preferences.menuitem_remove", text="", icon='REMOVE')
             row.operator("preferences.menuitem_up", text="", icon='TRIA_UP')
@@ -213,9 +213,9 @@ def draw_user_menu_preference(context, layout):
     if umg != qf:
         row.prop(umg, "name")
         pie_text = "List"
-        if umg.is_pie:
+        if umg.type == "PIE":
             pie_text = "Pie"
-        row.prop(umg, "is_pie", text=pie_text, toggle=True)
+        row.prop(umg, "type", text=pie_text, expand=True)
     if kmi:
         row.prop(kmi, "map_type", text="")
         map_type = kmi.map_type
@@ -284,7 +284,7 @@ def draw_user_menus(context, layout):
     row = layout.row()
     row.separator()
 
-    if um.active_group.is_pie:
+    if um.active_group.type == "PIE":
         draw_pie(context=context, row=row)
     else:
         draw_item_box(context=context, row=row)

@@ -64,7 +64,6 @@ void BKE_blender_user_menus_group_idname_update(bUserMenusGroup *umg)
 {
   char name[64];
 
-  STRNCPY(umg->idname, "USER_MT_");
   STRNCPY(name, umg->name);
   for (int i = 0; name[i]; i++) {
     if (name[i] == ' ')
@@ -72,7 +71,7 @@ void BKE_blender_user_menus_group_idname_update(bUserMenusGroup *umg)
     if (name[i] >= 'a' && name[i] <= 'z')
       name[i] += 'A' - 'a';
   }
-  strcat(umg->idname, name);
+  STRNCPY(umg->idname, name);
   BLI_uniquename(&U.user_menus,
                  umg,
                  umg->idname,

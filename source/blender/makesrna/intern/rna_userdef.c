@@ -1092,7 +1092,7 @@ static bUserMenu *rna_UserDef_usermenus_get_current(UserDef *userdef, bool ensur
   if (!umg)
     return NULL;
   if (userdef->runtime.um_space_select > 0) {
-    if (umg->pie) {
+    if (umg->type) {
       bum = BKE_blender_user_menu_find(&umg->menus,
                                        userdef->runtime.um_space_select,
                                        contexts_list[userdef->runtime.um_context_select]);
@@ -1155,7 +1155,7 @@ static void rna_UserDef_usermenus_add_group(UserDef *userdef)
   bUserMenusGroup *umg = MEM_mallocN(sizeof(*umg), __func__);
   STRNCPY(umg->name, "new menu");
   BKE_blender_user_menus_group_idname_update(umg);
-  umg->pie = false;
+  umg->type = false;
   BLI_listbase_clear(&umg->menus);
   BLI_addtail(&userdef->user_menus, umg);
   userdef->runtime.umg_select = umg;
@@ -1270,6 +1270,36 @@ static const EnumPropertyItem *rna_UserDef_usermenus_contexts_itemf(bContext *UN
 #  ifndef NDEBUG
   if (i == 0) {
     EnumPropertyItem new_item = {i, "NO_CONTEXT", 0, "No context available", ""};
+    RNA_enum_item_add(&item, &totitem, &new_item);
+  }
+#  endif
+
+  RNA_enum_item_end(&item, &totitem);
+  *r_free = true;
+
+  return item;
+}
+
+static const EnumPropertyItem *rna_UserDef_icons_itemf(bContext *UNUSED(C),
+                                                       PointerRNA *UNUSED(ptr),
+                                                       PropertyRNA *UNUSED(prop),
+                                                       bool *r_free)
+{
+  int totitem = 0;
+  EnumPropertyItem *list = rna_enum_icon_items;
+  EnumPropertyItem *item = NULL;
+
+  int i;
+
+  for (i = 0; list[i].identifier; i++) {
+    EnumPropertyItem new_item = {
+        list[i].value, list[i].identifier, list[i].value, list[i].name, list[i].description};
+    RNA_enum_item_add(&item, &totitem, &new_item);
+  }
+
+#  ifndef NDEBUG
+  if (i == 0) {
+    EnumPropertyItem new_item = {i, "NONE", 0, "No icons", ""};
     RNA_enum_item_add(&item, &totitem, &new_item);
   }
 #  endif
@@ -1490,7 +1520,7 @@ static void rna_UserDef_usermenus_pie_set(PointerRNA *ptr, int value)
         BKE_blender_user_menu_item_add(lb, USER_MENU_TYPE_SEP);
       }
   }
-  umg->pie = value;
+  umg->type = value;
 }
 
 static PointerRNA rna_UserDef_usermenus_item_op_prop_get(PointerRNA *ptr)
@@ -6637,6 +6667,7 @@ static void rna_def_userdef_usermenu(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "icon");
   RNA_def_property_enum_items(prop, rna_enum_icon_items);
   RNA_def_property_enum_default(prop, ICON_NONE);
+  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_UserDef_icons_itemf");
   RNA_def_property_ui_text(prop, "Icon", "The item icon");
 
   prop = RNA_def_property(srna, "is_selected", PROP_BOOLEAN, PROP_NONE);
@@ -6672,6 +6703,12 @@ static void rna_def_userdef_usermenusgroup(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  static const EnumPropertyItem um_menu_type[] = {
+      {0, "LIST", 0, "List", "List"},
+      {1, "PIE", 0, "Pie", "Pie"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   /* user menus group */
   srna = RNA_def_struct(brna, "UserMenusGroup", NULL);
   RNA_def_struct_sdna(srna, "bUserMenusGroup");
@@ -6688,10 +6725,11 @@ static void rna_def_userdef_usermenusgroup(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "ID Name", "ID Name of the user menu group");
   RNA_def_struct_name_property(srna, prop);
 
-  prop = RNA_def_property(srna, "is_pie", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "pie", 0);
+  prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "type");
+  RNA_def_property_enum_items(prop, um_menu_type);
   RNA_def_property_ui_text(prop, "menu type", "change menu type between list and pie");
-  RNA_def_property_boolean_funcs(prop, NULL, "rna_UserDef_usermenus_pie_set");
+  RNA_def_property_enum_funcs(prop, NULL, "rna_UserDef_usermenus_pie_set", NULL);
 
   prop = RNA_def_property(srna, "menus", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "UserMenu");
@@ -6744,6 +6782,7 @@ static void rna_def_userdef_usermenus_editor(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "active_group", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NEVER_NULL);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_pointer_sdna(prop, NULL, "runtime.umg_select");
   RNA_def_property_struct_type(prop, "UserMenusGroup");
   RNA_def_property_ui_text(prop, "active user menus group", "active user menus group");

@@ -409,7 +409,7 @@ def km_window(params):
         ("wm.quit_blender", {"type": 'Q', "value": 'PRESS', "ctrl": True}, None),
 
         # Quick menu and toolbar
-        op_user_menu("USER_MT_QUICK_FAVORITES", {"type": 'Q', "value": 'PRESS'}),
+        op_user_menu("QUICK_FAVORITES", {"type": 'Q', "value": 'PRESS'}),
 
         # Fast editor switching
         *(
