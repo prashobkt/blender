@@ -2354,10 +2354,13 @@ int UI_idcode_icon_get(const int idcode)
 
 int UI_collection_color_icon_get(const Collection *collection)
 {
-  int icon = ICON_NONE;
+  int icon = ICON_OUTLINER_COLLECTION;
 
   if (collection->color != COLLECTION_COLOR_NONE) {
     icon = ICON_COLLECTION_COLOR_01 + (collection->color - 1);
+  }
+  else if (ID_IS_LINKED(&collection->id)) {
+    icon = ICON_LINKED;
   }
 
   return icon;
