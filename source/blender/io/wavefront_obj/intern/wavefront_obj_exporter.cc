@@ -73,8 +73,8 @@ static void find_exportable_objects(ViewLayer *view_layer,
           case CU_NURBS: {
             if (export_params.export_curves_as_nurbs) {
               /* Export in parameter form: control points. */
-              r_exportable_nurbs.append(
-                  std::unique_ptr<OBJNurbs>(new OBJNurbs(depsgraph, object_in_layer)));
+              r_exportable_nurbs.append(std::unique_ptr<OBJNurbs>(
+                  new OBJNurbs(depsgraph, export_params, object_in_layer)));
             }
             else {
               /* Export in mesh form: edges and vertices. */

@@ -34,16 +34,21 @@ namespace blender::io::obj {
 class OBJNurbs : NonMovable, NonCopyable {
  private:
   const Depsgraph *depsgraph_;
+  const OBJExportParams &export_params_;
   const Object *export_object_eval_;
   const Curve *export_curve_;
+  float world_axes_transform_[4][4];
 
  public:
-  OBJNurbs(Depsgraph *depsgraph, Object *export_object);
+  OBJNurbs(Depsgraph *depsgraph, const OBJExportParams &export_params, Object *export_object);
 
   const char *get_curve_name() const;
   const ListBase *curve_nurbs() const;
   void calc_point_coords(const Nurb *nurb, int vert_index, float r_coords[3]) const;
   void get_curve_info(const Nurb *nurb, int &r_nurbs_degree, int &r_curv_num) const;
+
+ private:
+  void store_world_axes_transform();
 };
 
 }  // namespace blender::io::obj

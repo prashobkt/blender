@@ -27,17 +27,40 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+#include "IO_wavefront_obj.h"
 #include "wavefront_obj_ex_nurbs.hh"
 
 namespace blender::io::obj {
 /**
  * Store NURBS curves that will be exported in parameter form, not converted to meshes.
  */
-OBJNurbs::OBJNurbs(Depsgraph *depsgraph, Object *export_object)
-    : depsgraph_(depsgraph), export_object_eval_(export_object)
+OBJNurbs::OBJNurbs(Depsgraph *depsgraph,
+                   const OBJExportParams &export_params,
+                   Object *export_object)
+    : depsgraph_(depsgraph), export_params_(export_params), export_object_eval_(export_object)
 {
   export_object_eval_ = DEG_get_evaluated_object(depsgraph_, export_object);
   export_curve_ = static_cast<Curve *>(export_object_eval_->data);
+  store_world_axes_transform();
+}
+
+/**
+ * Store the product of export axes settings and an object's world transform matrix in
+ * world_and_axes_transform[4][4].
+ */
+void OBJNurbs::store_world_axes_transform()
+{
+  float axes_transform[3][3];
+  unit_m3(axes_transform);
+  /* -Y-forward and +Z-up are the default Blender axis settings. */
+  mat3_from_axis_conversion(OBJ_AXIS_NEGATIVE_Y_FORWARD,
+                            OBJ_AXIS_Z_UP,
+                            export_params_.forward_axis,
+                            export_params_.up_axis,
+                            axes_transform);
+  mul_m4_m3m4(world_axes_transform_, axes_transform, export_object_eval_->obmat);
+  /* mul_m4_m3m4 does not copy last row of obmat, i.e. location data. */
+  copy_v4_v4(world_axes_transform_[3], export_object_eval_->obmat[3]);
 }
 
 const char *OBJNurbs::get_curve_name() const
@@ -55,10 +78,11 @@ const ListBase *OBJNurbs::curve_nurbs() const
  */
 void OBJNurbs::calc_point_coords(const Nurb *nurb, const int vert_index, float r_coords[3]) const
 {
-  // TODO ankitm add world transform. 
   BPoint *bpoint = nurb->bp;
   bpoint += vert_index;
   copy_v3_v3(r_coords, bpoint->vec);
+  mul_m4_v3(world_axes_transform_, r_coords);
+  mul_v3_fl(r_coords, export_params_.scaling_factor);
 }
 
 /**
