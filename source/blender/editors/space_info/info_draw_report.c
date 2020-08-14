@@ -59,7 +59,7 @@ enum eTextViewContext_LineDrawFlag report_line_draw_data(TextViewContext *tvc,
     UI_GetThemeColor4ubv(bg_id, bg);
   }
   else {
-    if (tvc->iter_tmp % 2) {
+    if (tvc->iter_index % 2) {
       UI_GetThemeColor4ubv(TH_BACK, bg);
     }
     else {
@@ -73,40 +73,44 @@ enum eTextViewContext_LineDrawFlag report_line_draw_data(TextViewContext *tvc,
   int icon_fg_id;
   int icon_bg_id;
 
-  if (tvc->iter_char_begin != 0) {
-    *r_icon = ICON_NONE;
-  }
-  else if (report->type & RPT_ERROR_ALL) {
+  if (report->type & RPT_ERROR_ALL)
+  {
     icon_fg_id = TH_INFO_ERROR_TEXT;
     icon_bg_id = TH_INFO_ERROR;
     *r_icon = ICON_CANCEL;
   }
-  else if (report->type & RPT_WARNING_ALL) {
+  else if (report->type & RPT_WARNING_ALL)
+  {
     icon_fg_id = TH_INFO_WARNING_TEXT;
     icon_bg_id = TH_INFO_WARNING;
     *r_icon = ICON_ERROR;
   }
-  else if (report->type & RPT_INFO_ALL) {
+  else if (report->type & RPT_INFO_ALL)
+  {
     icon_fg_id = TH_INFO_INFO_TEXT;
     icon_bg_id = TH_INFO_INFO;
     *r_icon = ICON_INFO;
   }
-  else if (report->type & RPT_DEBUG_ALL) {
+  else if (report->type & RPT_DEBUG_ALL)
+  {
     icon_fg_id = TH_INFO_DEBUG_TEXT;
     icon_bg_id = TH_INFO_DEBUG;
     *r_icon = ICON_SYSTEM;
   }
-  else if (report->type & RPT_PROPERTY_ALL) {
+  else if (report->type & RPT_PROPERTY_ALL)
+  {
     icon_fg_id = TH_INFO_PROPERTY_TEXT;
     icon_bg_id = TH_INFO_PROPERTY;
     *r_icon = ICON_OPTIONS;
   }
-  else if (report->type & RPT_OPERATOR_ALL) {
+  else if (report->type & RPT_OPERATOR_ALL)
+  {
     icon_fg_id = TH_INFO_OPERATOR_TEXT;
     icon_bg_id = TH_INFO_OPERATOR;
     *r_icon = ICON_CHECKMARK;
   }
-  else {
+  else
+  {
     *r_icon = ICON_NONE;
   }
 
@@ -122,19 +126,6 @@ enum eTextViewContext_LineDrawFlag report_line_draw_data(TextViewContext *tvc,
   }
 
   return data_flag | TVC_LINE_BG;
-}
-
-static void report_textview_init__internal(TextViewContext *tvc)
-{
-  const Report *report = tvc->iter;
-  const char *str = report->message;
-  for (int i = tvc->iter_char_end - 1; i >= 0; i -= 1) {
-    if (str[i] == '\n') {
-      tvc->iter_char_begin = i + 1;
-      return;
-    }
-  }
-  tvc->iter_char_begin = 0;
 }
 
 static int report_textview_skip__internal(TextViewContext *tvc)
@@ -159,13 +150,7 @@ int report_textview_begin(TextViewContext *tvc)
   UI_ThemeClearColor(TH_BACK);
   GPU_clear(GPU_COLOR_BIT);
 
-  tvc->iter_tmp = 0;
   if (tvc->iter && report_textview_skip__internal(tvc)) {
-    /* init the newline iterator */
-    const Report *report = tvc->iter;
-    tvc->iter_char_end = report->len;
-    report_textview_init__internal(tvc);
-
     return true;
   }
 
@@ -179,38 +164,20 @@ void report_textview_end(TextViewContext *UNUSED(tvc))
 
 int report_textview_step(TextViewContext *tvc)
 {
-  /* simple case, but no newline support */
-  const Report *report = tvc->iter;
-
-  if (tvc->iter_char_begin <= 0) {
-    tvc->iter = (void *)((Link *)tvc->iter)->prev;
-    if (tvc->iter && report_textview_skip__internal(tvc)) {
-      tvc->iter_tmp++;
-
-      report = tvc->iter;
-      tvc->iter_char_end = report->len; /* reset start */
-      report_textview_init__internal(tvc);
-
-      return true;
-    }
-    return false;
+  tvc->iter = (void *)((Link *)tvc->iter)->prev;
+  if (tvc->iter && report_textview_skip__internal(tvc)) {
+    return true;
   }
-
-  /* step to the next newline */
-  tvc->iter_char_end = tvc->iter_char_begin - 1;
-  report_textview_init__internal(tvc);
-
-  return true;
+  return false;
 }
 
-void report_textview_line_get(struct TextViewContext *tvc,
+void report_textview_text_get(struct TextViewContext *tvc,
                               char **r_line,
                               int *r_len,
                               bool *owns_memory)
 {
   const Report *report = tvc->iter;
-
-  *r_line = (char *)(report->message + tvc->iter_char_begin);
-  *r_len = tvc->iter_char_end - tvc->iter_char_begin;
+  *r_line = (char *)(report->message);
+  *r_len = report->len;
   *owns_memory = false;
 }

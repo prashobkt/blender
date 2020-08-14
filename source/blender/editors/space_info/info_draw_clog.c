@@ -63,7 +63,7 @@ enum eTextViewContext_LineDrawFlag clog_line_draw_data(struct TextViewContext *t
     UI_GetThemeColor4ubv(bg_id, bg);
   }
   else {
-    if (tvc->iter_tmp % 2) {
+    if (tvc->iter_index % 2) {
       UI_GetThemeColor4ubv(TH_BACK, bg);
     }
     else {
@@ -77,10 +77,7 @@ enum eTextViewContext_LineDrawFlag clog_line_draw_data(struct TextViewContext *t
   int icon_fg_id;
   int icon_bg_id;
 
-  if (tvc->iter_char_begin != 0) {
-    *r_icon = ICON_NONE;
-  }
-  else if (record->severity == CLG_SEVERITY_FATAL) {
+  if (record->severity == CLG_SEVERITY_FATAL) {
     icon_fg_id = TH_INFO_ERROR_TEXT;
     icon_bg_id = TH_INFO_ERROR;
     *r_icon = ICON_X;
@@ -128,7 +125,7 @@ enum eTextViewContext_LineDrawFlag clog_line_draw_data(struct TextViewContext *t
   return data_flag | TVC_LINE_BG;
 }
 
-static int report_textview_skip__internal(TextViewContext *tvc)
+static int clog_textview_skip__internal(TextViewContext *tvc)
 {
   const SpaceInfo *sinfo = tvc->arg1;
   while (tvc->iter && !is_clog_record_visible(tvc->iter, sinfo)) {
@@ -150,14 +147,7 @@ int clog_textview_begin(struct TextViewContext *tvc)
   UI_ThemeClearColor(TH_BACK);
   GPU_clear(GPU_COLOR_BIT);
 
-  tvc->iter_tmp = 0;
-  if (tvc->iter && report_textview_skip__internal(tvc)) {
-    /* init the newline iterator */
-    // TODO (grzelins) fix newlines
-    //    const Report *report = tvc->iter;
-    //    tvc->iter_char_end = report->len;
-    //    report_textview_init__internal(tvc);
-
+  if (tvc->iter && clog_textview_skip__internal(tvc)) {
     return true;
   }
 
@@ -173,10 +163,11 @@ int clog_textview_step(struct TextViewContext *tvc)
 {
   const CLG_LogRecord *record = tvc->iter;
   tvc->iter = record->prev;
+  // TODO (grzelins) implement skip not visible
   return (tvc->iter != NULL);
 }
 
-void clog_textview_line_get(struct TextViewContext *tvc,
+void clog_textview_text_get(struct TextViewContext *tvc,
                             char **r_line,
                             int *r_len,
                             bool *owns_memory)

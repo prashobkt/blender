@@ -24,7 +24,6 @@
 #include <CLG_log.h>
 #include <DNA_text_types.h>
 #include <ED_text.h>
-#include <UI_resources.h>
 
 #include "BLF_api.h"
 
@@ -43,9 +42,9 @@
 #include "../space_text/text_format.h"
 #include "textview.h"
 
-static CLG_LogRef LOG = {"space_info.textview"};
+#define SPACES_BUFFER_SIZE 32
 
-#define PYTHON_TABNUMBER 4
+static CLG_LogRef LOG = {"space_info.textview"};
 
 static void textview_font_begin(const int font_id, const int lheight)
 {
@@ -144,7 +143,7 @@ static int textview_wrap_offsets(
 }
 
 /** Do not draw, just advance the height. */
-static bool textview_draw_string_dry_run(TextViewDrawState *tds, const char *str, int str_len)
+static void textview_draw_lines_dry_run(TextViewDrawState *tds, const char *str, int str_len)
 {
   int tot_lines; /* Total number of lines for wrapping. */
   int *offsets;  /* Offsets of line beginnings for wrapping. */
@@ -179,7 +178,15 @@ static bool textview_draw_string_dry_run(TextViewDrawState *tds, const char *str
   }
   tds->xy[1] = y_next;
   MEM_freeN(offsets);
-  return true;
+}
+
+static void textview_draw_multiline_dry_run(TextViewDrawState *tds, ListBase *text_lines)
+{
+  TextViewContextLine *iter_line = text_lines->last;
+  while (iter_line) {
+    textview_draw_lines_dry_run(tds, iter_line->line, iter_line->len);
+    iter_line = iter_line->prev;
+  }
 }
 
 /**
@@ -380,6 +387,43 @@ static void textview_clear_text_lines(ListBase *text_lines)
   }
 }
 
+static bool textview_draw_multiline(const uchar *fg,
+                                    const uchar *bg,
+                                    const uchar *icon_fg,
+                                    const uchar *icon_bg,
+                                    const int icon,
+                                    const uchar *bg_sel,
+                                    ListBase *text_lines,
+                                    const int data_flag,
+                                    TextViewDrawState *tds)
+{
+  bool is_out_of_view_y = false;
+  TextViewContextLine *iter_line = text_lines->last;
+  const uchar *_fg = (data_flag & TVC_LINE_FG_SIMPLE) ? fg : NULL;
+  const uchar *_bg = (data_flag & TVC_LINE_BG) ? bg : NULL;
+  while (iter_line->prev && !is_out_of_view_y) {
+    const char *_format = (data_flag & TVC_LINE_FG_SYNTAX) ? iter_line->format : NULL;
+    is_out_of_view_y = !textview_draw_string(
+        tds, iter_line->line, _format, iter_line->len, _fg, _bg, 0, NULL, NULL, bg_sel);
+    iter_line = iter_line->prev;
+  }
+  /* only first line has icon */
+  if (!is_out_of_view_y) {
+    const char *_format = (data_flag & TVC_LINE_FG_SYNTAX) ? iter_line->format : NULL;
+    is_out_of_view_y = !textview_draw_string(tds,
+                                             iter_line->line,
+                                             _format,
+                                             iter_line->len,
+                                             _fg,
+                                             _bg,
+                                             (data_flag & TVC_LINE_ICON) ? icon : 0,
+                                             (data_flag & TVC_LINE_ICON_FG) ? icon_fg : NULL,
+                                             (data_flag & TVC_LINE_ICON_BG) ? icon_bg : NULL,
+                                             bg_sel);
+  }
+  return is_out_of_view_y;
+}
+
 /**
  * \param r_mval_pick_item: The resulting item clicked on using \a mval_init.
  * Set from the void pointer which holds the current iterator.
@@ -450,96 +494,129 @@ int textview_draw(TextViewContext *tvc,
     sel[1] = tvc->sel_end;
   }
   /* TODO (grzelins) add support for defining syntax colors */
+  tvc->iter_index = 0;
   if (tvc->begin(tvc)) {
+    BLI_assert(IN_RANGE_INCL(tvc->tabnumber, 0, SPACES_BUFFER_SIZE - 1));
     uchar bg_sel[4] = {0};
 
     if (do_draw && tvc->const_colors) {
       tvc->const_colors(tvc, bg_sel);
     }
 
-    int iter_index = 0;
-    /* provides context for multiline syntax highlighting, can be reset in tvc->step */
-    ListBase text_lines = {NULL, NULL};
+    /* Provides context for multiline syntax highlighting. */
+    ListBase syntax_lines = {NULL, NULL};
     do {
-      char *ext_line;
-      int ext_len;
-      bool free_line;
-      int data_flag = 0;
+      ListBase text_lines = {NULL, NULL};
       const int y_prev = xy[1];
+      /* get line */
+      {
+        char *ext_line;
+        int ext_len;
+        bool free_line;
 
-      tvc->line_get(tvc, &ext_line, &ext_len, (bool *)&free_line);
+        tvc->text_get(tvc, &ext_line, &ext_len, (bool *)&free_line);
 
-      bool is_out_of_view_y;
-      if (do_draw) {
-        data_flag = tvc->line_draw_data(tvc, fg, bg, &icon, icon_fg, icon_bg);
-        BLI_assert((data_flag & TVC_LINE_FG_SIMPLE) || (data_flag & TVC_LINE_FG_SYNTAX));
+        /* in future implement here pretty printers/auto formatter */
 
-        /* if we want to draw syntax, we need to wait for several lines for proper highlighting */
-        if (data_flag & TVC_LINE_FG_SIMPLE) {
-          is_out_of_view_y = !textview_draw_string(&tds,
-                                                   ext_line,
-                                                   NULL,
-                                                   ext_len,
-                                                   (data_flag & TVC_LINE_FG_SIMPLE) ? fg : NULL,
-                                                   (data_flag & TVC_LINE_BG) ? bg : NULL,
-                                                   (data_flag & TVC_LINE_ICON) ? icon : 0,
-                                                   (data_flag & TVC_LINE_ICON_FG) ? icon_fg : NULL,
-                                                   (data_flag & TVC_LINE_ICON_BG) ? icon_bg : NULL,
-                                                   bg_sel);
+        /* get rid of tabs */
+        if (strchr(ext_line, '\t')) {
+          char spaces[SPACES_BUFFER_SIZE];
+          for (int i = 0; i < tvc->tabnumber; ++i) {
+            spaces[i] = ' ';
+          }
+          spaces[tvc->tabnumber] = '\0';
+          char *replaced_str = BLI_str_replaceN(ext_line, "\t", spaces);
+          if (free_line) {
+            MEM_freeN(ext_line);
+          }
+          ext_line = replaced_str;
         }
         else {
+          /* we must duplicate before strtok */
+          if (!free_line) {
+            ext_line = BLI_strdup(ext_line);
+            free_line = true;
+          }
+        }
+        /* get rid of newline */
+        const char delim[] = "\n";
+        char *ptr = strtok(ext_line, delim); /* modifies ext_line! */
+        if (ptr == NULL) {
+          TextViewContextLine *line = MEM_callocN(sizeof(*line), "tvc->text_get:EmptyLine");
+          line->line = BLI_strdup(ext_line);
+          line->len = ext_len;
+          line->owns_line = true;
+          BLI_addtail(&text_lines, line);
+        }
+        else {
+          while (ptr != NULL) {
+            TextViewContextLine *line = MEM_callocN(sizeof(*line), "tvc->text_get:NewLine");
+            line->line = BLI_strdup(ptr);
+            line->len = strlen(ptr);
+            line->owns_line = true;
+            BLI_addtail(&text_lines, line);
+            ptr = strtok(NULL, delim);
+          }
+        }
+        if (free_line) {
+          MEM_freeN(ext_line);
+        }
+        BLI_assert(!BLI_listbase_is_empty(&text_lines));
+      }
+
+      if (do_draw) {
+        bool is_out_of_view_y;
+        const int data_flag = tvc->line_draw_data(tvc, fg, bg, &icon, icon_fg, icon_bg);
+        BLI_assert((data_flag & TVC_LINE_FG_SIMPLE) || (data_flag & TVC_LINE_FG_SYNTAX));
+
+        if (data_flag & TVC_LINE_FG_SIMPLE) {
+          is_out_of_view_y = textview_draw_multiline(
+              fg, bg, icon_fg, icon_bg, icon, bg_sel, &text_lines, data_flag, &tds);
+        }
+        else {
+          /* be careful about direction of iteration (last to first, first to last), it swaps
+           * SYNTAX_START and SYNTAX_END */
           if (data_flag & TVC_LINE_FG_SYNTAX_END) {
-            textview_clear_text_lines(&text_lines);
+            textview_clear_text_lines(&syntax_lines);
           }
           if (data_flag & TVC_LINE_FG_SYNTAX) {
-            TextViewContextLine *line = MEM_callocN(sizeof(*line), __func__);
-            /* Move memory from ext_line to line->line */
-            line->line = ext_line;
-            line->owns_line = free_line;
-            free_line = false;
-            line->len = ext_len;
-            BLI_addhead(&text_lines, line);
+            while (!BLI_listbase_is_empty(&text_lines)) {
+              BLI_addhead(&syntax_lines, BLI_poptail(&text_lines));
+            }
+            BLI_listbase_clear(&text_lines);
           }
           if (data_flag & TVC_LINE_FG_SYNTAX_START) {
             if (data_flag & TVC_LINE_FG_SYNTAX_PYTHON) {
               TextFormatType *py_formatter = ED_text_format_get_by_extension("py");
-              py_formatter->format_line((TextLine *)(text_lines.first), PYTHON_TABNUMBER, true);
+              py_formatter->format_line((TextLine *)(syntax_lines.first), tvc->tabnumber, true);
             }
             else {
+              /* unknown syntax */
               BLI_assert(0);
             }
 
-            TextViewContextLine *iter_line = text_lines.last;
-            while (iter_line && !is_out_of_view_y) {
-              is_out_of_view_y = !textview_draw_string(
-                  &tds,
-                  iter_line->line,
-                  iter_line->format,
-                  iter_line->len,
-                  NULL,
-                  (data_flag & TVC_LINE_BG) ? bg : NULL,
-                  (data_flag & TVC_LINE_ICON) ? icon : 0,
-                  (data_flag & TVC_LINE_ICON_FG) ? icon_fg : NULL,
-                  (data_flag & TVC_LINE_ICON_BG) ? icon_bg : NULL,
-                  bg_sel);
-              iter_line = iter_line->prev;
-            }
-            textview_clear_text_lines(&text_lines);
+            is_out_of_view_y = textview_draw_multiline(
+                fg, bg, icon_fg, icon_bg, icon, bg_sel, &syntax_lines, data_flag, &tds);
+            textview_clear_text_lines(&syntax_lines);
           }
-          /* pass, do not draw line */
+          /* pass, do not draw line (waiting for more syntax lines) */
         }
 
         /* We always want the cursor to draw, but only in first line. */
-        if (tvc->draw_cursor && iter_index == 0) {
+        if (tvc->draw_cursor && tvc->iter_index == 0) {
           tvc->draw_cursor(tvc, tds.cwidth, tds.columns);
+        }
+
+        textview_clear_text_lines(&text_lines);
+
+        /* When drawing, if we pass v2d->cur.ymax, then quit. */
+        if (is_out_of_view_y) {
+          break;
         }
       }
       else {
-        is_out_of_view_y = !textview_draw_string_dry_run(&tds, ext_line, ext_len);
-      }
-      /* When drawing, if we pass v2d->cur.ymax, then quit. */
-      if (is_out_of_view_y) {
-        break;
+        textview_draw_multiline_dry_run(&tds, &text_lines);
+        textview_clear_text_lines(&text_lines);
       }
 
       if ((mval[1] != INT_MAX) && (mval[1] >= y_prev && mval[1] <= xy[1])) {
@@ -547,16 +624,12 @@ int textview_draw(TextViewContext *tvc,
         break;
       }
 
-      if (free_line) {
-        MEM_freeN(ext_line);
-      }
-      iter_index++;
+      tvc->iter_index++;
     } while (tvc->step(tvc));
 
-    if (G.debug & G_DEBUG && !BLI_listbase_is_empty(&text_lines)) {
-      CLOG_WARN(&LOG, "There are not printed lines left:%d!!", BLI_listbase_count(&text_lines));
+    if (G.debug & G_DEBUG && !BLI_listbase_is_empty(&syntax_lines)) {
+      CLOG_WARN(&LOG, "There are not printed lines left:%d!!", BLI_listbase_count(&syntax_lines));
     }
-    textview_clear_text_lines(&text_lines);
   }
 
   tvc->end(tvc);

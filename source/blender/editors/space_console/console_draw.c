@@ -137,7 +137,7 @@ static int console_textview_step(TextViewContext *tvc)
   return ((tvc->iter = (void *)(cl)->prev) != NULL);
 }
 
-static void console_textview_line_get(TextViewContext *tvc,
+static void console_textview_text_get(TextViewContext *tvc,
                                       char **r_line,
                                       int *r_len,
                                       bool *owns_memory)
@@ -241,10 +241,11 @@ static int console_textview_main__internal(SpaceConsole *sc,
   tvc.end = console_textview_end;
 
   tvc.step = console_textview_step;
-  tvc.line_get = console_textview_line_get;
+  tvc.text_get = console_textview_text_get;
   tvc.line_draw_data = console_line_draw_data;
   tvc.draw_cursor = console_textview_draw_cursor;
   tvc.const_colors = console_textview_const_colors;
+  tvc.tabnumber = 4;
 
   tvc.arg1 = sc;
   tvc.arg2 = NULL;

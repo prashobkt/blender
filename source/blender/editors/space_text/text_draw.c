@@ -120,7 +120,7 @@ static void txt_format_text(SpaceText *st)
 #endif
 
 /* Sets the current drawing color based on the format character specified */
-void text_format_draw_font_color(int font_id, char formatchar)
+void text_format_draw_font_color(int font_id, eTextFormatTag formatchar)
 {
   switch (formatchar) {
     case FMT_TYPE_WHITESPACE:

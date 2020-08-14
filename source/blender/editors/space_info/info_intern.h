@@ -99,7 +99,7 @@ enum eTextViewContext_LineDrawFlag report_line_draw_data(struct TextViewContext 
 int report_textview_begin(struct TextViewContext *tvc);
 void report_textview_end(struct TextViewContext *tvc);
 int report_textview_step(struct TextViewContext *tvc);
-void report_textview_line_get(struct TextViewContext *tvc,
+void report_textview_text_get(struct TextViewContext *tvc,
                               char **r_line,
                               int *r_len,
                               bool *owns_memory);
@@ -114,7 +114,7 @@ enum eTextViewContext_LineDrawFlag clog_line_draw_data(struct TextViewContext *t
 int clog_textview_begin(struct TextViewContext *tvc);
 void clog_textview_end(struct TextViewContext *tvc);
 int clog_textview_step(struct TextViewContext *tvc);
-void clog_textview_line_get(struct TextViewContext *tvc,
+void clog_textview_text_get(struct TextViewContext *tvc,
                             char **r_line,
                             int *r_len,
                             bool *owns_memory);

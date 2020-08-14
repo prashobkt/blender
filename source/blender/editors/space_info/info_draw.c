@@ -72,7 +72,7 @@ static int info_textview_main__internal(const SpaceInfo *sinfo,
   switch (sinfo->view) {
     case INFO_VIEW_CLOG:
       tvc.begin = clog_textview_begin;
-      tvc.line_get = clog_textview_line_get;
+      tvc.text_get = clog_textview_text_get;
       tvc.line_draw_data = clog_line_draw_data;
       tvc.end = clog_textview_end;
       tvc.step = clog_textview_step;
@@ -80,7 +80,7 @@ static int info_textview_main__internal(const SpaceInfo *sinfo,
       break;
     case INFO_VIEW_REPORTS:
       tvc.begin = report_textview_begin;
-      tvc.line_get = report_textview_line_get;
+      tvc.text_get = report_textview_text_get;
       tvc.line_draw_data = report_line_draw_data;
       tvc.end = report_textview_end;
       tvc.step = report_textview_step;
@@ -98,6 +98,7 @@ static int info_textview_main__internal(const SpaceInfo *sinfo,
   tvc.row_vpadding = 0.4 * tvc.lheight;
   tvc.scroll_ymin = v2d->cur.ymin;
   tvc.scroll_ymax = v2d->cur.ymax;
+  tvc.tabnumber = 4;
 
   info_textview_draw_rect_calc(region, &tvc.draw_rect, &tvc.draw_rect_outer);
 

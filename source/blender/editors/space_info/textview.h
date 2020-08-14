@@ -77,8 +77,7 @@ typedef struct TextViewContext {
   /* iterator */
   int (*step)(struct TextViewContext *tvcl);
 
-  //  static void console_textview_line_get(TextViewContext *tvc
-  void (*line_get)(struct TextViewContext *tvc, char **r_line, int *r_len, bool *owns_memory);
+  void (*text_get)(struct TextViewContext *tvc, char **r_line, int *r_len, bool *owns_memory);
   enum eTextViewContext_LineDrawFlag (*line_draw_data)(struct TextViewContext *tvc,
                                                        uchar fg[4],
                                                        uchar bg[4],
@@ -91,13 +90,7 @@ typedef struct TextViewContext {
   void (*syntax_colors)(struct TextViewContext *tvc, unsigned char bg_sel[4]);
   const void *iter;
   int iter_index;
-  /** Used for internal multi-line iteration. */
-  int iter_char_begin;
-  /** The last character (not inclusive). */
-  int iter_char_end;
-  /** Internal iterator use. */
-  int iter_tmp;
-
+  short tabnumber;
 } TextViewContext;
 
 int textview_draw(struct TextViewContext *tvc,

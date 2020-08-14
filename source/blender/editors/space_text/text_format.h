@@ -74,7 +74,7 @@ typedef struct TextFormatType {
   const char **ext; /* NULL terminated extensions */
 } TextFormatType;
 
-enum {
+typedef enum eTextFormatTag {
   /** Whitespace */
   FMT_TYPE_WHITESPACE = '_',
   /** Comment text */
@@ -95,7 +95,7 @@ enum {
   FMT_TYPE_KEYWORD = 'b',
   /** Regular text (identifiers, etc.) */
   FMT_TYPE_DEFAULT = 'q',
-};
+} eTextFormatTag;
 
 TextFormatType *ED_text_format_get(Text *text);
 TextFormatType *ED_text_format_get_by_extension(const char *extension);
