@@ -157,8 +157,8 @@ enum {
   UI_BLOCK_POPOVER_ONCE = 1 << 22,
   /** Always show keymaps, even for non-menus. */
   UI_BLOCK_SHOW_SHORTCUT_ALWAYS = 1 << 23,
-  /** The block is only used during the layout process and will not be drawn,
-   * for the case of a subpanel of a closed panel. */
+  /** The block is only used during the layout process and will not be drawn.
+   * Currently just for the case of a panel's closed subpanel. */
   UI_BLOCK_SEARCH_ONLY = 1 << 25,
 };
 

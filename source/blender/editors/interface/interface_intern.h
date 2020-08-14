@@ -80,8 +80,9 @@ enum {
   UI_ACTIVE = (1 << 2),
   UI_HAS_ICON = (1 << 3),
   UI_HIDDEN = (1 << 4),
-  UI_SELECT_DRAW = (1 << 5),            /* Display selected, doesn't impact interaction. */
-  UI_SEARCH_FILTER_MATCHES = (1 << 12), /* The button matches the search filter. */
+  UI_SELECT_DRAW = (1 << 5), /* Display selected, doesn't impact interaction. */
+  /** The button matches the search filter, later used to deactivate it. */
+  UI_SEARCH_FILTER_MATCHES = (1 << 12),
   /* warn: rest of uiBut->flag in UI_interface.h */
 };
 
@@ -275,8 +276,8 @@ struct uiBut {
 
   /**
    * Used for property search, so that a button's label and decorator can be filtered and
-   * unfiltered along with it. Due to the sometimes arbitrary nature of these values,
-   * they aren't always filled.
+   * unfiltered along with it. Due to the sometimes arbitrary nature of which button to choose
+   * for these values, they aren't always filled.
    */
   uiBut *label_but;
   uiBut *decorator_but;

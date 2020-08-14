@@ -85,9 +85,11 @@ typedef struct uiLayoutRoot {
   int type;
   int opcontext;
 
-  /** If true, the root will be removed as part of the property search process.
+  /**
+   * If true, the root will be removed as part of the property search process.
    * Necessary for cases like searching the contents of closed panels, where the
-   * block-level tag isn't enough because there might be buttons in the header. */
+   * block-level tag isn't enough because there might be buttons in the header.
+   */
   bool search_only;
 
   int emw, emh;

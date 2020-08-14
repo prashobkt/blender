@@ -300,7 +300,9 @@ static void buttons_main_region_layout_properties(const bContext *C,
       C, region, &region->type->paneltypes, contexts, sbuts->mainb, vertical, NULL);
 }
 
-static void main_region_layout(const bContext *C, SpaceProperties *sbuts, ARegion *region)
+static void main_region_layout_current_context(const bContext *C,
+                                               SpaceProperties *sbuts,
+                                               ARegion *region)
 {
   if (sbuts->mainb == BCONTEXT_TOOL) {
     ED_view3d_buttons_region_layout_ex(C, region, "Tool");
@@ -340,10 +342,10 @@ static void property_search_all_tabs(const bContext *C,
     /* Run the layout for the actual region if the tab matches to avoid doing it again later on. */
     const bool use_actual_region = sbuts->mainb == sbuts_copy->mainb;
     if (use_actual_region) {
-      main_region_layout(C, sbuts, main_region);
+      main_region_layout_current_context(C, sbuts, main_region);
     }
     else {
-      main_region_layout(C_copy, sbuts_copy, region_copy);
+      main_region_layout_current_context(C_copy, sbuts_copy, region_copy);
     }
 
     /* Store whether this tab has any unfiltered panels left. */
@@ -378,7 +380,7 @@ static void buttons_main_region_layout(const bContext *C, ARegion *region)
     property_search_all_tabs(C, sbuts, region);
   }
   else {
-    main_region_layout(C, sbuts, region);
+    main_region_layout_current_context(C, sbuts, region);
   }
 
   sbuts->mainbo = sbuts->mainb;

@@ -147,7 +147,7 @@ typedef struct SpaceProperties {
 
   /** Context tabs. */
   short mainb, mainbo, mainbuser;
-  /** Bitfield flag (in the same order as the tabs) for whether each tab has properties
+  /** Runtime. Bitfield flag (in the same order as the tabs) for whether each tab has properties
    * that match the search filter. Only valid when #search_string is set. */
   int context_search_filter_active;
   /** Preview is signal to refresh. */
