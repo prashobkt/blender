@@ -2191,6 +2191,9 @@ int ui_id_icon_get(const bContext *C, ID *id, const bool big)
     case ID_SCR:
       iconid = ui_id_screen_get_icon(C, id);
       break;
+    case ID_GR:
+      iconid = UI_collection_color_icon_get((Collection *)id);
+      break;
     default:
       break;
   }
@@ -2358,9 +2361,6 @@ int UI_collection_color_icon_get(const Collection *collection)
 
   if (collection->color != COLLECTION_COLOR_NONE) {
     icon = ICON_COLLECTION_COLOR_01 + (collection->color - 1);
-  }
-  else if (ID_IS_LINKED(&collection->id)) {
-    icon = ICON_LINKED;
   }
 
   return icon;
