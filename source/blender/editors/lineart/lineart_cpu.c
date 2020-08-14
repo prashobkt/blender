@@ -33,11 +33,13 @@
 #include "BKE_camera.h"
 #include "BKE_collection.h"
 #include "BKE_context.h"
+#include "BKE_curve.h"
 #include "BKE_customdata.h"
 #include "BKE_global.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_geom.h"
 #include "BKE_gpencil_modifier.h"
+#include "BKE_mesh.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -1362,6 +1364,7 @@ static void lineart_geometry_object_load(Object *ob,
   Object *orig_ob;
   int CanFindFreestyle = 0;
   int i;
+  Mesh *use_mesh;
 
   int usage = override_usage ? override_usage : ob->lineart.usage;
 
@@ -1369,7 +1372,15 @@ static void lineart_geometry_object_load(Object *ob,
     return;
   }
 
-  if (ob->type == OB_MESH) {
+  if (ob->type == OB_MESH || ob->type == OB_MBALL || ob->type == OB_CURVE || ob->type == OB_SURF ||
+      ob->type == OB_FONT) {
+
+    if (ob->type == OB_MESH) {
+      use_mesh = ob->data;
+    }
+    else {
+      use_mesh = BKE_mesh_new_from_object(NULL, ob, false);
+    }
 
     mul_m4db_m4db_m4fl_uniq(new_mvp, mvp_mat, ob->obmat);
     mul_m4db_m4db_m4fl_uniq(new_mv, mv_mat, ob->obmat);
@@ -1378,13 +1389,13 @@ static void lineart_geometry_object_load(Object *ob,
     transpose_m4(imat);
     copy_m4d_m4(normal, imat);
 
-    const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(((Mesh *)(ob->data)));
+    const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(((Mesh *)(use_mesh)));
     bm = BM_mesh_create(&allocsize,
                         &((struct BMeshCreateParams){
                             .use_toolflags = true,
                         }));
     BM_mesh_bm_from_me(bm,
-                       ob->data,
+                       use_mesh,
                        &((struct BMeshFromMeshParams){
                            .calc_face_normal = true,
                        }));
@@ -1486,6 +1497,11 @@ static void lineart_geometry_object_load(Object *ob,
     }
 
     BM_mesh_free(bm);
+
+    if (ob->type != OB_MESH) {
+      BKE_mesh_free(use_mesh);
+      MEM_freeN(use_mesh);
+    }
   }
 }
 
