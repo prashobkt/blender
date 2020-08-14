@@ -206,7 +206,7 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
   const bool is_active_report_selected = active_report ? active_report->flag & RPT_SELECT : false;
 
   if (deselect_all) {
-    reports_select_all(reports, sinfo, 0);
+    reports_select_all(reports, sinfo, SEL_DESELECT);
   }
 
   if (active_report == NULL) {
