@@ -1192,6 +1192,23 @@ eOLDrawState tree_element_type_active(bContext *C,
   return OL_DRAWSEL_NONE;
 }
 
+bPoseChannel *outliner_find_parent_bone(TreeElement *te, TreeElement **r_bone_te)
+{
+  TreeStoreElem *tselem;
+
+  te = te->parent;
+  while (te) {
+    tselem = TREESTORE(te);
+    if (tselem->type == TSE_POSE_CHANNEL) {
+      *r_bone_te = te;
+      return (bPoseChannel *)te->directdata;
+    }
+    te = te->parent;
+  }
+
+  return NULL;
+}
+
 static void outliner_set_properties_tab(bContext *C, TreeElement *te, TreeStoreElem *tselem)
 {
   PointerRNA ptr;
@@ -1241,26 +1258,15 @@ static void outliner_set_properties_tab(bContext *C, TreeElement *te, TreeStoreE
         break;
       case TSE_CONSTRAINT_BASE:
       case TSE_CONSTRAINT: {
-        RNA_id_pointer_create(tselem->id, &ptr);
-        bool is_bone_constraint = false;
+        TreeElement *bone_te = NULL;
+        bPoseChannel *pchan = outliner_find_parent_bone(te, &bone_te);
 
-        /* Check if parent is a bone */
-        te = te->parent;
-        while (te) {
-          tselem = TREESTORE(te);
-          if (tselem->type == TSE_POSE_CHANNEL) {
-            bPoseChannel *pchan = (bPoseChannel *)te->directdata;
-            RNA_pointer_create(tselem->id, &RNA_PoseBone, pchan, &ptr);
-
-            is_bone_constraint = true;
-            break;
-          }
-          te = te->parent;
-        }
-        if (is_bone_constraint) {
+        if (pchan) {
+          RNA_pointer_create(TREESTORE(bone_te)->id, &RNA_PoseBone, pchan, &ptr);
           ED_buttons_set_context(C, &ptr, BCONTEXT_BONE_CONSTRAINT);
         }
         else {
+          RNA_id_pointer_create(tselem->id, &ptr);
           ED_buttons_set_context(C, &ptr, BCONTEXT_CONSTRAINT);
         }
         break;

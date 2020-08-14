@@ -1386,17 +1386,9 @@ static int outliner_item_drag_drop_invoke(bContext *C,
            TSE_CONSTRAINT_BASE,
            TSE_EFFECT,
            TSE_EFFECT_BASE)) {
-    /* Check if parent is a bone */
-    TreeElement *te_bone = te->parent;
-    bPoseChannel *pchan = NULL;
-    while (te_bone) {
-      TreeStoreElem *tselem_bone = TREESTORE(te_bone);
-      if (tselem_bone->type == TSE_POSE_CHANNEL) {
-        pchan = (bPoseChannel *)te_bone->directdata;
-        break;
-      }
-      te_bone = te_bone->parent;
-    }
+
+    TreeElement *te_bone = NULL;
+    bPoseChannel *pchan = outliner_find_parent_bone(te, &te_bone);
     outliner_drop_data_init(drag, (Object *)tselem->id, pchan, te, tselem, te->directdata);
   }
   else if (ELEM(GS(data.drag_id->name), ID_OB, ID_GR)) {
