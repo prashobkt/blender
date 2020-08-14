@@ -289,9 +289,7 @@ char *BKE_reports_sprintfN(ReportList *reports, ReportType level)
     BLI_dynstr_free(ds);
     return cstring;
   }
-  else {
-    BLI_dynstr_appendf(ds, "ReportList(%p):", reports);
-  }
+  BLI_dynstr_appendf(ds, "ReportList(%p):", reports);
 
   if (BLI_listbase_is_empty(&reports->list)) {
     BLI_dynstr_append(ds, " Empty list");
