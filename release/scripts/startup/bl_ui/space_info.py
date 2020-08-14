@@ -52,9 +52,12 @@ class INFO_MT_editor_menus(Menu):
     def draw(self, context):
         layout = self.layout
         layout.menu("INFO_MT_view")
-        layout.menu("INFO_MT_info")
-
         sinfo = context.space_data
+        if sinfo.view == 'REPORTS':
+            layout.menu("INFO_MT_report_info")
+        else:
+            layout.menu("INFO_MT_clog_info")
+
         row = layout.row()
         row.prop(sinfo, "view", expand=True)
 
@@ -68,20 +71,41 @@ class INFO_MT_view(Menu):
         layout.menu("INFO_MT_area")
 
 
-class INFO_MT_info(Menu):
-    bl_label = "Info"
+class INFO_MT_clog_info(Menu):
+    bl_label = "Log"
 
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("info.select_all", text="Select All").action = 'SELECT'
-        layout.operator("info.select_all", text="Deselect All").action = 'DESELECT'
-        layout.operator("info.select_all", text="Invert Selection").action = 'INVERT'
-        layout.operator("info.select_all", text="Toggle Selection").action = 'TOGGLE'
+        layout.operator("info.clog_select_all", text="Select All").action = 'SELECT'
+        layout.operator("info.clog_select_all", text="Deselect All").action = 'DESELECT'
+        layout.operator("info.clog_select_all", text="Invert Selection").action = 'INVERT'
+        layout.operator("info.clog_select_all", text="Toggle Selection").action = 'TOGGLE'
 
         layout.separator()
 
-        layout.operator("info.select_box")
+        layout.operator("info.clog_select_box")
+
+        layout.separator()
+
+        layout.operator("info.clog_delete", text="Delete")
+        layout.operator("info.clog_copy", text="Copy")
+
+
+class INFO_MT_report_info(Menu):
+    bl_label = "Report"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("info.report_select_all", text="Select All").action = 'SELECT'
+        layout.operator("info.report_select_all", text="Deselect All").action = 'DESELECT'
+        layout.operator("info.report_select_all", text="Invert Selection").action = 'INVERT'
+        layout.operator("info.report_select_all", text="Toggle Selection").action = 'TOGGLE'
+
+        layout.separator()
+
+        layout.operator("info.report_select_box")
 
         layout.separator()
 
@@ -237,7 +261,8 @@ classes = (
     INFO_MT_editor_menus,
     INFO_MT_area,
     INFO_MT_view,
-    INFO_MT_info,
+    INFO_MT_clog_info,
+    INFO_MT_report_info,
     INFO_MT_context_menu,
     INFO_PT_log_formatting,
     INFO_PT_report_type_visibility
