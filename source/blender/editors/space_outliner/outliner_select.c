@@ -1419,8 +1419,8 @@ static void do_outliner_item_activate_tree_element(bContext *C,
            TSE_SEQUENCE_DUP,
            TSE_EBONE,
            TSE_LAYER_COLLECTION)) {
-    /* Note about TSE_EBONE: In case of a same ID_AR datablock shared among several objects,
-     * we do not want to switch out of edit mode (see T48328 for details). */
+    /* Note about TSE_EBONE: In case of a same ID_AR datablock shared among several
+     * objects, we do not want to switch out of edit mode (see T48328 for details). */
   }
   else if (do_activate_data) {
     tree_element_set_active_object(C,
@@ -1505,7 +1505,8 @@ void outliner_item_select(bContext *C,
   const bool extend = select_flag & OL_ITEM_EXTEND;
   const bool activate_data = select_flag & OL_ITEM_SELECT_DATA;
 
-  /* Clear previous active when activating and clear selection when not extending selection */
+  /* Clear previous active when activating and clear selection when not extending selection
+   */
   const short clear_flag = (activate ? TSE_ACTIVE : 0) | (extend ? 0 : TSE_SELECTED);
   if (clear_flag) {
     outliner_flag_set(&space_outliner->tree, clear_flag, false);
@@ -1591,7 +1592,8 @@ static void do_outliner_range_select(bContext *C,
     return;
   }
 
-  /* If active is not selected or visible, select and activate the element under the cursor */
+  /* If active is not selected or visible, select and activate the element under the cursor
+   */
   if (!active_selected || !outliner_is_element_visible(active)) {
     outliner_item_select(C, space_outliner, cursor, OL_ITEM_SELECT | OL_ITEM_ACTIVATE);
     return;
@@ -1656,7 +1658,8 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
   else {
-    /* The row may also contain children, if one is hovered we want this instead of current te. */
+    /* The row may also contain children, if one is hovered we want this instead of current
+     * te. */
     bool merged_elements = false;
     TreeElement *activate_te = outliner_find_item_at_x_in_row(
         space_outliner, te, view_mval[0], &merged_elements);
