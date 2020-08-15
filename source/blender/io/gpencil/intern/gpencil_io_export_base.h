@@ -32,7 +32,9 @@ struct Depsgraph;
 struct Main;
 struct Object;
 struct RegionView3D;
+struct Scene;
 
+struct bGPdata;
 struct bGPDlayer;
 struct bGPDframe;
 struct bGPDstroke;
@@ -133,7 +135,7 @@ class GpencilExporter {
   bool is_fill;
   float avg_opacity;
   bool is_camera;
-  rctf select_box;
+  rctf select_boundbox;
 };
 
 }  // namespace blender::io::gpencil

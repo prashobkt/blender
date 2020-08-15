@@ -494,18 +494,18 @@ void GpencilExporter::selected_objects_boundbox_set(void)
   add_v2_fl(r_min, gap * -1.0f);
   add_v2_fl(r_max, gap);
 
-  select_box.xmin = r_min[0];
-  select_box.ymin = r_min[1];
-  select_box.xmax = r_max[0];
-  select_box.ymax = r_max[1];
+  select_boundbox.xmin = r_min[0];
+  select_boundbox.ymin = r_min[1];
+  select_boundbox.xmax = r_max[0];
+  select_boundbox.ymax = r_max[1];
 }
 
 void GpencilExporter::selected_objects_boundbox_get(rctf *boundbox)
 {
-  boundbox->xmin = select_box.xmin;
-  boundbox->xmax = select_box.xmax;
-  boundbox->ymin = select_box.ymin;
-  boundbox->ymax = select_box.ymax;
+  boundbox->xmin = select_boundbox.xmin;
+  boundbox->xmax = select_boundbox.xmax;
+  boundbox->ymin = select_boundbox.ymin;
+  boundbox->ymax = select_boundbox.ymax;
 }
 
 void GpencilExporter::set_frame_number(int value)
