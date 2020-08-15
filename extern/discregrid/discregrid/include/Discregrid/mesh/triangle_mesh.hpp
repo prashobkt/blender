@@ -27,6 +27,8 @@ public:
 
 	TriangleMesh(std::string const& filename);
 
+	bool is_closed() const { return m_is_closed; }
+
 	void exportOBJ(std::string const& filename) const;
 
 	// Halfedge modifiers.
@@ -103,6 +105,7 @@ private:
 	std::vector<std::array<Halfedge, 3>> m_e2e;
 	std::vector<Halfedge> m_v2e;
 	std::vector<Halfedge> m_b2e;
+	bool m_is_closed;
 };
 }
 

@@ -238,7 +238,6 @@ typedef struct SoftBody {
   char admmpd_namedVG_selfcollision[64];
 //  int admmpd_pad; // padding
 
-
   char _pad;
   char msg_lock;
   short msg_value;

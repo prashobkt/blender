@@ -26,18 +26,27 @@ VFCollisionPair::VFCollisionPair() :
 	q_bary(0,0,0)
 	{}
 
-void Collision::set_obstacles(
+void Collision::ObstacleData::clear() {
+	V = MatrixXd();
+	F = MatrixXi();
+	sdf = Discregrid::CubicLagrangeDiscreteGrid();
+}
+
+
+bool Collision::set_obstacles(
 	const float *v0,
 	const float *v1,
 	int nv,
 	const unsigned int *faces,
-	int nf)
+	int nf,
+	std::string *err)
 {
 	(void)(v0);
 	if (nv==0 || nf==0)
 	{
-		// Why do this? Are you just being mean?
-		return;
+		if (err) { *err = "Collision obstacle has no verts or faces"; }
+		obsdata.clear();
+		return false;
 	}
 
 	std::vector<double> v1_dbl(nv*3);
@@ -63,9 +72,16 @@ void Collision::set_obstacles(
 			obsdata.F(i,j) = faces[i*3+j];
 	}
 
+	// Is the mesh closed?
+	Discregrid::TriangleMesh tm(v1_dbl.data(), faces, nv, nf);
+	if (!tm.is_closed()) {
+		if (err) { *err = "Collision obstacle not a closed mesh"; }
+		obsdata.clear();
+		return false;
+	}
+
 	// Generate signed distance field
 	{
-		Discregrid::TriangleMesh tm(v1_dbl.data(), faces, nv, nf);
 		Discregrid::MeshDistance md(tm);
 		domain.max() += 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
 		domain.min() -= 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
@@ -80,6 +96,14 @@ void Collision::set_obstacles(
 		};
 		obsdata.sdf.addFunction(func, &thread_map, false);
 	}
+
+	if (obsdata.sdf.nCells()==0) {
+		if (err) { *err = "SDF gen failed for collision obstacle"; }
+		obsdata.clear();
+		return false;
+	}
+
+	return true;
 
 } // end add obstacle
 

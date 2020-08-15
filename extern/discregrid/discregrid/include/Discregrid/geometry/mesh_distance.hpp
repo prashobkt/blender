@@ -79,7 +79,16 @@ public:
 	double unsignedDistance(Eigen::Vector3d const& x) const;
 	double unsignedDistanceCached(Eigen::Vector3d const& x) const;
 
-	void set_thread_map(std::vector<std::thread::id> *thread_map_) { thread_map = thread_map_; }
+	// So, the original discregrid uses OpenMP which has
+	// handy functions like omp_get_thread_num(). Switching to non-OpenMP
+	// requires some overhead to get the current thread ID which is what
+	// you see here. So this pointer is passed to both the SDF
+	// generator and this SDF evaluator. The generator fills the thread map
+	// and the evaluator reads from it.
+	// Not ideal and kind of clunky, but a quick workaround for now.
+	void set_thread_map(std::vector<std::thread::id> *thread_map_) {
+		thread_map = thread_map_;
+	}
 
 private:
 

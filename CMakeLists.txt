@@ -222,7 +222,7 @@ mark_as_advanced(WITH_HEADLESS)
 
 option(WITH_QUADRIFLOW    "Build with quadriflow remesher support" ON)
 
-option(WITH_TETGEN    "Build with tetgen remesher support" ON)
+option(WITH_TETGEN    "Build with tetgen remesher support" OFF)
 
 option(WITH_AUDASPACE    "Build with blenders audio library (only disable if you know what you're doing!)" ON)
 option(WITH_SYSTEM_AUDASPACE "Build with external audaspace library installed on the system (only enable if you know what you're doing!)" OFF)

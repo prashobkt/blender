@@ -1202,6 +1202,11 @@ void OBJECT_OT_quadriflow_remesh(wmOperatorType *ot)
 
 static int tetgen_remesh_exec(bContext *C, wmOperator *op)
 {
+#ifndef WITH_TETGEN
+    BKE_report(op->reports, RPT_ERROR, "WITH_TETGEN compile option is off");
+    return OPERATOR_CANCELLED;
+#endif
+
   Object *ob = CTX_data_active_object(C);
 
   Mesh *mesh = ob->data;

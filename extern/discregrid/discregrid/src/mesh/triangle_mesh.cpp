@@ -72,6 +72,7 @@ TriangleMesh::TriangleMesh(
 	std::vector<std::array<unsigned int, 3>> const& faces)
 	: m_faces(faces), m_e2e(3 * faces.size()), m_vertices(vertices)
 	, m_v2e(vertices.size())
+	, m_is_closed(false)
 {
 	construct();
 }
@@ -79,7 +80,7 @@ TriangleMesh::TriangleMesh(
 TriangleMesh::TriangleMesh(double const* vertices,
 	unsigned int const* faces,
 	std::size_t nv, std::size_t nf)
-	: m_faces(nf), m_vertices(nv), m_e2e(3 * nf), m_v2e(nv)
+	: m_faces(nf), m_vertices(nv), m_e2e(3 * nf), m_v2e(nv), m_is_closed(false)
 {
 	std::copy(vertices, vertices + 3 * nv, m_vertices[0].data());
 	std::copy(faces, faces + 3 * nf, m_faces[0].data());
@@ -90,6 +91,8 @@ TriangleMesh::TriangleMesh(double const* vertices,
 
 TriangleMesh::TriangleMesh(std::string const& path)
 {
+	m_is_closed = false;
+
 	std::ifstream in(path, std::ios::in);
 	if (!in) 
 	{ 
@@ -200,7 +203,11 @@ TriangleMesh::construct()
 
 	if (!m_b2e.empty())
 	{
-		std::cout << std::endl << "WARNING: Mesh not closed!" << std::endl;
+		m_is_closed = false;
+	}
+	else
+	{
+		m_is_closed = true;
 	}
 }
 

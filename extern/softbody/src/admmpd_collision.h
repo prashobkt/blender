@@ -24,6 +24,7 @@ class Collision {
 public:
     struct ObstacleData {
         bool has_obs() const { return F.rows()>0; }
+        void clear();
         Eigen::MatrixXd V;
         Eigen::MatrixXi F;
         SDFType sdf;
@@ -56,15 +57,15 @@ public:
         std::vector<std::set<int> > &g) = 0;
 
     // Set the soup of obstacles for this time step.
-    // I don't really like having to switch up interface style, but we'll
-    // do so here to avoid copies that would happen in admmpd_api.
-    // We should actually just pash in a mesh class?
-    virtual void set_obstacles(
+    // Returns true on success (SDF generation).
+    // If err not nullptr, it's set with what caused the error.
+    virtual bool set_obstacles(
         const float *v0,
         const float *v1,
         int nv,
         const unsigned int *faces,
-        int nf);
+        int nf,
+        std::string *err=nullptr);
 
     // Linearizes active collision pairs about x
     // for the constraint Cx=d

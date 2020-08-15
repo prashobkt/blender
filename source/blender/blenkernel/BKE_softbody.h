@@ -30,6 +30,7 @@ struct Depsgraph;
 struct Object;
 struct Scene;
 struct SoftBody;
+struct ReportList;
 
 typedef struct BodyPoint {
   float origS[3], origE[3], origT[3], pos[3], vec[3], force[3];

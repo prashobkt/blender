@@ -26,12 +26,13 @@
 #include "admmpd_solver.h"
 #include "admmpd_mesh.h"
 #include "admmpd_collision.h"
-
-#include "tetgen_api.h"
+#ifdef WITH_TETGEN
+  #include "tetgen_api.h"
+  #include "BKE_mesh_remesh_voxel.h" // TetGen
+#endif
 #include "DNA_mesh_types.h" // Mesh
 #include "DNA_meshdata_types.h" // MVert
 #include "DNA_object_force_types.h" // Enums
-#include "BKE_mesh_remesh_voxel.h" // TetGen
 #include "BKE_mesh.h" // BKE_mesh_free
 #include "BKE_softbody.h" // BodyPoint
 #include "BKE_deform.h" // BKE_defvert_find_index
@@ -40,8 +41,6 @@
 #include <iostream>
 #include <memory>
 #include <algorithm>
-
-#define ADMMPD_API_DEBUG
 
 // Collision obstacles are cached until
 // solve(...) is called. If we are substepping,
@@ -176,6 +175,7 @@ void admmpd_dealloc(ADMMPDInterfaceData *iface)
 
 static inline int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
 {
+#ifdef WITH_TETGEN
   std::vector<float> v;
   std::vector<unsigned int> f;
   vecs_from_object(ob,vertexCos,v,f);
@@ -196,7 +196,6 @@ static inline int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, Object *ob
   // Double check assumption, the first
   // mesh_totverts vertices remain the same
   // for input and output mesh.
-  #ifdef ADMMPD_API_DEBUG
     for (int i=0; i<tg.in_totverts; ++i)
     {
       for (int j=0; j<3; ++j)
@@ -209,7 +208,6 @@ static inline int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, Object *ob
         }
       }
     }
-  #endif
 
   iface->idata->mesh = std::make_shared<admmpd::TetMesh>();
   success = iface->idata->mesh->create(
@@ -231,6 +229,12 @@ static inline int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, Object *ob
   MEM_freeN(tg.out_verts);
 
   return 1;
+#else
+  (void)(ob);
+  (void)(vertexCos);
+  strcpy_error(iface, "TetGen not available");
+  return 0;
+#endif
 }
 
 static inline int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
@@ -690,13 +694,19 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
     iface->idata->options->substeps>1 &&
     (iface->idata->obs.x0-iface->idata->obs.x1).lpNorm<Eigen::Infinity>()>1e-6;
 
+  bool had_set_obstacle_error = false;
   if (has_obstacles && iface->idata->obs.needs_sdf_recompute && !lerp_obstacles) {
-    iface->idata->collision->set_obstacles(
-      iface->idata->obs.x0.data(),
-      iface->idata->obs.x1.data(),
-      iface->idata->obs.x0.size()/3,
-      iface->idata->obs.F.data(),
-      iface->idata->obs.F.size()/3);
+    std::string set_obs_error = "";
+    if (!iface->idata->collision->set_obstacles(
+        iface->idata->obs.x0.data(),
+        iface->idata->obs.x1.data(),
+        iface->idata->obs.x0.size()/3,
+        iface->idata->obs.F.data(),
+        iface->idata->obs.F.size()/3,
+        &set_obs_error)) {
+      strcpy_error(iface, set_obs_error.c_str());
+      had_set_obstacle_error = true;
+    }
   }
 
   try
@@ -704,16 +714,23 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
     Eigen::VectorXf obs_x1; // used if substeps > 1
     int substeps = std::max(1,iface->idata->options->substeps);
     for (int i=0; i<substeps; ++i) {
+
       if (lerp_obstacles) {
-          float t = float(i)/float(substeps-1);
-          obs_x1 = (1.f-t)*iface->idata->obs.x0 + t*iface->idata->obs.x1;
-          iface->idata->collision->set_obstacles(
+        float t = float(i)/float(substeps-1);
+        obs_x1 = (1.f-t)*iface->idata->obs.x0 + t*iface->idata->obs.x1;
+        std::string set_obs_error = "";
+        if (iface->idata->collision->set_obstacles(
             iface->idata->obs.x0.data(),
             obs_x1.data(),
             iface->idata->obs.x0.size()/3,
             iface->idata->obs.F.data(),
-            iface->idata->obs.F.size()/3);
+            iface->idata->obs.F.size()/3,
+            &set_obs_error)) {
+          strcpy_error(iface, set_obs_error.c_str());
+          had_set_obstacle_error = true;
+        }
       }
+
       admmpd::Solver().solve(
         iface->idata->mesh.get(),
         iface->idata->options.get(),
@@ -722,9 +739,15 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
     }
   }
   catch(const std::exception &e) {
+    // This is a more important error than set obstacle error,
+    // so if we had an exception we'll report that instead.
     iface->idata->data->x = iface->idata->data->x_start;
     strcpy_error(iface, e.what());
     return 0;
+  }
+
+  if (had_set_obstacle_error) {
+    return 0; // we've already copied the error message.
   }
 
   return 1;
