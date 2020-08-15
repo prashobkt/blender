@@ -2448,7 +2448,14 @@ static std::ostream &operator<<(std::ostream &os, const FaceMergeState &fms)
   return os;
 }
 
-static void init_face_merge_state(FaceMergeState *fms, const Vector<int> &tris, const Mesh &tm)
+/* tris all have the same original face.
+ * Find the 2d edge/tri topology for these triangles, but only the ones facing in the
+ * norm direction, and whether each edge is dissolvable or not.
+ */
+static void init_face_merge_state(FaceMergeState *fms,
+                                  const Vector<int> &tris,
+                                  const Mesh &tm,
+                                  const double3 &norm)
 {
   constexpr int dbg_level = 0;
   /* Reserve enough faces and edges so that neither will have to resize. */
@@ -2463,6 +2470,12 @@ static void init_face_merge_state(FaceMergeState *fms, const Vector<int> &tris, 
     const Face &tri = *tm.face(tris[t]);
     if (dbg_level > 0) {
       std::cout << "process tri = " << &tri << "\n";
+    }
+    if (double3::dot(norm, tri.plane.norm) <= 0.0) {
+      if (dbg_level > 0) {
+        std::cout << "triangle has wrong orientation, skipping\n";
+      }
+      continue;
     }
     mf.vert.append(tri[0]);
     mf.vert.append(tri[1]);
@@ -2696,6 +2709,8 @@ static void do_dissolve(FaceMergeState *fms)
  * can only dissolve them if doing so leaves the remaining faces able to create valid BMesh.
  * We can tell edges that don't overlap real input edges because they will have an
  * "original edge" that is different from NO_INDEX.
+ * Note: it is possible that some of the triangles in tris have reversed orientation
+ * to the rest, so we have to handle the two cases separately.
  */
 static Vector<Facep> merge_tris_for_face(Vector<int> tris,
                                          const Mesh &tm,
@@ -2708,12 +2723,16 @@ static Vector<Facep> merge_tris_for_face(Vector<int> tris,
     std::cout << "tris: " << tris << "\n";
   }
   Vector<Facep> ans;
-  bool done = false;
-  if (tris.size() == 1) {
-    ans.append(tm.face(tris[0]));
-    done = true;
+  if (tris.size() <= 1) {
+    if (tris.size() == 1) {
+      ans.append(tm.face(tris[0]));
+    }
+    return ans;
   }
-  if (tris.size() == 2) {
+  bool done = false;
+  double3 first_tri_normal = tm.face(tris[0])->plane.norm;
+  double3 second_tri_normal = tm.face(tris[1])->plane.norm;
+  if (tris.size() == 2 && double3::dot(first_tri_normal, second_tri_normal) > 0.0) {
     /* Is this a case where quad with one diagonal remained unchanged?
      * Worth special handling because this case will be very common.
      */
@@ -2748,24 +2767,27 @@ static Vector<Facep> merge_tris_for_face(Vector<int> tris,
     return ans;
   }
 
-  FaceMergeState fms;
-  init_face_merge_state(&fms, tris, tm);
-  do_dissolve(&fms);
-  if (dbg_level > 0) {
-    std::cout << "faces in merged result:\n";
-  }
-  for (const MergeFace &mf : fms.face) {
-    if (mf.merge_to == -1) {
-      Array<int> e_orig(mf.edge.size());
-      Array<bool> is_intersect(mf.edge.size());
-      for (int i : mf.edge.index_range()) {
-        e_orig[i] = fms.edge[mf.edge[i]].orig;
-        is_intersect[i] = fms.edge[mf.edge[i]].is_intersect;
-      }
-      Facep facep = arena->add_face(mf.vert, mf.orig, e_orig, is_intersect);
-      ans.append(facep);
-      if (dbg_level > 0) {
-        std::cout << "  " << facep << "\n";
+  double3 first_tri_normal_rev = -first_tri_normal;
+  for (const double3 &norm : {first_tri_normal, first_tri_normal_rev}) {
+    FaceMergeState fms;
+    init_face_merge_state(&fms, tris, tm, norm);
+    do_dissolve(&fms);
+    if (dbg_level > 0) {
+      std::cout << "faces in merged result:\n";
+    }
+    for (const MergeFace &mf : fms.face) {
+      if (mf.merge_to == -1) {
+        Array<int> e_orig(mf.edge.size());
+        Array<bool> is_intersect(mf.edge.size());
+        for (int i : mf.edge.index_range()) {
+          e_orig[i] = fms.edge[mf.edge[i]].orig;
+          is_intersect[i] = fms.edge[mf.edge[i]].is_intersect;
+        }
+        Facep facep = arena->add_face(mf.vert, mf.orig, e_orig, is_intersect);
+        ans.append(facep);
+        if (dbg_level > 0) {
+          std::cout << "  " << facep << "\n";
+        }
       }
     }
   }
