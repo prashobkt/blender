@@ -78,14 +78,17 @@ class GpencilExporter {
   struct Scene *scene;
   struct RegionView3D *rv3d;
 
-  int winx_, winy_;
-  int render_x_, render_y_;
+  uint16_t winx_, winy_;
+  uint16_t render_x_, render_y_;
   float camera_ratio_;
   rctf camera_rect_;
+
   float offset_[2];
+
   float frame_box_[2];
   float frame_offset_[2];
   float frame_ratio_[2];
+
   int cfra_;
   int shot_;
 

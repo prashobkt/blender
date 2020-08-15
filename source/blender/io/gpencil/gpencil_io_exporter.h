@@ -45,7 +45,7 @@ struct GpencilExportParams {
   /** Frame subfix. */
   char file_subfix[5];
   /* Current frame. */
-  int framenum;
+  int32_t framenum;
   /** Flags. */
   uint32_t flag;
   /** Select mode */
