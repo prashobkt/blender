@@ -122,7 +122,9 @@ void GpencilExporterSVG::create_document_header(void)
   decl.append_attribute("encoding") = "UTF-8";
 
   pugi::xml_node comment = main_doc.append_child(pugi::node_comment);
-  comment.set_value(SVG_EXPORTER_VERSION);
+  char txt[128];
+  sprintf(txt, " Generator: Blender, %s - %s ", SVG_EXPORTER_NAME, SVG_EXPORTER_VERSION);
+  comment.set_value(txt);
 
   pugi::xml_node doctype = main_doc.append_child(pugi::node_doctype);
   doctype.set_value(

@@ -27,7 +27,8 @@
 
 struct GpencilExportParams;
 
-#define SVG_EXPORTER_VERSION " Generator: Blender, SVG Export for Grease Pencil v1.0 "
+#define SVG_EXPORTER_NAME "SVG Export for Grease Pencil"
+#define SVG_EXPORTER_VERSION "v1.0"
 
 namespace blender::io::gpencil {
 
