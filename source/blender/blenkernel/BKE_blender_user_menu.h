@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BKE_BLENDER_USER_MENU_H__
-#define __BKE_BLENDER_USER_MENU_H__
+#pragma once
 
 /** \file
  * \ingroup bke
@@ -32,9 +31,9 @@ struct bUserMenuItem;
 void BKE_blender_user_menu_free_list(struct ListBase *lb);
 void BKE_blender_user_menus_group_idname_update(struct bUserMenusGroup *umg);
 void BKE_blender_user_menus_group_idname_update_keymap(struct wmWindowManager *wm,
-                                                       char *old,
-                                                       char *new);
-struct bUserMenusGroup *BKE_blender_user_menus_group_find(struct ListBase *lb, char *idname);
+                                                       const char *old,
+                                                       const char *new);
+struct bUserMenusGroup *BKE_blender_user_menus_group_find(struct ListBase *lb, const char *idname);
 struct bUserMenu *BKE_blender_user_menu_find(struct ListBase *lb,
                                              char space_type,
                                              const char *context);
@@ -49,5 +48,3 @@ void BKE_blender_user_menu_item_free_list(struct ListBase *lb);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __BKE_BLENDER_USER_MENU_H__ */

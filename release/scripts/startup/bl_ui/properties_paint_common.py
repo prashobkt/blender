@@ -646,6 +646,8 @@ def brush_settings(layout, context, brush, popover=False):
             layout.prop(brush, "pose_smooth_iterations")
             if brush.pose_deform_type == 'ROTATE_TWIST' and brush.pose_origin_type in {'TOPOLOGY', 'FACE_SETS'}:
               layout.prop(brush, "pose_ik_segments")
+            if brush.pose_deform_type == 'SCALE_TRANSLATE':
+               layout.prop(brush, "use_pose_lock_rotation")
             layout.prop(brush, "use_pose_ik_anchored")
             layout.prop(brush, "use_connected_only")
             layout.prop(brush, "disconnected_distance_max")
@@ -654,9 +656,12 @@ def brush_settings(layout, context, brush, popover=False):
 
         elif sculpt_tool == 'CLOTH':
             layout.separator()
-            layout.prop(brush, "cloth_sim_limit")
-            layout.prop(brush, "cloth_sim_falloff")
-            layout.prop(brush, "use_cloth_pin_simulation_boundary")
+            layout.prop(brush, "cloth_simulation_area_type")
+            if brush.cloth_simulation_area_type == 'LOCAL':
+                layout.prop(brush, "cloth_sim_limit")
+                layout.prop(brush, "cloth_sim_falloff")
+                layout.prop(brush, "use_cloth_pin_simulation_boundary")
+
             layout.separator()
             layout.prop(brush, "cloth_deform_type")
             layout.prop(brush, "cloth_force_falloff_type")
@@ -664,6 +669,8 @@ def brush_settings(layout, context, brush, popover=False):
             layout.prop(brush, "cloth_mass")
             layout.prop(brush, "cloth_damping")
             layout.prop(brush, "cloth_constraint_softbody_strength")
+            layout.separator()
+            layout.prop(brush, "use_cloth_collision")
             layout.separator()
 
         elif sculpt_tool == 'SCRAPE':
@@ -711,6 +718,10 @@ def brush_settings(layout, context, brush, popover=False):
         elif sculpt_tool == 'SMEAR':
             col = layout.column()
             col.prop(brush, "smear_deform_type")
+
+        elif sculpt_tool == 'BOUNDARY':
+            col = layout.column()
+            col.prop(brush, "boundary_deform_type")
 
         elif sculpt_tool == 'TOPOLOGY':
             col = layout.column()
@@ -1130,6 +1141,8 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
 
     # FIXME: tools must use their own UI drawing!
     elif brush.gpencil_tool == 'FILL':
+        row = layout.row(align=True)
+        row.prop(gp_settings, "fill_direction", text="", expand=True)
         row = layout.row(align=True)
         row.prop(gp_settings, "fill_leak", text="Leak Size")
         row = layout.row(align=True)

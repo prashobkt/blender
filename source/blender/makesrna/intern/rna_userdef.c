@@ -1474,7 +1474,7 @@ static void rna_UserDef_usermenus_pie_item_add(UserDef *userdef, int index)
   wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_add", true);
   STRNCPY(umi->item.ui_name, "new item");
   STRNCPY(umi->op_idname, ot->idname);
-  umi->item.parent = insert;
+  umi->item.parent = (bUserMenuItem_SubMenu *)insert;
   userdef->runtime.um_item_select = &umi->item;
 }
 
@@ -1540,8 +1540,10 @@ static void rna_UserDef_usermenus_group_idname_set(Main *bmain,
                                                    PointerRNA *ptr)
 {
   bUserMenusGroup *umg = (bUserMenusGroup *)ptr->data;
-  char *name = umg->name;
-  char old[64] = {NULL};
+#  if 0
+  const char *name = umg->name;
+#  endif
+  char old[64] = {'\0'};
 
   STRNCPY(old, umg->idname);
   BKE_blender_user_menus_group_idname_update(umg);
@@ -1667,7 +1669,7 @@ int rna_show_statusbar_vram_editable(struct PointerRNA *UNUSED(ptr), const char 
 static size_t max_memory_in_megabytes(void)
 {
   /* Maximum addressable bytes on this platform. */
-  const size_t limit_bytes = (((size_t)1) << ((sizeof(size_t) * 8) - 1));
+  const size_t limit_bytes = (((size_t)1) << ((sizeof(size_t[8])) - 1));
   /* Convert it to megabytes and return. */
   return (limit_bytes >> 20);
 }
