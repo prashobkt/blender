@@ -382,6 +382,7 @@ struct GPUTexture *BKE_image_get_gpu_tiles(struct Image *image,
 struct GPUTexture *BKE_image_get_gpu_tilemap(struct Image *image,
                                              struct ImageUser *iuser,
                                              struct ImBuf *ibuf);
+struct GPUBatch *BKE_image_tiled_gpu_instance_batch_create(struct Image *image);
 
 void BKE_image_update_gputexture(
     struct Image *ima, struct ImageUser *iuser, int x, int y, int w, int h);

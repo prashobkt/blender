@@ -77,6 +77,10 @@ set(SRC
   intern/draw_select_buffer.c
   intern/draw_view.c
   engines/basic/basic_engine.c
+  engines/editors/editors_batches.c
+  engines/editors/editors_engine.c
+  engines/editors/editors_image.c
+  engines/editors/editors_shaders.c
   engines/eevee/eevee_bloom.c
   engines/eevee/eevee_data.c
   engines/eevee/eevee_depth_of_field.c
@@ -147,6 +151,13 @@ set(SRC
   engines/overlay/overlay_sculpt.c
   engines/overlay/overlay_shader.c
   engines/overlay/overlay_wireframe.c
+  engines/overlay2d/overlay2d_background.c
+  engines/overlay2d/overlay2d_engine.c
+  engines/overlay2d/overlay2d_image_tiling.c
+  engines/overlay2d/overlay2d_shaders.c
+  engines/overlay2d/overlay2d_uv.c
+  engines/overlay2d/overlay2d_uv_shadow.c
+  engines/overlay2d/overlay2d_uv_stretching.c
 
   DRW_engine.h
   DRW_engine_types.h
@@ -400,6 +411,21 @@ data_to_c_simple(engines/overlay/shaders/volume_velocity_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_vert.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/wireframe_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/xray_fade_frag.glsl SRC)
+
+data_to_c_simple(engines/overlay2d/shaders/common_overlay2d_lib.glsl SRC)
+data_to_c_simple(engines/overlay2d/shaders/overlay2d_background_frag.glsl SRC)
+data_to_c_simple(engines/overlay2d/shaders/overlay2d_image_tiling_border_vert.glsl SRC)
+data_to_c_simple(engines/overlay2d/shaders/overlay2d_wireframe_frag.glsl SRC)
+data_to_c_simple(engines/overlay2d/shaders/overlay2d_wireframe_geom.glsl SRC)
+data_to_c_simple(engines/overlay2d/shaders/overlay2d_wireframe_vert.glsl SRC)
+data_to_c_simple(engines/overlay2d/shaders/overlay2d_uv_stretching_vert.glsl SRC)
+data_to_c_simple(engines/overlay2d/shaders/uv_faces_vert.glsl SRC)
+data_to_c_simple(engines/overlay2d/shaders/uv_face_dots_vert.glsl SRC)
+data_to_c_simple(engines/overlay2d/shaders/uv_verts_vert.glsl SRC)
+data_to_c_simple(engines/overlay2d/shaders/uv_verts_frag.glsl SRC)
+
+data_to_c_simple(engines/editors/shaders/editors_image_vert.glsl SRC)
+data_to_c_simple(engines/editors/shaders/editors_image_frag.glsl SRC)
 
 list(APPEND INC
 )

@@ -39,6 +39,7 @@
 #include "BKE_image.h"
 #include "BKE_main.h"
 
+#include "GPU_batch.h"
 #include "GPU_extensions.h"
 #include "GPU_state.h"
 #include "GPU_texture.h"
@@ -285,7 +286,10 @@ static GPUTexture *image_get_gpu_texture(Image *ima,
   BKE_image_tag_time(ima);
 
   /* Test if we already have a texture. */
-  GPUTexture **tex = get_image_gpu_texture_ptr(ima, textarget, iuser ? iuser->multiview_eye : 0);
+  const int current_view = iuser ? ((iuser->flag & IMA_SHOW_STEREO) != 0 ? iuser->multiview_eye :
+                                                                           iuser->view) :
+                                   0;
+  GPUTexture **tex = get_image_gpu_texture_ptr(ima, textarget, current_view);
   if (*tex) {
     return *tex;
   }
@@ -396,6 +400,39 @@ void BKE_image_free_unused_gpu_textures()
   }
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name GPU batch creation
+ * \{ */
+GPUBatch *BKE_image_tiled_gpu_instance_batch_create(Image *image)
+{
+  BLI_assert(image);
+  BLI_assert(image->source == IMA_SRC_TILED);
+
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "local_pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  }
+
+  GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+
+  int32_t num_instances = BLI_listbase_count(&image->tiles);
+
+  GPU_vertbuf_data_alloc(vbo, num_instances);
+
+  float local_pos[3] = {0.0f, 0.0f, 0.0f};
+  int vbo_index = 0;
+
+  LISTBASE_FOREACH (ImageTile *, tile, &image->tiles) {
+    local_pos[0] = ((tile->tile_number - 1001) % 10);
+    local_pos[1] = ((tile->tile_number - 1001) / 10);
+    GPU_vertbuf_vert_set(vbo, vbo_index++, &local_pos);
+  }
+
+  GPUBatch *batch = GPU_batch_create_ex(GPU_PRIM_POINTS, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  return batch;
+}
 /** \} */
 
 /* -------------------------------------------------------------------- */
