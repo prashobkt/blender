@@ -42,9 +42,9 @@ class GpencilExporterSVG : public GpencilExporter {
 
  public:
   GpencilExporterSVG(const struct GpencilExportParams *iparams);
-  virtual void add_newpage(void);
-  virtual void add_body(void);
-  virtual bool write(std::string subfix);
+  bool add_newpage(void);
+  bool add_body(void);
+  bool write(std::string subfix);
 
  protected:
   void add_rect(pugi::xml_node node,

@@ -42,7 +42,7 @@ struct GpencilExportParams {
   double frame_start;
   /** End frame.  */
   double frame_end;
-  /** Frame subfix. */
+  /** File subfix. */
   char file_subfix[5];
   /* Current frame. */
   int32_t framenum;

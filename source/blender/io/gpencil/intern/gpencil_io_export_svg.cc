@@ -69,21 +69,24 @@ GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *iparams
   invert_axis_[1] = true;
 }
 
-void GpencilExporterSVG::add_newpage(void)
+bool GpencilExporterSVG::add_newpage(void)
 {
   create_document_header();
+  return true;
 }
 
-void GpencilExporterSVG::add_body(void)
+bool GpencilExporterSVG::add_body(void)
 {
   export_gpencil_layers();
+  return true;
 }
 
 bool GpencilExporterSVG::write(std::string subfix)
 {
   bool result = true;
   /* Save File. */
-  /* Add frame to filename. */
+
+  /* Add page to filename. */
   std::string frame_file = out_filename_;
   size_t found = frame_file.find_last_of(".");
   if (found != std::string::npos) {
@@ -147,12 +150,11 @@ void GpencilExporterSVG::create_document_header(void)
 
   /* Scene name. */
   if ((params_.flag & GP_EXPORT_STORYBOARD_MODE) != 0) {
-    add_text(main_node,
-             30.0f,
-             params_.paper_size[1] - 30.0f,
-             std::string(scene->id.name + 2),
-             12.0f,
-             "#000000");
+    char scenetxt[96];
+    sprintf(scenetxt, "Scene: %s", scene->id.name + 2);
+
+    add_text(
+        main_node, 30.0f, params_.paper_size[1] - 30.0f, std::string(scenetxt), 12.0f, "#000000");
   }
 }
 

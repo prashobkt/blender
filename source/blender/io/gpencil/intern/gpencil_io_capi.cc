@@ -45,7 +45,8 @@
 
 using blender::io::gpencil::GpencilExporterSVG;
 
-static bool is_keyframe_empty(bContext *C, bGPdata *gpd, int framenum, bool use_markers)
+/* Check if frame is included. */
+static bool is_keyframe_selected(bContext *C, bGPdata *gpd, int framenum, bool use_markers)
 {
   if (!use_markers) {
     /* Check if exist a frame. */
@@ -89,10 +90,10 @@ static bool gpencil_io_export_frame(GpencilExporterSVG *exporter,
       exporter->set_frame_offset(frame_offset);
       std::string subfix = iparams->file_subfix;
       if (newpage) {
-        exporter->add_newpage();
+        result |= exporter->add_newpage();
       }
       if (body) {
-        exporter->add_body();
+        result |= exporter->add_body();
       }
       if (savepage) {
         result = exporter->write(subfix);
@@ -108,14 +109,20 @@ static bool gpencil_io_export_frame(GpencilExporterSVG *exporter,
 }
 
 /* Export full animation in Storyboard mode. */
-static bool gpencil_io_export_storyboard(
-    Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob, GpencilExportParams *iparams)
+static bool gpencil_io_export_storyboard(Main *bmain,
+                                         Depsgraph *depsgraph,
+                                         Scene *scene,
+                                         Object *ob,
+                                         const char *filename,
+                                         GpencilExportParams *iparams)
 {
   Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
   bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
   bool done = false;
 
   GpencilExporterSVG *exporter = new GpencilExporterSVG(iparams);
+  /* Prepare output filename with full path. */
+  exporter->set_out_filename(filename);
 
   /* Storyboard only works in camera view. */
   RegionView3D *rv3d = (RegionView3D *)iparams->region->regiondata;
@@ -152,7 +159,7 @@ static bool gpencil_io_export_storyboard(
   const bool use_markers = ((iparams->flag & GP_EXPORT_MARKERS) != 0);
 
   for (int i = iparams->frame_start; i < iparams->frame_end + 1; i++) {
-    if (is_keyframe_empty(iparams->C, gpd_eval, i, use_markers)) {
+    if (is_keyframe_selected(iparams->C, gpd_eval, i, use_markers)) {
       continue;
     }
     shot++;
@@ -198,6 +205,8 @@ static bool gpencil_io_export_storyboard(
       /* Create a new class object per page. */
       delete exporter;
       exporter = new GpencilExporterSVG(iparams);
+      /* Prepare output filename with full path. */
+      exporter->set_out_filename(filename);
     }
   }
 
@@ -226,20 +235,20 @@ bool gpencil_io_export(const char *filename, GpencilExportParams *iparams)
   copy_v2_v2(iparams->paper_size, iparams->paper_size);
 
   if (!is_storyboard) {
-    GpencilExporterSVG writter = GpencilExporterSVG(iparams);
+    GpencilExporterSVG exporter = GpencilExporterSVG(iparams);
     /* Prepare output filename with full path. */
-    writter.set_out_filename(filename);
+    exporter.set_out_filename(filename);
 
     float no_offset[2] = {0.0f, 0.0f};
     float ratio[2] = {1.0f, 1.0f};
-    writter.set_frame_ratio(ratio);
+    exporter.set_frame_ratio(ratio);
     iparams->file_subfix[0] = '\0';
-    done |= gpencil_io_export_frame(&writter, iparams, no_offset, true, true, true);
+    done |= gpencil_io_export_frame(&exporter, iparams, no_offset, true, true, true);
   }
   else {
     int oldframe = (int)DEG_get_ctime(depsgraph);
 
-    done |= gpencil_io_export_storyboard(bmain, depsgraph, scene, ob, iparams);
+    done |= gpencil_io_export_storyboard(bmain, depsgraph, scene, ob, filename, iparams);
 
     /* Return frame state and DB to original state. */
     CFRA = oldframe;

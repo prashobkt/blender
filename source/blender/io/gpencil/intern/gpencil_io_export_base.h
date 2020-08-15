@@ -44,8 +44,8 @@ class GpencilExporter {
 
  public:
   GpencilExporter(const struct GpencilExportParams *iparams);
-  virtual void add_newpage(void) = 0;
-  virtual void add_body(void) = 0;
+  virtual bool add_newpage(void) = 0;
+  virtual bool add_body(void) = 0;
   virtual bool write(std::string subfix) = 0;
 
   void set_out_filename(const char *filename);
