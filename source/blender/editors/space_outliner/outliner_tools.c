@@ -95,6 +95,97 @@
 /** \name ID/Library/Data Set/Un-link Utilities
  * \{ */
 
+static void get_element_operation_type(
+    TreeElement *te, int *scenelevel, int *objectlevel, int *idlevel, int *datalevel)
+{
+  TreeStoreElem *tselem = TREESTORE(te);
+  if (tselem->flag & TSE_SELECTED) {
+    /* Layer collection points to collection ID. */
+    if (!ELEM(tselem->type, 0, TSE_LAYER_COLLECTION)) {
+      if (*datalevel == 0) {
+        *datalevel = tselem->type;
+      }
+      else if (*datalevel != tselem->type) {
+        *datalevel = -1;
+      }
+    }
+    else {
+      const int idcode = (int)GS(tselem->id->name);
+      bool is_standard_id = false;
+      switch ((ID_Type)idcode) {
+        case ID_SCE:
+          *scenelevel = 1;
+          break;
+        case ID_OB:
+          *objectlevel = 1;
+          break;
+
+        case ID_ME:
+        case ID_CU:
+        case ID_MB:
+        case ID_LT:
+        case ID_LA:
+        case ID_AR:
+        case ID_CA:
+        case ID_SPK:
+        case ID_MA:
+        case ID_TE:
+        case ID_IP:
+        case ID_IM:
+        case ID_SO:
+        case ID_KE:
+        case ID_WO:
+        case ID_AC:
+        case ID_TXT:
+        case ID_GR:
+        case ID_LS:
+        case ID_LI:
+        case ID_VF:
+        case ID_NT:
+        case ID_BR:
+        case ID_PA:
+        case ID_GD:
+        case ID_MC:
+        case ID_MSK:
+        case ID_PAL:
+        case ID_PC:
+        case ID_CF:
+        case ID_WS:
+        case ID_LP:
+        case ID_HA:
+        case ID_PT:
+        case ID_VO:
+        case ID_SIM:
+          is_standard_id = true;
+          break;
+        case ID_WM:
+        case ID_SCR:
+          /* Those are ignored here. */
+          /* Note: while Screens should be manageable here, deleting a screen used by a workspace
+           * will cause crashes when trying to use that workspace, so for now let's play minimal,
+           * safe change. */
+          break;
+      }
+      if (idcode == ID_NLA) {
+        /* Fake one, not an actual ID type... */
+        is_standard_id = true;
+      }
+
+      if (is_standard_id) {
+        if (*idlevel == 0) {
+          *idlevel = idcode;
+        }
+        else if (*idlevel != idcode) {
+          *idlevel = -1;
+        }
+        if (ELEM(*datalevel, TSE_VIEW_COLLECTION_BASE, TSE_SCENE_COLLECTION_BASE)) {
+          *datalevel = 0;
+        }
+      }
+    }
+  }
+}
+
 static void set_operation_types(SpaceOutliner *space_outliner,
                                 ListBase *lb,
                                 int *scenelevel,
@@ -106,92 +197,8 @@ static void set_operation_types(SpaceOutliner *space_outliner,
   TreeStoreElem *tselem;
 
   for (te = lb->first; te; te = te->next) {
-    tselem = TREESTORE(te);
-    if (tselem->flag & TSE_SELECTED) {
-      /* Layer collection points to collection ID. */
-      if (!ELEM(tselem->type, 0, TSE_LAYER_COLLECTION)) {
-        if (*datalevel == 0) {
-          *datalevel = tselem->type;
-        }
-        else if (*datalevel != tselem->type) {
-          *datalevel = -1;
-        }
-      }
-      else {
-        const int idcode = (int)GS(tselem->id->name);
-        bool is_standard_id = false;
-        switch ((ID_Type)idcode) {
-          case ID_SCE:
-            *scenelevel = 1;
-            break;
-          case ID_OB:
-            *objectlevel = 1;
-            break;
+    get_element_operation_type(te, scenelevel, objectlevel, idlevel, datalevel);
 
-          case ID_ME:
-          case ID_CU:
-          case ID_MB:
-          case ID_LT:
-          case ID_LA:
-          case ID_AR:
-          case ID_CA:
-          case ID_SPK:
-          case ID_MA:
-          case ID_TE:
-          case ID_IP:
-          case ID_IM:
-          case ID_SO:
-          case ID_KE:
-          case ID_WO:
-          case ID_AC:
-          case ID_TXT:
-          case ID_GR:
-          case ID_LS:
-          case ID_LI:
-          case ID_VF:
-          case ID_NT:
-          case ID_BR:
-          case ID_PA:
-          case ID_GD:
-          case ID_MC:
-          case ID_MSK:
-          case ID_PAL:
-          case ID_PC:
-          case ID_CF:
-          case ID_WS:
-          case ID_LP:
-          case ID_HA:
-          case ID_PT:
-          case ID_VO:
-          case ID_SIM:
-            is_standard_id = true;
-            break;
-          case ID_WM:
-          case ID_SCR:
-            /* Those are ignored here. */
-            /* Note: while Screens should be manageable here, deleting a screen used by a workspace
-             * will cause crashes when trying to use that workspace, so for now let's play minimal,
-             * safe change. */
-            break;
-        }
-        if (idcode == ID_NLA) {
-          /* Fake one, not an actual ID type... */
-          is_standard_id = true;
-        }
-
-        if (is_standard_id) {
-          if (*idlevel == 0) {
-            *idlevel = idcode;
-          }
-          else if (*idlevel != idcode) {
-            *idlevel = -1;
-          }
-          if (ELEM(*datalevel, TSE_VIEW_COLLECTION_BASE, TSE_SCENE_COLLECTION_BASE)) {
-            *datalevel = 0;
-          }
-        }
-      }
-    }
     if (TSELEM_OPEN(tselem, space_outliner)) {
       set_operation_types(
           space_outliner, &te->subtree, scenelevel, objectlevel, idlevel, datalevel);
@@ -2623,8 +2630,7 @@ static int do_outliner_operation_event(bContext *C,
     ED_outliner_select_sync_from_outliner(C, space_outliner);
   }
 
-  set_operation_types(
-      space_outliner, &space_outliner->tree, &scenelevel, &objectlevel, &idlevel, &datalevel);
+  get_element_operation_type(te, &scenelevel, &objectlevel, &idlevel, &datalevel);
 
   if (scenelevel) {
     if (objectlevel || datalevel || idlevel) {
@@ -2714,8 +2720,6 @@ static int outliner_operation(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   return do_outliner_operation_event(C, op->reports, region, space_outliner, hovered_te);
-
-  return OPERATOR_PASS_THROUGH;
 }
 
 /* Menu only! Calls other operators */
