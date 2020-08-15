@@ -23,9 +23,9 @@
 extern "C" {
 #endif
 
-struct Scene;
-struct bContext;
 struct ARegion;
+struct bContext;
+struct View3D;
 
 /* Paper Size: A4, Letter. */
 static const float gpencil_export_paper_sizes[1][2] = {3508, 2480};
