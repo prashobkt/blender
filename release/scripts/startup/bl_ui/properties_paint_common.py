@@ -313,6 +313,7 @@ class TextureMaskPanel(BrushPanel):
 class StrokePanel(BrushPanel):
     bl_label = "Stroke"
     bl_options = {'DEFAULT_CLOSED'}
+    bl_ui_units_x = 13
 
     def draw(self, context):
         layout = self.layout
@@ -722,6 +723,8 @@ def brush_settings(layout, context, brush, popover=False):
         elif sculpt_tool == 'BOUNDARY':
             col = layout.column()
             col.prop(brush, "boundary_deform_type")
+            col.prop(brush, "boundary_falloff_type")
+            col.prop(brush, "boundary_offset")
 
         elif sculpt_tool == 'TOPOLOGY':
             col = layout.column()
