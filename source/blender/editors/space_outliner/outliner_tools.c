@@ -193,12 +193,10 @@ static void set_operation_types(SpaceOutliner *space_outliner,
                                 int *idlevel,
                                 int *datalevel)
 {
-  TreeElement *te;
-  TreeStoreElem *tselem;
-
-  for (te = lb->first; te; te = te->next) {
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     get_element_operation_type(te, scenelevel, objectlevel, idlevel, datalevel);
 
+    TreeStoreElem *tselem = TREESTORE(te);
     if (TSELEM_OPEN(tselem, space_outliner)) {
       set_operation_types(
           space_outliner, &te->subtree, scenelevel, objectlevel, idlevel, datalevel);
