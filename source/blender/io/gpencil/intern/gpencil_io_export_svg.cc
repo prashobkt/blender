@@ -395,7 +395,7 @@ void GpencilExporterSVG::export_stroke_to_path(pugi::xml_node gpl_node, const bo
   gps_node.append_attribute("stroke").set_value("none");
 
   std::string txt = "M";
-  for (uint i = 0; i < gps->totpoints; i++) {
+  for (uint16_t i = 0; i < gps->totpoints; i++) {
     if (i > 0) {
       txt.append("L");
     }
@@ -453,7 +453,7 @@ void GpencilExporterSVG::export_stroke_to_polyline(pugi::xml_node gpl_node, cons
   }
 
   std::string txt;
-  for (uint i = 0; i < gps->totpoints; i++) {
+  for (uint16_t i = 0; i < gps->totpoints; i++) {
     if (i > 0) {
       txt.append(" ");
     }

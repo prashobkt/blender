@@ -147,12 +147,12 @@ static bool gpencil_io_export_storyboard(Main *bmain,
   const float gap[2] = {frame_box[0] / ((float)blocks[0] + 1.0f), ysize};
   float frame_offset[2] = {gap[0], gap[1]};
 
-  uint col = 1;
-  uint row = 1;
-  uint page = 1;
+  uint8_t col = 1;
+  uint8_t row = 1;
+  uint8_t page = 1;
   bool header = true;
   bool pending_save = false;
-  uint shot = 0;
+  uint8_t shot = 0;
 
   const bool use_markers = ((iparams->flag & GP_EXPORT_MARKERS) != 0);
 

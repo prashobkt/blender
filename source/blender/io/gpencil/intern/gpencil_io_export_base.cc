@@ -254,7 +254,7 @@ float GpencilExporter::stroke_average_pressure_get(struct bGPDstroke *gps)
   }
 
   float tot = 0.0f;
-  for (uint i = 0; i < gps->totpoints; i++) {
+  for (uint32_t i = 0; i < gps->totpoints; i++) {
     pt = &gps->points[i];
     tot += pt->pressure;
   }
@@ -276,7 +276,7 @@ bool GpencilExporter::is_stroke_thickness_constant(struct bGPDstroke *gps)
   bGPDspoint *pt = &gps->points[0];
   float prv_pressure = pt->pressure;
 
-  for (uint i = 0; i < gps->totpoints; i++) {
+  for (uint32_t i = 0; i < gps->totpoints; i++) {
     pt = &gps->points[i];
     if (pt->pressure != prv_pressure) {
       return false;
@@ -321,9 +321,9 @@ float GpencilExporter::stroke_point_radius_get(struct bGPDstroke *gps)
  */
 std::string GpencilExporter::rgb_to_hexstr(float color[3])
 {
-  uint r = color[0] * 255.0f;
-  uint g = color[1] * 255.0f;
-  uint b = color[2] * 255.0f;
+  uint8_t r = color[0] * 255.0f;
+  uint8_t g = color[1] * 255.0f;
+  uint8_t b = color[2] * 255.0f;
   char hex_string[20];
   sprintf(hex_string, "#%02X%02X%02X", r, g, b);
 
@@ -408,7 +408,7 @@ void GpencilExporter::gps_current_set(struct Object *ob,
     avg_opacity = 0;
     /* Get average vertex color and apply. */
     float avg_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-    for (uint i = 0; i < gps->totpoints; i++) {
+    for (uint32_t i = 0; i < gps->totpoints; i++) {
       bGPDspoint *pt = &gps->points[i];
       add_v4_v4(avg_color, pt->vert_color);
       avg_opacity += pt->strength;
@@ -455,7 +455,7 @@ void GpencilExporter::selected_objects_boundbox_set(void)
 {
   const float gap = 10.0f;
   const bGPDspoint *pt;
-  uint i;
+  uint32_t i;
 
   float screen_co[2];
   float r_min[2], r_max[2];
