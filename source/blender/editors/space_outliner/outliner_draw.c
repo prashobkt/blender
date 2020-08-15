@@ -3709,6 +3709,9 @@ static void outliner_draw_tree(bContext *C,
   short mode_column_offset = (use_mode_column && (space_outliner->outlinevis == SO_SCENES)) ?
                                  UI_UNIT_X :
                                  0;
+  if (!use_mode_column && (space_outliner->outlinevis == SO_VIEW_LAYER)) {
+    mode_column_offset -= UI_UNIT_X;
+  }
 
   GPU_blend_set_func_separate(
       GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA); /* Only once. */
