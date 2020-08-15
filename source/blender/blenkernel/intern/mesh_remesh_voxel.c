@@ -378,7 +378,7 @@ struct Mesh *BKE_mesh_remesh_tetgen_to_mesh_nomain(struct Mesh *mesh,
   #else
   UNUSED_VARS(mesh,
               tets,
-              tottets);
+              numtets);
   #endif
   return NULL;
 }
