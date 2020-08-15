@@ -747,7 +747,9 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
   }
 
   if (had_set_obstacle_error) {
-    return 0; // we've already copied the error message.
+    // Return warning (-1).
+    // We've already copied the error message.
+    return -1;
   }
 
   return 1;

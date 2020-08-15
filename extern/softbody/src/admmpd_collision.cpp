@@ -75,7 +75,7 @@ bool Collision::set_obstacles(
 	// Is the mesh closed?
 	Discregrid::TriangleMesh tm(v1_dbl.data(), faces, nv, nf);
 	if (!tm.is_closed()) {
-		if (err) { *err = "Collision obstacle not a closed mesh"; }
+		if (err) { *err = "Collision obstacle not a closed mesh - ignoring"; }
 		obsdata.clear();
 		return false;
 	}

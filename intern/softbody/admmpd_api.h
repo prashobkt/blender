@@ -40,18 +40,20 @@ typedef struct ADMMPDInterfaceData {
 void admmpd_dealloc(ADMMPDInterfaceData*);
 
 // Test if the mesh topology has changed in a way that requires re-initialization.
+// Returns 0 (no update needed) or 1 (needs update)
 int admmpd_mesh_needs_update(ADMMPDInterfaceData*, Object*);
 
 // Initialize the mesh.
 // The SoftBody object's (ob->soft) bpoint array is also updated.
-// Returns 1 on success, 0 on failure
+// Returns 1 on success, 0 on failure, -1 on warning
 int admmpd_update_mesh(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3]);
 
 // Test if certain parameter changes require re-initialization.
+// Returns 0 (no update needed) or 1 (needs update)
 int admmpd_solver_needs_update(ADMMPDInterfaceData*, Scene*, Object*);
 
 // Initialize solver variables.
-// Returns 1 on success, 0 on failure.
+// Returns 1 on success, 0 on failure, -1 on warning
 int admmpd_update_solver(ADMMPDInterfaceData*, Scene*, Object*, float (*vertexCos)[3]);
 
 // Copies BodyPoint data (from SoftBody)
@@ -74,7 +76,7 @@ void admmpd_update_obstacles(
     int nf);
 
 // Performs a time step. Object and vertexCos are not changed.
-// Returns 1 on success, 0 on error
+// Returns 1 on success, 0 on failure, -1 on warning
 int admmpd_solve(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3]);
 
 #ifdef __cplusplus

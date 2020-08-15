@@ -79,6 +79,8 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+#include "../windowmanager/WM_api.h"
+
 #include "PIL_time.h"
 
 static CLG_LogRef LOG = {"bke.softbody"};
@@ -3668,6 +3670,7 @@ void sbObjectStep(struct Depsgraph *depsgraph,
 
   if (sb->admmpd == NULL) {
     CLOG_ERROR(&LOG, "No ADMM-PD data");
+    WM_reportf(RPT_ERROR, "No ADMM-PD data");
     return;
   }
 
@@ -3714,9 +3717,13 @@ void sbObjectStep(struct Depsgraph *depsgraph,
     int init_mesh = 0;
     if (is_first_frame || admmpd_mesh_needs_update(sb->admmpd, ob)) {
       init_mesh = admmpd_update_mesh(sb->admmpd, ob, vertexCos);
-      if (!init_mesh) {
+      if (init_mesh==0) {
         CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
+        WM_reportf(RPT_ERROR, sb->admmpd->last_error);
         return;
+      }
+      else if (init_mesh==-1) {
+        WM_reportf(RPT_WARNING, sb->admmpd->last_error);
       }
     }
 
@@ -3728,9 +3735,13 @@ void sbObjectStep(struct Depsgraph *depsgraph,
     if (is_first_frame || init_mesh ||
         admmpd_solver_needs_update(sb->admmpd, scene, ob)) {
       init_solver = admmpd_update_solver(sb->admmpd, scene, ob, vertexCos);
-      if (!init_solver) {
+      if (init_solver==0) {
         CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
+        WM_reportf(RPT_ERROR, sb->admmpd->last_error);
         return;
+      }
+      else if (init_solver==-1) {
+        WM_reportf(RPT_WARNING, sb->admmpd->last_error);
       }
     }
 
@@ -3848,8 +3859,13 @@ void sbObjectStep(struct Depsgraph *depsgraph,
   if (sb->solver_mode == SOLVER_MODE_ADMMPD) {
     admmpd_copy_from_object(sb->admmpd,ob);
     update_collider_admmpd(depsgraph, sb->collision_group, ob);
-    if (!admmpd_solve(sb->admmpd,ob,vertexCos)) {
+    int solve_retval = admmpd_solve(sb->admmpd,ob,vertexCos);
+    if (solve_retval==0) {
       CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
+      WM_reportf(RPT_ERROR, sb->admmpd->last_error);
+    }
+    else if (solve_retval==-1) {
+      WM_reportf(RPT_WARNING, sb->admmpd->last_error);
     }
     admmpd_copy_to_object(sb->admmpd,ob,vertexCos);
   }
