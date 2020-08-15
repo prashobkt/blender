@@ -95,22 +95,22 @@ class GpencilExporter {
 
   float stroke_color_[4], fill_color_[4];
 
+  static std::string rgb_to_hexstr(float color[3]);
+  static void rgb_to_grayscale(float color[3]);
+  static std::string to_lower_string(char *input_text);
+  static float stroke_average_pressure_get(struct bGPDstroke *gps);
+  static bool is_stroke_thickness_constant(struct bGPDstroke *gps);
+
   /* Geometry functions. */
   bool gpencil_3d_point_to_screen_space(const float co[3], float r_co[2]);
 
-  float stroke_average_pressure_get(struct bGPDstroke *gps);
   float stroke_point_radius_get(struct bGPDstroke *gps);
   void create_object_list(void);
-
-  std::string rgb_to_hexstr(float color[3]);
-  void rgb_to_grayscale(float color[3]);
-  std::string to_lower_string(char *input_text);
 
   struct MaterialGPencilStyle *gp_style_current_get(void);
   bool material_is_stroke(void);
   bool material_is_fill(void);
 
-  bool is_stroke_thickness_constant(struct bGPDstroke *gps);
   bool is_camera_mode(void);
 
   float stroke_average_opacity_get(void);

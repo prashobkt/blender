@@ -40,20 +40,20 @@ class GpencilExporterSVG : public GpencilExporter {
   bool write(std::string subfix);
 
  protected:
-  void add_rect(pugi::xml_node node,
-                float x,
-                float y,
-                float width,
-                float height,
-                float thickness,
-                std::string hexcolor);
+  static void add_rect(pugi::xml_node node,
+                       float x,
+                       float y,
+                       float width,
+                       float height,
+                       float thickness,
+                       std::string hexcolor);
 
-  void add_text(pugi::xml_node node,
-                float x,
-                float y,
-                std::string text,
-                const float size,
-                std::string hexcolor);
+  static void add_text(pugi::xml_node node,
+                       float x,
+                       float y,
+                       std::string text,
+                       const float size,
+                       std::string hexcolor);
 
  private:
   /* XML doc. */
