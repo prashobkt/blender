@@ -37,7 +37,7 @@ struct GpencilExportParams {
   /** Grease pencil object. */
   struct Object *obact;
   /** Export mode.  */
-  short mode;
+  uint16_t mode;
   /** Start frame.  */
   double frame_start;
   /** End frame.  */
@@ -47,19 +47,19 @@ struct GpencilExportParams {
   /* Current frame. */
   int framenum;
   /** Flags. */
-  int flag;
+  uint32_t flag;
   /** Select mode */
-  short select;
+  uint16_t select;
   /** Stroke sampling. */
   float stroke_sample;
   /** Row and cols of storyboard. */
   int page_layout[2];
   /** Page type (Landscape/Portrait). */
-  short page_type;
+  uint16_t page_type;
   /** Paper size in pixels. */
   float paper_size[2];
   /** Text type for each frame. */
-  short text_type;
+  uint16_t text_type;
 };
 
 /* GpencilExportParams->flag. */
