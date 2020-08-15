@@ -2153,7 +2153,8 @@ static void do_cdt(CDT_data &cd)
   if (dbg_level > 0) {
     std::cout << "CDT input\nVerts:\n";
     for (int i : cdt_in.vert.index_range()) {
-      std::cout << "v" << i << ": " << cdt_in.vert[i] << "\n";
+      std::cout << "v" << i << ": " << cdt_in.vert[i] << "=("
+                << cdt_in.vert[i][0].get_d() << "," << cdt_in.vert[i][1].get_d() << ")\n";
     }
     std::cout << "Edges:\n";
     for (int i : cdt_in.edge.index_range()) {
@@ -2174,7 +2175,8 @@ static void do_cdt(CDT_data &cd)
   if (dbg_level > 0) {
     std::cout << "\nCDT result\nVerts:\n";
     for (int i : cd.cdt_out.vert.index_range()) {
-      std::cout << "v" << i << ": " << cd.cdt_out.vert[i] << "\n";
+      std::cout << "v" << i << ": " << cd.cdt_out.vert[i] << "=("
+                << cd.cdt_out.vert[i][0].get_d() << "," << cd.cdt_out.vert[i][1].get_d() << "\n";
     }
     std::cout << "Tris\n";
     for (int f : cd.cdt_out.face.index_range()) {
@@ -2494,7 +2496,7 @@ static void calc_subdivided_tri_range_func(void *__restrict userdata,
                                            const int iter,
                                            const TaskParallelTLS *__restrict UNUSED(tls))
 {
-  int dbg_level = 0;
+  constexpr int dbg_level = 0;
   SubdivideTrisData *data = static_cast<SubdivideTrisData *>(userdata);
   OverlapTriRange &otr = data->overlap_tri_range[iter];
   int t = otr.tri_index;
@@ -2518,6 +2520,9 @@ static void calc_subdivided_tri_range_func(void *__restrict userdata,
     CDT_data cd_data = prepare_cdt_input(data->tm, t, itts);
     do_cdt(cd_data);
     data->r_tri_subdivided[t] = extract_subdivided_tri(cd_data, data->tm, t, data->arena);
+    if (dbg_level > 0) {
+      std::cout << "subdivide output\n" << data->r_tri_subdivided[t];
+    }
   }
 }
 
@@ -2806,6 +2811,9 @@ Mesh trimesh_nary_intersect(
   const Mesh *tm_clean = &tm_in;
   Mesh tm_cleaned;
   if (has_degenerate_tris(tm_in)) {
+    if (dbg_level > 0) {
+      std::cout << "cleaning degenerate triangles\n";
+    }
     tm_cleaned = remove_degenerate_tris(tm_in);
     tm_clean = &tm_cleaned;
     if (dbg_level > 1) {

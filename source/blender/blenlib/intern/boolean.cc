@@ -1145,6 +1145,9 @@ static CellsInfo find_cells(const Mesh &tm, const TriMeshTopology &tmtopo, Patch
     for (int i : pinfo.index_range()) {
       std::cout << i << ": " << pinfo.patch(i) << "\n";
     }
+    if (dbg_level > 1) {
+      write_obj_cell_patch(tm, cinfo, pinfo, false, "postfindcells");
+    }
   }
   return cinfo;
 }
@@ -2172,7 +2175,7 @@ static Mesh extract_from_flag_diffs(const Mesh &tm_subdivided,
                                     const CellsInfo &cinfo,
                                     MArena *arena)
 {
-  const int dbg_level = 0;
+  constexpr int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "\nEXTRACT_FROM_FLAG_DIFFS\n";
   }
@@ -2193,10 +2196,10 @@ static Mesh extract_from_flag_diffs(const Mesh &tm_subdivided,
     bool adjacent_zero_volume_cell = cell_above.zero_volume() || cell_below.zero_volume();
     any_zero_volume_cell |= adjacent_zero_volume_cell;
     if (cell_above.flag() ^ cell_below.flag() && !adjacent_zero_volume_cell) {
-      if (dbg_level > 0) {
-        std::cout << "need tri " << t << "\n";
-      }
       bool flip = cell_above.flag();
+      if (dbg_level > 0) {
+        std::cout << "need tri " << t << " flip=" << flip << "\n";
+      }
       Facep f = tm_subdivided.face(t);
       if (flip) {
         const Face &tri = *f;
@@ -3013,6 +3016,13 @@ Mesh boolean_trimesh(Mesh &tm_in,
   }
   propagate_windings_and_flag(pinfo, cinfo, c_ambient, op, nshapes, si_shape_fn);
   Mesh tm_out = extract_from_flag_diffs(tm_si, pinfo, cinfo, arena);
+  if (dbg_level > 0) {
+    /* Check if output is PWN. */
+    TriMeshTopology tm_out_topo(tm_out);
+    if (!is_pwn(tm_out, tm_out_topo)) {
+      std::cout << "OUTPUT IS NOT PWN!\n";
+    }
+  }
   if (dbg_level > 1) {
     write_obj_mesh(tm_out, "boolean_tm_output");
     std::cout << "boolean tm output:\n" << tm_out;
