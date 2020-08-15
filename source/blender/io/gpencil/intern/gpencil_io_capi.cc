@@ -120,9 +120,7 @@ static bool gpencil_io_export_storyboard(Main *bmain,
   bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
   bool done = false;
 
-  GpencilExporterSVG *exporter = new GpencilExporterSVG(iparams);
-  /* Prepare output filename with full path. */
-  exporter->set_out_filename(filename);
+  GpencilExporterSVG *exporter = new GpencilExporterSVG(filename, iparams);
 
   /* Storyboard only works in camera view. */
   RegionView3D *rv3d = (RegionView3D *)iparams->region->regiondata;
@@ -204,9 +202,7 @@ static bool gpencil_io_export_storyboard(Main *bmain,
 
       /* Create a new class object per page. */
       delete exporter;
-      exporter = new GpencilExporterSVG(iparams);
-      /* Prepare output filename with full path. */
-      exporter->set_out_filename(filename);
+      exporter = new GpencilExporterSVG(filename, iparams);
     }
   }
 
@@ -235,9 +231,7 @@ bool gpencil_io_export(const char *filename, GpencilExportParams *iparams)
   copy_v2_v2(iparams->paper_size, iparams->paper_size);
 
   if (!is_storyboard) {
-    GpencilExporterSVG exporter = GpencilExporterSVG(iparams);
-    /* Prepare output filename with full path. */
-    exporter.set_out_filename(filename);
+    GpencilExporterSVG exporter = GpencilExporterSVG(filename, iparams);
 
     float no_offset[2] = {0.0f, 0.0f};
     float ratio[2] = {1.0f, 1.0f};

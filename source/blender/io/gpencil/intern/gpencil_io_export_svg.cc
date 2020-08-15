@@ -62,9 +62,12 @@
 namespace blender ::io ::gpencil {
 
 /* Constructor. */
-GpencilExporterSVG::GpencilExporterSVG(const struct GpencilExportParams *iparams)
+GpencilExporterSVG::GpencilExporterSVG(const char *filename,
+                                       const struct GpencilExportParams *iparams)
     : GpencilExporter(iparams)
 {
+  set_out_filename(filename);
+
   invert_axis_[0] = false;
   invert_axis_[1] = true;
 }

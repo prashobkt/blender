@@ -48,7 +48,6 @@ class GpencilExporter {
   virtual bool add_body(void) = 0;
   virtual bool write(std::string subfix) = 0;
 
-  void set_out_filename(const char *filename);
   void set_frame_number(int value);
   void set_frame_offset(float value[2]);
   void set_frame_ratio(float value[2]);
@@ -123,6 +122,7 @@ class GpencilExporter {
 
   void selected_objects_boundbox_set(void);
   void selected_objects_boundbox_get(rctf *boundbox);
+  void set_out_filename(const char *filename);
 
  private:
   struct bGPDlayer *gpl_cur;
