@@ -260,12 +260,9 @@ void GpencilExporterSVG::export_gpencil_layers(void)
 
           /* Fill. */
           if ((material_is_fill()) && (params_.flag & GP_EXPORT_FILL)) {
-            if (is_normalized) {
-              export_stroke_to_polyline(gpl_node, true);
-            }
-            else {
-              export_stroke_to_path(gpl_node, true);
-            }
+            /* Fill is always exported as polygon because the stroke of the fill is done
+             * in a different SVG command. */
+            export_stroke_to_polyline(gpl_node, true);
           }
 
           /* Stroke. */
