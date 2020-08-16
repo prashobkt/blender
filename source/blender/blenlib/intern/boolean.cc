@@ -2148,7 +2148,7 @@ static void extract_zero_volume_cell_tris(Vector<Facep> &out_tris,
       if (t_to_add == NO_INDEX) {
         Facep f = tm_subdivided.face(pinfo.patch(p).tri(0));
         const Face &tri = *f;
-        /* We must need flipped version or else we would have found it above. */
+        /* We need flipped version or else we would have found it above. */
         Array<Vertp> flipped_vs = {tri[0], tri[2], tri[1]};
         Array<int> flipped_e_origs = {tri.edge_orig[2], tri.edge_orig[1], tri.edge_orig[0]};
         Array<bool> flipped_is_intersect = {
@@ -2241,6 +2241,188 @@ static const char *bool_optype_name(bool_optype op)
   }
 }
 
+static mpq3 calc_point_inside_tri(const Face &tri)
+{
+  Vertp v0 = tri.vert[0];
+  Vertp v1 = tri.vert[1];
+  Vertp v2 = tri.vert[2];
+  mpq3 ans = v0->co_exact / 3 + v1->co_exact / 3 + v2->co_exact / 3;
+  return ans;
+}
+
+/* Return the Generalized Winding Number of point testp wih respect to the
+ * volume implied by the faces for which shape_fn returns the value shape.
+ * See "Robust Inside-Outside Segmentation using Generalized Winding Numbers"
+ * by Jacobson, Kavan, and Sorkine-Hornung.
+ * This is like a winding number in that if it is positive, the point
+ * is inside the volume. But it is tolerant of not-completely-watertight
+ * volumes, still doing a passable job of classifying inside/outside
+ * as we intuitively understand that to mean.
+ * TOOD: speed up this calculation using the heirarchical algorithm in
+ * that paper.
+ */
+static double generalized_winding_number(const Mesh &tm,
+                                         std::function<int(int)> shape_fn,
+                                         const double3 &testp,
+                                         int shape)
+{
+  constexpr int dbg_level = 0;
+  if (dbg_level > 0) {
+    std::cout << "GENERALIZED_WINDING_NUMBER testp = " << testp << ", shape = " << shape << "\n";
+  }
+  double gwn = 0;
+  for (int t : tm.face_index_range()) {
+    Facep f = tm.face(t);
+    const Face &tri = *f;
+    if (shape_fn(tri.orig) == shape) {
+      if (dbg_level > 0) {
+        std::cout << "accumulate for tri t = " << t << " = " << f << "\n";
+      }
+      Vertp v0 = tri.vert[0];
+      Vertp v1 = tri.vert[1];
+      Vertp v2 = tri.vert[2];
+      double3 a = v0->co - testp;
+      double3 b = v1->co - testp;
+      double3 c = v2->co - testp;
+      /* Calculate the solid angle of abc relative to origin.
+       * See "The Solid Angle of a Plane Triangle" by Oosterom and Strackee
+       * for the derivation of the formula.
+       */
+      double alen = a.length();
+      double blen = b.length();
+      double clen = c.length();
+      double3 bxc = double3::cross_high_precision(b, c);
+      double num = double3::dot(a, bxc);
+      double denom = alen * blen * clen + double3::dot(a, b) * clen + double3::dot(a, c) * blen +
+                     double3::dot(b, c) * alen;
+      if (denom == 0.0) {
+        if (dbg_level > 0) {
+          std::cout << "denom == 0, skipping this tri\n";
+        }
+        continue;
+      }
+      double x = atan2(num, denom);
+      double fgwn = 2.0 * x;
+      if (dbg_level > 0) {
+        std::cout << "tri contributes " << fgwn << "\n";
+      }
+      gwn += fgwn;
+    }
+  }
+  gwn = gwn / (M_PI * 4.0);
+  if (dbg_level > 0) {
+    std::cout << "final gwn = " << gwn << "\n";
+  }
+  return gwn;
+}
+
+/* Return true if point testp is inside the volume implied by the
+ * faces for which the shape_fn returns the value shape.
+ */
+static bool point_is_inside_shape(const Mesh &tm,
+                                  std::function<int(int)> shape_fn,
+                                  const double3 &testp,
+                                  int shape)
+{
+  double gwn = generalized_winding_number(tm, shape_fn, testp, shape);
+  /* Due to floating point error, an outside point should get a value
+   * of zero for gwn, but may have a very slightly positive value instead.
+   */
+  return (gwn > 0.01);
+}
+
+/* Use the Generalized Winding Number method for deciding if a patch of the
+ * mesh is supposed to be included or excluded in the boolean result,
+ * and return the mesh that is the boolean result.
+ */
+static Mesh gwn_boolean(const Mesh &tm,
+                        bool_optype op,
+                        int nshapes,
+                        std::function<int(int)> shape_fn,
+                        const PatchesInfo &pinfo,
+                        MArena *arena)
+{
+  constexpr int dbg_level = 0;
+  if (dbg_level > 0) {
+    std::cout << "GWN_BOOLEAN\n";
+  }
+  Mesh ans;
+  Vector<Facep> out_faces;
+  out_faces.reserve(tm.face_size());
+  BLI_assert(nshapes == 2); /* TODO: generalize. */
+  for (int p : pinfo.index_range()) {
+    const Patch &patch = pinfo.patch(p);
+    /* For test triangle, choose one in the middle of patch list
+     * as the ones near the beginning may be very near other patches.
+     */
+    int test_t_index = patch.tri(patch.tot_tri() / 2);
+    const Face &tri_test = *tm.face(test_t_index);
+    /* Assume all triangles in a patch are in the same shape. */
+    int shape = shape_fn(tri_test.orig);
+    if (dbg_level > 0) {
+      std::cout << "process patch " << p << " = " << patch << "\n";
+      std::cout << "test tri = " << test_t_index << " = " << &tri_test << "\n";
+      std::cout << "shape = " << shape << "\n";
+    }
+    if (shape == -1) {
+      continue;
+    }
+    mpq3 test_point = calc_point_inside_tri(tri_test);
+    double3 test_point_db(test_point[0].get_d(), test_point[1].get_d(), test_point[2].get_d());
+    if (dbg_level > 0) {
+      std::cout << "test point = " << test_point_db << "\n";
+    }
+    int other_shape = 1 - shape;
+    bool inside = point_is_inside_shape(tm, shape_fn, test_point_db, other_shape);
+    if (dbg_level > 0) {
+      std::cout << "test point is " << (inside ? "inside\n" : "outside\n");
+    }
+    bool do_remove;
+    bool do_flip;
+    switch (op) {
+      case BOOLEAN_ISECT:
+        do_remove = !inside;
+        do_flip = false;
+        break;
+      case BOOLEAN_UNION:
+        do_remove = inside;
+        do_flip = false;
+        break;
+      case BOOLEAN_DIFFERENCE:
+        do_remove = (shape == 0) ? inside : !inside;
+        do_flip = (shape == 1);
+        break;
+      default:
+        BLI_assert(false);
+    }
+    if (dbg_level > 0) {
+      std::cout << "result for patch " << p << ": remove=" << do_remove << ", flip=" << do_flip
+                << "\n";
+    }
+    if (!do_remove) {
+      for (int t : patch.tris()) {
+        Facep f = tm.face(t);
+        if (!do_flip) {
+          out_faces.append(f);
+        }
+        else {
+          const Face &tri = *f;
+          /* We need flipped version of f. */
+          Array<Vertp> flipped_vs = {tri[0], tri[2], tri[1]};
+          Array<int> flipped_e_origs = {tri.edge_orig[2], tri.edge_orig[1], tri.edge_orig[0]};
+          Array<bool> flipped_is_intersect = {
+              tri.is_intersect[2], tri.is_intersect[1], tri.is_intersect[0]};
+          Facep flipped_f = arena->add_face(
+              flipped_vs, f->orig, flipped_e_origs, flipped_is_intersect);
+          out_faces.append(flipped_f);
+        }
+      }
+    }
+  }
+  ans.set_faces(out_faces);
+  return ans;
+}
+
 /* Which CDT output edge index is for an edge between output verts
  * v1 and v2 (in either order)? Return -1 if none.
  */
@@ -2277,9 +2459,13 @@ static Array<Facep> triangulate_poly(Facep f, MArena *arena)
   int axis = mpq3::dominant_axis(poly_normal);
   /* If project down y axis as opposed to x or z, the orientation
    * of the polygon will be reversed.
+   * Yet another reversal happens if the poly normal in the dominant
+   * direction is opposite that of the positive dominant axis.
    */
   int iflen = static_cast<int>(flen);
-  bool rev = (axis == 1);
+  bool rev1 = (axis == 1);
+  bool rev2 = poly_normal[axis] < 0;
+  bool rev = rev1 ^ rev2;
   for (int i = 0; i < iflen; ++i) {
     int ii = rev ? iflen - i - 1 : i;
     mpq2 &p2d = cdt_in.vert[ii];
@@ -2312,8 +2498,14 @@ static Array<Facep> triangulate_poly(Facep f, MArena *arena)
         }
       }
     }
-    ans[t] = arena->add_face(
-        {v[0], v[1], v[2]}, f->orig, {eo[0], eo[1], eo[2]}, {false, false, false});
+    if (rev) {
+      ans[t] = arena->add_face(
+          {v[0], v[2], v[1]}, f->orig, {eo[2], eo[1], eo[0]}, {false, false, false});
+    }
+    else {
+      ans[t] = arena->add_face(
+          {v[0], v[1], v[2]}, f->orig, {eo[0], eo[1], eo[2]}, {false, false, false});
+    }
   }
   return ans;
 }
@@ -3017,32 +3209,41 @@ Mesh boolean_trimesh(Mesh &tm_in,
   }
   auto si_shape_fn = [shape_fn, tm_si](int t) { return shape_fn(tm_si.face(t)->orig); };
   TriMeshTopology tm_si_topo(tm_si);
-  if (!is_pwn(tm_si, tm_si_topo)) {
-    std::cout << "Input is not PWN, boolean may not work\n";
-  }
   PatchesInfo pinfo = find_patches(tm_si, tm_si_topo);
-  CellsInfo cinfo = find_cells(tm_si, tm_si_topo, pinfo);
-  finish_patch_cell_graph(tm_si, cinfo, pinfo, tm_si_topo, arena);
-  bool pc_ok = patch_cell_graph_ok(cinfo, pinfo);
-  if (!pc_ok) {
-    /* TODO: if bad input can lead to this, diagnose the problem. */
-    std::cout << "Something funny about input or a bug in boolean\n";
-    return Mesh(tm_in);
+  Mesh tm_out;
+  if (!is_pwn(tm_si, tm_si_topo)) {
+    if (dbg_level > 0) {
+      std::cout << "Input is not PWN, using gwn method\n";
+    }
+    tm_out = gwn_boolean(tm_si, op, nshapes, shape_fn, pinfo, arena);
   }
-  cinfo.init_windings(nshapes);
-  int c_ambient = find_ambient_cell(tm_si, nullptr, tm_si_topo, pinfo, arena);
-  if (c_ambient == NO_INDEX) {
-    /* TODO: find a way to propagate this error to user properly. */
-    std::cout << "Could not find an ambient cell; input not valid?\n";
-    return Mesh(tm_si);
-  }
-  propagate_windings_and_flag(pinfo, cinfo, c_ambient, op, nshapes, si_shape_fn);
-  Mesh tm_out = extract_from_flag_diffs(tm_si, pinfo, cinfo, arena);
-  if (dbg_level > 0) {
-    /* Check if output is PWN. */
-    TriMeshTopology tm_out_topo(tm_out);
-    if (!is_pwn(tm_out, tm_out_topo)) {
-      std::cout << "OUTPUT IS NOT PWN!\n";
+  else {
+    CellsInfo cinfo = find_cells(tm_si, tm_si_topo, pinfo);
+    if (dbg_level > 0) {
+      std::cout << "Input is PWN\n";
+    }
+    finish_patch_cell_graph(tm_si, cinfo, pinfo, tm_si_topo, arena);
+    bool pc_ok = patch_cell_graph_ok(cinfo, pinfo);
+    if (!pc_ok) {
+      /* TODO: if bad input can lead to this, diagnose the problem. */
+      std::cout << "Something funny about input or a bug in boolean\n";
+      return Mesh(tm_in);
+    }
+    cinfo.init_windings(nshapes);
+    int c_ambient = find_ambient_cell(tm_si, nullptr, tm_si_topo, pinfo, arena);
+    if (c_ambient == NO_INDEX) {
+      /* TODO: find a way to propagate this error to user properly. */
+      std::cout << "Could not find an ambient cell; input not valid?\n";
+      return Mesh(tm_si);
+    }
+    propagate_windings_and_flag(pinfo, cinfo, c_ambient, op, nshapes, si_shape_fn);
+    tm_out = extract_from_flag_diffs(tm_si, pinfo, cinfo, arena);
+    if (dbg_level > 0) {
+      /* Check if output is PWN. */
+      TriMeshTopology tm_out_topo(tm_out);
+      if (!is_pwn(tm_out, tm_out_topo)) {
+        std::cout << "OUTPUT IS NOT PWN!\n";
+      }
     }
   }
   if (dbg_level > 1) {

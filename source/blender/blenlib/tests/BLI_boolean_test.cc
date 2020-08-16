@@ -839,4 +839,45 @@ TEST(boolean_polymesh, CubeCubesubdivDiff)
   }
 }
 
+TEST(boolean_polymesh, CubePlane)
+{
+  const char *spec = R"(12 7
+  -2 -2 0
+  2 -2 0
+  -2 2 0
+  2 2 0
+  -1 -1 -1
+  -1 -1 1
+  -1 1 -1
+  -1 1 1
+  1 -1 -1
+  1 -1 1
+  1 1 -1
+  1 1 1
+  0 1 3 2 
+  4 5 7 6 
+  6 7 11 10 
+  10 11 9 8 
+  8 9 5 4 
+  6 10 8 4 
+  11 7 5 9
+)";
+
+  MeshBuilder mb(spec);
+  Mesh out = boolean_mesh(
+      mb.mesh,
+      BOOLEAN_DIFFERENCE,
+      2,
+      [](int t) { return t >= 1 ? 0 : 1; },
+      false,
+      nullptr,
+      &mb.arena);
+  out.populate_vert();
+  EXPECT_EQ(out.vert_size(), 8);
+  EXPECT_EQ(out.face_size(), 6);
+  if (DO_OBJ) {
+    write_obj_mesh(out, "cubeplane");
+  }
+}
+
 }  // namespace blender::meshintersect
