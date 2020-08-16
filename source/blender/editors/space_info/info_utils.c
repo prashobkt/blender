@@ -51,13 +51,13 @@ bool info_match_string_filter(const char *search_pattern,
                               const char *string,
                               const bool use_match_case,
                               const bool use_match_glob,
-const bool use_reverse_match)
+                              const bool use_reverse_match)
 {
-if (STREQ(search_pattern, "")) {
+  if (STREQ(search_pattern, "")) {
     return true;
   }
   if (!use_match_glob) {
-    char *(*compare_func)(const char *, const char *) = use_match_case ? strstr : BLI_strcasestr ;
+    char *(*compare_func)(const char *, const char *) = use_match_case ? strstr : BLI_strcasestr;
     bool result = compare_func(string, search_pattern) != NULL;
     if (use_reverse_match) {
       return !result;
