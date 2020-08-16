@@ -1548,7 +1548,6 @@ static void rna_UserDef_usermenus_group_idname_set(Main *bmain,
   STRNCPY(old, umg->idname);
   BKE_blender_user_menus_group_idname_update(umg);
   BKE_blender_user_menus_group_idname_update_keymap(bmain->wm.first, old, umg->idname);
-  printf("%s\n", umg->idname);
 }
 
 static void rna_UserDef_usermenus_item_op_get(PointerRNA *ptr, char *value)

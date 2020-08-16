@@ -94,7 +94,6 @@ void BKE_blender_user_menus_group_idname_update_keymap(wmWindowManager *wm,
         if (STREQ(kmi->idname, "WM_OT_call_user_menu")) {
           IDProperty *idp = IDP_GetPropertyFromGroup(kmi->properties, "name");
           char *index = IDP_String(idp);
-          printf("%s\n", index);
         }
       }
     }

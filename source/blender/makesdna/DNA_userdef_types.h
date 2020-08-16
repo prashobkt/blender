@@ -520,11 +520,11 @@ typedef struct bPathCompare {
 typedef struct bUserMenusGroup {
   struct bUserMenusGroup *next, *prev;
   /* bUserMenu */
-  struct ListBase menus;
-  char type;
   char idname[64];
   char name[64];
+  char type;
   char _pad0[7];
+  struct ListBase menus;
 } bUserMenusGroup;
 
 typedef struct bUserMenu {
