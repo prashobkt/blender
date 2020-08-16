@@ -204,6 +204,11 @@ static void set_operation_types(SpaceOutliner *space_outliner,
   }
 }
 
+static TreeElement *get_target_element(SpaceOutliner *space_outliner)
+{
+  return outliner_find_element_with_flag(&space_outliner->tree, TSE_ACTIVE);
+}
+
 static void unlink_action_fn(bContext *C,
                              ReportList *UNUSED(reports),
                              Scene *UNUSED(scene),
@@ -1729,18 +1734,20 @@ static int outliner_id_operation_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
   int scenelevel = 0, objectlevel = 0, idlevel = 0, datalevel = 0;
-  eOutlinerIdOpTypes event;
 
   /* check for invalid states */
   if (space_outliner == NULL) {
     return OPERATOR_CANCELLED;
   }
 
-  set_operation_types(
-      space_outliner, &space_outliner->tree, &scenelevel, &objectlevel, &idlevel, &datalevel);
+  TreeElement *te = get_target_element(space_outliner);
+  if (!te) {
+    return OPERATOR_CANCELLED;
+  }
 
-  event = RNA_enum_get(op->ptr, "type");
+  get_element_operation_type(te, &scenelevel, &objectlevel, &idlevel, &datalevel);
 
+  eOutlinerIdOpTypes event = RNA_enum_get(op->ptr, "type");
   switch (event) {
     case OUTLINER_IDOP_UNLINK: {
       /* unlink datablock from its parent */
