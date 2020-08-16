@@ -9827,11 +9827,9 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   }
 
   LISTBASE_FOREACH (bUserMenusGroup *, umg, &user->user_menus) {
-    BLI_listbase_clear(&umg->menus);
     BLO_read_list(reader, &umg->menus);
     BKE_blender_user_menus_group_idname_update(umg);
     LISTBASE_FOREACH (bUserMenu *, um, &umg->menus) {
-      BLI_listbase_clear(&um->items);
       BLO_read_list(reader, &um->items);
       read_usermenuitems(reader, &um->items, NULL);
     }

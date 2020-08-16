@@ -1257,9 +1257,16 @@ static const EnumPropertyItem *rna_UserDef_usermenus_contexts_itemf(bContext *UN
                                                                     PropertyRNA *UNUSED(prop),
                                                                     bool *r_free)
 {
+  static const char *contexts_list[] = {
+      "mesh edit",           "curve edit",          "surface edit",        "text edit",
+      "armature edit",       "mball edit",          "lattice edit",        "pose mode",
+      "sculpt mode",         "weight paint",        "vertex paint",        "image paint",
+      "particle mode",       "object mode",         "greasepencil paint",  "greasepencil edit",
+      "greasepencil sculpt", "greasepencil weight", "greasepencil vertex", NULL,
+  };
+
   int totitem = 0;
   EnumPropertyItem *item = NULL;
-  const char **contexts_list = CTX_data_list_mode_string();
   int i;
 
   for (i = 0; contexts_list[i]; i++) {
