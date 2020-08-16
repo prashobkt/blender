@@ -224,6 +224,7 @@ static void info_operatortypes(void)
 
   WM_operatortype_append(INFO_OT_clog_delete);
   WM_operatortype_append(INFO_OT_clog_copy);
+  WM_operatortype_append(INFO_OT_clog_filter);
 }
 
 static void info_keymap(struct wmKeyConfig *keyconf)

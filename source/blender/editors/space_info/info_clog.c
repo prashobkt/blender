@@ -30,6 +30,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
+#include "BKE_report.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -456,18 +457,18 @@ void INFO_OT_clog_delete(wmOperatorType *ot)
   /* properties */
 }
 
-typedef enum ClogCopy {
+typedef enum eClogCopy {
   CLOG_COPY_VISBLE = 0,
   CLOG_COPY_MESSAGE,
   CLOG_COPY_FILE_LINE,
   CLOG_COPY_FILE_LINE_SHORT,
-} ClogCopy;
+} eClogCopy;
 
 static int clog_copy_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   CLG_LogRecordList *records = CLG_log_records_get();
-  ClogCopy copy_type = RNA_enum_get(op->ptr, "method");
+  eClogCopy copy_type = RNA_enum_get(op->ptr, "method");
   CLG_LogRecord *record;
 
   DynStr *buf_dyn = BLI_dynstr_new();
@@ -537,5 +538,159 @@ void INFO_OT_clog_copy(wmOperatorType *ot)
 
   PropertyRNA *prop;
   prop = RNA_def_enum(ot->srna, "method", clog_copy_items, CLOG_COPY_VISBLE, "Method", "");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+typedef enum eClogFilterMode {
+  CLOG_FILTER_FUNCTION = 0,
+  CLOG_FILTER_FILE,
+  CLOG_FILTER_LINE,
+  CLOG_FILTER_LOG_TYPE,
+} eClogFilterMode;
+
+static struct SpaceInfoFilter *is_filter_duplicate(const ListBase *list,
+                                                   const SpaceInfoFilter *filter)
+{
+  LISTBASE_FOREACH (SpaceInfoFilter *, filter_iter, list) {
+    if (info_match_string_filter(filter_iter->search_string,
+                                 filter->search_string,
+                                 filter_iter->flag & INFO_FILTER_USE_MATCH_CASE,
+                                 filter_iter->flag & INFO_FILTER_USE_GLOB,
+                                 false)) {
+      return filter_iter;
+    }
+  }
+  return NULL;
+}
+
+static int clog_filter_exec(bContext *C, wmOperator *op)
+{
+  SpaceInfo *sinfo = CTX_wm_space_info(C);
+  CLG_LogRecordList *records = CLG_log_records_get();
+  eClogFilterMode filter_type = RNA_enum_get(op->ptr, "method");
+
+  CLG_LogRecord *record;
+
+  for (record = records->first; record; record = record->next) {
+    if (is_clog_record_visible(record, sinfo) && (record->flag & CLG_SELECT)) {
+      SpaceInfoFilter *filter = MEM_callocN(sizeof(*filter), __func__);
+      filter->flag = INFO_FILTER_USE_MATCH_CASE | INFO_FILTER_USE_MATCH_REVERSE;
+      switch (filter_type) {
+        case CLOG_FILTER_FILE: {
+          const char *basename = BLI_path_basename(record->file_line);
+          int file_name_len = strlen(basename);
+          /* remove line number */
+          BLI_assert(strstr(basename, ":") != NULL);
+          while (basename[file_name_len - 1] != ':') {
+            file_name_len -= 1;
+          }
+          BLI_strncpy(filter->search_string, basename, file_name_len);
+          const SpaceInfoFilter *filter_dup = is_filter_duplicate(&sinfo->filter_log_file_line,
+                                                                  filter);
+          if (filter_dup == NULL) {
+            BLI_addtail(&sinfo->filter_log_file_line, filter);
+          }
+          else {
+            BKE_reportf(op->reports,
+                        RPT_INFO,
+                        "File filter: %s is duplicate of filter: %s",
+                        filter->search_string,
+                        filter_dup->search_string);
+            MEM_freeN(filter);
+          }
+          sinfo->use_log_filter |= INFO_FILTER_CLOG_FILE_LINE;
+          break;
+        }
+        case CLOG_FILTER_LINE: {
+          STRNCPY(filter->search_string, BLI_path_basename(record->file_line));
+          const SpaceInfoFilter *filter_dup = is_filter_duplicate(&sinfo->filter_log_file_line,
+                                                                  filter);
+          if (filter_dup == NULL) {
+            BLI_addtail(&sinfo->filter_log_file_line, filter);
+          }
+          else {
+            BKE_reportf(op->reports,
+                        RPT_INFO,
+                        "Line filter: %s is duplicate of filter: %s",
+                        filter->search_string,
+                        filter_dup->search_string);
+            MEM_freeN(filter);
+          }
+          sinfo->use_log_filter |= INFO_FILTER_CLOG_FILE_LINE;
+          break;
+        }
+        case CLOG_FILTER_FUNCTION: {
+          STRNCPY(filter->search_string, record->function);
+          const SpaceInfoFilter *filter_dup = is_filter_duplicate(&sinfo->filter_log_function,
+                                                                  filter);
+          if (filter_dup == NULL) {
+            BLI_addtail(&sinfo->filter_log_function, filter);
+          }
+          else {
+            BKE_reportf(op->reports,
+                        RPT_INFO,
+                        "Function filter: %s is duplicate of filter: %s",
+                        filter->search_string,
+                        filter_dup->search_string);
+            MEM_freeN(filter);
+          }
+          sinfo->use_log_filter |= INFO_FILTER_CLOG_FUNCTION;
+          break;
+        }
+        case CLOG_FILTER_LOG_TYPE: {
+          STRNCPY(filter->search_string, record->type->identifier);
+          const SpaceInfoFilter *filter_dup = is_filter_duplicate(&sinfo->filter_log_type, filter);
+          if (filter_dup == NULL) {
+            BLI_addtail(&sinfo->filter_log_type, filter);
+          }
+          else {
+            BKE_reportf(op->reports,
+                        RPT_INFO,
+                        "Function filter: %s is duplicate of filter: %s",
+                        filter->search_string,
+                        filter_dup->search_string);
+            MEM_freeN(filter);
+          }
+          sinfo->use_log_filter |= INFO_FILTER_CLOG_TYPE;
+          break;
+        }
+        default:
+          BLI_assert(0);
+      }
+    }
+  }
+
+  info_area_tag_redraw(C);
+
+  return OPERATOR_FINISHED;
+}
+
+void INFO_OT_clog_filter(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Add Log Filter";
+  ot->description =
+      "Add and enable log filter based on selected logs. Will not add filter if log is already "
+      "muted by another filter.";
+  ot->idname = "INFO_OT_clog_filter";
+
+  /* api callbacks */
+  ot->poll = ED_operator_info_clog_active;
+  ot->exec = clog_filter_exec;
+
+  /* flags */
+  /*ot->flag = OPTYPE_REGISTER;*/
+
+  /* properties */
+  static const EnumPropertyItem clog_filter_items[] = {
+      {CLOG_FILTER_FUNCTION, "FILTER_FUNCTION", 0, "", ""},
+      {CLOG_FILTER_FILE, "FILTER_FILE", 0, "", ""},
+      {CLOG_FILTER_LINE, "FILTER_LINE", 0, "", ""},
+      {CLOG_FILTER_LOG_TYPE, "FILTER_LOG_TYPE", 0, "", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  PropertyRNA *prop;
+  prop = RNA_def_enum(ot->srna, "method", clog_filter_items, CLOG_FILTER_FILE, "Method", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }

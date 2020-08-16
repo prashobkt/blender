@@ -659,7 +659,7 @@ void INFO_OT_log_file_line_filter_add(wmOperatorType *ot)
   ot->flag = OPTYPE_INTERNAL;
 
   /* properties */
-  RNA_def_string(ot->srna, "filter", NULL, 255, "Filter", "a");
+  RNA_def_string(ot->srna, "filter", NULL, 255, "Filter", "");
 }
 
 static int log_file_line_filter_remove_exec(bContext *C, wmOperator *op)

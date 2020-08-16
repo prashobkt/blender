@@ -88,6 +88,7 @@ void INFO_OT_clog_select_box(struct wmOperatorType *ot);
 
 void INFO_OT_clog_delete(struct wmOperatorType *ot);
 void INFO_OT_clog_copy(struct wmOperatorType *ot);
+void INFO_OT_clog_filter(struct wmOperatorType *ot);
 
 /* info_draw_report.c */
 enum eTextViewContext_LineDrawFlag report_line_draw_data(struct TextViewContext *tvc,
