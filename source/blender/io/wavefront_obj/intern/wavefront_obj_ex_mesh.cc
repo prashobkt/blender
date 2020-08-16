@@ -22,12 +22,13 @@
  */
 
 #include "BKE_customdata.h"
-#include "BKE_deform.h"
+#include "BKE_lib_id.h"
+#include "BKE_material.h"
+#include "BKE_mesh.h"
 #include "BKE_mesh_mapping.h"
 #include "BKE_object.h"
 
 #include "BLI_listbase.h"
-#include "BLI_map.hh"
 #include "BLI_math.h"
 
 #include "bmesh.h"
@@ -35,7 +36,8 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "DNA_layer_types.h"
+#include "DNA_mesh_types.h"
+#include "DNA_object_types.h"
 #include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
 
@@ -110,7 +112,7 @@ void OBJMesh::triangulate_mesh_eval()
   struct BMeshFromMeshParams bm_convert_params = {true, 0, 0, 0};
   /* Lower threshold where triangulation of a face starts, i.e. a quadrilateral will be
    * triangulated here. */
-  int triangulate_min_verts = 4;
+  const int triangulate_min_verts = 4;
 
   BMesh *bmesh = BKE_mesh_to_bmesh_ex(export_mesh_eval_, &bm_create_params, &bm_convert_params);
   BM_mesh_triangulate(bmesh,
@@ -212,7 +214,7 @@ void OBJMesh::calc_smooth_groups()
     poly_smooth_groups_ = nullptr;
   }
   int tot_smooth_groups = 0;
-  bool use_bitflags = export_params_.smooth_groups_bitflags;
+  const bool use_bitflags = export_params_.smooth_groups_bitflags;
   poly_smooth_groups_ = BKE_mesh_calc_smoothgroups(export_mesh_eval_->medge,
                                                    export_mesh_eval_->totedge,
                                                    export_mesh_eval_->mpoly,
@@ -258,7 +260,7 @@ const char *OBJMesh::get_object_data_name() const
  */
 const char *OBJMesh::get_object_material_name(short mat_nr) const
 {
-  Material *mat = BKE_object_material_get(export_object_eval_, mat_nr);
+  const Material *mat = BKE_object_material_get(export_object_eval_, mat_nr);
   return mat->id.name + 2;
 }
 
@@ -400,7 +402,7 @@ const char *OBJMesh::get_poly_deform_group_name(const MPoly &mpoly,
   /* Indices of the vector index into deform groups of an object; values are the number of vertex
    * members in one deform group. */
   Vector<int> deform_group_members{};
-  uint tot_deform_groups = BLI_listbase_count(&export_object_eval_->defbase);
+  const uint tot_deform_groups = BLI_listbase_count(&export_object_eval_->defbase);
   deform_group_members.resize(tot_deform_groups, 0);
   /* Whether at least one vertex in the polygon belongs to any group. */
   bool found_group = false;

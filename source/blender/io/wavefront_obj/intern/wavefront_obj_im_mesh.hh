@@ -24,12 +24,10 @@
 #pragma once
 
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
 
 #include "BLI_utility_mixins.hh"
 
-#include "bmesh.h"
-
+#include "wavefront_obj_im_mtl.hh"
 #include "wavefront_obj_im_objects.hh"
 
 namespace blender::io::obj {

@@ -36,7 +36,6 @@
 
 #include "wavefront_obj_ex_file_writer.hh"
 #include "wavefront_obj_ex_mesh.hh"
-#include "wavefront_obj_ex_mtl.hh"
 #include "wavefront_obj_ex_nurbs.hh"
 #include "wavefront_obj_exporter.hh"
 

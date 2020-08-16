@@ -23,11 +23,6 @@
 
 #pragma once
 
-#include "NOD_node_tree_ref.hh"
-
-#include "BLI_path_util.h"
-
-#include "wavefront_obj_ex_mesh.hh"
 #include "wavefront_obj_im_mtl.hh"
 
 namespace blender::io::obj {

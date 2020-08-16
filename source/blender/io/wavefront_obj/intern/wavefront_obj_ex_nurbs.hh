@@ -23,9 +23,6 @@
 
 #pragma once
 
-#include "BKE_context.h"
-#include "BKE_curve.h"
-
 #include "BLI_utility_mixins.hh"
 
 #include "DNA_curve_types.h"

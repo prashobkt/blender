@@ -21,17 +21,13 @@
  * \ingroup obj
  */
 
-#include <fstream>
-#include <iostream>
+#include <string>
 
-#include "BLI_array.hh"
 #include "BLI_float2.hh"
 #include "BLI_float3.hh"
 #include "BLI_map.hh"
-#include "BLI_string.h"
 #include "BLI_string_ref.hh"
 
-#include "bmesh.h"
 
 #include "wavefront_obj_im_file_reader.hh"
 #include "wavefront_obj_im_mesh.hh"

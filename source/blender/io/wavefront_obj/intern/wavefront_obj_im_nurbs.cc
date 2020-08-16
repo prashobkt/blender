@@ -21,6 +21,8 @@
  * \ingroup obj
  */
 
+#include "BKE_object.h"
+
 #include "DNA_curve_types.h"
 
 #include "wavefront_obj_im_nurbs.hh"

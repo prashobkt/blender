@@ -23,12 +23,14 @@
 
 #pragma once
 
-#include "IO_wavefront_obj.h"
+#include "DNA_meshdata_types.h"
 
-#include "wavefront_obj_ex_mesh.hh"
-#include "wavefront_obj_ex_nurbs.hh"
+#include "IO_wavefront_obj.h"
+#include "BLI_vector.hh"
 
 namespace blender::io::obj {
+class OBJMesh;
+class OBJNurbs;
 
 /* Types of index offsets. */
 enum eIndexOffsets {

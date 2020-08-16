@@ -22,7 +22,6 @@
  */
 
 #include "BLI_math.h"
-#include "BLI_vector.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -45,8 +44,7 @@ OBJNurbs::OBJNurbs(Depsgraph *depsgraph,
 }
 
 /**
- * Store the product of export axes settings and an object's world transform matrix in
- * world_and_axes_transform[4][4].
+ * Store the product of export axes settings and an object's world transform matrix.
  */
 void OBJNurbs::store_world_axes_transform()
 {

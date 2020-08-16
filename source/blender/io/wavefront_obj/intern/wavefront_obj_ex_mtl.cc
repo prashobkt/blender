@@ -22,19 +22,21 @@
  */
 
 #include "BKE_image.h"
-#include "BKE_material.h"
 #include "BKE_node.h"
 
 #include "BLI_float3.hh"
 #include "BLI_map.hh"
-#include "BLI_math.h"
+#include "BLI_path_util.h"
 
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 
 #include "NOD_node_tree_ref.hh"
 
+#include "wavefront_obj_ex_mesh.hh"
 #include "wavefront_obj_ex_mtl.hh"
+#include "wavefront_obj_im_mtl.hh"
+
 
 namespace blender::io::obj {
 

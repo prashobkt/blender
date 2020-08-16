@@ -24,12 +24,11 @@
 #include "BKE_blender_version.h"
 
 #include "BLI_array.hh"
-#include "BLI_math_inline.h"
-
-#include "DNA_object_types.h"
 
 #include "wavefront_obj_ex_file_writer.hh"
+#include "wavefront_obj_ex_mesh.hh"
 #include "wavefront_obj_ex_mtl.hh"
+#include "wavefront_obj_ex_nurbs.hh"
 #include "wavefront_obj_im_mtl.hh"
 
 namespace blender::io::obj {

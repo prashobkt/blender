@@ -23,17 +23,13 @@
 
 #pragma once
 
-#include "BKE_lib_id.h"
-#include "BKE_material.h"
-#include "BKE_mesh.h"
-
 #include "BLI_array.hh"
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 
+#include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
-#include "DNA_object_types.h"
 
 #include "IO_wavefront_obj.h"
 
