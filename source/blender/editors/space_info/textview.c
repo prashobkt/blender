@@ -143,7 +143,7 @@ static int textview_wrap_offsets(
 }
 
 /** Do not draw, just advance the height. */
-static void textview_draw_lines_dry_run(TextViewDrawState *tds, const char *str, int str_len)
+static void textview_draw_string_dry_run(TextViewDrawState *tds, const char *str, int str_len)
 {
   int tot_lines; /* Total number of lines for wrapping. */
   int *offsets;  /* Offsets of line beginnings for wrapping. */
@@ -183,10 +183,15 @@ static void textview_draw_lines_dry_run(TextViewDrawState *tds, const char *str,
 static void textview_draw_multiline_dry_run(TextViewDrawState *tds, ListBase *text_lines)
 {
   TextViewContextLine *iter_line = text_lines->last;
-  while (iter_line) {
-    textview_draw_lines_dry_run(tds, iter_line->line, iter_line->len);
+  const int row_vpad_back = tds->row_vpadding;
+  /* TODO (grzelins) workaround: do not add padding for multiline string */
+  tds->row_vpadding = 0;
+  while (iter_line->prev ) {
+    textview_draw_string_dry_run(tds, iter_line->line, iter_line->len);
     iter_line = iter_line->prev;
   }
+  tds->row_vpadding = row_vpad_back;
+  textview_draw_string_dry_run(tds, iter_line->line, iter_line->len);
 }
 
 /**
@@ -194,6 +199,8 @@ static void textview_draw_multiline_dry_run(TextViewDrawState *tds, ListBase *te
  * should be able to use this for any string type.
  *
  * if fg == NULL, then text_line->format will be used
+ *
+ * keep in sync with textview_draw_string_dry_run
  */
 static bool textview_draw_string(TextViewDrawState *tds,
                                  const char *str,
@@ -387,6 +394,7 @@ static void textview_clear_text_lines(ListBase *text_lines)
   }
 }
 
+/** keep in sync with textview_draw_multiline_dry_run */
 static bool textview_draw_multiline(const uchar *fg,
                                     const uchar *bg,
                                     const uchar *icon_fg,
@@ -401,12 +409,16 @@ static bool textview_draw_multiline(const uchar *fg,
   TextViewContextLine *iter_line = text_lines->last;
   const uchar *_fg = (data_flag & TVC_LINE_FG_SIMPLE) ? fg : NULL;
   const uchar *_bg = (data_flag & TVC_LINE_BG) ? bg : NULL;
+  const int row_vpad_back = tds->row_vpadding;
+  /* TODO (grzelins) workaround: do not add padding for multiline string */
+  tds->row_vpadding = 0;
   while (iter_line->prev && !is_out_of_view_y) {
     const char *_format = (data_flag & TVC_LINE_FG_SYNTAX) ? iter_line->format : NULL;
     is_out_of_view_y = !textview_draw_string(
         tds, iter_line->line, _format, iter_line->len, _fg, _bg, 0, NULL, NULL, bg_sel);
     iter_line = iter_line->prev;
   }
+  tds->row_vpadding = row_vpad_back;
   /* only first line has icon */
   if (!is_out_of_view_y) {
     const char *_format = (data_flag & TVC_LINE_FG_SYNTAX) ? iter_line->format : NULL;
