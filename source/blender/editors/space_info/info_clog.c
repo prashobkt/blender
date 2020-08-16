@@ -671,7 +671,7 @@ void INFO_OT_clog_filter(wmOperatorType *ot)
   ot->name = "Add Log Filter";
   ot->description =
       "Add and enable log filter based on selected logs. Will not add filter if log is already "
-      "muted by another filter.";
+      "muted by another filter";
   ot->idname = "INFO_OT_clog_filter";
 
   /* api callbacks */
