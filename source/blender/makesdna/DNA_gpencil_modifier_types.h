@@ -802,6 +802,12 @@ typedef enum eLineartGpencilModifierSource {
   LRT_SOURCE_OBJECT = 1,
 } eLineartGpencilModifierSource;
 
+typedef enum eLineartGpencilTransparencyFlags {
+  LRT_GPENCIL_TRANSPARENCY_ENABLE = (1 << 0),
+  /** Set to true means using "and" instead of "or" logic on mask bits. */
+  LRT_GPENCIL_TRANSPARENCY_MATCH = (1 << 1),
+} eLineartGpencilTransparencyFlags;
+
 typedef struct LineartGpencilModifierData {
   GpencilModifierData modifier;
 
@@ -821,10 +827,11 @@ typedef struct LineartGpencilModifierData {
 
   float opacity;
   short thickness;
-  short _pad;
+
+  unsigned char transparency_flags; /* eLineartGpencilTransparencyFlags */
+  unsigned char transparency_mask;
 
   float pre_sample_length;
   int _pad2;
 
 } LineartGpencilModifierData;
-

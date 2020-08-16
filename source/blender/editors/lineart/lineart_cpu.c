@@ -1499,7 +1499,7 @@ static void lineart_geometry_object_load(Object *ob,
       rt->rl[2] = &orl[BM_elem_index_get(loop->e)];
 
       rt->material_id = f->mat_nr;
-      Material *mat = BKE_object_material_get(ob, f->mat_nr);
+      Material *mat = BKE_object_material_get(ob, f->mat_nr + 1);
       rt->transparency_mask = ((mat && (mat->lineart.flags & LRT_MATERIAL_TRANSPARENCY_ENABLED)) ?
                                    mat->lineart.transparency_mask :
                                    0);
@@ -3658,6 +3658,8 @@ void ED_lineart_gpencil_generate_from_chain(Depsgraph *UNUSED(depsgraph),
                                             int material_nr,
                                             Collection *col,
                                             int types,
+                                            unsigned char transparency_flags,
+                                            unsigned char transparency_mask,
                                             short thickness,
                                             float opacity,
                                             float pre_sample_length)
@@ -3717,6 +3719,18 @@ void ED_lineart_gpencil_generate_from_chain(Depsgraph *UNUSED(depsgraph),
         continue;
       }
     }
+    if (transparency_flags & LRT_GPENCIL_TRANSPARENCY_ENABLE) {
+      if (transparency_flags & LRT_GPENCIL_TRANSPARENCY_MATCH) {
+        if (rlc->transparency_mask != transparency_mask) {
+          continue;
+        }
+      }
+      else {
+        if (!(rlc->transparency_mask & transparency_mask)) {
+          continue;
+        }
+      }
+    }
 
     /* Modifier for different GP objects are not evaluated in order, thus picked flag doesn't quite
      * make sense. Should have a batter solution if we don't want to pick the same stroke twice. */
@@ -3764,6 +3778,8 @@ void ED_lineart_gpencil_generate_strokes_direct(Depsgraph *depsgraph,
                                                 int level_end,
                                                 int mat_nr,
                                                 short line_types,
+                                                unsigned char transparency_flags,
+                                                unsigned char transparency_mask,
                                                 short thickness,
                                                 float opacity,
                                                 float pre_sample_length)
@@ -3794,6 +3810,8 @@ void ED_lineart_gpencil_generate_strokes_direct(Depsgraph *depsgraph,
                                          mat_nr,
                                          source_collection,
                                          use_types,
+                                         transparency_flags,
+                                         transparency_mask,
                                          thickness,
                                          opacity,
                                          pre_sample_length);
@@ -3896,6 +3914,8 @@ static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op)
                     BKE_gpencil_object_material_index_get(ob, lmd->target_material) :
                     0,
                 use_types,
+                lmd->transparency_flags,
+                lmd->transparency_mask,
                 lmd->thickness,
                 lmd->opacity,
                 lmd->pre_sample_length);

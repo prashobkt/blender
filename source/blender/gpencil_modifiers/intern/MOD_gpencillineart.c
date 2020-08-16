@@ -103,6 +103,8 @@ static void generate_strokes_actual(
       lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
       lmd->target_material ? BKE_gpencil_object_material_index_get(ob, lmd->target_material) : 0,
       lmd->line_types,
+      lmd->transparency_flags,
+      lmd->transparency_mask,
       lmd->thickness,
       lmd->opacity,
       lmd->pre_sample_length);
@@ -374,6 +376,7 @@ static void occlusion_panel_draw(const bContext *C, Panel *panel)
   uiItemR(layout, &ptr, "pre_sample_length", UI_ITEM_R_SLIDER, NULL, ICON_NONE);
 
   bool use_multiple_levels = RNA_boolean_get(&ptr, "use_multiple_levels");
+  bool use_transparency = RNA_boolean_get(&ptr, "use_transparency");
 
   uiItemR(layout, &ptr, "use_multiple_levels", 0, "Multiple Levels", ICON_NONE);
 
@@ -384,6 +387,20 @@ static void occlusion_panel_draw(const bContext *C, Panel *panel)
   }
   else {
     uiItemR(layout, &ptr, "level_start", 0, "Level", ICON_NONE);
+  }
+
+  uiItemR(layout, &ptr, "use_transparency", 0, "Transparency", ICON_NONE);
+
+  if (use_transparency) {
+    uiLayout *col = uiLayoutRow(layout, true);
+    uiItemR(col, &ptr, "transparency_mask_0", UI_ITEM_R_TOGGLE, "0", ICON_NONE);
+    uiItemR(col, &ptr, "transparency_mask_1", UI_ITEM_R_TOGGLE, "1", ICON_NONE);
+    uiItemR(col, &ptr, "transparency_mask_2", UI_ITEM_R_TOGGLE, "2", ICON_NONE);
+    uiItemR(col, &ptr, "transparency_mask_3", UI_ITEM_R_TOGGLE, "3", ICON_NONE);
+    uiItemR(col, &ptr, "transparency_mask_4", UI_ITEM_R_TOGGLE, "4", ICON_NONE);
+    uiItemR(col, &ptr, "transparency_mask_5", UI_ITEM_R_TOGGLE, "5", ICON_NONE);
+    uiItemR(col, &ptr, "transparency_mask_6", UI_ITEM_R_TOGGLE, "6", ICON_NONE);
+    uiItemR(col, &ptr, "transparency_mask_7", UI_ITEM_R_TOGGLE, "7", ICON_NONE);
   }
 }
 

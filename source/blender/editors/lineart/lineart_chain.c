@@ -627,12 +627,14 @@ void ED_lineart_chain_split_for_fixed_occlusion(LineartRenderBuffer *rb)
                                    rlci->normal,
                                    rlci->line_type,
                                    fixed_occ,
-                                   rlci->transparency_mask);
+                                   fixed_mask);
         new_rlc->object_ref = rlc->object_ref;
         new_rlc->type = rlc->type;
         rlc = new_rlc;
         fixed_occ = rlci->occlusion;
+        fixed_mask = rlci->transparency_mask;
         rlc->level = fixed_occ;
+        rlc->transparency_mask = fixed_mask;
       }
     }
   }
