@@ -25,7 +25,6 @@
 #include "BKE_node.h"
 
 #include "BLI_map.hh"
-#include "BLI_string_utf8.h"
 
 #include "DNA_node_types.h"
 
@@ -102,11 +101,12 @@ static bool set_img_filepath(Main *bmain, const tex_map_XX &tex_map, bNode *r_no
   }
   if (!tex_image) {
     fprintf(stderr, "Cannot load image file:'%s'\n", tex_map.image_path.c_str());
-    /* Remove quotes from the filename which has now been added to filepath. */
-    std::string no_quote_path{replace_all_occurences(tex_file_path, "\"", "")};
+    /* Remove quotes from the filepath. */
+    std::string no_quote_path{tex_map.mtl_dir_path +
+                              replace_all_occurences(tex_map.image_path, "\"", "")};
     tex_image = BKE_image_load(nullptr, no_quote_path.c_str());
-    fprintf(stderr, "Cannot load image file:'%s'\n", no_quote_path.data());
     if (!tex_image) {
+      fprintf(stderr, "Cannot load image file:'%s'\n", no_quote_path.data());
       std::string no_underscore_path{replace_all_occurences(no_quote_path, "_", " ")};
       tex_image = BKE_image_load(nullptr, no_underscore_path.c_str());
       fprintf(stderr, "Cannot load image file:'%s'\n", no_underscore_path.data());
@@ -211,7 +211,8 @@ void ShaderNodetreeWrap::set_bsdf_socket_values()
  */
 void ShaderNodetreeWrap::add_image_textures(Main *bmain)
 {
-  for (const Map<std::string, tex_map_XX>::Item &texture_map : mtl_mat_->texture_maps.items()) {
+  for (const Map<const std::string, tex_map_XX>::Item &texture_map :
+       mtl_mat_->texture_maps.items()) {
 
     if (texture_map.value.image_path.empty()) {
       /* No Image texture node of this map type to add in this material. */

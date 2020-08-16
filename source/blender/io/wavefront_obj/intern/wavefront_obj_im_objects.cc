@@ -22,14 +22,12 @@
  */
 
 #include "BKE_collection.h"
-#include "BKE_context.h"
-#include "BKE_customdata.h"
-#include "BKE_mesh.h"
-#include "BKE_object.h"
 
 #include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_build.h"
 
+#include "DNA_collection_types.h"
+#include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
 #include "wavefront_obj_im_objects.hh"
@@ -122,15 +120,6 @@ const NurbsElement &Geometry::nurbs_elem() const
 const std::string &Geometry::group() const
 {
   return nurbs_element_.group_;
-}
-
-/**
- * Return a reference to the texture map corresponding to the given ID
- * Caller must ensure that the lookup key given exists in the Map.
- */
-tex_map_XX &MTLMaterial::tex_map_of_type(StringRef map_string)
-{
-  return texture_maps.lookup_as(map_string);
 }
 
 /**

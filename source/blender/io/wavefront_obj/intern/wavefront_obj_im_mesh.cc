@@ -25,6 +25,8 @@
 
 #include "BKE_customdata.h"
 #include "BKE_material.h"
+#include "BKE_mesh.h"
+#include "BKE_object.h"
 #include "BKE_object_deform.h"
 
 #include "BLI_map.hh"
@@ -35,8 +37,6 @@
 #include "DNA_meshdata_types.h"
 
 #include "wavefront_obj_im_mesh.hh"
-#include "wavefront_obj_im_mtl.hh"
-#include "wavefront_obj_im_objects.hh"
 
 namespace blender::io::obj {
 /**
@@ -194,6 +194,11 @@ void MeshFromGeometry::create_materials(Main *bmain,
                                         const Map<std::string, MTLMaterial> &materials)
 {
   for (StringRef material_name : mesh_geometry_.material_names()) {
+    if (!materials.contains_as(material_name)) {
+      std::cerr << "Material named '" << material_name << "' not found in material library."
+                << std::endl;
+      continue;
+    }
     const MTLMaterial &curr_mat = materials.lookup_as(material_name);
     BKE_object_material_slot_add(bmain, blender_object_.get());
     Material *mat = BKE_material_add(bmain, material_name.data());

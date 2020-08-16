@@ -23,7 +23,10 @@
 
 #pragma once
 
+#include <fstream>
+
 #include "IO_wavefront_obj.h"
+#include "wavefront_obj_im_mtl.hh"
 #include "wavefront_obj_im_objects.hh"
 
 namespace blender::io::obj {
@@ -42,6 +45,37 @@ class OBJParser {
   Span<std::string> mtl_libraries() const;
   void print_obj_data(Span<std::unique_ptr<Geometry>> all_geometries,
                       const GlobalVertices &global_vertices);
+};
+
+class TextureMapOptions {
+ private:
+  Map<const std::string, int> tex_map_options;
+
+ public:
+  TextureMapOptions()
+  {
+    tex_map_options.add_new("-blendu", 1);
+    tex_map_options.add_new("-blendv", 1);
+    tex_map_options.add_new("-boost", 1);
+    tex_map_options.add_new("-mm", 2);
+    tex_map_options.add_new("-o", 3);
+    tex_map_options.add_new("-s", 3);
+    tex_map_options.add_new("-t", 3);
+    tex_map_options.add_new("-texres", 1);
+    tex_map_options.add_new("-clamp", 1);
+    tex_map_options.add_new("-bm", 1);
+    tex_map_options.add_new("-imfchan", 1);
+  }
+
+  Map<const std::string, int>::KeyIterator all_options() const
+  {
+    return tex_map_options.keys();
+  }
+
+  int number_of_args(std::string_view option) const
+  {
+    return tex_map_options.lookup_as(std::string(option));
+  }
 };
 
 class MTLParser {

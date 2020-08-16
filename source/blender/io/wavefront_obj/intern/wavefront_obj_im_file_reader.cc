@@ -24,8 +24,6 @@
 #include <fstream>
 #include <iostream>
 
-#include "BKE_context.h"
-
 #include "BLI_map.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
@@ -442,6 +440,42 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
 }
 
 /**
+ * Skip all texture map options and get the filepath from a "map_" line.
+ */
+static string_view skip_unsupported_options(string_view line)
+{
+  TextureMapOptions map_options;
+  string_view last_option;
+  string_view::size_type last_option_pos = 0;
+
+  /* Find the last texture map option. */
+  for (string_view option : map_options.all_options()) {
+    string_view::size_type pos{line.find(option)};
+    if (pos != string_view::npos && pos > last_option_pos) {
+      last_option = option;
+      last_option_pos = pos;
+    }
+  }
+
+  if (last_option.empty()) {
+    /* No option found, line is the filepath */
+    return line;
+  }
+
+  /* Remove upto start of the last option + size of the last option + space after it. */
+  line.remove_prefix(last_option_pos + last_option.size() + 1);
+  for (int i = 0; i < map_options.number_of_args(last_option); i++) {
+    string_view::size_type pos_space{line.find_first_of(' ')};
+    if (pos_space != string_view::npos) {
+      BLI_assert(pos_space + 1 < line.size());
+      line.remove_prefix(pos_space + 1);
+    }
+  }
+
+  return line;
+}
+
+/**
  * Return a list of all material library filepaths referenced by the OBJ file.
  */
 Span<std::string> OBJParser::mtl_libraries() const
@@ -472,6 +506,7 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
 
   string line;
   MTLMaterial *current_mtlmaterial = nullptr;
+
   while (std::getline(mtl_file_, line)) {
     string_view line_key{}, rest_line{};
     split_line_key_rest(line, line_key, rest_line);
@@ -480,6 +515,9 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
     }
 
     if (line_key == "newmtl") {
+      if (mtl_materials.remove_as(rest_line)) {
+        fprintf(stderr, "Duplicate material name found, using the new one.\n");
+      }
       current_mtlmaterial = &mtl_materials.lookup_or_add_default_as(string(rest_line));
     }
     else if (line_key == "Ns") {
@@ -518,6 +556,7 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
     else if (line_key.find("map_") != string::npos) {
       if (!current_mtlmaterial->texture_maps.contains_as(string(line_key))) {
         /* No supported texture map found. */
+        std::cout << "Texture map type not supported:'" << line_key << "'" << std::endl;
         continue;
       }
       tex_map_XX &tex_map = current_mtlmaterial->texture_maps.lookup(string(line_key));
@@ -547,7 +586,9 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
             str_map_xx_split[pos_bm + 1], 0.0f, current_mtlmaterial->map_Bump_strength);
       }
 
-      tex_map.image_path = str_map_xx_split.last();
+      /* Skip all unsupported options and arguments. */
+      tex_map.image_path = string(skip_unsupported_options(rest_line));
+      std::cout << tex_map.image_path << std::endl;
       tex_map.mtl_dir_path = mtl_dir_path_;
     }
   }
