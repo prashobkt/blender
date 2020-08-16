@@ -556,7 +556,7 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
     else if (line_key.find("map_") != string::npos) {
       if (!current_mtlmaterial->texture_maps.contains_as(string(line_key))) {
         /* No supported texture map found. */
-        std::cout << "Texture map type not supported:'" << line_key << "'" << std::endl;
+        std::cerr << "Texture map type not supported:'" << line_key << "'" << std::endl;
         continue;
       }
       tex_map_XX &tex_map = current_mtlmaterial->texture_maps.lookup(string(line_key));
@@ -588,7 +588,6 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
 
       /* Skip all unsupported options and arguments. */
       tex_map.image_path = string(skip_unsupported_options(rest_line));
-      std::cout << tex_map.image_path << std::endl;
       tex_map.mtl_dir_path = mtl_dir_path_;
     }
   }

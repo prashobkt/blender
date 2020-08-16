@@ -25,8 +25,9 @@
 
 #include "DNA_meshdata_types.h"
 
-#include "IO_wavefront_obj.h"
 #include "BLI_vector.hh"
+
+#include "IO_wavefront_obj.h"
 
 namespace blender::io::obj {
 class OBJMesh;

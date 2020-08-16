@@ -37,7 +37,6 @@
 #include "wavefront_obj_ex_mtl.hh"
 #include "wavefront_obj_im_mtl.hh"
 
-
 namespace blender::io::obj {
 
 /**

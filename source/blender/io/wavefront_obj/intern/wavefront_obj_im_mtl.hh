@@ -23,8 +23,6 @@
 
 #pragma once
 
-//#include <memory>
-
 #include "MEM_guardedalloc.h"
 
 #include "DNA_node_types.h"

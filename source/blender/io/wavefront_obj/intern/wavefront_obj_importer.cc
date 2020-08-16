@@ -28,7 +28,6 @@
 #include "BLI_map.hh"
 #include "BLI_string_ref.hh"
 
-
 #include "wavefront_obj_im_file_reader.hh"
 #include "wavefront_obj_im_mesh.hh"
 #include "wavefront_obj_im_nurbs.hh"

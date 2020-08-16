@@ -30,11 +30,10 @@
 #include "BLI_float3.hh"
 #include "BLI_vector.hh"
 
-#include "DNA_object_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_object_types.h"
 
 #include "wavefront_obj_ex_file_writer.hh"
-
 
 namespace blender::io::obj {
 
