@@ -98,4 +98,16 @@ class OBJWriter {
                                     Span<uint> normal_indices,
                                     const MPoly &poly_to_write) const;
 };
+
+class MTLWriter {
+ private:
+  FILE *mtl_outfile_;
+  char mtl_filepath_[FILE_MAX];
+
+ public:
+  MTLWriter(const char *obj_filepath);
+  ~MTLWriter();
+
+  void append_materials(const OBJMesh &mesh_to_export);
+};
 }  // namespace blender::io::obj

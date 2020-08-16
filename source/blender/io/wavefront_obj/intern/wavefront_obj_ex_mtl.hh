@@ -28,12 +28,11 @@
 #include "BLI_path_util.h"
 
 #include "wavefront_obj_ex_mesh.hh"
+#include "wavefront_obj_im_mtl.hh"
 
 namespace blender::io::obj {
-class MTLWriter {
+class MaterialWrap {
  private:
-  FILE *mtl_outfile_;
-  char mtl_filepath_[FILE_MAX];
   /**
    * One of the object's materials, to be exported.
    */
@@ -44,13 +43,11 @@ class MTLWriter {
   bNode *bsdf_node_;
 
  public:
-  MTLWriter(const char *obj_filepath);
-  ~MTLWriter();
-
-  void append_materials(const OBJMesh &mesh_to_export);
+  MaterialWrap(const OBJMesh &obj_mesh_data, Vector<MTLMaterial> &r_mtl_materials);
 
  private:
-  void init_bsdf_node(const char *object_name);
-  void write_curr_material(const char *object_name);
+  void init_bsdf_node(StringRefNull object_name);
+  void store_bsdf_properties(MTLMaterial &r_mtl_mat) const;
+  void store_image_textures(MTLMaterial &r_mtl_mat) const;
 };
 }  // namespace blender::io::obj

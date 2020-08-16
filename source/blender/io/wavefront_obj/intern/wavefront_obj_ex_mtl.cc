@@ -89,7 +89,7 @@ static void copy_property_from_node(MutableSpan<float> r_property,
 static void linked_sockets_to_dest_id(Vector<const nodes::OutputSocketRef *> &r_linked_sockets,
                                       const bNode *dest_node,
                                       nodes::NodeTreeRef &node_tree,
-                                      const char *dest_socket_id)
+                                      StringRefNull dest_socket_id)
 {
   if (!dest_node) {
     return;
@@ -98,7 +98,7 @@ static void linked_sockets_to_dest_id(Vector<const nodes::OutputSocketRef *> &r_
   Span<const nodes::InputSocketRef *> dest_inputs = object_dest_nodes.first()->inputs();
   const nodes::InputSocketRef *dest_socket = nullptr;
   for (const nodes::InputSocketRef *curr_socket : dest_inputs) {
-    if (STREQ(curr_socket->bsocket()->identifier, dest_socket_id)) {
+    if (STREQ(curr_socket->bsocket()->identifier, dest_socket_id.data())) {
       dest_socket = curr_socket;
       break;
     }
@@ -157,26 +157,16 @@ static const char *get_image_filepath(const bNode *tex_node)
   return nullptr;
 }
 
-MTLWriter::MTLWriter(const char *obj_filepath)
-{
-  BLI_strncpy(mtl_filepath_, obj_filepath, FILE_MAX);
-  BLI_path_extension_replace(mtl_filepath_, FILE_MAX, ".mtl");
-  /* File is opened when a material is appended. */
-}
-
-MTLWriter::~MTLWriter()
-{
-  fclose(mtl_outfile_);
-}
-
 /**
  * Find the Principled-BSDF from the object's node tree & initialise class member.
  */
-void MTLWriter::init_bsdf_node(const char *object_name)
+void MaterialWrap::init_bsdf_node(StringRefNull object_name)
 {
+  BLI_assert(export_mtl_);
   if (!export_mtl_->use_nodes) {
-    fprintf(
-        stderr, "No Principled-BSDF node found in the material node tree of: %s.\n", object_name);
+    fprintf(stderr,
+            "No Principled-BSDF node found in the material node tree of: %s.\n",
+            object_name.data());
     bsdf_node_ = nullptr;
     return;
   }
@@ -187,17 +177,14 @@ void MTLWriter::init_bsdf_node(const char *object_name)
       return;
     }
   }
-  fprintf(
-      stderr, "No Principled-BSDF node found in the material node tree of: %s.\n", object_name);
+  fprintf(stderr,
+          "No Principled-BSDF node found in the material node tree of: %s.\n",
+          object_name.data());
   bsdf_node_ = nullptr;
 }
 
-void MTLWriter::write_curr_material(const char *object_name)
+void MaterialWrap::store_bsdf_properties(MTLMaterial &r_mtl_mat) const
 {
-  fprintf(mtl_outfile_, "\nnewmtl %s\n", export_mtl_->id.name + 2);
-
-  init_bsdf_node(object_name);
-
   /* Empirical, and copied from original python exporter. */
   float spec_exponent = (1.0f - export_mtl_->roughness) * 30;
   spec_exponent *= spec_exponent;
@@ -238,36 +225,52 @@ void MTLWriter::write_curr_material(const char *object_name)
     /* Transparency: Glass on, Reflection: Ray trace off */
     illum = 9;
   }
+  r_mtl_mat.Ns = spec_exponent;
+  r_mtl_mat.Ka = {metallic, metallic, metallic};
+  r_mtl_mat.Kd = diffuse_col;
+  r_mtl_mat.Ks = {specular, specular, specular};
+  r_mtl_mat.Ke = emission_col;
+  r_mtl_mat.Ni = refraction_index;
+  r_mtl_mat.d = dissolved;
+  r_mtl_mat.illum = illum;
+}
 
-  fprintf(mtl_outfile_, "Ns %.6f\n", spec_exponent);
-  fprintf(mtl_outfile_, "Ka %.6f %.6f %.6f\n", metallic, metallic, metallic);
-  fprintf(mtl_outfile_, "Kd %.6f %.6f %.6f\n", diffuse_col[0], diffuse_col[1], diffuse_col[2]);
-  fprintf(mtl_outfile_, "Ks %0.6f %0.6f %0.6f\n", specular, specular, specular);
-  fprintf(
-      mtl_outfile_, "Ke %0.6f %0.6f %0.6f\n", emission_col[0], emission_col[1], emission_col[2]);
-  fprintf(mtl_outfile_, "Ni %0.6f\n", refraction_index);
-  fprintf(mtl_outfile_, "d %.6f\n", dissolved);
-  fprintf(mtl_outfile_, "illum %d\n", illum);
-
-  /* Image Textures. */
-  Map<const std::string, const std::string> texture_map_types;
-  texture_map_types.add("map_Kd", "Base Color");
-  texture_map_types.add("map_Ks", "Specular");
-  texture_map_types.add("map_Ns", "Roughness");
-  texture_map_types.add("map_d", "Alpha");
-  texture_map_types.add("map_refl", "Metallic");
-  texture_map_types.add("map_Ke", "Emission");
-
+void MaterialWrap::store_image_textures(MTLMaterial &r_mtl_mat) const
+{
   /* Need to create a NodeTreeRef for a faster way to find linked sockets, as opposed to
    * looping over all the links in a node tree to match two sockets of our interest. */
   nodes::NodeTreeRef node_tree(export_mtl_->nodetree);
-  Vector<const nodes::OutputSocketRef *> linked_sockets;
 
-  for (Map<const std::string, const std::string>::Item map_type_id : texture_map_types.items()) {
-    /* Find sockets linked to the destination socket of interest, in p-bsdf node. */
-    linked_sockets_to_dest_id(linked_sockets, bsdf_node_, node_tree, map_type_id.value.c_str());
+  /* Normal Map Texture has two extra tasks of:
+   * - finding a Normal Map node before finding a texture node.
+   * - finding "Strength" property of the node for `-bm` option.
+   */
+
+  for (Map<const std::string, tex_map_XX>::MutableItem texture_map :
+       r_mtl_mat.texture_maps.items()) {
+    Vector<const nodes::OutputSocketRef *> linked_sockets;
+    const bNode *normal_map_node{nullptr};
+
+    if (texture_map.key == "map_Bump") {
+      /* Find sockets linked to destination "Normal" socket in p-bsdf node. */
+      linked_sockets_to_dest_id(linked_sockets, bsdf_node_, node_tree, "Normal");
+      /* Among the linked sockets, find Normal Map shader node. */
+      normal_map_node = get_node_of_type(linked_sockets, SH_NODE_NORMAL_MAP);
+
+      /* Find sockets linked to "Color" socket in normal map node. */
+      linked_sockets_to_dest_id(linked_sockets, normal_map_node, node_tree, "Color");
+    }
+    else {
+      /* Find sockets linked to the destination socket of interest, in p-bsdf node. */
+      linked_sockets_to_dest_id(
+          linked_sockets, bsdf_node_, node_tree, texture_map.value.dest_socket_id);
+    }
+
     /* Among the linked sockets, find Image Texture shader node. */
     const bNode *tex_node{get_node_of_type(linked_sockets, SH_NODE_TEX_IMAGE)};
+    if (!tex_node) {
+      continue;
+    }
 
     /* Find "Mapping" node if connected to texture node. */
     linked_sockets_to_dest_id(linked_sockets, tex_node, node_tree, "Vector");
@@ -275,82 +278,41 @@ void MTLWriter::write_curr_material(const char *object_name)
 
     /* Texture transform options. Only translation (origin offset, "-o") and scale
      * ("-o") are supported. */
-    float map_translation[3] = {0.0f, 0.0f, 0.0f};
-    float map_scale[3] = {1.0f, 1.0f, 1.0f};
+    float3 map_translation = {0.0f, 0.0f, 0.0f};
+    float3 map_scale = {1.0f, 1.0f, 1.0f};
+    float normal_map_strength = -1.0f;
+    if (normal_map_node) {
+      copy_property_from_node({&normal_map_strength, 1}, SOCK_FLOAT, normal_map_node, "Strength");
+    }
     copy_property_from_node({map_translation, 3}, SOCK_VECTOR, mapping, "Location");
     copy_property_from_node({map_scale, 3}, SOCK_VECTOR, mapping, "Scale");
-
     const char *tex_image_filepath = get_image_filepath(tex_node);
-    if (tex_image_filepath) {
-      fprintf(mtl_outfile_,
-              "%s -o %.6f %.6f %.6f -s %.6f %.6f %.6f %s\n",
-              map_type_id.key.c_str(),
-              map_translation[0],
-              map_translation[1],
-              map_translation[2],
-              map_scale[0],
-              map_scale[1],
-              map_scale[2],
-              tex_image_filepath);
+    if (!tex_image_filepath) {
+      continue;
     }
-  }
 
-  /* Normal Map Texture has two extra tasks of:
-   * - finding a Normal Map node before finding a texture node.
-   * - finding "Strength" property of the node for `-bm` option.
-   */
-
-  /* Find sockets linked to destination "Normal" socket in p-bsdf node. */
-  linked_sockets_to_dest_id(linked_sockets, bsdf_node_, node_tree, "Normal");
-  /* Among the linked sockets, find Normal Map shader node. */
-  const bNode *normal_map_node = get_node_of_type(linked_sockets, SH_NODE_NORMAL_MAP);
-
-  /* Find sockets linked to "Color" socket in normal map node. */
-  linked_sockets_to_dest_id(linked_sockets, normal_map_node, node_tree, "Color");
-  /* Among the linked sockets, find Image Texture shader node. */
-  const bNode *tex_node{get_node_of_type(linked_sockets, SH_NODE_TEX_IMAGE)};
-
-  /* Find "Mapping" node if connected to the texture node. */
-  linked_sockets_to_dest_id(linked_sockets, tex_node, node_tree, "Vector");
-  const bNode *mapping = get_node_of_type(linked_sockets, SH_NODE_MAPPING);
-
-  float map_translation[3] = {0.0f, 0.0f, 0.0f};
-  float map_scale[3] = {1.0f, 1.0f, 1.0f};
-  float normal_map_strength = 1.0f;
-  copy_property_from_node({map_translation, 3}, SOCK_VECTOR, mapping, "Location");
-  copy_property_from_node({map_scale, 3}, SOCK_VECTOR, mapping, "Scale");
-  copy_property_from_node({&normal_map_strength, 1}, SOCK_FLOAT, normal_map_node, "Strength");
-
-  const char *tex_image_filepath = get_image_filepath(tex_node);
-  if (tex_image_filepath) {
-    fprintf(mtl_outfile_,
-            "map_Bump -o %.6f %.6f %.6f -s %.6f %.6f %.6f -bm %.6f %s\n",
-            map_translation[0],
-            map_translation[1],
-            map_translation[2],
-            map_scale[0],
-            map_scale[1],
-            map_scale[2],
-            normal_map_strength,
-            tex_image_filepath);
+    texture_map.value.scale = map_scale;
+    texture_map.value.translation = map_translation;
+    texture_map.value.image_path = tex_image_filepath;
+    r_mtl_mat.map_Bump_strength = normal_map_strength;
   }
 }
 
 /**
  * Append an object's materials to the .mtl file.
  */
-void MTLWriter::append_materials(const OBJMesh &mesh_to_export)
+MaterialWrap::MaterialWrap(const OBJMesh &obj_mesh_data, Vector<MTLMaterial> &r_mtl_materials)
 {
-  mtl_outfile_ = fopen(mtl_filepath_, "a");
-  if (!mtl_outfile_) {
-    fprintf(stderr, "Error in opening file at %s\n", mtl_filepath_);
-    return;
-  }
-
-  const char *object_name = mesh_to_export.get_object_name();
-  for (short curr_mat = 0; curr_mat < mesh_to_export.tot_col(); curr_mat++) {
-    export_mtl_ = mesh_to_export.get_object_material(curr_mat + 1);
-    write_curr_material(object_name);
+  r_mtl_materials.resize(obj_mesh_data.tot_col());
+  for (short i = 0; i < obj_mesh_data.tot_col(); i++) {
+    export_mtl_ = obj_mesh_data.get_object_material(i + 1);
+    if (!export_mtl_) {
+      continue;
+    }
+    r_mtl_materials[i].name = obj_mesh_data.get_object_material_name(i + 1);
+    init_bsdf_node(obj_mesh_data.get_object_name());
+    store_bsdf_properties(r_mtl_materials[i]);
+    store_image_textures(r_mtl_materials[i]);
   }
 }
 }  // namespace blender::io::obj

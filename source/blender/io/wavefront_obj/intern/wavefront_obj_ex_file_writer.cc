@@ -29,6 +29,8 @@
 #include "DNA_object_types.h"
 
 #include "wavefront_obj_ex_file_writer.hh"
+#include "wavefront_obj_ex_mtl.hh"
+#include "wavefront_obj_im_mtl.hh"
 
 namespace blender::io::obj {
 
@@ -418,5 +420,79 @@ void OBJWriter::update_index_offsets(const OBJMesh &obj_mesh_data)
   index_offset_[VERTEX_OFF] += obj_mesh_data.tot_vertices();
   index_offset_[UV_VERTEX_OFF] += obj_mesh_data.tot_uv_vertices();
   index_offset_[NORMAL_OFF] += obj_mesh_data.tot_polygons();
+}
+
+MTLWriter::MTLWriter(const char *obj_filepath)
+{
+  BLI_strncpy(mtl_filepath_, obj_filepath, FILE_MAX);
+  BLI_path_extension_replace(mtl_filepath_, FILE_MAX, ".mtl");
+}
+
+MTLWriter::~MTLWriter()
+{
+  fclose(mtl_outfile_);
+}
+
+void MTLWriter::append_materials(const OBJMesh &mesh_to_export)
+{
+  mtl_outfile_ = fopen(mtl_filepath_, "a");
+  if (!mtl_outfile_) {
+    fprintf(stderr, "Error in opening file at %s\n", mtl_filepath_);
+    return;
+  }
+  Vector<MTLMaterial> mtl_materials;
+  MaterialWrap mat_wrap(mesh_to_export, mtl_materials);
+
+  for (const MTLMaterial &mtl_material : mtl_materials) {
+    fprintf(mtl_outfile_, "\nnewmtl %s\n", mtl_material.name.c_str());
+    fprintf(mtl_outfile_, "Ns %.6f\n", mtl_material.Ns);
+    fprintf(mtl_outfile_,
+            "Ka %.6f %.6f %.6f\n",
+            mtl_material.Ka[0],
+            mtl_material.Ka[1],
+            mtl_material.Ka[2]);
+    fprintf(mtl_outfile_,
+            "Kd %.6f %.6f %.6f\n",
+            mtl_material.Kd[0],
+            mtl_material.Kd[1],
+            mtl_material.Kd[2]);
+    fprintf(mtl_outfile_,
+            "Ks %0.6f %0.6f %0.6f\n",
+            mtl_material.Ks[0],
+            mtl_material.Ks[0],
+            mtl_material.Ks[0]);
+    fprintf(mtl_outfile_,
+            "Ke %0.6f %0.6f %0.6f\n",
+            mtl_material.Ke[0],
+            mtl_material.Ke[1],
+            mtl_material.Ke[2]);
+    fprintf(mtl_outfile_,
+            "Ni %0.6f\nd %.6f\nillum %d\n",
+            mtl_material.Ni,
+            mtl_material.d,
+            mtl_material.illum);
+    for (const Map<const std::string, tex_map_XX>::Item &texture_map :
+         mtl_material.texture_maps.items()) {
+      if (texture_map.value.image_path.empty()) {
+        continue;
+      }
+      std::string map_bump_strength{"", 12};
+      if (texture_map.key == "map_Bump" && mtl_material.map_Bump_strength > -0.9f) {
+        map_bump_strength = " -bm " + std::to_string(mtl_material.map_Bump_strength);
+      }
+      /* Always keep only one space between options. map_Bump string has its leading space. */
+      fprintf(mtl_outfile_,
+              "%s -o %.6f %.6f %.6f -s %.6f %.6f %.6f%s %s\n",
+              texture_map.key.c_str(),
+              texture_map.value.translation[0],
+              texture_map.value.translation[1],
+              texture_map.value.translation[2],
+              texture_map.value.scale[0],
+              texture_map.value.scale[1],
+              texture_map.value.scale[2],
+              map_bump_strength.c_str(),
+              texture_map.value.image_path.c_str());
+    }
+  }
 }
 }  // namespace blender::io::obj
