@@ -186,27 +186,12 @@ static void get_element_operation_type(
   }
 }
 
-static void set_operation_types(SpaceOutliner *space_outliner,
-                                ListBase *lb,
-                                int *scenelevel,
-                                int *objectlevel,
-                                int *idlevel,
-                                int *datalevel)
-{
-  LISTBASE_FOREACH (TreeElement *, te, lb) {
-    get_element_operation_type(te, scenelevel, objectlevel, idlevel, datalevel);
-
-    TreeStoreElem *tselem = TREESTORE(te);
-    if (TSELEM_OPEN(tselem, space_outliner)) {
-      set_operation_types(
-          space_outliner, &te->subtree, scenelevel, objectlevel, idlevel, datalevel);
-    }
-  }
-}
-
 static TreeElement *get_target_element(SpaceOutliner *space_outliner)
 {
-  return outliner_find_element_with_flag(&space_outliner->tree, TSE_ACTIVE);
+  TreeElement *te = outliner_find_element_with_flag(&space_outliner->tree, TSE_ACTIVE);
+  BLI_assert(te);
+
+  return te;
 }
 
 static void unlink_action_fn(bContext *C,
@@ -1741,10 +1726,6 @@ static int outliner_id_operation_exec(bContext *C, wmOperator *op)
   }
 
   TreeElement *te = get_target_element(space_outliner);
-  if (!te) {
-    return OPERATOR_CANCELLED;
-  }
-
   get_element_operation_type(te, &scenelevel, &objectlevel, &idlevel, &datalevel);
 
   eOutlinerIdOpTypes event = RNA_enum_get(op->ptr, "type");
@@ -2050,18 +2031,16 @@ static int outliner_lib_operation_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
   int scenelevel = 0, objectlevel = 0, idlevel = 0, datalevel = 0;
-  eOutlinerLibOpTypes event;
 
   /* check for invalid states */
   if (space_outliner == NULL) {
     return OPERATOR_CANCELLED;
   }
 
-  set_operation_types(
-      space_outliner, &space_outliner->tree, &scenelevel, &objectlevel, &idlevel, &datalevel);
+  TreeElement *te = get_target_element(space_outliner);
+  get_element_operation_type(te, &scenelevel, &objectlevel, &idlevel, &datalevel);
 
-  event = RNA_enum_get(op->ptr, "type");
-
+  eOutlinerLibOpTypes event = RNA_enum_get(op->ptr, "type");
   switch (event) {
     case OL_LIB_RENAME: {
       outliner_do_libdata_operation(
@@ -2183,8 +2162,9 @@ static int outliner_action_set_exec(bContext *C, wmOperator *op)
   if (space_outliner == NULL) {
     return OPERATOR_CANCELLED;
   }
-  set_operation_types(
-      space_outliner, &space_outliner->tree, &scenelevel, &objectlevel, &idlevel, &datalevel);
+
+  TreeElement *te = get_target_element(space_outliner);
+  get_element_operation_type(te, &scenelevel, &objectlevel, &idlevel, &datalevel);
 
   /* get action to use */
   act = BLI_findlink(&bmain->actions, RNA_enum_get(op->ptr, "action"));
@@ -2291,22 +2271,21 @@ static int outliner_animdata_operation_exec(bContext *C, wmOperator *op)
   wmWindowManager *wm = CTX_wm_manager(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
   int scenelevel = 0, objectlevel = 0, idlevel = 0, datalevel = 0;
-  eOutliner_AnimDataOps event;
 
   /* check for invalid states */
   if (space_outliner == NULL) {
     return OPERATOR_CANCELLED;
   }
 
-  event = RNA_enum_get(op->ptr, "type");
-  set_operation_types(
-      space_outliner, &space_outliner->tree, &scenelevel, &objectlevel, &idlevel, &datalevel);
+  TreeElement *te = get_target_element(space_outliner);
+  get_element_operation_type(te, &scenelevel, &objectlevel, &idlevel, &datalevel);
 
   if (datalevel != TSE_ANIM_DATA) {
     return OPERATOR_CANCELLED;
   }
 
   /* perform the core operation */
+  eOutliner_AnimDataOps event = RNA_enum_get(op->ptr, "type");
   switch (event) {
     case OUTLINER_ANIMOP_CLEAR_ADT:
       /* Remove Animation Data - this may remove the active action, in some cases... */
@@ -2493,17 +2472,16 @@ static int outliner_data_operation_exec(bContext *C, wmOperator *op)
 {
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
   int scenelevel = 0, objectlevel = 0, idlevel = 0, datalevel = 0;
-  eOutliner_PropDataOps event;
 
   /* check for invalid states */
   if (space_outliner == NULL) {
     return OPERATOR_CANCELLED;
   }
 
-  event = RNA_enum_get(op->ptr, "type");
-  set_operation_types(
-      space_outliner, &space_outliner->tree, &scenelevel, &objectlevel, &idlevel, &datalevel);
+  TreeElement *te = get_target_element(space_outliner);
+  get_element_operation_type(te, &scenelevel, &objectlevel, &idlevel, &datalevel);
 
+  eOutliner_PropDataOps event = RNA_enum_get(op->ptr, "type");
   switch (datalevel) {
     case TSE_POSE_CHANNEL: {
       outliner_do_data_operation(
