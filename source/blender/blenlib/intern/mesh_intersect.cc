@@ -40,7 +40,7 @@
 
 #  include "BLI_mesh_intersect.hh"
 
-// #define PERFDEBUG
+// #  define PERFDEBUG
 
 namespace blender::meshintersect {
 
@@ -53,7 +53,7 @@ static void dump_perfdata(void);
 #  endif
 
 /* For debugging, can disable threading in intersect code with this static constant. */
-static constexpr bool intersect_use_threading = true;
+static constexpr bool intersect_use_threading = false; /*DEBUG!!*/
 
 Vert::Vert(const mpq3 &mco, const double3 &dco, int id, int orig)
     : co_exact(mco), co(dco), id(id), orig(orig)
@@ -1786,7 +1786,7 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
 {
   constexpr int dbg_level = 0;
 #  ifdef PERFDEBUG
-  incperfcount(2); /* Intersect_tri_tri calls. */
+  incperfcount(1); /* Intersect_tri_tri calls. */
 #  endif
   const Face &tri1 = *tm.face(t1);
   const Face &tri2 = *tm.face(t2);
@@ -1831,7 +1831,7 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
   int sr1 = filter_plane_side(d_r1, d_r2, d_n2, abs_d_r1, abs_d_r2, abs_d_n2);
   if ((sp1 > 0 && sq1 > 0 && sr1 > 0) || (sp1 < 0 && sq1 < 0 && sr1 < 0)) {
 #  ifdef PERFDEBUG
-    incperfcount(3); /* Tri tri intersects decided by filter plane tests. */
+    incperfcount(2); /* Tri tri intersects decided by filter plane tests. */
 #  endif
     if (dbg_level > 0) {
       std::cout << "no intersection, all t1's verts above or below t2\n";
@@ -1849,7 +1849,7 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
   int sr2 = filter_plane_side(d_r2, d_r1, d_n1, abs_d_r2, abs_d_r1, abs_d_n1);
   if ((sp2 > 0 && sq2 > 0 && sr2 > 0) || (sp2 < 0 && sq2 < 0 && sr2 < 0)) {
 #  ifdef PERFDEBUG
-    incperfcount(3); /* Tri tri intersects decided by filter plane tests. */
+    incperfcount(2); /* Tri tri intersects decided by filter plane tests. */
 #  endif
     if (dbg_level > 0) {
       std::cout << "no intersection, all t2's verts above or below t1\n";
@@ -1884,7 +1884,7 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
       std::cout << "no intersection, all t1's verts above or below t2 (exact)\n";
     }
 #  ifdef PERFDEBUG
-    incperfcount(4); /* Tri tri interects decided by exact plane tests. */
+    incperfcount(3); /* Tri tri interects decided by exact plane tests. */
 #  endif
     return ITT_value(INONE);
   }
@@ -1910,7 +1910,7 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
       std::cout << "no intersection, all t2's verts above or below t1 (exact)\n";
     }
 #  ifdef PERFDEBUG
-    incperfcount(4); /* Tri tri interects decided by exact plane tests. */
+    incperfcount(3); /* Tri tri interects decided by exact plane tests. */
 #  endif
     return ITT_value(INONE);
   }
@@ -1980,7 +1980,7 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
 
 #  ifdef PERFDEBUG
   if (ans.kind != INONE) {
-    incperfcount(5);
+    incperfcount(4);
   }
 #  endif
   return ans;
@@ -2153,8 +2153,8 @@ static void do_cdt(CDT_data &cd)
   if (dbg_level > 0) {
     std::cout << "CDT input\nVerts:\n";
     for (int i : cdt_in.vert.index_range()) {
-      std::cout << "v" << i << ": " << cdt_in.vert[i] << "=("
-                << cdt_in.vert[i][0].get_d() << "," << cdt_in.vert[i][1].get_d() << ")\n";
+      std::cout << "v" << i << ": " << cdt_in.vert[i] << "=(" << cdt_in.vert[i][0].get_d() << ","
+                << cdt_in.vert[i][1].get_d() << ")\n";
     }
     std::cout << "Edges:\n";
     for (int i : cdt_in.edge.index_range()) {
@@ -2175,8 +2175,8 @@ static void do_cdt(CDT_data &cd)
   if (dbg_level > 0) {
     std::cout << "\nCDT result\nVerts:\n";
     for (int i : cd.cdt_out.vert.index_range()) {
-      std::cout << "v" << i << ": " << cd.cdt_out.vert[i] << "=("
-                << cd.cdt_out.vert[i][0].get_d() << "," << cd.cdt_out.vert[i][1].get_d() << "\n";
+      std::cout << "v" << i << ": " << cd.cdt_out.vert[i] << "=(" << cd.cdt_out.vert[i][0].get_d()
+                << "," << cd.cdt_out.vert[i][1].get_d() << "\n";
     }
     std::cout << "Tris\n";
     for (int f : cd.cdt_out.face.index_range()) {
@@ -2568,7 +2568,7 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
         OverlapTriRange range = {t, overlap_index, len};
         data.overlap_tri_range.append(range);
 #  ifdef PERFDEBUG
-        bumpperfcount(0, len); /* Overlaps. */
+        bumpperfcount(0, len); /* Non-cluster overlaps. */
 #  endif
       }
     }
@@ -2606,6 +2606,9 @@ static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
       }
       for (const int t : cl) {
         ITT_value itt = intersect_tri_tri(tm, t, t_other);
+#  ifdef PERFDEBUG
+        incperfcount(5); /* intersect_tri_tri calls from calc_cluster_subdivided. */
+#  endif
         if (dbg_level > 0) {
           std::cout << "intersect tri " << t << " with tri " << t_other << " = " << itt << "\n";
         }
@@ -2729,30 +2732,29 @@ static CoplanarClusterInfo find_clusters(const Mesh &tm, const Array<BoundingBox
 
 static bool face_is_degenerate(Facep f)
 {
-    const Face &face = *f;
-    Vertp v0 = face[0];
-    Vertp v1 = face[1];
-    Vertp v2 = face[2];
-    if (v0 == v1 || v0 == v2 || v1 == v2) {
-      return true;
-    }
-    double3 da = v2->co - v0->co;
-    double3 db = v2->co - v1->co;
-    double3 dab = double3::cross_high_precision(da, db);
-    double dab_length_squared = dab.length_squared();
-    double err_bound = supremum_dot_cross(dab, dab) * index_dot_cross * DBL_EPSILON;
-    if (dab_length_squared > err_bound) {
-      return false;
-    }
-    mpq3 a = v2->co_exact - v0->co_exact;
-    mpq3 b = v2->co_exact - v1->co_exact;
-    mpq3 ab = mpq3::cross(a, b);
-    if (ab.x == 0 && ab.y == 0 && ab.z == 0) {
-      return true;
-    }
+  const Face &face = *f;
+  Vertp v0 = face[0];
+  Vertp v1 = face[1];
+  Vertp v2 = face[2];
+  if (v0 == v1 || v0 == v2 || v1 == v2) {
+    return true;
+  }
+  double3 da = v2->co - v0->co;
+  double3 db = v2->co - v1->co;
+  double3 dab = double3::cross_high_precision(da, db);
+  double dab_length_squared = dab.length_squared();
+  double err_bound = supremum_dot_cross(dab, dab) * index_dot_cross * DBL_EPSILON;
+  if (dab_length_squared > err_bound) {
+    return false;
+  }
+  mpq3 a = v2->co_exact - v0->co_exact;
+  mpq3 b = v2->co_exact - v1->co_exact;
+  mpq3 ab = mpq3::cross(a, b);
+  if (ab.x == 0 && ab.y == 0 && ab.z == 0) {
+    return true;
+  }
 
   return false;
-
 }
 
 /* Does TriMesh tm have any triangles with zero area? */
@@ -2962,27 +2964,27 @@ static void perfdata_init(void)
 {
   /* count 0. */
   perfdata.count.append(0);
-  perfdata.count_name.append("overlaps");
+  perfdata.count_name.append("Non-cluster overlaps");
 
   /* count 1. */
   perfdata.count.append(0);
-  perfdata.count_name.append("early discovery of trivial intersects");
+  perfdata.count_name.append("intersect_tri_tri calls");
 
   /* count 2. */
   perfdata.count.append(0);
-  perfdata.count_name.append("intersect_tri_tri calls");
+  perfdata.count_name.append("tri tri intersects decided by filter plane tests");
 
   /* count 3. */
   perfdata.count.append(0);
-  perfdata.count_name.append("tri tri intersects decided by filter plane tests");
+  perfdata.count_name.append("tri tri intersects decided by exact plane tests");
 
   /* count 4. */
   perfdata.count.append(0);
-  perfdata.count_name.append("tri tri intersects decided by exact plane tests");
+  perfdata.count_name.append("final non-NONE intersects");
 
   /* count 5. */
   perfdata.count.append(0);
-  perfdata.count_name.append("final non-NONE intersects");
+  perfdata.count_name.append("intersect_tri_tri calls from calc_cluster_subdivided");
 
   /* max 0. */
   perfdata.max.append(0);
