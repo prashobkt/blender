@@ -59,6 +59,7 @@ typedef struct LineartRenderTriangle {
   /*  struct BMFace *F; */
   short material_id;
   ListBase intersecting_verts;
+  unsigned char transparency_mask;
   char cull_status;
 } LineartRenderTriangle;
 
@@ -92,12 +93,12 @@ typedef struct LineartRenderLineSegment {
   /** Occlusion level after "at" point */
   unsigned char occlusion;
 
-  /** For determining lines beind a glass window material. (TODO: implement this)
+  /** For determining lines beind a glass window material.
    *  the size of this variable should also be dynamically decided, 1 byte to 8 byte,
    *  allows 8 to 64 materials for "transparent mask". 1 byte (8 materials) should be
    *  enought for most cases.
    */
-  /* short material_mask_mark; */
+  unsigned char transparency_mask;
 } LineartRenderLineSegment;
 
 typedef struct LineartRenderVert {
@@ -141,6 +142,8 @@ typedef struct LineartRenderLineChain {
 
   /** Chain now only contains one type of segments */
   int type;
+  unsigned char transparency_mask;
+
   struct Object *object_ref;
 } LineartRenderLineChain;
 
@@ -153,6 +156,7 @@ typedef struct LineartRenderLineChainItem {
   float normal[3];
   char line_type;
   char occlusion;
+  unsigned char transparency_mask;
 } LineartRenderLineChainItem;
 
 typedef struct LineartChainRegisterEntry {

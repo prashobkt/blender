@@ -85,6 +85,7 @@ const EnumPropertyItem rna_enum_ramp_blend_items[] = {
 
 #  include "ED_gpencil.h"
 #  include "ED_image.h"
+#  include "ED_lineart.h"
 #  include "ED_node.h"
 #  include "ED_screen.h"
 
@@ -123,6 +124,14 @@ static void rna_MaterialGpencil_update(Main *bmain, Scene *scene, PointerRNA *pt
   }
 
   WM_main_add_notifier(NC_GPENCIL | ND_DATA, ma);
+}
+
+static void rna_MaterialLineArt_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  rna_Material_update(bmain, scene, ptr);
+  if (ED_lineart_modifier_sync_flag_check(LRT_SYNC_IDLE)) {
+    ED_lineart_modifier_sync_flag_set(LRT_SYNC_WAITING, 0);
+  }
 }
 
 static void rna_Material_draw_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
@@ -647,6 +656,78 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Is Fill Visible", "True when opacity of fill is set high enough to be visible");
 }
+static void rna_def_material_lineart(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  /* mode type styles */
+  static EnumPropertyItem gpcolordata_mode_types_items[] = {
+      {GP_MATERIAL_MODE_LINE, "LINE", 0, "Line", "Draw strokes using a continuous line"},
+      {GP_MATERIAL_MODE_DOT, "DOTS", 0, "Dots", "Draw strokes using separated dots"},
+      {GP_MATERIAL_MODE_SQUARE, "BOX", 0, "Squares", "Draw strokes using separated squares"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  srna = RNA_def_struct(brna, "MaterialLineArt", NULL);
+  RNA_def_struct_sdna(srna, "MaterialLineArt");
+  RNA_def_struct_ui_text(srna, "Material Line Art", "");
+
+  prop = RNA_def_property(srna, "use_transparency", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_MATERIAL_TRANSPARENCY_ENABLED);
+  RNA_def_property_ui_text(
+      prop, "Use Transparency", "Use transparency mask from this material in Line Art");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialLineArt_update");
+
+  prop = RNA_def_property(srna, "transparency_mask_0", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_sdna(prop, NULL, "transparency_mask", 1 << 0);
+  RNA_def_property_ui_text(prop, "Mask 0", "Mask bit 0");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialLineArt_update");
+
+  prop = RNA_def_property(srna, "transparency_mask_1", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_sdna(prop, NULL, "transparency_mask", 1 << 1);
+  RNA_def_property_ui_text(prop, "Mask 1", "Mask bit 1");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialLineArt_update");
+
+  prop = RNA_def_property(srna, "transparency_mask_2", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_sdna(prop, NULL, "transparency_mask", 1 << 2);
+  RNA_def_property_ui_text(prop, "Mask 2", "Mask bit 2");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialLineArt_update");
+
+  prop = RNA_def_property(srna, "transparency_mask_3", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_sdna(prop, NULL, "transparency_mask", 1 << 3);
+  RNA_def_property_ui_text(prop, "Mask 3", "Mask bit 3");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialLineArt_update");
+
+  prop = RNA_def_property(srna, "transparency_mask_4", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_sdna(prop, NULL, "transparency_mask", 1 << 4);
+  RNA_def_property_ui_text(prop, "Mask 4", "Mask bit 4");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialLineArt_update");
+
+  prop = RNA_def_property(srna, "transparency_mask_5", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_sdna(prop, NULL, "transparency_mask", 1 << 5);
+  RNA_def_property_ui_text(prop, "Mask 5", "Mask bit 5");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialLineArt_update");
+
+  prop = RNA_def_property(srna, "transparency_mask_6", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_sdna(prop, NULL, "transparency_mask", 1 << 6);
+  RNA_def_property_ui_text(prop, "mask 6", "Mask bit 6");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialLineArt_update");
+
+  prop = RNA_def_property(srna, "transparency_mask_7", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_default(prop, 0);
+  RNA_def_property_boolean_sdna(prop, NULL, "transparency_mask", 1 << 7);
+  RNA_def_property_ui_text(prop, "Mask 7", "Mask bit 7");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialLineArt_update");
+}
 
 void RNA_def_material(BlenderRNA *brna)
 {
@@ -812,7 +893,13 @@ void RNA_def_material(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Is Grease Pencil", "True if this material has grease pencil data");
 
+  /* line art */
+  prop = RNA_def_property(srna, "lineart", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, NULL, "lineart");
+  RNA_def_property_ui_text(prop, "Line Art Settings", "Line Art settings for material");
+
   rna_def_material_greasepencil(brna);
+  rna_def_material_lineart(brna);
 
   RNA_api_material(srna);
 }

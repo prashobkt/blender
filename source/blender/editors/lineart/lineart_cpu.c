@@ -39,6 +39,7 @@
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_geom.h"
 #include "BKE_gpencil_modifier.h"
+#include "BKE_material.h"
 #include "BKE_mesh.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
@@ -128,7 +129,8 @@ int use_smooth_contour_modifier_contour = 0; /*  debug purpose */
 static void lineart_render_line_cut(LineartRenderBuffer *rb,
                                     LineartRenderLine *rl,
                                     double start,
-                                    double end)
+                                    double end,
+                                    unsigned char transparency_mask)
 {
   LineartRenderLineSegment *rls, *irls;
   LineartRenderLineSegment *start_segment = 0, *end_segment = 0;
@@ -240,6 +242,7 @@ static void lineart_render_line_cut(LineartRenderBuffer *rb,
 
   for (rls = ns; rls && rls != ns2; rls = rls->next) {
     rls->occlusion++;
+    rls->transparency_mask |= transparency_mask;
   }
 
   char min_occ = 127;
@@ -381,7 +384,7 @@ static void lineart_occlusion_single_line(LineartRenderBuffer *rb,
                                                            rb->shift_y,
                                                            &l,
                                                            &r)) {
-        lineart_render_line_cut(rb, rl, l, r);
+        lineart_render_line_cut(rb, rl, l, r, rt->base.transparency_mask);
         if (G.debug_value == 4000 && (rl->flags & LRT_EDGE_FLAG_EDGE_MARK)) {
           printf("l,r %f %f   against %s(%d)   this rl is from %s(%d)\n",
                  l,
@@ -1496,6 +1499,10 @@ static void lineart_geometry_object_load(Object *ob,
       rt->rl[2] = &orl[BM_elem_index_get(loop->e)];
 
       rt->material_id = f->mat_nr;
+      Material *mat = BKE_object_material_get(ob, f->mat_nr);
+      rt->transparency_mask = ((mat && (mat->lineart.flags & LRT_MATERIAL_TRANSPARENCY_ENABLED)) ?
+                                   mat->lineart.transparency_mask :
+                                   0);
 
       double gn[3];
       copy_v3db_v3fl(gn, f->no);
