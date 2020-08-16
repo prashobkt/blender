@@ -60,6 +60,7 @@ static void deformVerts(ModifierData *UNUSED(md),
   Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
   sbObjectStep(
       ctx->depsgraph, scene, ctx->object, DEG_get_ctime(ctx->depsgraph), vertexCos, numVerts);
+  
 }
 
 static bool dependsOnTime(ModifierData *UNUSED(md))

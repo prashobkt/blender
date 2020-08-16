@@ -34,6 +34,8 @@ endif()
 
 add_subdirectory(rangetree)
 add_subdirectory(wcwidth)
+add_subdirectory(softbody)
+add_subdirectory(discregrid)
 
 if(WITH_BULLET)
   if(NOT WITH_SYSTEM_BULLET)
@@ -104,6 +106,10 @@ endif()
 if(WITH_QUADRIFLOW)
   set(QUADRIFLOW_CMAKE_CFG ${CMAKE_CURRENT_SOURCE_DIR}/quadriflow/blender_config.cmake)
   add_subdirectory(quadriflow)
+endif()
+
+if(WITH_TETGEN)
+  add_subdirectory(tetgen)
 endif()
 
 if(WITH_MOD_FLUID)

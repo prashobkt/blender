@@ -518,8 +518,11 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
                 col.prop(mesh, "use_remesh_preserve_vertex_colors", text="Vertex Colors")
 
             col.operator("object.voxel_remesh", text="Voxel Remesh")
-        else:
+        elif mesh.remesh_mode == 'QUAD':
             col.operator("object.quadriflow_remesh", text="QuadriFlow Remesh")
+        else:
+            col.operator("object.tetgen_remesh", text="Tetrahedralize")
+            
 
 
 class DATA_PT_customdata(MeshButtonsPanel, Panel):

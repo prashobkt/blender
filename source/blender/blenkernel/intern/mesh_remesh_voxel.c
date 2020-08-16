@@ -56,6 +56,10 @@
 #  include "quadriflow_capi.hpp"
 #endif
 
+#ifdef WITH_TETGEN
+#  include "tetgen_api.h"
+#endif
+
 #ifdef WITH_OPENVDB
 struct OpenVDBLevelSet *BKE_mesh_remesh_voxel_ovdb_mesh_to_level_set_create(
     Mesh *mesh, struct OpenVDBTransform *transform)
@@ -259,6 +263,125 @@ static Mesh *BKE_mesh_remesh_quadriflow(Mesh *input_mesh,
   return mesh;
 }
 #endif
+
+#ifdef WITH_TETGEN
+static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh,
+                                  unsigned int **tets,
+                                  int *numtets)
+{
+  // Ensure that the triangulated mesh data is up to data
+  BKE_mesh_runtime_looptri_recalc(input_mesh);
+  const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(input_mesh);
+
+  // Gather the required data
+  MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(input_mesh),
+                                  "remesh_looptri");
+  BKE_mesh_runtime_verttri_from_looptri(
+      verttri, input_mesh->mloop, looptri, BKE_mesh_runtime_looptri_len(input_mesh));
+
+  unsigned int totfaces = BKE_mesh_runtime_looptri_len(input_mesh);
+  unsigned int totverts = input_mesh->totvert;
+  float *verts = (float *)MEM_malloc_arrayN(totverts * 3, sizeof(float), "remesh_input_verts");
+  unsigned int *faces = (unsigned int *)MEM_malloc_arrayN(
+      totfaces * 3, sizeof(unsigned int), "remesh_intput_faces");
+
+  for (unsigned int i = 0; i < totverts; i++) {
+    MVert *mvert = &input_mesh->mvert[i];
+    verts[i * 3] = mvert->co[0];
+    verts[i * 3 + 1] = mvert->co[1];
+    verts[i * 3 + 2] = mvert->co[2];
+  }
+
+  for (unsigned int i = 0; i < totfaces; i++) {
+    MVertTri *vt = &verttri[i];
+    faces[i * 3] = vt->tri[0];
+    faces[i * 3 + 1] = vt->tri[1];
+    faces[i * 3 + 2] = vt->tri[2];
+  }
+
+  // Call the tetgen remesher
+  TetGenRemeshData tg;
+  init_tetgenremeshdata(&tg);
+  tg.in_totfaces = totfaces;
+  tg.in_totverts = totverts;
+  tg.in_verts = verts;
+  tg.in_faces = faces;
+  bool success = tetgen_resmesh(&tg);
+
+  MEM_freeN(verts);
+  verts = NULL;
+  tg.in_verts = NULL;
+  MEM_freeN(faces);
+  faces = NULL;
+  tg.in_faces = NULL;
+  MEM_freeN(verttri);
+  verttri = NULL;
+
+  Mesh *mesh = NULL;
+  if (success)
+  {
+    // Construct the new output mesh
+    mesh = BKE_mesh_new_nomain(
+        tg.out_totverts, 0, 0, (tg.out_totfacets * 3), tg.out_totfacets);
+
+    for (int i = 0; i < tg.out_totverts; i++) {
+      copy_v3_v3(mesh->mvert[i].co, &tg.out_verts[i * 3]);
+    }
+
+    MPoly *mp = mesh->mpoly;
+    MLoop *ml = mesh->mloop;
+    for (int i = 0; i < tg.out_totfacets; i++, mp++, ml += 3) {
+      mp->loopstart = (int)(ml - mesh->mloop);
+      mp->totloop = 3;
+      ml[0].v = tg.out_facets[i * 3];
+      ml[1].v = tg.out_facets[i * 3 + 1];
+      ml[2].v = tg.out_facets[i * 3 + 2];
+    }
+    BKE_mesh_calc_edges(mesh, false, false);
+    BKE_mesh_calc_normals(mesh);
+
+    *numtets = tg.out_tottets;
+    *tets = (unsigned int *)MEM_malloc_arrayN(tg.out_tottets*4, sizeof(unsigned int), "remesh_output_tets");
+    //*tets = (unsigned int *)malloc(tg.out_tottets*4*sizeof(unsigned int));
+    memcpy(*tets,tg.out_tets,tg.out_tottets*4*sizeof(unsigned int));
+
+  } // end success
+
+  if (tg.out_verts != NULL)
+  {
+    MEM_freeN(tg.out_verts);
+    tg.out_verts = NULL;
+  }
+
+  if (tg.out_facets != NULL)
+  {
+    MEM_freeN(tg.out_facets);
+    tg.out_facets = NULL;
+  }
+
+  if (tg.out_tets != NULL)
+  {
+    MEM_freeN(tg.out_tets);
+    tg.out_tets = NULL;
+  }
+
+  return mesh;
+}
+#endif
+
+struct Mesh *BKE_mesh_remesh_tetgen_to_mesh_nomain(struct Mesh *mesh,
+                                                unsigned int **tets,
+                                                int *numtets)
+{
+  #ifdef WITH_TETGEN
+  return BKE_mesh_remesh_tetgen(mesh,tets,numtets);  
+  #else
+  UNUSED_VARS(mesh,
+              tets,
+              numtets);
+  #endif
+  return NULL;
+}
 
 Mesh *BKE_mesh_remesh_quadriflow_to_mesh_nomain(Mesh *mesh,
                                                 int target_faces,

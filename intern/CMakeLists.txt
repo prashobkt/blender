@@ -32,6 +32,8 @@ add_subdirectory(glew-mx)
 add_subdirectory(eigen)
 add_subdirectory(sky)
 
+add_subdirectory(softbody)
+
 if(WITH_AUDASPACE)
   add_subdirectory(audaspace)
 endif()
@@ -75,6 +77,10 @@ endif()
 
 if(WITH_QUADRIFLOW)
   add_subdirectory(quadriflow)
+endif()
+
+if(WITH_TETGEN)
+  add_subdirectory(tetgen)
 endif()
 
 if(WITH_CODEC_FFMPEG)

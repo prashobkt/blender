@@ -45,6 +45,7 @@ set(INC
   ../../../intern/iksolver/extern
   ../../../intern/atomic
   ../../../intern/clog
+  ../../../intern/softbody
   ../../../intern/libmv
   ../../../intern/mantaflow/extern
   ../../../intern/memutil
@@ -433,6 +434,7 @@ set(LIB
   bf_ikplugin
   bf_imbuf
   bf_intern_clog
+  bf_intern_admmpd
   bf_intern_ghost
   bf_intern_guardedalloc
   bf_intern_libmv  # Uses stub when disabled.
@@ -683,6 +685,16 @@ if(WITH_QUADRIFLOW)
      bf_intern_quadriflow
   )
   add_definitions(-DWITH_QUADRIFLOW)
+endif()
+
+if(WITH_TETGEN)
+  list(APPEND INC
+     ../../../intern/tetgen
+  )
+  list(APPEND LIB
+     bf_intern_tetgen
+  )
+  add_definitions(-DWITH_TETGEN)
 endif()
 
 if(WITH_XR_OPENXR)

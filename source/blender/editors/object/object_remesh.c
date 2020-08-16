@@ -1200,4 +1200,63 @@ void OBJECT_OT_quadriflow_remesh(wmOperatorType *ot)
               255);
 }
 
+static int tetgen_remesh_exec(bContext *C, wmOperator *op)
+{
+#ifndef WITH_TETGEN
+    BKE_report(op->reports, RPT_ERROR, "WITH_TETGEN compile option is off");
+    return OPERATOR_CANCELLED;
+#endif
+
+  Object *ob = CTX_data_active_object(C);
+
+  Mesh *mesh = ob->data;
+  Mesh *new_mesh = NULL;
+
+  unsigned int *tets = NULL;
+  int numtets;
+  new_mesh = BKE_mesh_remesh_tetgen_to_mesh_nomain(mesh,&tets,&numtets);
+  if (tets) {
+    MEM_freeN(tets);
+  }
+
+  if (!new_mesh) {
+    BKE_report(op->reports, RPT_ERROR, "TetGen remesher failed to create mesh");
+    return OPERATOR_CANCELLED;
+  }
+
+  BKE_mesh_nomain_to_mesh(new_mesh, mesh, ob, &CD_MASK_MESH, true);
+
+  if (mesh->flag & ME_REMESH_SMOOTH_NORMALS) {
+    BKE_mesh_smooth_flag_set(ob->data, true);
+  }
+
+  if (ob->mode == OB_MODE_SCULPT) {
+    ED_sculpt_undo_geometry_end(ob);
+  }
+
+  BKE_mesh_batch_cache_dirty_tag(ob->data, BKE_MESH_BATCH_DIRTY_ALL);
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
+
+  return OPERATOR_FINISHED;
+}
+
+void OBJECT_OT_tetgen_remesh(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "TetGen Remesh";
+  ot->description =
+      "Create a new tet mesh using the surface data of the current mesh. All data "
+      "layers will be lost";
+  ot->idname = "OBJECT_OT_tetgen_remesh";
+
+  /* api callbacks */
+  ot->poll = object_remesh_poll;
+  ot->exec = tetgen_remesh_exec;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+
+}
+
 /** \} */

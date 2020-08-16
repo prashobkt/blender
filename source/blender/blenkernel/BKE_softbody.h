@@ -30,6 +30,7 @@ struct Depsgraph;
 struct Object;
 struct Scene;
 struct SoftBody;
+struct ReportList;
 
 typedef struct BodyPoint {
   float origS[3], origE[3], origT[3], pos[3], vec[3], force[3];
@@ -48,6 +49,9 @@ typedef struct BodyPoint {
 
 /* allocates and initializes general main data */
 extern struct SoftBody *sbNew(struct Scene *scene);
+
+/* reads custom structs for file i/o */
+extern void sbCustomRead(struct Object *ob);
 
 /* frees internal data and softbody itself */
 extern void sbFree(struct Object *ob);
