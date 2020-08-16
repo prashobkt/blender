@@ -1640,8 +1640,7 @@ static bool outliner_is_co_within_restrict_columns(const SpaceOutliner *space_ou
   return (view_co_x > region->v2d.cur.xmax - outliner_restrict_columns_width(space_outliner));
 }
 
-static bool outliner_is_co_within_mode_column(SpaceOutliner *space_outliner,
-                                              const float view_mval[2])
+bool outliner_is_co_within_mode_column(SpaceOutliner *space_outliner, const float view_mval[2])
 {
   /* Mode toggles only show in View Layer and Scenes modes. */
   if (!ELEM(space_outliner->outlinevis, SO_VIEW_LAYER, SO_SCENES)) {
@@ -1841,6 +1840,10 @@ static int outliner_box_select_invoke(bContext *C, wmOperator *op, const wmEvent
 
   /* Pass through if click is over name or icons, or not tweak event */
   if (te && tweak && outliner_item_is_co_over_name_icons(te, view_mval[0])) {
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  }
+
+  if (outliner_is_co_within_mode_column(space_outliner, view_mval)) {
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
