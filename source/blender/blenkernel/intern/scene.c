@@ -223,14 +223,17 @@ static void scene_init_data(ID *id)
 
 static void BKE_lineart_free_everything(Scene *s)
 {
+#if 0
   SceneLineart *lineart = &s->lineart;
+#endif
   /* Nothing to free. Reserved for future. */
 }
 
 static void BKE_lineart_copy_data(const Scene *from, Scene *to)
 {
+#if 0
   const SceneLineart *lineart = &from->lineart;
-
+#endif
   /*  Line layer removed. Currently nothing to do. Reserved for future. */
 }
 

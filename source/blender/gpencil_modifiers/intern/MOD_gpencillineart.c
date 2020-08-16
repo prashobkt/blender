@@ -86,11 +86,13 @@ static void generate_strokes_actual(
 {
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+#if 0
   int line_types = ((scene->flag & LRT_EVERYTHING_AS_CONTOUR) ?
                         LRT_EDGE_FLAG_ALL_TYPE :
                         ((scene->flag & LRT_INTERSECTION_AS_CONTOUR) ?
                              (lmd->line_types & LRT_EDGE_FLAG_INTERSECTION) :
                              lmd->line_types));
+#endif
   ED_lineart_gpencil_generate_strokes_direct(
       depsgraph,
       ob,

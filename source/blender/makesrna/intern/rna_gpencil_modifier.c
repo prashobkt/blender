@@ -2395,7 +2395,7 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "target_layer", PROP_STRING, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Target Layer", "Grease pencil layer that strokes goes into.");
+  RNA_def_property_ui_text(prop, "Target Layer", "Grease pencil layer that strokes goes into");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "thickness", PROP_INT, PROP_NONE);
@@ -2407,14 +2407,14 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "opacity", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.1f);
-  RNA_def_property_ui_text(prop, "opacity", "The strength value used to generate strokes.");
+  RNA_def_property_ui_text(prop, "opacity", "The strength value used to generate strokes");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01f, 2);
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "pre_sample_length", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_default(prop, 0.0f);
-  RNA_def_property_ui_text(prop, "Pre Sample Length", "Sample strokes before sending out.");
+  RNA_def_property_ui_text(prop, "Pre Sample Length", "Sample strokes before sending out");
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01f, 2);
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
