@@ -2603,13 +2603,13 @@ static int do_outliner_operation_event(bContext *C,
   int scenelevel = 0, objectlevel = 0, idlevel = 0, datalevel = 0;
   TreeStoreElem *tselem = TREESTORE(te);
 
-  short select_flag = OL_ITEM_SELECT | OL_ITEM_ACTIVATE;
-
-  if (tselem->flag & TSE_SELECTED) {
-    select_flag |= OL_ITEM_EXTEND;
+  int clear_flag = TSE_ACTIVE;
+  if (!(tselem->flag & TSE_SELECTED)) {
+    clear_flag |= TSE_SELECTED;
   }
 
-  outliner_item_select(C, space_outliner, te, select_flag);
+  outliner_flag_set(&space_outliner->tree, clear_flag, false);
+  tselem->flag |= TSE_SELECTED | TSE_ACTIVE;
 
   /* Only redraw, don't rebuild here because TreeElement pointers will
    * become invalid and operations will crash. */
