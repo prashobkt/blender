@@ -2389,15 +2389,10 @@ static const EnumPropertyItem prop_constraint_op_types[] = {
 static int outliner_constraint_operation_exec(bContext *C, wmOperator *op)
 {
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
-  int scenelevel = 0, objectlevel = 0, idlevel = 0, datalevel = 0;
-  eOutliner_PropConstraintOps event;
-
-  event = RNA_enum_get(op->ptr, "type");
-  set_operation_types(
-      space_outliner, &space_outliner->tree, &scenelevel, &objectlevel, &idlevel, &datalevel);
+  eOutliner_PropConstraintOps event = RNA_enum_get(op->ptr, "type");
 
   outliner_do_data_operation(
-      space_outliner, datalevel, event, &space_outliner->tree, constraint_fn, C);
+      space_outliner, TSE_CONSTRAINT, event, &space_outliner->tree, constraint_fn, C);
 
   if (event == OL_CONSTRAINTOP_DELETE) {
     outliner_cleanup_tree(space_outliner);
@@ -2441,15 +2436,10 @@ static const EnumPropertyItem prop_modifier_op_types[] = {
 static int outliner_modifier_operation_exec(bContext *C, wmOperator *op)
 {
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
-  int scenelevel = 0, objectlevel = 0, idlevel = 0, datalevel = 0;
-  eOutliner_PropModifierOps event;
-
-  event = RNA_enum_get(op->ptr, "type");
-  set_operation_types(
-      space_outliner, &space_outliner->tree, &scenelevel, &objectlevel, &idlevel, &datalevel);
+  eOutliner_PropModifierOps event = RNA_enum_get(op->ptr, "type");
 
   outliner_do_data_operation(
-      space_outliner, datalevel, event, &space_outliner->tree, modifier_fn, C);
+      space_outliner, TSE_MODIFIER, event, &space_outliner->tree, modifier_fn, C);
 
   if (event == OL_MODIFIER_OP_DELETE) {
     outliner_cleanup_tree(space_outliner);
