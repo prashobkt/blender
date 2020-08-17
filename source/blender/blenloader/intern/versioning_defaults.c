@@ -182,6 +182,8 @@ static void blo_update_defaults_screen(bScreen *screen,
       sinfo->report_mask_exclude = RPT_DEBUG_ALL;
       sinfo->log_severity_mask = INFO_CLOG_SEVERITY_MASK_DEFAULT;
       sinfo->log_format = INFO_CLOG_FORMAT_DEFAULT;
+      sinfo->view_options = INFO_VIEW_OPTIONS_DEFAULT;
+      sinfo->last_view_height = 0;
     }
     else if (area->spacetype == SPACE_TEXT) {
       /* Show syntax and line numbers in Script workspace text editor. */

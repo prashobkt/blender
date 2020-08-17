@@ -129,7 +129,8 @@ typedef struct SpaceInfo {
   int report_mask_exclude;
   int active_index;
   char view;
-  char _pad1[7];
+  char view_options;
+  char _pad1[6];
 
   int log_format;
   /** for boolean properties use_log_*_filter */
@@ -141,6 +142,7 @@ typedef struct SpaceInfo {
   int log_severity_mask;
   int filter_log_level;
 
+  /* SpaceInfoFilter list. */
   ListBase filter_log_file_line;
   ListBase filter_log_type;
   ListBase filter_log_function;
@@ -156,9 +158,16 @@ typedef enum eSpaceInfo_UseLogFilter {
 
 /* SpaceInfo.view */
 typedef enum eSpaceInfo_View {
-  INFO_VIEW_REPORTS,
+  INFO_VIEW_REPORTS = 0,
   INFO_VIEW_CLOG,
 } eSpaceInfo_View;
+
+/* SpaceInfo.view_options */
+typedef enum eSpaceInfo_ViewOptions {
+  INFO_VIEW_USE_AUTOSCROLL = (1 << 0),
+} eSpaceInfo_ViewOptions;
+
+#define INFO_VIEW_OPTIONS_DEFAULT INFO_VIEW_USE_AUTOSCROLL
 
 /* SpaceInfo.log_severity_mask, keep in sync with CLG_Severity */
 typedef enum eSpaceInfo_LogSeverityMask {

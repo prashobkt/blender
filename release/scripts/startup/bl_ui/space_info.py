@@ -38,6 +38,7 @@ class INFO_HT_header(Header):
         layout.separator_spacer()
 
         layout.separator_spacer()
+        row.prop(sinfo, "use_autoscroll")
 
         row = layout.row()
         if sinfo.view == 'CLOGS':

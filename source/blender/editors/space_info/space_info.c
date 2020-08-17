@@ -65,6 +65,10 @@ static SpaceLink *info_create(const ScrArea *UNUSED(area), const Scene *UNUSED(s
   sinfo->spacetype = SPACE_INFO;
 
   sinfo->report_mask_exclude = RPT_DEBUG_ALL;
+  sinfo->log_severity_mask = INFO_CLOG_SEVERITY_MASK_DEFAULT;
+  sinfo->log_format = INFO_CLOG_FORMAT_DEFAULT;
+  sinfo->view_options = INFO_VIEW_OPTIONS_DEFAULT;
+  sinfo->last_view_height = 0;
 
   /* header */
   region = MEM_callocN(sizeof(ARegion), "header for info");
@@ -119,7 +123,7 @@ static SpaceLink *info_duplicate(SpaceLink *sl)
 {
   SpaceInfo *sinfo = (SpaceInfo *)sl;
   SpaceInfo *sinfo_new = MEM_dupallocN(sl);
-  if (sinfo->search_filter != NULL){
+  if (sinfo->search_filter != NULL) {
     sinfo_new->search_filter = MEM_dupallocN(sinfo->search_filter);
   }
 
@@ -151,11 +155,15 @@ static void info_textview_update_rect(const bContext *C, ARegion *region)
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   View2D *v2d = &region->v2d;
 
-  UI_view2d_totRect_set(
-      v2d,
-      region->winx - 1,
-      info_textview_height(
-          sinfo, region, sinfo->view == INFO_VIEW_REPORTS ? CTX_wm_reports(C) : NULL));
+  const int height = info_textview_height(
+      sinfo, region, sinfo->view == INFO_VIEW_REPORTS ? CTX_wm_reports(C) : NULL);
+  UI_view2d_totRect_set(v2d, region->winx - 1, height);
+  /* default behavior of View2d is actually to autoscroll, so reverse condition */
+  if (!(sinfo->view_options & INFO_VIEW_USE_AUTOSCROLL)) {
+    v2d->cur.ymin += height - sinfo->last_view_height;
+    v2d->cur.ymax += height - sinfo->last_view_height;
+  }
+  sinfo->last_view_height = height;
 }
 
 static void info_main_region_draw(const bContext *C, ARegion *region)

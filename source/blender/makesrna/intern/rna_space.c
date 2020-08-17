@@ -6209,6 +6209,10 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "View reports or logs", "");
   RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, NULL);
+
+  prop = RNA_def_property(srna, "use_autoscroll", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "view_options", INFO_VIEW_USE_AUTOSCROLL);
+  RNA_def_property_ui_text(prop, "Use Autoscroll", "");
 }
 
 static void rna_def_space_userpref(BlenderRNA *brna)
