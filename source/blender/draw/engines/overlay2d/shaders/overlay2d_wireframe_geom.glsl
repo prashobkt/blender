@@ -5,7 +5,7 @@ layout(lines) in;
 layout(triangle_strip, max_vertices = 4) out;
 
 in float selectionFac[2];
-flat out vec2 stippleStart[2];
+flat in vec2 stippleStart[2];
 noperspective in vec2 stipplePos[2];
 
 uniform int lineStyle;
