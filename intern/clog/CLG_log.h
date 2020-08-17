@@ -197,7 +197,7 @@ CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
                                     const char *file_line,
                                     const char *function,
                                     const char *message);
-void clog_log_record_free(CLG_LogRecord *log_record);
+void CLG_log_record_free(CLG_LogRecord *log_record);
 
 /* Main initializer and distructor (per session, not logger). */
 void CLG_init(void);

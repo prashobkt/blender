@@ -164,7 +164,7 @@ class INFO_MT_context_menu(Menu):
             layout.operator("info.clog_copy", text="Copy Message").method = 'COPY_MESSAGE'
             layout.operator("info.clog_copy", text="Copy Path").method = 'COPY_PATH'
             layout.operator("info.clog_copy", text="Copy Basename").method = 'COPY_BASENAME'
-            layout.operator("info.clog_delete", text="Delete (mockup)")
+            layout.operator("info.clog_delete", text="Delete")
             layout.separator()
             layout.operator("info.clog_filter", text="Mute Selected Files").method = 'FILTER_FILE'
             layout.operator("info.clog_filter", text="Mute Selected Lines").method = 'FILTER_LINE'

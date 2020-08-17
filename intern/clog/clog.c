@@ -424,7 +424,7 @@ CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
   return log_record;
 }
 
-void clog_log_record_free(CLG_LogRecord *log_record)
+void CLG_log_record_free(CLG_LogRecord *log_record)
 {
   MEM_freeN(log_record->message);
   MEM_freeN(log_record);
@@ -863,7 +863,7 @@ static void CLG_ctx_free(CLogContext *ctx)
   CLG_LogRecord *log = ctx->log_records.first, *log_next = NULL;
   while (log) {
     log_next = log->next;
-    clog_log_record_free(log);
+    CLG_log_record_free(log);
     log = log_next;
   }
   if (ctx->output_file != NULL) {

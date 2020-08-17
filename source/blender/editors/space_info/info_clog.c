@@ -427,10 +427,8 @@ static int clog_delete_exec(bContext *C, wmOperator *UNUSED(op))
     record_next = record->next;
 
     if (is_clog_record_visible(record, sinfo) && (record->flag & CLG_SELECT)) {
-      printf("NOT IMPLEMENTED YET");
-      //      BLI_remlink((struct ListBase *)records, record);
-      //      MEM_freeN((void *)record->message);
-      //      MEM_freeN(record);
+      BLI_remlink((struct ListBase *)records, record);
+      CLG_log_record_free(record);
     }
 
     record = record_next;
