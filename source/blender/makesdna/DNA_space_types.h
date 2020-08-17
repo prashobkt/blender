@@ -133,7 +133,7 @@ typedef struct SpaceInfo {
   char _pad1[6];
 
   int log_format;
-  /** for boolean properties use_log_*_filter */
+  /** For boolean properties use_log_*_filter. */
   char use_log_filter;
   char _pad2[3];
 
@@ -142,13 +142,20 @@ typedef struct SpaceInfo {
   int log_severity_mask;
   int filter_log_level;
 
-  /* SpaceInfoFilter list. */
+  /** SpaceInfoFilter list. */
   ListBase filter_log_file_line;
   ListBase filter_log_type;
   ListBase filter_log_function;
 
+  /** Used for disabling autoscroll. */
   int last_view_height;
   char _pad3[4];
+  /** List of CLG_LogRecord.
+   * Makes sure to draw and operate (select) on the the same list. Logs can change very fast what
+   * leads to errors in selection. */
+  ListBase last_drawn_log_records;
+  /** List of Report. */
+  ReportList last_drawn_reports;
 } SpaceInfo;
 
 /* SpaceInfo.use_log_filter */

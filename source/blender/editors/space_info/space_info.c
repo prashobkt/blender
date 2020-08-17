@@ -22,6 +22,7 @@
  */
 
 #include <BKE_main.h>
+#include <CLG_log.h>
 #include <string.h>
 
 #include "MEM_guardedalloc.h"
@@ -148,8 +149,10 @@ static void info_textview_update_rect(const bContext *C, ARegion *region)
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   View2D *v2d = &region->v2d;
 
-  const int height = info_textview_height(
-      sinfo, region, sinfo->view == INFO_VIEW_REPORTS ? CTX_wm_reports(C) : NULL);
+  const ReportList *reports = sinfo->view == INFO_VIEW_REPORTS ? CTX_wm_reports(C) : NULL;
+  const CLG_LogRecordList *log_records = sinfo->view == INFO_VIEW_CLOG ? CLG_log_records_get() :
+                                                                         NULL;
+  const int height = info_textview_height(sinfo, region, reports, log_records);
   UI_view2d_totRect_set(v2d, region->winx - 1, height);
   /* default behavior of View2d is actually to autoscroll, so reverse condition */
   if (!(sinfo->view_options & INFO_VIEW_USE_AUTOSCROLL)) {
@@ -179,7 +182,10 @@ static void info_main_region_draw(const bContext *C, ARegion *region)
   /* worlks best with no view2d matrix set */
   UI_view2d_view_ortho(v2d);
 
-  info_textview_main(sinfo, region, sinfo->view == INFO_VIEW_REPORTS ? CTX_wm_reports(C) : NULL);
+  const ReportList *reports = sinfo->view == INFO_VIEW_REPORTS ? CTX_wm_reports(C) : NULL;
+  const CLG_LogRecordList *log_records = sinfo->view == INFO_VIEW_CLOG ? CLG_log_records_get() :
+                                                                         NULL;
+  info_textview_main(sinfo, region, reports, log_records);
 
   /* reset view matrix */
   UI_view2d_view_restore(C);

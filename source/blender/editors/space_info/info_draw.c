@@ -36,7 +36,6 @@
 #include "info_intern.h"
 #include "textview.h"
 
-
 static void info_textview_draw_rect_calc(const ARegion *region,
                                          rcti *r_draw_rect,
                                          rcti *r_draw_rect_outer)
@@ -57,6 +56,7 @@ static void info_textview_draw_rect_calc(const ARegion *region,
 static int info_textview_main__internal(const SpaceInfo *sinfo,
                                         const ARegion *region,
                                         const ReportList *reports,
+                                        const CLG_LogRecordList *log_records,
                                         const bool do_draw,
                                         const int mval[2],
                                         void **r_mval_pick_item,
@@ -76,7 +76,7 @@ static int info_textview_main__internal(const SpaceInfo *sinfo,
       tvc.line_draw_data = clog_line_draw_data;
       tvc.end = clog_textview_end;
       tvc.step = clog_textview_step;
-      tvc.arg2 = CLG_log_records_get();
+      tvc.arg2 = log_records;
       break;
     case INFO_VIEW_REPORTS:
       tvc.begin = report_textview_begin;
@@ -108,23 +108,43 @@ static int info_textview_main__internal(const SpaceInfo *sinfo,
 void *info_text_pick(const SpaceInfo *sinfo,
                      const ARegion *region,
                      const ReportList *reports,
+                     const CLG_LogRecordList *log_records,
                      int mval_y)
 {
   void *mval_pick_item = NULL;
   const int mval[2] = {0, mval_y};
 
-  info_textview_main__internal(sinfo, region, reports, false, mval, &mval_pick_item, NULL);
+  info_textview_main__internal(
+      sinfo, region, reports, log_records, false, mval, &mval_pick_item, NULL);
   return (void *)mval_pick_item;
 }
 
-int info_textview_height(const SpaceInfo *sinfo, const ARegion *region, const ReportList *reports)
+int info_textview_height(const SpaceInfo *sinfo,
+                         const ARegion *region,
+                         const ReportList *reports,
+                         const CLG_LogRecordList *log_records)
 {
   const int mval[2] = {INT_MAX, INT_MAX};
-  return info_textview_main__internal(sinfo, region, reports, false, mval, NULL, NULL);
+  return info_textview_main__internal(
+      sinfo, region, reports, log_records, false, mval, NULL, NULL);
 }
 
-void info_textview_main(const SpaceInfo *sinfo, const ARegion *region, const ReportList *reports)
+void info_textview_main(SpaceInfo *sinfo,
+                        const ARegion *region,
+                        const ReportList *reports,
+                        const CLG_LogRecordList *log_records)
 {
   const int mval[2] = {INT_MAX, INT_MAX};
-  info_textview_main__internal(sinfo, region, reports, true, mval, NULL, NULL);
+  switch (sinfo->view) {
+    case INFO_VIEW_CLOG:
+      sinfo->last_drawn_log_records.last = log_records->last;
+      sinfo->last_drawn_log_records.first = log_records->first;
+      break;
+    case INFO_VIEW_REPORTS:
+      memcpy(&sinfo->last_drawn_reports, reports, sizeof(*reports));
+      break;
+    default:
+      BLI_assert(false);
+  }
+  info_textview_main__internal(sinfo, region, reports, log_records, true, mval, NULL, NULL);
 }

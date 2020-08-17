@@ -135,7 +135,9 @@ bool is_clog_record_visible(const CLG_LogRecord *record, const SpaceInfo *sinfo)
   return true;
 }
 
-static void log_records_select_all(CLG_LogRecordList *records, const SpaceInfo *sinfo, int action)
+static void log_records_select_all(const CLG_LogRecordList *records,
+                                   const SpaceInfo *sinfo,
+                                   int action)
 {
   if (action == SEL_TOGGLE) {
     action = SEL_SELECT;
@@ -175,7 +177,7 @@ static int select_clog_pick_exec(bContext *C, wmOperator *op)
 
   SpaceInfo *sinfo = CTX_wm_space_info(C);
 
-  CLG_LogRecordList *records = CLG_log_records_get();
+  CLG_LogRecordList *records = (CLG_LogRecordList *)&sinfo->last_drawn_log_records;
   CLG_LogRecord *record = BLI_findlink((const struct ListBase *)records, clog_index);
 
   if (clog_index == INDEX_INVALID) {  // click in empty area
@@ -241,11 +243,11 @@ static int select_clog_pick_invoke(bContext *C, wmOperator *op, const wmEvent *e
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ARegion *region = CTX_wm_region(C);
-  CLG_LogRecordList *records = CLG_log_records_get();
+  CLG_LogRecordList *records = (CLG_LogRecordList *)&sinfo->last_drawn_log_records;
   CLG_LogRecord *record;
 
   BLI_assert(sinfo->view == INFO_VIEW_CLOG);
-  record = info_text_pick(sinfo, region, NULL, event->mval[1]);
+  record = info_text_pick(sinfo, region, NULL, records, event->mval[1]);
 
   if (record == NULL) {
     RNA_int_set(op->ptr, "clog_index", INDEX_INVALID);
@@ -299,7 +301,7 @@ void INFO_OT_clog_select_pick(wmOperatorType *ot)
 static int clog_select_all_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  CLG_LogRecordList *records = CLG_log_records_get();
+  CLG_LogRecordList *records = (CLG_LogRecordList *)&sinfo->last_drawn_log_records;
 
   int action = RNA_enum_get(op->ptr, "action");
   log_records_select_all(records, sinfo, action);
@@ -328,7 +330,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ARegion *region = CTX_wm_region(C);
-  CLG_LogRecordList *records = CLG_log_records_get();
+  CLG_LogRecordList *records = (CLG_LogRecordList *)&sinfo->last_drawn_log_records;
   CLG_LogRecord *record_min, *record_max;
   rcti rect;
 
@@ -346,8 +348,8 @@ static int box_select_exec(bContext *C, wmOperator *op)
   }
 
   BLI_assert(sinfo->view == INFO_VIEW_CLOG);
-  record_min = info_text_pick(sinfo, region, NULL, rect.ymax);
-  record_max = info_text_pick(sinfo, region, NULL, rect.ymin);
+  record_min = info_text_pick(sinfo, region, NULL, records, rect.ymax);
+  record_max = info_text_pick(sinfo, region, NULL, records, rect.ymin);
 
   if (record_min == NULL && record_max == NULL) {
     log_records_select_all(records, sinfo, SEL_DESELECT);
@@ -465,7 +467,7 @@ typedef enum eClogCopy {
 static int clog_copy_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  CLG_LogRecordList *records = CLG_log_records_get();
+  CLG_LogRecordList *records = (CLG_LogRecordList *)&sinfo->last_drawn_log_records;
   eClogCopy copy_type = RNA_enum_get(op->ptr, "method");
   CLG_LogRecord *record;
 
@@ -564,7 +566,7 @@ static struct SpaceInfoFilter *is_filter_duplicate(const ListBase *list,
 static int clog_filter_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  CLG_LogRecordList *records = CLG_log_records_get();
+  CLG_LogRecordList *records = (CLG_LogRecordList *)&sinfo->last_drawn_log_records;
   eClogFilterMode filter_type = RNA_enum_get(op->ptr, "method");
 
   CLG_LogRecord *record;

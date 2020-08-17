@@ -100,7 +100,7 @@ bool is_report_visible(const Report *report, const SpaceInfo *sinfo)
   return true;
 }
 
-static void reports_select_all(ReportList *reports, SpaceInfo *sinfo, int action)
+static void reports_select_all(ReportList *reports, const SpaceInfo *sinfo, int action)
 {
   if (action == SEL_TOGGLE) {
     action = SEL_SELECT;
@@ -135,7 +135,7 @@ static void reports_select_all(ReportList *reports, SpaceInfo *sinfo, int action
 static int report_replay_exec(bContext *C, wmOperator *UNUSED(op))
 {
   //  SpaceInfo *sc = CTX_wm_space_info(C);
-  //  ReportList *reports = CTX_wm_reports(C);
+  //  const ReportList *reports = &sinfo->last_drawn_reports;
   //  int report_mask = info_report_mask(sc);
   //  Report *report;
 
@@ -185,7 +185,7 @@ static int select_report_pick_exec(bContext *C, wmOperator *op)
 
   SpaceInfo *sinfo = CTX_wm_space_info(C);
 
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = &sinfo->last_drawn_reports;
   Report *report = BLI_findlink(&reports->list, report_index);
 
   if (report_index == INDEX_INVALID) {  // click in empty area
@@ -251,11 +251,11 @@ static int select_report_pick_invoke(bContext *C, wmOperator *op, const wmEvent 
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ARegion *region = CTX_wm_region(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = &sinfo->last_drawn_reports;
   Report *report;
 
   BLI_assert(sinfo->view == INFO_VIEW_REPORTS);
-  report = info_text_pick(sinfo, region, reports, event->mval[1]);
+  report = info_text_pick(sinfo, region, reports, NULL, event->mval[1]);
 
   if (report == NULL) {
     RNA_int_set(op->ptr, "report_index", INDEX_INVALID);
@@ -309,7 +309,7 @@ void INFO_OT_report_select_pick(wmOperatorType *ot)
 static int report_select_all_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = &sinfo->last_drawn_reports;
 
   int action = RNA_enum_get(op->ptr, "action");
   reports_select_all(reports, sinfo, action);
@@ -338,7 +338,7 @@ static int box_select_exec(bContext *C, wmOperator *op)
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
   ARegion *region = CTX_wm_region(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = &sinfo->last_drawn_reports;
   Report *report_min, *report_max;
   rcti rect;
 
@@ -356,8 +356,8 @@ static int box_select_exec(bContext *C, wmOperator *op)
   }
 
   BLI_assert(sinfo->view == INFO_VIEW_REPORTS);
-  report_min = info_text_pick(sinfo, region, reports, rect.ymax);
-  report_max = info_text_pick(sinfo, region, reports, rect.ymin);
+  report_min = info_text_pick(sinfo, region, reports, NULL, rect.ymax);
+  report_max = info_text_pick(sinfo, region, reports, NULL, rect.ymin);
 
   if (report_min == NULL && report_max == NULL) {
     reports_select_all(reports, sinfo, SEL_DESELECT);
@@ -431,7 +431,6 @@ static int report_delete_exec(bContext *C, wmOperator *UNUSED(op))
   Report *report, *report_next;
 
   for (report = reports->list.first; report;) {
-
     report_next = report->next;
 
     if (is_report_visible(report, sinfo) && (report->flag & RPT_SELECT)) {
@@ -467,7 +466,7 @@ void INFO_OT_report_delete(wmOperatorType *ot)
 static int report_copy_exec(bContext *C, wmOperator *UNUSED(op))
 {
   SpaceInfo *sinfo = CTX_wm_space_info(C);
-  ReportList *reports = CTX_wm_reports(C);
+  ReportList *reports = &sinfo->last_drawn_reports;
   Report *report;
 
   DynStr *buf_dyn = BLI_dynstr_new();

@@ -33,6 +33,7 @@ struct wmOperatorType;
 struct TextViewContext;
 struct TextLine;
 struct CLG_LogRecord;
+struct CLG_LogRecordList;
 enum eTextViewContext_LineDrawFlag;
 
 #define INDEX_INVALID -1
@@ -62,13 +63,16 @@ void INFO_OT_log_type_filter_remove(struct wmOperatorType *ot);
 void *info_text_pick(const struct SpaceInfo *sinfo,
                      const struct ARegion *region,
                      const struct ReportList *reports,
-                     int mouse_y);
+                     const struct CLG_LogRecordList *log_records,
+                     int mval_y);
 int info_textview_height(const struct SpaceInfo *sinfo,
                          const struct ARegion *region,
-                         const struct ReportList *reports);
-void info_textview_main(const struct SpaceInfo *sinfo,
+                         const struct ReportList *reports,
+                         const struct CLG_LogRecordList *log_records);
+void info_textview_main(struct SpaceInfo *sinfo,
                         const struct ARegion *region,
-                        const struct ReportList *reports);
+                        const struct ReportList *reports,
+                        const struct CLG_LogRecordList *log_records);
 
 /* info_report.c */
 bool is_report_visible(const struct Report *report, const struct SpaceInfo *sinfo);
