@@ -2080,8 +2080,6 @@ void DRW_draw_render_loop_2d_ex(struct Depsgraph *depsgraph,
   /* Start Drawing */
   DRW_state_reset();
 
-  GPU_framebuffer_bind(DST.default_framebuffer);
-
   if (DST.draw_ctx.evil_C) {
     ED_region_draw_cb_draw(DST.draw_ctx.evil_C, DST.draw_ctx.region, REGION_DRAW_PRE_VIEW);
   }
