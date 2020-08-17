@@ -18,13 +18,11 @@
  * \ingroup spinfo
  */
 
-#include <stdio.h>
 #include <string.h>
 
 #include "MEM_guardedalloc.h"
 
 #include "DNA_armature_types.h"
-#include "DNA_collection_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_lattice_types.h"
@@ -35,7 +33,6 @@
 
 #include "BLF_api.h"
 
-#include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -53,7 +50,6 @@
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
-#include "BKE_particle.h"
 #include "BKE_scene.h"
 #include "BKE_subdiv_ccg.h"
 

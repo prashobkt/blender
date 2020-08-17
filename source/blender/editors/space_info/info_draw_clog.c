@@ -23,21 +23,14 @@
 #include <CLG_log.h>
 #include <DNA_text_types.h>
 #include <MEM_guardedalloc.h>
-#include <limits.h>
 #include <string.h>
 
-#include "BKE_report.h"
 #include "BLI_utildefines.h"
-#include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 #include "GPU_framebuffer.h"
-#include "UI_interface.h"
 #include "UI_resources.h"
-#include "UI_view2d.h"
 #include "info_intern.h"
 #include "textview.h"
-
-#include "../space_text/text_format.h"
 
 enum eTextViewContext_LineDrawFlag clog_line_draw_data(struct TextViewContext *tvc,
                                                        uchar fg[4],

@@ -21,18 +21,13 @@
  * \ingroup spinfo
  */
 
-#include <BKE_global.h>
 #include <BKE_main.h>
-#include <BKE_report.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
-
-#include "BLT_translation.h"
 
 #include "BKE_context.h"
 #include "BKE_screen.h"
@@ -46,11 +41,9 @@
 
 #include "RNA_access.h"
 
-#include "UI_interface.h"
 #include "UI_resources.h"
 #include "UI_view2d.h"
 
-#include "BLO_readfile.h"
 #include "GPU_framebuffer.h"
 #include "info_intern.h" /* own include */
 

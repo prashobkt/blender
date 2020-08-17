@@ -6082,19 +6082,22 @@ static void rna_def_space_info(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   prop = RNA_def_property(srna, "show_report_error_invalid_input", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", RPT_ERROR_INVALID_INPUT);
+  RNA_def_property_boolean_negative_sdna(
+      prop, NULL, "report_mask_exclude", RPT_ERROR_INVALID_INPUT);
   RNA_def_property_ui_text(prop, "Show Error", "Display error text");
   RNA_def_property_ui_icon(prop, ICON_CANCEL, 0);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   prop = RNA_def_property(srna, "show_report_error_invalid_context", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", RPT_ERROR_INVALID_CONTEXT);
+  RNA_def_property_boolean_negative_sdna(
+      prop, NULL, "report_mask_exclude", RPT_ERROR_INVALID_CONTEXT);
   RNA_def_property_ui_text(prop, "Show Error", "Display error text");
   RNA_def_property_ui_icon(prop, ICON_CANCEL, 0);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
 
   prop = RNA_def_property(srna, "show_report_error_out_of_memory", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(prop, NULL, "report_mask_exclude", RPT_ERROR_OUT_OF_MEMORY);
+  RNA_def_property_boolean_negative_sdna(
+      prop, NULL, "report_mask_exclude", RPT_ERROR_OUT_OF_MEMORY);
   RNA_def_property_ui_text(prop, "Show Error", "Display error text");
   RNA_def_property_ui_icon(prop, ICON_CANCEL, 0);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO_REPORT, NULL);

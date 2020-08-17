@@ -18,9 +18,7 @@
  * \ingroup spinfo
  */
 
-#include <assert.h>
 #include <limits.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "MEM_guardedalloc.h"
