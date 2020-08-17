@@ -464,7 +464,15 @@ class MeshTest:
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_mode(type=operator.select_mode)
         mesh_operator = getattr(bpy.ops.mesh, operator.operator_name)
-        retval = mesh_operator(**operator.operator_parameters)
+
+        try:
+            mesh_operator(**operator.operator_parameters)
+            retval = mesh_operator(**operator.operator_parameters)
+        except AttributeError:
+            raise AttributeError("bpy.ops.mesh has no attribute {}".format(operator.operator_name))
+        except TypeError:
+            raise TypeError("Incorrect operator parameters {}".format(operator.operator_parameters))
+
         if retval != {'FINISHED'}:
             raise RuntimeError("Unexpected operator return value: {}".format(retval))
         if self.verbose:
@@ -478,7 +486,15 @@ class MeshTest:
         """
         bpy.ops.object.mode_set(mode='OBJECT')
         object_operator = getattr(bpy.ops.object, operator.operator_name)
-        retval = object_operator(**operator.operator_parameters)
+
+        try:
+            object_operator(**operator.operator_parameters)
+            retval = object_operator(**operator.operator_parameters)
+        except AttributeError:
+            raise AttributeError("bpy.ops.mesh has no attribute {}".format(operator.operator_name))
+        except TypeError:
+            raise TypeError("Incorrect operator parameters {}".format(operator.operator_parameters))
+
         if retval != {'FINISHED'}:
             raise RuntimeError("Unexpected operator return value: {}".format(retval))
         if self.verbose:
@@ -620,13 +636,14 @@ class OperatorTest:
 
     def _check_for_unique_test_name(self):
         """
-        Check if the test name is unique
+        Check if the test name is unique in existing test names within the file.
         """
         all_test_names = []
         for index, _ in enumerate(self.operator_tests):
             test_name = self.operator_tests[index][2]
             all_test_names.append(test_name)
         seen_name = set()
+
         for ele in all_test_names:
             if ele in seen_name:
                 raise ValueError("{} is a duplicate, write a new unique name.".format(ele))
@@ -639,18 +656,20 @@ class OperatorTest:
         :param test_name: str - name of test
         :return: bool - True if test is successful. False otherwise.
         """
-        if len(case) != 7:
-            raise ValueError("Expected exactly 7 parameters for each test case, got {}".format(len(case)))
-        case = self.operator_tests[0]
+        case = None
         len_test = len(self.operator_tests)
         count = 0
+        # Finding the index of the test to match the "test name"
         for index,_ in enumerate(self.operator_tests):
             if test_name == self.operator_tests[index][2]:
                 case = self.operator_tests[index]
                 break
             count = count + 1
+
         if count == len_test:
             raise Exception("No test {} found!".format(test_name))
+        if len(case) != 7:
+            raise ValueError("Expected exactly 7 parameters for each test case, got {}".format(len(case)))
 
         select_mode = case[0]
         selection = case[1]
@@ -756,9 +775,7 @@ class ModifierTest:
         :param test_name: str - name of test
         :return: bool - True if test passed, False otherwise.
         """
-        if len(case) != 4:
-            raise ValueError("Expected exactly 4 parameters for each test case, got {}".format(len(case)))
-        case = self.modifier_tests[0]
+        case = None
         len_test = len(self.modifier_tests)
         count = 0
         for index, _ in enumerate(self.modifier_tests):
@@ -769,6 +786,8 @@ class ModifierTest:
         if count == len_test:
             raise Exception("No test {} found!".format(test_name))
 
+        if len(case) != 4:
+            raise ValueError("Expected exactly 4 parameters for each test case, got {}".format(len(case)))
         test_name = case[0]
         test_object_name = case[1]
         expected_object_name = case[2]
