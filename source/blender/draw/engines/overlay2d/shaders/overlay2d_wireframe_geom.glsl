@@ -40,9 +40,6 @@ void main()
   ss_pos[0] = pos0.xy / pos0.w;
   ss_pos[1] = pos1.xy / pos1.w;
 
-  vec2 line = ss_pos[0] - ss_pos[1];
-  line = abs(line) * sizeViewport.xy;
-
   float half_size = sizeEdge;
   /* Enlarge edge for outline drawing. */
   half_size += (lineStyle == OVERLAY2D_LINE_STYLE_OUTLINE) ? max(sizeEdge, 1.0) : 0.0;
@@ -51,10 +48,10 @@ void main()
     half_size += 0.5;
   }
 
-  vec3 edge_ofs = vec3(half_size * sizeViewportInv.xy, 0.0);
-
-  bool horizontal = line.x > line.y;
-  edge_ofs = (horizontal) ? edge_ofs.zyz : edge_ofs.xzz;
+  vec2 line = ss_pos[0] - ss_pos[1];
+  vec2 line_dir = normalize(line);
+  vec2 line_perp = vec2(-line_dir.y, line_dir.x);
+  vec2 edge_ofs = line_perp * sizeViewportInv * ceil(half_size);
 
   do_vertex(pos0, selectionFac[0], stippleStart[0], stipplePos[0], half_size, edge_ofs.xy);
   do_vertex(pos0, selectionFac[0], stippleStart[0], stipplePos[0], -half_size, -edge_ofs.xy);
