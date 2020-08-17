@@ -112,6 +112,7 @@ static void editors_image_cache_image(EDITORS_PassList *psl,
     static float shuffle[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     int draw_flags = 0;
     static float far_near[2] = {100.0f, 0.0f};
+    const bool use_premul_alpha = ima->alpha_mode == IMA_ALPHA_PREMUL;
 
     if (scene->camera && scene->camera->type == OB_CAMERA) {
       far_near[1] = ((Camera *)scene->camera->data)->clip_start;
@@ -156,6 +157,7 @@ static void editors_image_cache_image(EDITORS_PassList *psl,
     DRW_shgroup_uniform_vec4_copy(shgrp, "color", color);
     DRW_shgroup_uniform_vec4_copy(shgrp, "shuffle", shuffle);
     DRW_shgroup_uniform_int_copy(shgrp, "drawFlags", draw_flags);
+    DRW_shgroup_uniform_bool_copy(shgrp, "imgPremultiplied", use_premul_alpha);
 
     DRW_shgroup_call_instances_with_attrs(
         shgrp, NULL, e_data.gpu_batch_image, e_data.gpu_batch_instances);
@@ -251,7 +253,7 @@ void EDITORS_image_cache_init(EDITORS_Data *vedata)
     /* Write depth is needed for background rendering. Near depth is used for transparency
      * checker and Far depth is used for indicating the image size. */
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS |
-                     DRW_STATE_BLEND_ALPHA;
+                     DRW_STATE_BLEND_ALPHA_PREMUL;
     psl->image_pass = DRW_pass_create("Image", state);
   }
 

@@ -65,11 +65,13 @@ void main()
   }
   else {
     vec2 uvs_clamped = clamp(uvs, 0.0, 1.0);
-    tex_color = texture_read_as_linearrgb(imageTexture, imgPremultiplied, uvs_clamped);
+    tex_color = texture(imageTexture, uvs_clamped);
   }
 
   if ((drawFlags & SIMA_DRAW_FLAG_APPLY_ALPHA) != 0) {
-    tex_color.rgb *= tex_color.a;
+    if (!imgPremultiplied && tex_color.a != 0.0 && tex_color.a != 1.0) {
+      tex_color.rgb *= tex_color.a;
+    }
   }
   if ((drawFlags & SIMA_DRAW_FLAG_DEPTH) != 0) {
     tex_color = smoothstep(FAR_DISTANCE, NEAR_DISTANCE, tex_color);
