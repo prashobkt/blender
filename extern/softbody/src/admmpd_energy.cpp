@@ -94,7 +94,7 @@ void EnergyTerm::update_tet(
 	Matrix3d U, V;
 	Vector3d S;
 	signed_svd(zi, U, S, V);
-	Vector3d s0 = S;
+	const Vector3d s0 = S;
 
 	switch (options->elastic_material)
 	{
@@ -110,7 +110,6 @@ void EnergyTerm::update_tet(
 		} break;
 		case ELASTIC_NH:
 		{
-			S = Vector3d::Ones();
 			solve_prox(options,index,lame,s0,S);
 			zi = U * S.asDiagonal() * V.transpose();
 		} break;
@@ -266,6 +265,11 @@ void EnergyTerm::solve_prox(
 	Eigen::Vector3d &s)
 {
 	(void)(index);
+
+	// Always start prox solve at positive singular vals
+	if( s[2] < 0.0 ){ s[2] *= -1.0; }
+//	s = Vector3d::Ones();
+
 	Vector3d g; // gradient
 	Vector3d p; // descent
 	Vector3d s_prev;
@@ -273,9 +277,10 @@ void EnergyTerm::solve_prox(
 	double energy_k, energy_k1;
 	const bool add_admm_pen = true;
 	const double eps = 1e-6;
+	const int max_ls_iter = 20;
 
 	int iter = 0;
-	for(; iter<20; ++iter)
+	for(; iter<10; ++iter)
 	{
 		g.setZero();
 		energy_k = energy_density(options,lame,add_admm_pen,s0,s,&g); // e and g
@@ -294,7 +299,6 @@ void EnergyTerm::solve_prox(
 		// Backtracking line search
 		double alpha = 1;
 		int ls_iter = 0;
-		const int max_ls_iter = 20;
 		while(energy_k1>energy_k && ls_iter<max_ls_iter)
 		{
 			alpha *= 0.5;
@@ -306,10 +310,8 @@ void EnergyTerm::solve_prox(
 		// Sometimes flattened tets will have a hard time
 		// uninverting, in which case they get linesearch
 		// blocked. There are ways around this, but for now
-		// simply quitting is fine. I've tried a few tricks
-		// to get past this, but in the end it doesn't really
-		// matter. The global step will smooth things over
-		// and get us in a better state next time ;)
+		// simply quitting is fine. The global step will smooth
+		// things over and get us in a better state next time.
 		if (ls_iter>=max_ls_iter)
 		{
 			s = s_prev;

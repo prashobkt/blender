@@ -1800,7 +1800,7 @@ static void rna_def_softbody(BlenderRNA *brna)
 
   static const EnumPropertyItem admmpd_initmode_items[] = {
       {0, "EMBEDDED", 0, "Embedded", "Embed surface in low-res lattice"},
-      //{1, "TETGEN", 0, "TetGen", "Tetrahedralize the surface mesh"},
+      {1, "TETGEN", 0, "TetGen", "Tetrahedralize the surface mesh"},
       {2, "CLOTH", 0, "Cloth", "Simulate surface mesh as a cloth"},
       {0, NULL, 0, NULL, NULL},
   };

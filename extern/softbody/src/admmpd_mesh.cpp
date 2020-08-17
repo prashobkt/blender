@@ -578,8 +578,9 @@ void TetMesh::compute_masses(
 		edges.col(1) = x->row(tet[2]) - tet_v0;
 		edges.col(2) = x->row(tet[3]) - tet_v0;
 		double vol = edges.determinant()/6.0;
-		if (vol <= 0)
+		if (vol <= 0) {
 			throw_err("compute_masses","Inverted or flattened tet");
+		}
 
 		double tet_mass = density_kgm3 * vol;
 		m[tet[0]] += tet_mass / 4.0;

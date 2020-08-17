@@ -25,7 +25,7 @@ set(INC
 set(INC_SYS
   ../../extern/softbody/src
   ../../extern/discregrid/discregrid/include
-  ../tetgen
+  ../../extern/tetgen
   ../../source/blender/makesdna
   ../../source/blender/blenkernel
   ../../source/blender/blenlib
@@ -41,5 +41,13 @@ set(SRC
 set(LIB
   extern_admmpd
 )
+
+if(WITH_TETGEN)
+  set(LIB
+    ${LIB}
+    extern_tetgen
+  )
+  add_definitions(-DWITH_TETGEN)
+endif()
 
 blender_add_lib(bf_intern_admmpd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

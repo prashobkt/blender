@@ -27,8 +27,7 @@
 #include "admmpd_mesh.h"
 #include "admmpd_collision.h"
 #ifdef WITH_TETGEN
-  #include "tetgen_api.h"
-  #include "BKE_mesh_remesh_voxel.h" // TetGen
+  #include "tetgen.h"
 #endif
 #include "DNA_mesh_types.h" // Mesh
 #include "DNA_meshdata_types.h" // MVert
@@ -50,6 +49,12 @@ struct CollisionObstacle
   Eigen::VectorXf x0, x1;
   std::vector<unsigned int> F;
   bool needs_sdf_recompute;
+  void reset() {
+    x0 = Eigen::VectorXf();
+    x1 = Eigen::VectorXf();
+    F.clear();
+    needs_sdf_recompute = true;
+  }
 };
 
 struct ADMMPDInternalData
@@ -173,69 +178,7 @@ void admmpd_dealloc(ADMMPDInterfaceData *iface)
   iface->idata = nullptr;
 }
 
-static inline int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
-{
-#ifdef WITH_TETGEN
-  std::vector<float> v;
-  std::vector<unsigned int> f;
-  vecs_from_object(ob,vertexCos,v,f);
-
-  TetGenRemeshData tg;
-  init_tetgenremeshdata(&tg);
-  tg.in_verts = v.data();
-  tg.in_totverts = v.size()/3;
-  tg.in_faces = f.data();
-  tg.in_totfaces = f.size()/3;
-  bool success = tetgen_resmesh(&tg);
-  if (!success || tg.out_tottets==0)
-  {
-    strcpy_error(iface, "TetGen failed to generate");
-    return 0;
-  }
-
-  // Double check assumption, the first
-  // mesh_totverts vertices remain the same
-  // for input and output mesh.
-    for (int i=0; i<tg.in_totverts; ++i)
-    {
-      for (int j=0; j<3; ++j)
-      {
-        float diff = std::abs(v[i*3+j]-tg.out_verts[i*3+j]);
-        if (diff > 1e-10)
-        {
-          strcpy_error(iface, "Bad TetGen assumption: change in surface verts");
-          return 0;
-        }
-      }
-    }
-
-  iface->idata->mesh = std::make_shared<admmpd::TetMesh>();
-  success = iface->idata->mesh->create(
-    tg.out_verts,
-    tg.out_totverts,
-    tg.out_facets,
-    tg.out_totfacets,
-    tg.out_tets,
-    tg.out_tottets);
-
-  if (!success) {
-    strcpy_error(iface, "TetMesh failed on creation");
-    return 0;
-  }
-
-  // Clean up tetgen output data
-  MEM_freeN(tg.out_tets);
-  MEM_freeN(tg.out_facets);
-  MEM_freeN(tg.out_verts);
-
-  return 1;
-#else
-  (void)(ob);
-  (void)(vertexCos);
-  strcpy_error(iface, "TetGen not available");
-  return 0;
-#endif
-}
+static inline int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3]);
 
 static inline int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
 {
@@ -348,7 +291,6 @@ int admmpd_update_mesh(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos
       } break;
     }
     if (!gen_success || !iface->idata->mesh || x0==nullptr) {
-      strcpy_error(iface, "failed to init mesh");
       return 0;
     }
   }
@@ -422,6 +364,7 @@ int admmpd_update_solver(ADMMPDInterfaceData *iface,  Scene *sc, Object *ob, flo
   // Reset options and data
   iface->idata->options = std::make_shared<admmpd::Options>();
   iface->idata->data = std::make_shared<admmpd::SolverData>();
+  iface->idata->obs.reset();
 
   admmpd::Options *op = iface->idata->options.get();
   options_from_object(iface,sc,ob,op,false);
@@ -523,7 +466,7 @@ void admmpd_update_obstacles(
     return;
   }
   if (!iface->idata) { return; }
-  if (!iface->idata->collision) { return; }
+
   if (nf==0 || nv==0) { return; }
   int nv3 = nv*3;
   int nf3 = nf*3;
@@ -680,6 +623,17 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
   admmpd_update_goals(iface,ob,vertexCos);
   update_selfcollision_group(iface,ob);
 
+  // Obstacle collisions not yet implemented
+  // for cloth or tet mesh.
+  bool had_set_obstacle_error = false;
+  if ((ob->soft->admmpd_mesh_mode == MESHTYPE_TET ||
+    ob->soft->admmpd_mesh_mode == MESHTYPE_TRIANGLE) &&
+    iface->idata->obs.x0.size()>0)
+  {
+    had_set_obstacle_error = true;
+    strcpy_error(iface, "Obstacle collision not yet available for selected mesh mode.");
+  }
+
   // Changing the location of the obstacles requires a recompuation
   // of the SDF. So we'll only do that if:
   // a) we are substepping (need to lerp)
@@ -694,7 +648,6 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
     iface->idata->options->substeps>1 &&
     (iface->idata->obs.x0-iface->idata->obs.x1).lpNorm<Eigen::Infinity>()>1e-6;
 
-  bool had_set_obstacle_error = false;
   if (has_obstacles && iface->idata->obs.needs_sdf_recompute && !lerp_obstacles) {
     std::string set_obs_error = "";
     if (!iface->idata->collision->set_obstacles(
@@ -754,3 +707,186 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
 
   return 1;
 }
+
+
+#ifdef WITH_TETGEN
+
+static void make_tetgenio(
+  float *verts,
+  unsigned int *faces,
+  int numverts,
+  int numfaces,
+  tetgenio &tgio )
+{
+  tgio.initialize();
+  tgio.firstnumber = 0;
+  tgio.mesh_dim = 3;
+  tgio.numberofpoints = numverts;
+  tgio.pointlist = new REAL[tgio.numberofpoints * 3];
+//	tgio.pointlist = (REAL *)MEM_malloc_arrayN(
+//		tgio.numberofpoints, 3 * sizeof(REAL), "tetgen remesh out verts");
+  for (int i=0; i < tgio.numberofpoints; ++i)
+    {
+    tgio.pointlist[i*3+0] = verts[i*3+0];
+    tgio.pointlist[i*3+1] = verts[i*3+1];
+    tgio.pointlist[i*3+2] = verts[i*3+2];
+  }
+  tgio.numberoffacets = numfaces;
+  tgio.facetlist = new tetgenio::facet[tgio.numberoffacets];
+//	tgio.facetlist = (tetgenio::facet *)MEM_malloc_arrayN(
+//		tgio.numberoffacets, sizeof(tetgenio::facet), "tetgen remesh out facets");  
+  tgio.facetmarkerlist = new int[tgio.numberoffacets];
+//	tgio.facetmarkerlist = (int *)MEM_malloc_arrayN(
+//		tgio.numberoffacets, sizeof(int), "tetgen remesh out marker list");
+  for (int i=0; i<numfaces; ++i)
+    {
+    tgio.facetmarkerlist[i] = i;
+    tetgenio::facet *f = &tgio.facetlist[i];
+    f->numberofholes = 0;
+    f->holelist = NULL;
+    f->numberofpolygons = 1;
+    f->polygonlist = new tetgenio::polygon[1];
+    tetgenio::polygon *p = &f->polygonlist[0];
+    p->numberofvertices = 3;
+    p->vertexlist = new int[3];
+    p->vertexlist[0] = faces[i*3+0];
+    p->vertexlist[1] = faces[i*3+1];
+    p->vertexlist[2] = faces[i*3+2];
+  }
+}
+
+static inline int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
+{
+  if (!iface) { return 0; }
+  if (!iface->idata) { return 0; }
+  if (!ob) { return 0; }
+
+  iface->idata->mesh = std::make_shared<admmpd::TetMesh>();
+  iface->idata->collision.reset(); // TODO
+
+  std::vector<float> v;
+  std::vector<unsigned int> f;
+  vecs_from_object(ob,vertexCos,v,f);
+
+	// Set up the switches
+  //double quality = 1.4; // changes topology
+	std::stringstream switches;
+	switches << "Q"; // quiet
+  //if (quality > 0) { switches << "q" << quality; }
+  //if (maxvol > 0) { switches << "a" << maxvol; }
+
+  tetgenio in;
+  make_tetgenio(v.data(), f.data(), v.size()/3, f.size()/3, in);
+  tetgenio out;
+  out.initialize();
+  char *c_switches = (char *)switches.str().c_str();
+  tetrahedralize(c_switches, &in, &out);
+
+	if( out.numberoftetrahedra == 0 || out.numberofpoints == 0 )
+  {
+    strcpy_error(iface, "TetGen failed to generate");
+    return 0;
+  }
+
+  // We'll create our custom list of facets to render
+  // with blender. These are all of the triangles that
+  // make up the inner and outer faces, without duplicates.
+  // To avoid duplicates, we'll hash them as a string.
+  // While not super efficient, neither is tetrahedralization...
+  struct face {
+      int f0, f1, f2;
+      face(int f0_, int f1_, int f2_) : f0(f0_), f1(f1_), f2(f2_) {}
+  };
+  auto face_hash = [](int f0, int f1, int f2){
+      return std::to_string(f0)+" "+std::to_string(f1)+" "+std::to_string(f2);
+  };
+  std::unordered_map<std::string,face> faces_map;
+
+  int nt = out.numberoftetrahedra;
+  std::vector<unsigned int> tets(nt*4);
+  for (int i=0; i<nt; ++i)
+  {
+    tets[i*4+0] = out.tetrahedronlist[i*4+0];
+    tets[i*4+1] = out.tetrahedronlist[i*4+1];
+    tets[i*4+2] = out.tetrahedronlist[i*4+2];
+    tets[i*4+3] = out.tetrahedronlist[i*4+3];
+
+    // Append faces
+    for(int j=0; j<4; ++j)
+    {
+      int f0 = tets[i*4+j];
+      int f1 = tets[i*4+(j+1)%4];
+      int f2 = tets[i*4+(j+2)%4];
+      std::string hash = face_hash(f0,f1,f2);
+      if (faces_map.count(hash)!=0) {
+        continue;
+      }
+      faces_map.emplace(hash, face(f0,f1,f2));
+    }
+  }
+
+  int nf = faces_map.size();
+  std::vector<unsigned int> faces(nf*3);
+  int f_idx = 0;
+  for (std::unordered_map<std::string,face>::iterator it = faces_map.begin();
+    it != faces_map.end(); ++it, ++f_idx)
+  {
+    faces[f_idx*3+0] = it->second.f0;
+    faces[f_idx*3+1] = it->second.f1;
+    faces[f_idx*3+2] = it->second.f2;    
+  }
+
+  int nv = out.numberofpoints;
+  std::vector<float> verts(nv*3);
+  for (int i=0; i<out.numberofpoints; ++i)
+  {
+    verts[i*3+0] = out.pointlist[i*3+0];
+    verts[i*3+1] = out.pointlist[i*3+1];
+    verts[i*3+2] = out.pointlist[i*3+2];
+  }
+
+  // In the future we can compute a mapping if the tetrahedralization
+  // changes the surface vertices. In fact, we'll want to if we want to use
+  // other tetrahedralization code. For now report an error if the
+  // surface changes.
+  for (int i=0; i<nv; ++i)
+  {
+    for (int j=0; j<3; ++j)
+    {
+      float diff = std::abs(v[i*3+j]-verts[i*3+j]);
+      if (diff > 1e-10)
+      {
+        strcpy_error(iface, "TetGen error: change in surface vertices");
+        return 0;
+      }
+    }
+  }
+
+  iface->idata->mesh = std::make_shared<admmpd::TetMesh>();
+  bool success = iface->idata->mesh->create(
+    verts.data(),
+    nv,
+    faces.data(),
+    nf,
+    tets.data(),
+    nt);
+
+  if (!success) {
+    strcpy_error(iface, "Error on mesh creation");
+    return 0;
+  }
+
+  return 1;
+}
+
+#else
+
+static inline int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
+{
+  if (!iface) { return 0; }
+  (void)(iface); (void)(ob); (void)(vertexCos);
+  strcpy_error(iface, "TetGen not enabled");
+  return 0;
+}
+
+#endif // WITH_TETGEN
