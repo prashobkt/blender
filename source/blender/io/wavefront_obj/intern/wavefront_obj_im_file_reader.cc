@@ -210,8 +210,8 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
   if (prev_geometry && prev_geometry->get_geom_type() == GEOM_MESH) {
     /* After the creation of a Geometry instance, at least one element has been found in the OBJ
      * file that indicates that it is a mesh. */
-    if (prev_geometry->tot_face_elems() || prev_geometry->tot_normals() ||
-        prev_geometry->tot_edges()) {
+    if (prev_geometry->tot_verts() || prev_geometry->tot_face_elems() ||
+        prev_geometry->tot_normals() || prev_geometry->tot_edges()) {
       return new_geometry();
     }
     if (new_type == GEOM_MESH) {
@@ -304,7 +304,12 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
       current_geometry->vertex_indices_.append(global_vertices.vertices.size() - 1);
     }
     else if (line_key == "vn") {
-      current_geometry->tot_normals_++;
+      float3 curr_vert_normal{};
+      Vector<string_view> str_vert_normal_split;
+      split_by_char(rest_line, ' ', str_vert_normal_split);
+      copy_string_to_float(str_vert_normal_split, FLT_MAX, {curr_vert_normal, 2});
+      global_vertices.vertex_normals.append(curr_vert_normal);
+      current_geometry->vertex_normal_indices_.append(global_vertices.vertex_normals.size() - 1);
     }
     else if (line_key == "vt") {
       float2 curr_uv_vert{};
@@ -386,13 +391,15 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
           if (vert_uv_normal_split.size() == 3) {
             copy_string_to_int(vert_uv_normal_split[1], INT32_MAX, corner.uv_vert_index);
           }
-          /* Discard normals. They'll be calculated on the basis of smooth
-           * shading flag. */
+          copy_string_to_int(vert_uv_normal_split[2], INT32_MAX, corner.vertex_normal_index);
         }
         /* Always keep stored indices non-negative and zero-based. */
         corner.vert_index += corner.vert_index < 0 ? global_vertices.vertices.size() :
                                                      -offsets.get_index_offset(VERTEX_OFF) - 1;
         corner.uv_vert_index += corner.uv_vert_index < 0 ? global_vertices.uv_vertices.size() : -1;
+        corner.vertex_normal_index += corner.vertex_normal_index < 0 ?
+                                          global_vertices.vertex_normals.size() :
+                                          -1;
         curr_face.face_corners.append(corner);
       }
 
@@ -526,7 +533,7 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
 
     if (line_key == "newmtl") {
       if (mtl_materials.remove_as(rest_line)) {
-        fprintf(stderr, "Duplicate material name found, using the new one.\n");
+        std::cerr << "Duplicate material found:'" << rest_line << "'." << std::endl;
       }
       current_mtlmaterial = &mtl_materials.lookup_or_add_default_as(string(rest_line));
     }

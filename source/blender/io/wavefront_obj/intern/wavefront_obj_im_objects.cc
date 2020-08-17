@@ -102,9 +102,14 @@ int Geometry::tot_loops() const
   return tot_loops_;
 }
 
-int Geometry::tot_normals() const
+int64_t Geometry::vertex_normal_index(const int64_t index) const
 {
-  return tot_normals_;
+  return vertex_normal_indices_[index];
+}
+
+int64_t Geometry::tot_normals() const
+{
+  return vertex_normal_indices_.size();
 }
 
 Span<std::string> Geometry::material_names() const

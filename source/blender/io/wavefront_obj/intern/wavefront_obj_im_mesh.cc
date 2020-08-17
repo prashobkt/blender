@@ -69,8 +69,10 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
   create_uv_verts();
   create_materials(bmain, materials);
 
-  BKE_mesh_validate(blender_mesh_.get(), false, true);
-
+  BKE_mesh_validate(blender_mesh_.get(), true, false);
+#if 0
+  add_custom_normals();
+#endif
   BKE_mesh_nomain_to_mesh(blender_mesh_.release(),
                           static_cast<Mesh *>(blender_object_->data),
                           blender_object_.get(),
@@ -209,5 +211,27 @@ void MeshFromGeometry::create_materials(Main *bmain,
     mat->use_nodes = true;
     mat->nodetree = mat_wrap.get_nodetree();
   }
+}
+
+/**
+ * Needs more clarity upon what is expected here?
+ */
+void MeshFromGeometry::add_custom_normals()
+{
+  const int64_t tot_loop_normals{mesh_geometry_.tot_normals()};
+  float(*loop_normals)[3] = static_cast<float(*)[3]>(
+      MEM_malloc_arrayN(tot_loop_normals, sizeof(float[3]), __func__));
+
+  for (int index = 0; index < tot_loop_normals; index++) {
+    copy_v3_v3(loop_normals[index],
+               global_vertices_.vertex_normals[mesh_geometry_.vertex_normal_index(index)]);
+  }
+
+  blender_mesh_->flag |= ME_AUTOSMOOTH;
+  BKE_mesh_set_custom_normals(blender_mesh_.get(), loop_normals);
+  for (int i = 0; i < tot_loop_normals; i++) {
+    print_v3("", loop_normals[i]);
+  }
+  MEM_freeN(loop_normals);
 }
 }  // namespace blender::io::obj

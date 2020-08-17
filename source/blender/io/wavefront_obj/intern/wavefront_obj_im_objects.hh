@@ -44,6 +44,7 @@ namespace blender::io::obj {
 struct GlobalVertices {
   Vector<float3> vertices{};
   Vector<float2> uv_vertices{};
+  Vector<float3> vertex_normals;
 };
 
 /**
@@ -69,11 +70,12 @@ struct IndexOffsets {
  * A face's corner in an OBJ file. In Blender, it translates to a mloop vertex.
  */
 struct FaceCorner {
-  /* This index should stay local to a Geometry, & not index into the global list of vertices. */
+  /* These indices range from zero to total vertices in the OBJ file. */
   int vert_index;
   /* -1 is to indicate abscense of UV vertices. Only < 0 condition should be checked since
    * it can be less than -1 too. */
   int uv_vert_index = -1;
+  int vertex_normal_index;
 };
 
 struct FaceElement {
@@ -115,13 +117,13 @@ class Geometry {
    * Values range from zero to total coordinates in the global list.
    */
   Vector<int> vertex_indices_;
+  Vector<int> vertex_normal_indices_;
   /** Edges written in the file in addition to (or even without polygon) elements. */
   Vector<MEdge> edges_{};
   Vector<FaceElement> face_elements_{};
   bool use_vertex_groups_ = false;
   NurbsElement nurbs_element_;
   int tot_loops_ = 0;
-  int tot_normals_ = 0;
 
  public:
   Geometry(eGeometryType type, std::string_view ob_name)
@@ -140,7 +142,8 @@ class Geometry {
   Span<MEdge> edges() const;
   int64_t tot_edges() const;
   int tot_loops() const;
-  int tot_normals() const;
+  int64_t vertex_normal_index(const int64_t index) const;
+  int64_t tot_normals() const;
 
   Span<std::string> material_names() const;
 

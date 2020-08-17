@@ -76,6 +76,7 @@ class MeshFromGeometry : NonMovable, NonCopyable {
   void create_edges();
   void create_uv_verts();
   void create_materials(Main *bmain, const Map<std::string, MTLMaterial> &materials);
+  void add_custom_normals();
 };
 
 }  // namespace blender::io::obj
