@@ -47,28 +47,15 @@
 #define SIMA_DRAW_FLAG_TILED (1 << 4)
 
 static struct {
-  void *lock;
-  ImBuf *ibuf;
-  Image *image;
-  GPUTexture *texture;
-  /* Does `e_data` own the texture so it needs to be cleanup after usage. */
-  bool owns_texture;
-
-  GPUBatch *gpu_batch_image;
-
   rcti gpu_batch_instances_rect;
   GPUBatch *gpu_batch_instances;
-} e_data = {0}; /* Engine data */
 
-/* Shaders */
+} e_data = {{0}};
 
-/* Default image width and height when image is not available */
-
-static void editors_image_batch_instances_update(void)
+static void editors_image_batch_instances_update(Image *image)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
-  Image *image = e_data.image;
   const bool is_tiled_texture = image && image->source == IMA_SRC_TILED;
   rcti instances;
 
@@ -106,11 +93,12 @@ static void editors_image_batch_instances_update(void)
   }
 }
 
-static void editors_image_cache_image(IMAGE_PassList *psl,
-                                      Image *ima,
-                                      ImageUser *iuser,
-                                      ImBuf *ibuf)
+static void editors_image_cache_image(IMAGE_Data *id, Image *ima, ImageUser *iuser, ImBuf *ibuf)
 {
+  IMAGE_PassList *psl = id->psl;
+  IMAGE_StorageList *stl = id->stl;
+  IMAGE_PrivateData *pd = stl->pd;
+
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const Scene *scene = draw_ctx->scene;
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
@@ -125,26 +113,26 @@ static void editors_image_cache_image(IMAGE_PassList *psl,
         BLI_assert(!"Integer based depth buffers not supported");
       }
       else if (ibuf->zbuf_float) {
-        e_data.texture = GPU_texture_create_2d(ibuf->x, ibuf->y, GPU_R16F, ibuf->zbuf_float, NULL);
-        e_data.owns_texture = true;
+        pd->texture = GPU_texture_create_2d(ibuf->x, ibuf->y, GPU_R16F, ibuf->zbuf_float, NULL);
+        pd->owns_texture = true;
       }
       else if (ibuf->rect_float && ibuf->channels == 1) {
-        e_data.texture = GPU_texture_create_2d(ibuf->x, ibuf->y, GPU_R16F, ibuf->rect_float, NULL);
-        e_data.owns_texture = true;
+        pd->texture = GPU_texture_create_2d(ibuf->x, ibuf->y, GPU_R16F, ibuf->rect_float, NULL);
+        pd->owns_texture = true;
       }
     }
     else if (ima->source == IMA_SRC_TILED) {
-      e_data.texture = BKE_image_get_gpu_tiles(ima, iuser, ibuf);
+      pd->texture = BKE_image_get_gpu_tiles(ima, iuser, ibuf);
       tex_tile_data = BKE_image_get_gpu_tilemap(ima, iuser, NULL);
-      e_data.owns_texture = false;
+      pd->owns_texture = false;
     }
     else {
-      e_data.texture = BKE_image_get_gpu_texture(ima, iuser, ibuf);
-      e_data.owns_texture = false;
+      pd->texture = BKE_image_get_gpu_texture(ima, iuser, ibuf);
+      pd->owns_texture = false;
     }
   }
 
-  if (e_data.texture) {
+  if (pd->texture) {
     eGPUSamplerState state = 0;
     GPUShader *shader = IMAGE_shaders_image_get();
     DRWShadingGroup *shgrp = DRW_shgroup_create(shader, psl->image_pass);
@@ -161,11 +149,11 @@ static void editors_image_cache_image(IMAGE_PassList *psl,
 
     if (tex_tile_data != NULL) {
       draw_flags |= SIMA_DRAW_FLAG_TILED;
-      DRW_shgroup_uniform_texture_ex(shgrp, "imageTileArray", e_data.texture, state);
+      DRW_shgroup_uniform_texture_ex(shgrp, "imageTileArray", pd->texture, state);
       DRW_shgroup_uniform_texture(shgrp, "imageTileData", tex_tile_data);
     }
     else {
-      DRW_shgroup_uniform_texture_ex(shgrp, "imageTexture", e_data.texture, state);
+      DRW_shgroup_uniform_texture_ex(shgrp, "imageTexture", pd->texture, state);
     }
 
     if ((sima->flag & SI_USE_ALPHA) != 0) {
@@ -200,38 +188,40 @@ static void editors_image_cache_image(IMAGE_PassList *psl,
     DRW_shgroup_uniform_bool_copy(shgrp, "imgPremultiplied", use_premul_alpha);
 
     DRW_shgroup_call_instances_with_attrs(
-        shgrp, NULL, e_data.gpu_batch_image, e_data.gpu_batch_instances);
+        shgrp, NULL, DRW_cache_quad_image_get(), e_data.gpu_batch_instances);
   }
   else {
     /* No image available. use the image unavailable shader. */
     GPUShader *shader = IMAGE_shaders_image_unavailable_get();
     DRWShadingGroup *grp = DRW_shgroup_create(shader, psl->image_pass);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
-    DRW_shgroup_call(grp, e_data.gpu_batch_image, NULL);
+    DRW_shgroup_call(grp, DRW_cache_quad_image_get(), NULL);
   }
 }
 
 /* -------------------------------------------------------------------- */
 /** \name Engine Callbacks
  * \{ */
-static void IMAGE_engine_init(void *UNUSED(vedata))
+static void IMAGE_engine_init(void *vedata)
 {
   IMAGE_shader_library_ensure();
-
-  e_data.image = NULL;
-  e_data.ibuf = NULL;
-  e_data.lock = NULL;
-  e_data.texture = NULL;
-
-  /* Create batch and unit matrix */
-  if (!e_data.gpu_batch_image) {
-    e_data.gpu_batch_image = DRW_cache_quad_image_get();
+  IMAGE_Data *id = (IMAGE_Data *)vedata;
+  IMAGE_StorageList *stl = id->stl;
+  if (!stl->pd) {
+    stl->pd = MEM_callocN(sizeof(IMAGE_PrivateData), __func__);
   }
+  IMAGE_PrivateData *pd = stl->pd;
+
+  pd->ibuf = NULL;
+  pd->lock = NULL;
+  pd->texture = NULL;
 }
 
 static void IMAGE_cache_init(void *vedata)
 {
   IMAGE_Data *id = (IMAGE_Data *)vedata;
+  IMAGE_StorageList *stl = id->stl;
+  IMAGE_PrivateData *pd = stl->pd;
   IMAGE_PassList *psl = id->psl;
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -239,21 +229,21 @@ static void IMAGE_cache_init(void *vedata)
 
   /* e_data.image needs to be set as first other calls may access it to determine
    * if we are looking at a texture, viewer or render result */
-  e_data.image = ED_space_image(sima);
-  const bool has_image = e_data.image != NULL;
-  const bool show_multilayer = has_image && BKE_image_is_multilayer(e_data.image);
+  Image *image = ED_space_image(sima);
+  const bool has_image = image != NULL;
+  const bool show_multilayer = has_image && BKE_image_is_multilayer(image);
 
   if (has_image) {
     if (show_multilayer) {
       /* update multiindex and pass for the current eye */
-      BKE_image_multilayer_index(e_data.image->rr, &sima->iuser);
+      BKE_image_multilayer_index(image->rr, &sima->iuser);
     }
     else {
-      BKE_image_multiview_index(e_data.image, &sima->iuser);
+      BKE_image_multiview_index(image, &sima->iuser);
     }
   }
 
-  editors_image_batch_instances_update();
+  editors_image_batch_instances_update(image);
 
   {
     /* Write depth is needed for background rendering. Near depth is used for transparency
@@ -269,9 +259,9 @@ static void IMAGE_cache_init(void *vedata)
   GPU_framebuffer_clear_color_depth(dfbl->default_fb, clear_col, 1.0);
 
   {
-    ImBuf *ibuf = ED_space_image_acquire_buffer(sima, &e_data.lock, 0);
-    editors_image_cache_image(psl, e_data.image, &sima->iuser, ibuf);
-    e_data.ibuf = ibuf;
+    ImBuf *ibuf = ED_space_image_acquire_buffer(sima, &pd->lock, 0);
+    editors_image_cache_image(id, image, &sima->iuser, ibuf);
+    pd->ibuf = ibuf;
   }
 }
 
@@ -279,21 +269,25 @@ static void IMAGE_cache_populate(void *UNUSED(vedata), Object *UNUSED(ob))
 {
 }
 
-static void image_draw_finish(IMAGE_Data *UNUSED(vedata))
+static void image_draw_finish(IMAGE_Data *vedata)
 {
+  IMAGE_Data *id = (IMAGE_Data *)vedata;
+  IMAGE_StorageList *stl = id->stl;
+  IMAGE_PrivateData *pd = stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
 
-  ED_space_image_release_buffer(sima, e_data.ibuf, e_data.lock);
-  e_data.image = NULL;
+  ED_space_image_release_buffer(sima, pd->ibuf, pd->lock);
 
-  if (e_data.owns_texture) {
-    GPU_texture_free(e_data.texture);
-    e_data.owns_texture = false;
+  if (pd->owns_texture) {
+    GPU_texture_free(pd->texture);
+    pd->owns_texture = false;
   }
-  e_data.texture = NULL;
+  pd->texture = NULL;
 
-  GPU_BATCH_DISCARD_SAFE(e_data.gpu_batch_instances);
+  if (e_data.gpu_batch_instances) {
+    GPU_BATCH_DISCARD_SAFE(e_data.gpu_batch_instances);
+  }
 }
 
 static void IMAGE_draw_scene(void *vedata)

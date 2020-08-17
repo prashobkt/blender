@@ -23,6 +23,9 @@
 /* Forward declarations */
 struct rcti;
 struct GPUBatch;
+struct Image;
+struct ImBuf;
+struct GPUTexture;
 
 /* *********** LISTS *********** */
 
@@ -32,12 +35,24 @@ typedef struct IMAGE_PassList {
   DRWPass *image_pass;
 } IMAGE_PassList;
 
+typedef struct IMAGE_PrivateData {
+  void *lock;
+  struct ImBuf *ibuf;
+
+  struct GPUTexture *texture;
+  bool owns_texture;
+} IMAGE_PrivateData;
+
+typedef struct IMAGE_StorageList {
+  IMAGE_PrivateData *pd;
+} IMAGE_StorageList;
+
 typedef struct IMAGE_Data {
   void *engine_type;
   DRWViewportEmptyList *fbl;
   DRWViewportEmptyList *txl;
   IMAGE_PassList *psl;
-  DRWViewportEmptyList *stl;
+  IMAGE_StorageList *stl;
 } IMAGE_Data;
 
 /* editors_shaders.c */
