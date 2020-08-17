@@ -143,14 +143,19 @@ static int textview_wrap_offsets(
 }
 
 /** Do not draw, just advance the height. */
-static void textview_draw_string_dry_run(TextViewDrawState *tds, const char *str, int str_len)
+static void textview_draw_string_dry_run(TextViewDrawState *tds,
+                                         const char *str,
+                                         int str_len,
+                                         const bool pad_before,
+                                         const bool pad_after)
 {
   int tot_lines; /* Total number of lines for wrapping. */
   int *offsets;  /* Offsets of line beginnings for wrapping. */
 
   str_len = textview_wrap_offsets(str, str_len, tds->columns, &tot_lines, &offsets);
 
-  const int line_height = (tot_lines * tds->lheight) + (tds->row_vpadding * 2);
+  const int line_height = (tot_lines * tds->lheight) + (tds->row_vpadding * pad_after) +
+                          (tds->row_vpadding * pad_before);
   const int line_bottom = tds->xy[1];
   const int line_top = line_bottom + line_height;
 
@@ -161,7 +166,7 @@ static void textview_draw_string_dry_run(TextViewDrawState *tds, const char *str
 
       /* Wrap. */
       if (tot_lines > 1) {
-        int iofs = (int)((float)(y_next - tds->mval[1]) / tds->lheight);
+        const int iofs = (int)((float)(y_next - tds->mval[1]) / tds->lheight);
         ofs += offsets[MIN2(iofs, tot_lines - 1)];
       }
 
@@ -183,15 +188,13 @@ static void textview_draw_string_dry_run(TextViewDrawState *tds, const char *str
 static void textview_draw_multiline_dry_run(TextViewDrawState *tds, ListBase *text_lines)
 {
   TextViewContextLine *iter_line = text_lines->last;
-  const int row_vpad_back = tds->row_vpadding;
-  /* TODO (grzelins) workaround: do not add padding for multiline string */
-  tds->row_vpadding = 0;
-  while (iter_line->prev ) {
-    textview_draw_string_dry_run(tds, iter_line->line, iter_line->len);
+  while (iter_line->prev) {
+    textview_draw_string_dry_run(
+        tds, iter_line->line, iter_line->len, false, iter_line == text_lines->last);
     iter_line = iter_line->prev;
   }
-  tds->row_vpadding = row_vpad_back;
-  textview_draw_string_dry_run(tds, iter_line->line, iter_line->len);
+  textview_draw_string_dry_run(
+      tds, iter_line->line, iter_line->len, true, iter_line == text_lines->last);
 }
 
 /**
@@ -211,7 +214,9 @@ static bool textview_draw_string(TextViewDrawState *tds,
                                  const int icon,
                                  const uchar icon_fg[4],
                                  const uchar icon_bg[4],
-                                 const uchar bg_sel[4])
+                                 const uchar bg_sel[4],
+                                 const bool pad_before,
+                                 const bool pad_after)
 {
   BLI_assert(str_format != NULL || fg != NULL);
   int tot_lines; /* Total number of lines for wrapping. */
@@ -219,7 +224,8 @@ static bool textview_draw_string(TextViewDrawState *tds,
 
   str_len = textview_wrap_offsets(str, str_len, tds->columns, &tot_lines, &offsets);
 
-  const int line_height = (tot_lines * tds->lheight) + (tds->row_vpadding * 2);
+  const int line_height = (tot_lines * tds->lheight) + (tds->row_vpadding * pad_after) +
+                          (tds->row_vpadding * pad_before);
   const int line_bottom = tds->xy[1];
   const int line_top = line_bottom + line_height;
 
@@ -260,9 +266,11 @@ static bool textview_draw_string(TextViewDrawState *tds,
 
   if (icon_bg) {
     float col[4];
-    int bg_size = UI_DPI_ICON_SIZE * 1.2;
-    float vpadding = (tds->lheight + (tds->row_vpadding * 2) - bg_size) / 2;
-    float hpadding = tds->draw_rect->xmin - (bg_size * 1.2f);
+    const int bg_size = UI_DPI_ICON_SIZE * 1.2;
+    const float vpadding = (tds->lheight + (tds->row_vpadding * pad_after) +
+                            (tds->row_vpadding * pad_before) - bg_size) /
+                           2;
+    const float hpadding = tds->draw_rect->xmin - (bg_size * 1.2f);
 
     rgba_uchar_to_float(col, icon_bg);
     UI_draw_roundbox_corner_set(UI_CNR_ALL);
@@ -276,8 +284,10 @@ static bool textview_draw_string(TextViewDrawState *tds,
   }
 
   if (icon) {
-    int vpadding = (tds->lheight + (tds->row_vpadding * 2) - UI_DPI_ICON_SIZE) / 2;
-    int hpadding = tds->draw_rect->xmin - (UI_DPI_ICON_SIZE * 1.3f);
+    const int vpadding = (tds->lheight + (tds->row_vpadding * pad_after) +
+                          (tds->row_vpadding * pad_before) - UI_DPI_ICON_SIZE) /
+                         2;
+    const int hpadding = tds->draw_rect->xmin - (UI_DPI_ICON_SIZE * 1.3f);
 
     GPU_blend(true);
     UI_icon_draw_ex(hpadding,
@@ -291,14 +301,17 @@ static bool textview_draw_string(TextViewDrawState *tds,
     GPU_blend(false);
   }
 
-  tds->xy[1] += tds->row_vpadding;
+  if (pad_after) {
+    tds->xy[1] += tds->row_vpadding;
+  }
 
   /* Last part needs no clipping. */
   const int final_offset = offsets[tot_lines - 1];
   len = str_len - final_offset;
   s = str + final_offset;
+  const float y = tds->lofs + (tds->row_vpadding * pad_after) + line_bottom;
   if (fg) {
-    BLF_position(tds->font_id, tds->xy[0], tds->lofs + line_bottom + tds->row_vpadding, 0);
+    BLF_position(tds->font_id, tds->xy[0], y, 0);
     BLF_color4ubv(tds->font_id, fg);
     BLF_draw_mono(tds->font_id, s, len, tds->cwidth);
   }
@@ -311,7 +324,7 @@ static bool textview_draw_string(TextViewDrawState *tds,
         text_format_draw_font_color(tds->font_id, fmt_prev = format_tmp[j]);
       }
       const size_t draw_len = BLI_str_utf8_size_safe(s + j);
-      BLF_position(tds->font_id, str_shift, tds->lofs + line_bottom + tds->row_vpadding, 0);
+      BLF_position(tds->font_id, str_shift, y, 0);
       const int columns = BLF_draw_mono(tds->font_id, s + j, draw_len, tds->cwidth);
       str_shift += tds->cwidth * columns;
     }
@@ -409,30 +422,36 @@ static bool textview_draw_multiline(const uchar *fg,
   TextViewContextLine *iter_line = text_lines->last;
   const uchar *_fg = (data_flag & TVC_LINE_FG_SIMPLE) ? fg : NULL;
   const uchar *_bg = (data_flag & TVC_LINE_BG) ? bg : NULL;
-  const int row_vpad_back = tds->row_vpadding;
-  /* TODO (grzelins) workaround: do not add padding for multiline string */
-  tds->row_vpadding = 0;
   while (iter_line->prev && !is_out_of_view_y) {
-    const char *_format = (data_flag & TVC_LINE_FG_SYNTAX) ? iter_line->format : NULL;
-    is_out_of_view_y = !textview_draw_string(
-        tds, iter_line->line, _format, iter_line->len, _fg, _bg, 0, NULL, NULL, bg_sel);
-    iter_line = iter_line->prev;
-  }
-  tds->row_vpadding = row_vpad_back;
-  /* only first line has icon */
-  if (!is_out_of_view_y) {
-    const char *_format = (data_flag & TVC_LINE_FG_SYNTAX) ? iter_line->format : NULL;
     is_out_of_view_y = !textview_draw_string(tds,
                                              iter_line->line,
-                                             _format,
+                                             (data_flag & TVC_LINE_FG_SYNTAX) ? iter_line->format :
+                                                                                NULL,
                                              iter_line->len,
                                              _fg,
                                              _bg,
-                                             (data_flag & TVC_LINE_ICON) ? icon : 0,
-                                             (data_flag & TVC_LINE_ICON_FG) ? icon_fg : NULL,
-                                             (data_flag & TVC_LINE_ICON_BG) ? icon_bg : NULL,
-                                             bg_sel);
+                                             0,
+                                             NULL,
+                                             NULL,
+                                             bg_sel,
+                                             false,
+                                             iter_line == text_lines->last);
+    iter_line = iter_line->prev;
   }
+  /* only first line has icon */
+  is_out_of_view_y = !textview_draw_string(tds,
+                                           iter_line->line,
+                                           (data_flag & TVC_LINE_FG_SYNTAX) ? iter_line->format :
+                                                                              NULL,
+                                           iter_line->len,
+                                           _fg,
+                                           _bg,
+                                           (data_flag & TVC_LINE_ICON) ? icon : 0,
+                                           (data_flag & TVC_LINE_ICON_FG) ? icon_fg : NULL,
+                                           (data_flag & TVC_LINE_ICON_BG) ? icon_bg : NULL,
+                                           bg_sel,
+                                           true,
+                                           iter_line == text_lines->last);
   return is_out_of_view_y;
 }
 
