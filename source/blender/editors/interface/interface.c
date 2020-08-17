@@ -69,7 +69,9 @@
 
 #include "RNA_access.h"
 
-#include "BPY_extern.h"
+#ifdef WITH_PYTHON
+#  include "BPY_extern_run.h"
+#endif
 
 #include "ED_numinput.h"
 #include "ED_screen.h"
@@ -767,8 +769,6 @@ static bool ui_but_update_from_old_block(const bContext *C,
     but->editstr = oldbut->editstr;
     but->editval = oldbut->editval;
     but->editvec = oldbut->editvec;
-    but->editcoba = oldbut->editcoba;
-    but->editcumap = oldbut->editcumap;
     but->selsta = oldbut->selsta;
     but->selend = oldbut->selend;
     but->softmin = oldbut->softmin;
@@ -2814,7 +2814,7 @@ char *ui_but_string_get_dynamic(uiBut *but, int *r_str_size)
 }
 
 /**
- * Report a generic error prefix when evaluating a string with #BPY_execute_string_as_number
+ * Report a generic error prefix when evaluating a string with #BPY_run_string_as_number
  * as the Python error on it's own doesn't provide enough context.
  */
 #define UI_NUMBER_EVAL_ERROR_PREFIX IFACE_("Error evaluating number, see Info editor for details")
@@ -2839,7 +2839,7 @@ static bool ui_number_from_string(bContext *C, const char *str, double *r_value)
 {
   bool ok;
 #ifdef WITH_PYTHON
-  ok = BPY_execute_string_as_number(C, NULL, str, UI_NUMBER_EVAL_ERROR_PREFIX, r_value);
+  ok = BPY_run_string_as_number(C, NULL, str, UI_NUMBER_EVAL_ERROR_PREFIX, r_value);
 #else
   UNUSED_VARS(C);
   *r_value = atof(str);
@@ -3796,6 +3796,18 @@ static void ui_but_alloc_info(const eButType type,
     case UI_BTYPE_HSVCUBE:
       alloc_size = sizeof(uiButHSVCube);
       alloc_str = "uiButHSVCube";
+      break;
+    case UI_BTYPE_COLORBAND:
+      alloc_size = sizeof(uiButColorBand);
+      alloc_str = "uiButColorBand";
+      break;
+    case UI_BTYPE_CURVE:
+      alloc_size = sizeof(uiButCurveMapping);
+      alloc_str = "uiButCurveMapping";
+      break;
+    case UI_BTYPE_CURVEPROFILE:
+      alloc_size = sizeof(uiButCurveProfile);
+      alloc_str = "uiButCurveProfile";
       break;
     default:
       alloc_size = sizeof(uiBut);
