@@ -19,6 +19,14 @@
 
 # <pep8 compliant>
 
+"""
+Alembic Export Tests
+
+This test suite runs outside of Blender. Tests run Blender to call the exporter,
+and then use the Alembic CLI tools to inspect the exported Alembic files.
+"""
+
+
 import argparse
 import pathlib
 import subprocess
@@ -104,9 +112,11 @@ class AbstractAlembicTest(AbstractBlenderRunnerTest):
             if proptype == 'CompoundProperty':
                 # To read those, call self.abcprop() on it.
                 continue
-            if len(parts) < 2:
-                raise ValueError('Error parsing result from abcprop: %s', info.strip())
-            valtype_and_arrsize, name_and_extent = parts[1:]
+
+            try:
+                valtype_and_arrsize, name_and_extent = parts[1:]
+            except ValueError as ex:
+                raise ValueError('Error parsing result from abcprop "{info.strip()}": {ex}') from ex
 
             # Parse name and extent
             m = self.abcls_array.match(name_and_extent)
