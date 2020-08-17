@@ -152,7 +152,7 @@ set(SRC
   engines/overlay/overlay_wireframe.c
   engines/overlay2d/overlay2d_background.c
   engines/overlay2d/overlay2d_engine.c
-  engines/overlay2d/overlay2d_image_tiling.c
+  engines/overlay2d/overlay2d_tiled_image.c
   engines/overlay2d/overlay2d_shaders.c
   engines/overlay2d/overlay2d_uv.c
   engines/overlay2d/overlay2d_uv_shadow.c
@@ -413,7 +413,7 @@ data_to_c_simple(engines/overlay/shaders/xray_fade_frag.glsl SRC)
 
 data_to_c_simple(engines/overlay2d/shaders/common_overlay2d_lib.glsl SRC)
 data_to_c_simple(engines/overlay2d/shaders/overlay2d_background_frag.glsl SRC)
-data_to_c_simple(engines/overlay2d/shaders/overlay2d_image_tiling_border_vert.glsl SRC)
+data_to_c_simple(engines/overlay2d/shaders/overlay2d_tiled_image_border_vert.glsl SRC)
 data_to_c_simple(engines/overlay2d/shaders/overlay2d_wireframe_frag.glsl SRC)
 data_to_c_simple(engines/overlay2d/shaders/overlay2d_wireframe_geom.glsl SRC)
 data_to_c_simple(engines/overlay2d/shaders/overlay2d_wireframe_vert.glsl SRC)

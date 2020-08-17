@@ -90,7 +90,7 @@ static void OVERLAY2D_engine_init_space_image(OVERLAY2D_Data *vedata, SpaceImage
   pd->do_uv_stretching_overlay = is_image_type && is_uv_editor && is_edit_mode &&
                                  ((sima->flag & SI_DRAW_STRETCH) != 0);
   pd->uv_opacity = sima->uv_opacity;
-  pd->do_image_tiling_overlay = is_image_type && is_tiled_image;
+  pd->do_tiled_image_overlay = is_image_type && is_tiled_image;
 
   pd->wireframe.line_style = overlay2d_line_style_from_space_image(sima);
   pd->wireframe.do_smooth_wire = (sima->flag & SI_SMOOTH_UV) != 0;
@@ -150,8 +150,8 @@ static void OVERLAY2D_cache_init(void *vedata)
   if (pd->do_uv_stretching_overlay) {
     OVERLAY2D_uv_stretching_cache_init(od);
   }
-  if (pd->do_image_tiling_overlay) {
-    OVERLAY2D_image_tiling_cache_init(od);
+  if (pd->do_tiled_image_overlay) {
+    OVERLAY2D_tiled_image_cache_init(od);
   }
 
   OVERLAY2D_background_cache_init(od);
@@ -194,8 +194,8 @@ static void OVERLAY2D_draw_scene(void *vedata)
   OVERLAY2D_background_draw_scene(od);
 
   /* Image Tiling */
-  if (pd->do_image_tiling_overlay) {
-    OVERLAY2D_image_tiling_draw_scene(od);
+  if (pd->do_tiled_image_overlay) {
+    OVERLAY2D_tiled_image_draw_scene(od);
   }
 
   /* Draw faces */

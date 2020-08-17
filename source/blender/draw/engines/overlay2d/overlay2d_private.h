@@ -24,7 +24,7 @@
 
 typedef struct OVERLAY2D_PassList {
   DRWPass *background;
-  DRWPass *image_tiling_borders;
+  DRWPass *tiled_image_borders;
   DRWPass *uv_faces;
   DRWPass *uv_verts;
   DRWPass *uv_stretching;
@@ -52,7 +52,7 @@ typedef struct OVERLAY2D_PrivateData {
   bool do_uv_overlay;
   bool do_uv_shadow_overlay;
   bool do_uv_stretching_overlay;
-  bool do_image_tiling_overlay;
+  bool do_tiled_image_overlay;
 
   float uv_opacity;
 
@@ -129,12 +129,12 @@ GPUShader *OVERLAY2D_shaders_uv_verts_get(void);
 GPUShader *OVERLAY2D_shaders_uv_stretching_area_get(void);
 GPUShader *OVERLAY2D_shaders_uv_stretching_angle_get(void);
 GPUShader *OVERLAY2D_shaders_background_get(void);
-GPUShader *OVERLAY2D_shaders_image_tiling_border_get(void);
+GPUShader *OVERLAY2D_shaders_tiled_image_border_get(void);
 GPUShader *OVERLAY2D_shaders_wireframe_resolve_get(void);
 GPUShader *OVERLAY2D_shaders_wireframe_get(void);
 void OVERLAY2D_shader_library_ensure(void);
 void OVERLAY2D_shaders_free(void);
 
-/* overlay2d_image_tiling.c */
-void OVERLAY2D_image_tiling_cache_init(OVERLAY2D_Data *vedata);
-void OVERLAY2D_image_tiling_draw_scene(OVERLAY2D_Data *vedata);
+/* overlay2d_tiled_image.c */
+void OVERLAY2D_tiled_image_cache_init(OVERLAY2D_Data *vedata);
+void OVERLAY2D_tiled_image_draw_scene(OVERLAY2D_Data *vedata);

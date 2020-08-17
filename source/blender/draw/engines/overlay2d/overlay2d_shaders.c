@@ -46,7 +46,7 @@ extern char datatoc_overlay2d_wireframe_frag_glsl[];
 extern char datatoc_overlay2d_wireframe_geom_glsl[];
 extern char datatoc_overlay2d_wireframe_vert_glsl[];
 extern char datatoc_overlay2d_uv_stretching_vert_glsl[];
-extern char datatoc_overlay2d_image_tiling_border_vert_glsl[];
+extern char datatoc_overlay2d_tiled_image_border_vert_glsl[];
 
 typedef struct OVERLAY2D_Shaders {
   GPUShader *background_sh;
@@ -56,7 +56,7 @@ typedef struct OVERLAY2D_Shaders {
   GPUShader *uv_stretching_angle_sh;
   GPUShader *uv_stretching_area_sh;
   GPUShader *wireframe_sh;
-  GPUShader *image_tiling_border_sh;
+  GPUShader *tiled_image_border_sh;
 } OVERLAY2D_Shaders;
 
 static struct {
@@ -168,18 +168,18 @@ GPUShader *OVERLAY2D_shaders_background_get(void)
   return sh_data->background_sh;
 }
 
-GPUShader *OVERLAY2D_shaders_image_tiling_border_get(void)
+GPUShader *OVERLAY2D_shaders_tiled_image_border_get(void)
 {
   OVERLAY2D_Shaders *sh_data = &e_data.shaders;
-  if (!sh_data->image_tiling_border_sh) {
-    sh_data->image_tiling_border_sh = DRW_shader_create_with_shaderlib(
-        datatoc_overlay2d_image_tiling_border_vert_glsl,
+  if (!sh_data->tiled_image_border_sh) {
+    sh_data->tiled_image_border_sh = DRW_shader_create_with_shaderlib(
+        datatoc_overlay2d_tiled_image_border_vert_glsl,
         NULL,
         datatoc_gpu_shader_uniform_color_frag_glsl,
         e_data.lib,
         "#define INSTANCED_ATTR\n#define blender_srgb_to_framebuffer_space(a) a\n");
   }
-  return sh_data->image_tiling_border_sh;
+  return sh_data->tiled_image_border_sh;
 }
 
 void OVERLAY2D_shaders_free(void)

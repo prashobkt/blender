@@ -45,7 +45,7 @@ static struct {
   GPUBatch *gpu_batch_instances;
 } e_data = {0}; /* Engine data */
 
-void OVERLAY2D_image_tiling_cache_init(OVERLAY2D_Data *vedata)
+void OVERLAY2D_tiled_image_cache_init(OVERLAY2D_Data *vedata)
 {
   OVERLAY2D_PassList *psl = vedata->psl;
 
@@ -55,8 +55,8 @@ void OVERLAY2D_image_tiling_cache_init(OVERLAY2D_Data *vedata)
 
   /* Image tiling borders */
   {
-    DRW_PASS_CREATE(psl->image_tiling_borders, DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS);
-    GPUShader *sh = OVERLAY2D_shaders_image_tiling_border_get();
+    DRW_PASS_CREATE(psl->tiled_image_borders, DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS);
+    GPUShader *sh = OVERLAY2D_shaders_tiled_image_border_get();
 
     float theme_color[4], selected_color[4];
     UI_GetThemeColorShade4fv(TH_BACK, 60, theme_color);
@@ -64,7 +64,7 @@ void OVERLAY2D_image_tiling_cache_init(OVERLAY2D_Data *vedata)
     srgb_to_linearrgb_v4(theme_color, theme_color);
     srgb_to_linearrgb_v4(selected_color, selected_color);
 
-    DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->image_tiling_borders);
+    DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->tiled_image_borders);
     DRW_shgroup_uniform_vec4_copy(grp, "color", theme_color);
     DRW_shgroup_uniform_vec3_copy(grp, "offset", (float[3]){0.0f, 0.0f, 0.0f});
 
@@ -76,7 +76,7 @@ void OVERLAY2D_image_tiling_cache_init(OVERLAY2D_Data *vedata)
     /* Active tile border */
     ImageTile *tile = BLI_findlink(&image->tiles, image->active_tile_index);
     float offset[3] = {((tile->tile_number - 1001) % 10), ((tile->tile_number - 1001) / 10), 0.0f};
-    grp = DRW_shgroup_create(sh, psl->image_tiling_borders);
+    grp = DRW_shgroup_create(sh, psl->tiled_image_borders);
     DRW_shgroup_uniform_vec4_copy(grp, "color", selected_color);
     DRW_shgroup_uniform_vec3_copy(grp, "offset", offset);
     DRW_shgroup_call(grp, DRW_cache_quad_image_wires_get(), NULL);
@@ -104,15 +104,15 @@ void OVERLAY2D_image_tiling_cache_init(OVERLAY2D_Data *vedata)
   }
 }
 
-static void overlay2d_image_tiling_draw_finish(OVERLAY2D_Data *UNUSED(vedata))
+static void overlay2d_tiled_image_draw_finish(OVERLAY2D_Data *UNUSED(vedata))
 {
   GPU_BATCH_DISCARD_SAFE(e_data.gpu_batch_instances);
 }
 
-void OVERLAY2D_image_tiling_draw_scene(OVERLAY2D_Data *vedata)
+void OVERLAY2D_tiled_image_draw_scene(OVERLAY2D_Data *vedata)
 {
   OVERLAY2D_PassList *psl = vedata->psl;
-  DRW_draw_pass(psl->image_tiling_borders);
+  DRW_draw_pass(psl->tiled_image_borders);
 
-  overlay2d_image_tiling_draw_finish(vedata);
+  overlay2d_tiled_image_draw_finish(vedata);
 }
