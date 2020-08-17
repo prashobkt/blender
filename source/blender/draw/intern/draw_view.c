@@ -213,7 +213,7 @@ static bool is_cursor_visible_2d(const DRWContextState *draw_ctx)
     return sima->mode == SI_MODE_UV;
   }
   else {
-    return NULL;
+    return false;
   }
 }
 
