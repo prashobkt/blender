@@ -1277,7 +1277,7 @@ class PHYSICS_PT_viewport_display(PhysicButtonsPanel, Panel):
             col.prop(domain, "slice_axis")
             col.prop(domain, "slice_depth")
             if domain.display_interpolation == "CLOSEST" or domain.coba_field == "FLAGS":
-                col.prop(domain, "show_gridlines", text="Show Gridlines")
+                col.prop(domain, "show_gridlines")
 
         col = col.column()
         col.active = do_full_slicing
@@ -1341,7 +1341,6 @@ class PHYSICS_PT_viewport_display_debug(PhysicButtonsPanel, Panel):
         col = flow.column()
         col.active = domain.show_velocity
         col.prop(domain, "vector_display_type", text="Display As")
-        col.prop(domain, "vector_field", text="Field")
 
         if not domain.use_guide and domain.vector_field == 'GUIDE_VELOCITY':
             note = layout.split()
@@ -1355,6 +1354,7 @@ class PHYSICS_PT_viewport_display_debug(PhysicButtonsPanel, Panel):
         else:
             col.prop(domain, "vector_scale_with_magnitude")
         
+        col.prop(domain, "vector_field")
         col.prop(domain, "vector_scale")
 
 class PHYSICS_PT_viewport_display_advanced(PhysicButtonsPanel, Panel):

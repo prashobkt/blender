@@ -82,6 +82,9 @@ static void workbench_volume_modifier_cache_populate(WORKBENCH_Data *vedata,
   else if (fds->type == FLUID_DOMAIN_TYPE_GAS) {
     DRW_smoke_ensure(fmd, fds->flags & FLUID_DOMAIN_USE_NOISE);
   }
+  else {
+    return;
+  }
 
   if ((!fds->use_coba && (fds->tex_density == NULL && fds->tex_color == NULL)) ||
       (fds->use_coba && fds->tex_field == NULL)) {

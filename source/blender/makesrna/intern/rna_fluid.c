@@ -2496,8 +2496,7 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "show_velocity", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "draw_velocity", 0);
-  RNA_def_property_ui_text(
-      prop, "Display Velocity", "Toggle visualization of the velocity field as needles");
+  RNA_def_property_ui_text(prop, "Vector Display", "Visualize vector fields");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
   prop = RNA_def_property(srna, "vector_display_type", PROP_ENUM, PROP_NONE);
@@ -2544,10 +2543,10 @@ static void rna_def_fluid_domain_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_color_ramp", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "use_coba", 0);
   RNA_def_property_boolean_funcs(prop, NULL, "rna_Fluid_use_color_ramp_set");
-  RNA_def_property_ui_text(
-      prop,
-      "Use Color Ramp",
-      "Render a simulation field while mapping its voxels values to the colors of a ramp");
+  RNA_def_property_ui_text(prop,
+                           "Grid Display",
+                           "Render a simulation field while mapping its voxels values to the "
+                           "colors of a ramp or using a predefined color code");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, NULL);
 
   /* Coba field items - generated dynamically based on domain type */
