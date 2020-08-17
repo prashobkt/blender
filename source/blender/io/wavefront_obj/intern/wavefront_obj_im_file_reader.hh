@@ -47,6 +47,9 @@ class OBJParser {
                       const GlobalVertices &global_vertices);
 };
 
+/**
+ * All texture map options with number of arguments they accept.
+ */
 class TextureMapOptions {
  private:
   Map<const std::string, int> tex_map_options;
@@ -67,6 +70,9 @@ class TextureMapOptions {
     tex_map_options.add_new("-imfchan", 1);
   }
 
+  /**
+   * All valid option strings.
+   */
   Map<const std::string, int>::KeyIterator all_options() const
   {
     return tex_map_options.keys();
@@ -81,6 +87,9 @@ class TextureMapOptions {
 class MTLParser {
  private:
   char mtl_file_path_[FILE_MAX];
+  /**
+   * Directory in which the MTL file is found.
+   */
   char mtl_dir_path_[FILE_MAX];
   std::ifstream mtl_file_;
 

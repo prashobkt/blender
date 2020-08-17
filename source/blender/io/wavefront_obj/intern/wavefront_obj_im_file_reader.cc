@@ -215,6 +215,7 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
       return new_geometry();
     }
     if (new_type == GEOM_MESH) {
+      /* A Geometry created initially with a default name now found its name. */
       prev_geometry->set_geometry_name(name);
       return prev_geometry;
     }
@@ -233,6 +234,9 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
   return new_geometry();
 }
 
+/**
+ * Whenever a new Geometry instance is created, index offsets should be updated.
+ */
 void IndexOffsets::update_index_offsets(const GlobalVertices &global_vertices)
 {
   index_offsets_[VERTEX_OFF] = global_vertices.vertices.size();
@@ -245,6 +249,10 @@ void IndexOffsets::update_index_offsets(const GlobalVertices &global_vertices)
 OBJParser::OBJParser(const OBJImportParams &import_params) : import_params_(import_params)
 {
   obj_file_.open(import_params_.filepath);
+  if (!obj_file_.good()) {
+    fprintf(stderr, "Cannot read from OBJ file:%s.\n", import_params_.filepath);
+    return;
+  }
 }
 
 /**
@@ -255,7 +263,6 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
                                 GlobalVertices &global_vertices)
 {
   if (!obj_file_.good()) {
-    fprintf(stderr, "Cannot read from OBJ file:%s.\n", import_params_.filepath);
     return;
   }
 
@@ -493,6 +500,9 @@ MTLParser::MTLParser(StringRef mtl_library, StringRefNull obj_filepath)
   BLI_path_join(mtl_file_path_, FILE_MAX, obj_file_dir, mtl_library.data(), NULL);
   BLI_split_dir_part(mtl_file_path_, mtl_dir_path_, FILE_MAXDIR);
   mtl_file_.open(mtl_file_path_);
+  if (!mtl_file_.good()) {
+    fprintf(stderr, "Cannot read from MTL file:%s\n", mtl_file_path_);
+  }
 }
 
 /**
@@ -501,7 +511,7 @@ MTLParser::MTLParser(StringRef mtl_library, StringRefNull obj_filepath)
 void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
 {
   if (!mtl_file_.good()) {
-    fprintf(stderr, "Cannot read from MTL file:%s\n", mtl_file_path_);
+    return;
   }
 
   string line;
@@ -552,7 +562,8 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
     else if (line_key == "illum") {
       copy_string_to_int(rest_line, 2, current_mtlmaterial->illum);
     }
-    /* Image Textures. */
+
+    /* Parse image textures. */
     else if (line_key.find("map_") != string::npos) {
       if (!current_mtlmaterial->texture_maps.contains_as(string(line_key))) {
         /* No supported texture map found. */
@@ -563,6 +574,7 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
       Vector<string_view> str_map_xx_split{};
       split_by_char(rest_line, ' ', str_map_xx_split);
 
+      /* TODO ankitm: use `skip_unsupported_options` for parsing this options too. */
       int64_t pos_o{str_map_xx_split.first_index_of_try("-o")};
       if (pos_o != string::npos && pos_o + 3 < str_map_xx_split.size()) {
         copy_string_to_float({str_map_xx_split[pos_o + 1],

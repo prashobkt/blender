@@ -109,7 +109,9 @@ static bool set_img_filepath(Main *bmain, const tex_map_XX &tex_map, bNode *r_no
       fprintf(stderr, "Cannot load image file:'%s'\n", no_quote_path.data());
       std::string no_underscore_path{replace_all_occurences(no_quote_path, "_", " ")};
       tex_image = BKE_image_load(nullptr, no_underscore_path.c_str());
-      fprintf(stderr, "Cannot load image file:'%s'\n", no_underscore_path.data());
+      if (!tex_image) {
+        fprintf(stderr, "Cannot load image file:'%s'\n", no_underscore_path.data());
+      }
     }
   }
   BLI_assert(tex_image);
@@ -208,6 +210,8 @@ void ShaderNodetreeWrap::set_bsdf_socket_values()
 /**
  * Create image texture, vector and normal mapping nodes from MTL materials and link the
  * nodes to p-BSDF node.
+ * Texture Coordinates -> Mapping -> Image Texture -> (optional) Normal Map -> p-BSDF.
+ *
  */
 void ShaderNodetreeWrap::add_image_textures(Main *bmain)
 {
