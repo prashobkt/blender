@@ -388,25 +388,6 @@ static bool textview_draw_string(TextViewDrawState *tds,
   return true;
 }
 
-static void textview_clear_text_lines(ListBase *text_lines)
-{
-  if (!BLI_listbase_is_empty(text_lines)) {
-    TextViewContextLine *text_line_iter = text_lines->first;
-    while (text_line_iter) {
-      TextViewContextLine *text_line_next = text_line_iter->next;
-      if (text_line_iter->format) {
-        MEM_freeN(text_line_iter->format);
-      }
-      if (text_line_iter->owns_line) {
-        MEM_freeN(text_line_iter->line);
-      }
-      MEM_freeN(text_line_iter);
-      text_line_iter = text_line_next;
-    }
-    BLI_listbase_clear(text_lines);
-  }
-}
-
 /** keep in sync with textview_draw_multiline_dry_run */
 static bool textview_draw_multiline(const uchar *fg,
                                     const uchar *bg,
@@ -453,6 +434,25 @@ static bool textview_draw_multiline(const uchar *fg,
                                            true,
                                            iter_line == text_lines->last);
   return is_out_of_view_y;
+}
+
+static void textview_clear_text_lines(ListBase *text_lines)
+{
+  if (!BLI_listbase_is_empty(text_lines)) {
+    TextViewContextLine *text_line_iter = text_lines->first;
+    while (text_line_iter) {
+      TextViewContextLine *text_line_next = text_line_iter->next;
+      if (text_line_iter->format) {
+        MEM_freeN(text_line_iter->format);
+      }
+      if (text_line_iter->owns_line) {
+        MEM_freeN(text_line_iter->line);
+      }
+      MEM_freeN(text_line_iter);
+      text_line_iter = text_line_next;
+    }
+    BLI_listbase_clear(text_lines);
+  }
 }
 
 /**
