@@ -105,7 +105,6 @@ class OBJWriter {
 class MTLWriter {
  private:
   FILE *mtl_outfile_;
-  char mtl_filepath_[FILE_MAX];
 
  public:
   MTLWriter(const char *obj_filepath);

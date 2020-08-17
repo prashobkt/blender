@@ -184,6 +184,9 @@ void MaterialWrap::init_bsdf_node(StringRefNull object_name)
   bsdf_node_ = nullptr;
 }
 
+/**
+ * Store properties found either in p-BSDF node or `Material` of the object. 
+ */
 void MaterialWrap::store_bsdf_properties(MTLMaterial &r_mtl_mat) const
 {
   /* Empirical, and copied from original python exporter. */
@@ -236,6 +239,9 @@ void MaterialWrap::store_bsdf_properties(MTLMaterial &r_mtl_mat) const
   r_mtl_mat.illum = illum;
 }
 
+/**
+ * Store image texture options and filepaths.
+ */
 void MaterialWrap::store_image_textures(MTLMaterial &r_mtl_mat) const
 {
   /* Need to create a NodeTreeRef for a faster way to find linked sockets, as opposed to
@@ -300,20 +306,28 @@ void MaterialWrap::store_image_textures(MTLMaterial &r_mtl_mat) const
 }
 
 /**
- * Append an object's materials to the .mtl file.
+ * Fill the given buffer with MTL material containers.
  */
-MaterialWrap::MaterialWrap(const OBJMesh &obj_mesh_data, Vector<MTLMaterial> &r_mtl_materials)
+void MaterialWrap::fill_materials()
 {
-  r_mtl_materials.resize(obj_mesh_data.tot_col());
-  for (short i = 0; i < obj_mesh_data.tot_col(); i++) {
-    export_mtl_ = obj_mesh_data.get_object_material(i + 1);
+  for (short i = 0; i < obj_mesh_data_.tot_col(); i++) {
+    export_mtl_ = obj_mesh_data_.get_object_material(i + 1);
     if (!export_mtl_) {
       continue;
     }
-    r_mtl_materials[i].name = obj_mesh_data.get_object_material_name(i + 1);
-    init_bsdf_node(obj_mesh_data.get_object_name());
-    store_bsdf_properties(r_mtl_materials[i]);
-    store_image_textures(r_mtl_materials[i]);
+    r_mtl_materials_[i].name = obj_mesh_data_.get_object_material_name(i + 1);
+    init_bsdf_node(obj_mesh_data_.get_object_name());
+    store_bsdf_properties(r_mtl_materials_[i]);
+    store_image_textures(r_mtl_materials_[i]);
   }
+}
+
+/**
+ * Append an object's materials to the .mtl file.
+ */
+MaterialWrap::MaterialWrap(const OBJMesh &obj_mesh_data, Vector<MTLMaterial> &r_mtl_materials)
+    : obj_mesh_data_(obj_mesh_data), r_mtl_materials_(r_mtl_materials)
+{
+  r_mtl_materials.resize(obj_mesh_data.tot_col());
 }
 }  // namespace blender::io::obj

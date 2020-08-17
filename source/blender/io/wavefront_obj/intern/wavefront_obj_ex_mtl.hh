@@ -28,6 +28,8 @@
 namespace blender::io::obj {
 class MaterialWrap {
  private:
+  const OBJMesh &obj_mesh_data_;
+  Vector<MTLMaterial> &r_mtl_materials_;
   /**
    * One of the object's materials, to be exported.
    */
@@ -39,6 +41,7 @@ class MaterialWrap {
 
  public:
   MaterialWrap(const OBJMesh &obj_mesh_data, Vector<MTLMaterial> &r_mtl_materials);
+  void fill_materials();
 
  private:
   void init_bsdf_node(StringRefNull object_name);

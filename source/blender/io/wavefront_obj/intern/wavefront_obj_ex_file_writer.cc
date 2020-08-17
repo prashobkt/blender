@@ -421,26 +421,37 @@ void OBJWriter::update_index_offsets(const OBJMesh &obj_mesh_data)
   index_offset_[NORMAL_OFF] += obj_mesh_data.tot_polygons();
 }
 
+/**
+ * Open the MTL file in append mode.
+ */
 MTLWriter::MTLWriter(const char *obj_filepath)
 {
-  BLI_strncpy(mtl_filepath_, obj_filepath, FILE_MAX);
-  BLI_path_extension_replace(mtl_filepath_, FILE_MAX, ".mtl");
+  char mtl_filepath[FILE_MAX];
+  BLI_strncpy(mtl_filepath, obj_filepath, FILE_MAX);
+  BLI_path_extension_replace(mtl_filepath, FILE_MAX, ".mtl");
+  mtl_outfile_ = fopen(mtl_filepath, "a");
+  if (!mtl_outfile_) {
+    fprintf(stderr, "Error in opening file at %s\n", mtl_filepath);
+    return;
+  }
 }
 
 MTLWriter::~MTLWriter()
 {
-  fclose(mtl_outfile_);
+  if (mtl_outfile_) {
+    fclose(mtl_outfile_);
+  }
 }
 
 void MTLWriter::append_materials(const OBJMesh &mesh_to_export)
 {
-  mtl_outfile_ = fopen(mtl_filepath_, "a");
   if (!mtl_outfile_) {
-    fprintf(stderr, "Error in opening file at %s\n", mtl_filepath_);
+    /* Error logging in constructor. */
     return;
   }
   Vector<MTLMaterial> mtl_materials;
   MaterialWrap mat_wrap(mesh_to_export, mtl_materials);
+  mat_wrap.fill_materials();
 
   for (const MTLMaterial &mtl_material : mtl_materials) {
     fprintf(mtl_outfile_, "\nnewmtl %s\n", mtl_material.name.c_str());
