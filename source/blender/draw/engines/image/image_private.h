@@ -55,11 +55,11 @@ typedef struct IMAGE_Data {
   IMAGE_StorageList *stl;
 } IMAGE_Data;
 
-/* editors_shaders.c */
+/* image_shaders.c */
 GPUShader *IMAGE_shaders_image_get(void);
 GPUShader *IMAGE_shaders_image_unavailable_get(void);
 void IMAGE_shader_library_ensure(void);
 void IMAGE_shaders_free(void);
 
-/* editors_batches.c */
+/* image_batches.c */
 struct GPUBatch *IMAGE_batches_image_instance_create(struct rcti *rect);

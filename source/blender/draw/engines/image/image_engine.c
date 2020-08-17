@@ -52,7 +52,7 @@ static struct {
 
 } e_data = {{0}};
 
-static void editors_image_batch_instances_update(Image *image)
+static void image_batch_instances_update(Image *image)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
@@ -93,7 +93,7 @@ static void editors_image_batch_instances_update(Image *image)
   }
 }
 
-static void editors_image_cache_image(IMAGE_Data *id, Image *ima, ImageUser *iuser, ImBuf *ibuf)
+static void image_cache_image(IMAGE_Data *id, Image *ima, ImageUser *iuser, ImBuf *ibuf)
 {
   IMAGE_PassList *psl = id->psl;
   IMAGE_StorageList *stl = id->stl;
@@ -243,7 +243,7 @@ static void IMAGE_cache_init(void *vedata)
     }
   }
 
-  editors_image_batch_instances_update(image);
+  image_batch_instances_update(image);
 
   {
     /* Write depth is needed for background rendering. Near depth is used for transparency
@@ -260,7 +260,7 @@ static void IMAGE_cache_init(void *vedata)
 
   {
     ImBuf *ibuf = ED_space_image_acquire_buffer(sima, &pd->lock, 0);
-    editors_image_cache_image(id, image, &sima->iuser, ibuf);
+    image_cache_image(id, image, &sima->iuser, ibuf);
     pd->ibuf = ibuf;
   }
 }

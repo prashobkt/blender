@@ -1,6 +1,6 @@
 #pragma BLENDER_REQUIRE(common_colormanagement_lib.glsl)
 
-/* Keep in sync with editors_image.c */
+/* Keep in sync with image_engine.c */
 #define SIMA_DRAW_FLAG_SHOW_ALPHA (1 << 0)
 #define SIMA_DRAW_FLAG_APPLY_ALPHA (1 << 1)
 #define SIMA_DRAW_FLAG_SHUFFLING (1 << 2)

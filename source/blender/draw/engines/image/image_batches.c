@@ -27,7 +27,7 @@
 
 #include "image_private.h"
 
-static GPUVertFormat *editors_batches_image_instance_format(void)
+static GPUVertFormat *image_batches_instance_format(void)
 {
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
@@ -38,7 +38,7 @@ static GPUVertFormat *editors_batches_image_instance_format(void)
 
 GPUBatch *IMAGE_batches_image_instance_create(rcti *rect)
 {
-  GPUVertFormat *format = editors_batches_image_instance_format();
+  GPUVertFormat *format = image_batches_instance_format();
   GPUVertBuf *vbo = GPU_vertbuf_create_with_format(format);
 
   int32_t num_instances_x = (rect->xmax - rect->xmin) + 1;
