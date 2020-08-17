@@ -78,9 +78,7 @@ void main()
   }
 
   if ((drawFlags & SIMA_DRAW_FLAG_SHUFFLING) != 0) {
-    tex_color = (tex_color.r * shuffle.r + tex_color.g * shuffle.g + tex_color.b * shuffle.b +
-                 tex_color.a * shuffle.a) *
-                color;
+    tex_color = color * dot(tex_color, shuffle);
   }
   if ((drawFlags & SIMA_DRAW_FLAG_SHOW_ALPHA) == 0) {
     tex_color.a = 1.0;
