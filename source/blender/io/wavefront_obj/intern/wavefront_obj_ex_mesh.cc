@@ -217,9 +217,6 @@ void OBJMesh::ensure_mesh_edges() const
  */
 void OBJMesh::calc_smooth_groups()
 {
-  if (!export_params_.export_smooth_groups) {
-    poly_smooth_groups_ = nullptr;
-  }
   int tot_smooth_groups = 0;
   const bool use_bitflags = export_params_.smooth_groups_bitflags;
   poly_smooth_groups_ = BKE_mesh_calc_smoothgroups(export_mesh_eval_->medge,
