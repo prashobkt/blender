@@ -77,10 +77,9 @@ set(SRC
   intern/draw_select_buffer.c
   intern/draw_view.c
   engines/basic/basic_engine.c
-  engines/editors/editors_batches.c
-  engines/editors/editors_engine.c
-  engines/editors/editors_image.c
-  engines/editors/editors_shaders.c
+  engines/image/image_batches.c
+  engines/image/image_engine.c
+  engines/image/image_shaders.c
   engines/eevee/eevee_bloom.c
   engines/eevee/eevee_data.c
   engines/eevee/eevee_depth_of_field.c
@@ -424,10 +423,10 @@ data_to_c_simple(engines/overlay2d/shaders/uv_face_dots_vert.glsl SRC)
 data_to_c_simple(engines/overlay2d/shaders/uv_verts_vert.glsl SRC)
 data_to_c_simple(engines/overlay2d/shaders/uv_verts_frag.glsl SRC)
 
-data_to_c_simple(engines/editors/shaders/editors_image_frag.glsl SRC)
-data_to_c_simple(engines/editors/shaders/editors_image_unavailable_frag.glsl SRC)
-data_to_c_simple(engines/editors/shaders/editors_image_unavailable_vert.glsl SRC)
-data_to_c_simple(engines/editors/shaders/editors_image_vert.glsl SRC)
+data_to_c_simple(engines/image/shaders/engine_image_frag.glsl SRC)
+data_to_c_simple(engines/image/shaders/engine_image_unavailable_frag.glsl SRC)
+data_to_c_simple(engines/image/shaders/engine_image_unavailable_vert.glsl SRC)
+data_to_c_simple(engines/image/shaders/engine_image_vert.glsl SRC)
 
 list(APPEND INC
 )

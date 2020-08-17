@@ -17,19 +17,19 @@
  */
 
 /** \file
- * \ingroup draw_engine
+ * \ingroup draw_editors
+ *
+ * Draw engine to draw the Image/UV editor
  */
+
 #include "DRW_render.h"
 
 #include "BKE_image.h"
+#include "BKE_object.h"
 
-#include "BLI_dynstr.h"
 #include "BLI_rect.h"
 
 #include "DNA_camera_types.h"
-#include "DNA_space_types.h"
-
-#include "UI_resources.h"
 
 #include "IMB_imbuf_types.h"
 
@@ -37,10 +37,8 @@
 
 #include "GPU_batch.h"
 
-#include "editors_engine.h"
-#include "editors_private.h"
-
-#define DEFAULT_IMAGE_SIZE_PX 256
+#include "image_engine.h"
+#include "image_private.h"
 
 #define SIMA_DRAW_FLAG_SHOW_ALPHA (1 << 0)
 #define SIMA_DRAW_FLAG_APPLY_ALPHA (1 << 1)
@@ -62,11 +60,53 @@ static struct {
   GPUBatch *gpu_batch_instances;
 } e_data = {0}; /* Engine data */
 
-/* -------------------------------------------------------------------- */
-/** \name Image Pass
- * \{ */
+/* Shaders */
 
-static void editors_image_cache_image(EDITORS_PassList *psl,
+/* Default image width and height when image is not available */
+
+static void editors_image_batch_instances_update(void)
+{
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
+  Image *image = e_data.image;
+  const bool is_tiled_texture = image && image->source == IMA_SRC_TILED;
+  rcti instances;
+
+  if (is_tiled_texture) {
+    GPU_BATCH_DISCARD_SAFE(e_data.gpu_batch_instances);
+    e_data.gpu_batch_instances = BKE_image_tiled_gpu_instance_batch_create(image);
+    return;
+  }
+
+  /* repeat */
+  BLI_rcti_init(&instances, 0, 0, 0, 0);
+  if ((sima->flag & SI_DRAW_TILE) != 0) {
+    float view_inv_m4[4][4];
+    DRW_view_viewmat_get(NULL, view_inv_m4, true);
+    float v3min[3] = {0.0f, 0.0f, 0.0f};
+    float v3max[3] = {1.0f, 1.0f, 0.0f};
+    mul_m4_v3(view_inv_m4, v3min);
+    mul_m4_v3(view_inv_m4, v3max);
+
+    instances.xmin = (int)floorf(v3min[0]);
+    instances.ymin = (int)floorf(v3min[1]);
+    instances.xmax = (int)floorf(v3max[0]);
+    instances.ymax = (int)floorf(v3max[1]);
+  }
+
+  if (e_data.gpu_batch_instances) {
+    if (!BLI_rcti_compare(&e_data.gpu_batch_instances_rect, &instances)) {
+      GPU_BATCH_DISCARD_SAFE(e_data.gpu_batch_instances);
+    }
+  }
+
+  if (!e_data.gpu_batch_instances) {
+    e_data.gpu_batch_instances = IMAGE_batches_image_instance_create(&instances);
+    e_data.gpu_batch_instances_rect = instances;
+  }
+}
+
+static void editors_image_cache_image(IMAGE_PassList *psl,
                                       Image *ima,
                                       ImageUser *iuser,
                                       ImBuf *ibuf)
@@ -106,7 +146,7 @@ static void editors_image_cache_image(EDITORS_PassList *psl,
 
   if (e_data.texture) {
     eGPUSamplerState state = 0;
-    GPUShader *shader = EDITORS_shaders_image_get();
+    GPUShader *shader = IMAGE_shaders_image_get();
     DRWShadingGroup *shgrp = DRW_shgroup_create(shader, psl->image_pass);
     static float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     static float shuffle[4] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -164,20 +204,20 @@ static void editors_image_cache_image(EDITORS_PassList *psl,
   }
   else {
     /* No image available. use the image unavailable shader. */
-    GPUShader *shader = EDITORS_shaders_image_unavailable_get();
+    GPUShader *shader = IMAGE_shaders_image_unavailable_get();
     DRWShadingGroup *grp = DRW_shgroup_create(shader, psl->image_pass);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_call(grp, e_data.gpu_batch_image, NULL);
   }
 }
 
-/* \} */
-
 /* -------------------------------------------------------------------- */
-/** \name DrawEngine Interface
+/** \name Engine Callbacks
  * \{ */
-void EDITORS_image_init(EDITORS_Data *UNUSED(vedata))
+static void IMAGE_engine_init(void *UNUSED(vedata))
 {
+  IMAGE_shader_library_ensure();
+
   e_data.image = NULL;
   e_data.ibuf = NULL;
   e_data.lock = NULL;
@@ -189,51 +229,10 @@ void EDITORS_image_init(EDITORS_Data *UNUSED(vedata))
   }
 }
 
-static void editors_image_batch_instances_update(void)
+static void IMAGE_cache_init(void *vedata)
 {
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
-  Image *image = e_data.image;
-  const bool is_tiled_texture = image && image->source == IMA_SRC_TILED;
-  rcti instances;
-
-  if (is_tiled_texture) {
-    GPU_BATCH_DISCARD_SAFE(e_data.gpu_batch_instances);
-    e_data.gpu_batch_instances = BKE_image_tiled_gpu_instance_batch_create(image);
-    return;
-  }
-
-  /* repeat */
-  BLI_rcti_init(&instances, 0, 0, 0, 0);
-  if ((sima->flag & SI_DRAW_TILE) != 0) {
-    float view_inv_m4[4][4];
-    DRW_view_viewmat_get(NULL, view_inv_m4, true);
-    float v3min[3] = {0.0f, 0.0f, 0.0f};
-    float v3max[3] = {1.0f, 1.0f, 0.0f};
-    mul_m4_v3(view_inv_m4, v3min);
-    mul_m4_v3(view_inv_m4, v3max);
-
-    instances.xmin = (int)floorf(v3min[0]);
-    instances.ymin = (int)floorf(v3min[1]);
-    instances.xmax = (int)floorf(v3max[0]);
-    instances.ymax = (int)floorf(v3max[1]);
-  }
-
-  if (e_data.gpu_batch_instances) {
-    if (!BLI_rcti_compare(&e_data.gpu_batch_instances_rect, &instances)) {
-      GPU_BATCH_DISCARD_SAFE(e_data.gpu_batch_instances);
-    }
-  }
-
-  if (!e_data.gpu_batch_instances) {
-    e_data.gpu_batch_instances = EDITORS_batches_image_instance_create(&instances);
-    e_data.gpu_batch_instances_rect = instances;
-  }
-}
-
-void EDITORS_image_cache_init(EDITORS_Data *vedata)
-{
-  EDITORS_PassList *psl = vedata->psl;
+  IMAGE_Data *id = (IMAGE_Data *)vedata;
+  IMAGE_PassList *psl = id->psl;
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
@@ -276,7 +275,11 @@ void EDITORS_image_cache_init(EDITORS_Data *vedata)
   }
 }
 
-static void EDITORS_image_draw_finish(EDITORS_Data *UNUSED(vedata))
+static void IMAGE_cache_populate(void *UNUSED(vedata), Object *UNUSED(ob))
+{
+}
+
+static void image_draw_finish(IMAGE_Data *UNUSED(vedata))
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
@@ -293,13 +296,36 @@ static void EDITORS_image_draw_finish(EDITORS_Data *UNUSED(vedata))
   GPU_BATCH_DISCARD_SAFE(e_data.gpu_batch_instances);
 }
 
-void EDITORS_image_draw_scene(EDITORS_Data *vedata)
+static void IMAGE_draw_scene(void *vedata)
 {
-  EDITORS_PassList *psl = vedata->psl;
+  IMAGE_Data *id = (IMAGE_Data *)vedata;
+  IMAGE_PassList *psl = id->psl;
 
   DRW_draw_pass(psl->image_pass);
 
-  EDITORS_image_draw_finish(vedata);
+  image_draw_finish(vedata);
+}
+
+static void IMAGE_engine_free(void)
+{
+  IMAGE_shaders_free();
 }
 
 /* \} */
+static const DrawEngineDataSize IMAGE_data_size = DRW_VIEWPORT_DATA_SIZE(IMAGE_Data);
+
+DrawEngineType draw_engine_editors_type = {
+    NULL,                  /* next */
+    NULL,                  /* prev */
+    N_("Editor"),          /* idname */
+    &IMAGE_data_size,      /*vedata_size */
+    &IMAGE_engine_init,    /* engine_init */
+    &IMAGE_engine_free,    /* engine_free */
+    &IMAGE_cache_init,     /* cache_init */
+    &IMAGE_cache_populate, /* cache_populate */
+    NULL,                  /* cache_finish */
+    &IMAGE_draw_scene,     /* draw_scene */
+    NULL,                  /* view_update */
+    NULL,                  /* id_update */
+    NULL,                  /* render_to_image */
+};

@@ -26,29 +26,29 @@
 
 #include "GPU_batch.h"
 
-#include "editors_engine.h"
-#include "editors_private.h"
+#include "image_engine.h"
+#include "image_private.h"
 
 extern char datatoc_common_colormanagement_lib_glsl[];
 extern char datatoc_common_globals_lib_glsl[];
 extern char datatoc_common_view_lib_glsl[];
 
-extern char datatoc_editors_image_frag_glsl[];
-extern char datatoc_editors_image_unavailable_frag_glsl[];
-extern char datatoc_editors_image_unavailable_vert_glsl[];
-extern char datatoc_editors_image_vert_glsl[];
+extern char datatoc_engine_image_frag_glsl[];
+extern char datatoc_engine_image_unavailable_frag_glsl[];
+extern char datatoc_engine_image_unavailable_vert_glsl[];
+extern char datatoc_engine_image_vert_glsl[];
 
-typedef struct EDITORS_Shaders {
+typedef struct IMAGE_Shaders {
   GPUShader *image_sh;
   GPUShader *image_unavailable_sh;
-} EDITORS_Shaders;
+} IMAGE_Shaders;
 
 static struct {
-  EDITORS_Shaders shaders;
+  IMAGE_Shaders shaders;
   DRWShaderLibrary *lib;
 } e_data = {0}; /* Engine data */
 
-void EDITORS_shader_library_ensure(void)
+void IMAGE_shader_library_ensure(void)
 {
   if (e_data.lib == NULL) {
     e_data.lib = DRW_shader_library_create();
@@ -62,37 +62,37 @@ void EDITORS_shader_library_ensure(void)
 /* -------------------------------------------------------------------- */
 /** \name Image Shaders
  * \{ */
-GPUShader *EDITORS_shaders_image_get(void)
+GPUShader *IMAGE_shaders_image_get(void)
 {
-  EDITORS_Shaders *sh_data = &e_data.shaders;
+  IMAGE_Shaders *sh_data = &e_data.shaders;
   if (!sh_data->image_sh) {
-    sh_data->image_sh = DRW_shader_create_with_shaderlib(datatoc_editors_image_vert_glsl,
+    sh_data->image_sh = DRW_shader_create_with_shaderlib(datatoc_engine_image_vert_glsl,
                                                          NULL,
-                                                         datatoc_editors_image_frag_glsl,
+                                                         datatoc_engine_image_frag_glsl,
                                                          e_data.lib,
                                                          "#define INSTANCED_ATTR\n");
   }
   return sh_data->image_sh;
 }
 
-GPUShader *EDITORS_shaders_image_unavailable_get(void)
+GPUShader *IMAGE_shaders_image_unavailable_get(void)
 {
-  EDITORS_Shaders *sh_data = &e_data.shaders;
+  IMAGE_Shaders *sh_data = &e_data.shaders;
   if (!sh_data->image_unavailable_sh) {
     sh_data->image_unavailable_sh = DRW_shader_create_with_shaderlib(
-        datatoc_editors_image_unavailable_vert_glsl,
+        datatoc_engine_image_unavailable_vert_glsl,
         NULL,
-        datatoc_editors_image_unavailable_frag_glsl,
+        datatoc_engine_image_unavailable_frag_glsl,
         e_data.lib,
         NULL);
   }
   return sh_data->image_unavailable_sh;
 }
 /* \} */
-void EDITORS_shaders_free(void)
+void IMAGE_shaders_free(void)
 {
   GPUShader **sh_data_as_array = (GPUShader **)&e_data.shaders;
-  for (int i = 0; i < (sizeof(EDITORS_Shaders) / sizeof(GPUShader *)); i++) {
+  for (int i = 0; i < (sizeof(IMAGE_Shaders) / sizeof(GPUShader *)); i++) {
     DRW_SHADER_FREE_SAFE(sh_data_as_array[i]);
   }
 

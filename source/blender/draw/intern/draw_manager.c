@@ -91,10 +91,10 @@
 #include "draw_cache_impl.h"
 
 #include "engines/basic/basic_engine.h"
-#include "engines/editors/editors_engine.h"
 #include "engines/eevee/eevee_engine.h"
 #include "engines/external/external_engine.h"
 #include "engines/gpencil/gpencil_engine.h"
+#include "engines/image/image_engine.h"
 #include "engines/overlay/overlay_engine.h"
 #include "engines/overlay2d/overlay2d_engine.h"
 #include "engines/select/select_engine.h"

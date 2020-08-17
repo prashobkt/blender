@@ -28,28 +28,23 @@ struct GPUBatch;
 
 /* GPUViewport.storage
  * Is freed everytime the viewport engine changes */
-typedef struct EDITORS_PassList {
+typedef struct IMAGE_PassList {
   DRWPass *image_pass;
-} EDITORS_PassList;
+} IMAGE_PassList;
 
-typedef struct EDITORS_Data {
+typedef struct IMAGE_Data {
   void *engine_type;
   DRWViewportEmptyList *fbl;
   DRWViewportEmptyList *txl;
-  EDITORS_PassList *psl;
+  IMAGE_PassList *psl;
   DRWViewportEmptyList *stl;
-} EDITORS_Data;
-
-/* editors_image.c */
-void EDITORS_image_init(EDITORS_Data *vedata);
-void EDITORS_image_cache_init(EDITORS_Data *vedata);
-void EDITORS_image_draw_scene(EDITORS_Data *vedata);
+} IMAGE_Data;
 
 /* editors_shaders.c */
-GPUShader *EDITORS_shaders_image_get(void);
-GPUShader *EDITORS_shaders_image_unavailable_get(void);
-void EDITORS_shader_library_ensure(void);
-void EDITORS_shaders_free(void);
+GPUShader *IMAGE_shaders_image_get(void);
+GPUShader *IMAGE_shaders_image_unavailable_get(void);
+void IMAGE_shader_library_ensure(void);
+void IMAGE_shaders_free(void);
 
 /* editors_batches.c */
-struct GPUBatch *EDITORS_batches_image_instance_create(struct rcti *rect);
+struct GPUBatch *IMAGE_batches_image_instance_create(struct rcti *rect);

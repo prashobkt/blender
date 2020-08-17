@@ -25,7 +25,7 @@
 
 #include "GPU_batch.h"
 
-#include "editors_private.h"
+#include "image_private.h"
 
 static GPUVertFormat *editors_batches_image_instance_format(void)
 {
@@ -36,7 +36,7 @@ static GPUVertFormat *editors_batches_image_instance_format(void)
   return &format;
 }
 
-GPUBatch *EDITORS_batches_image_instance_create(rcti *rect)
+GPUBatch *IMAGE_batches_image_instance_create(rcti *rect)
 {
   GPUVertFormat *format = editors_batches_image_instance_format();
   GPUVertBuf *vbo = GPU_vertbuf_create_with_format(format);
