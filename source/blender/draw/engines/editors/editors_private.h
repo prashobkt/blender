@@ -47,6 +47,7 @@ void EDITORS_image_draw_scene(EDITORS_Data *vedata);
 
 /* editors_shaders.c */
 GPUShader *EDITORS_shaders_image_get(void);
+GPUShader *EDITORS_shaders_image_unavailable_get(void);
 void EDITORS_shader_library_ensure(void);
 void EDITORS_shaders_free(void);
 

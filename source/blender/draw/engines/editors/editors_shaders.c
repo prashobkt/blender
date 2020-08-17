@@ -29,15 +29,18 @@
 #include "editors_engine.h"
 #include "editors_private.h"
 
-extern char datatoc_gpu_shader_2D_image_vert_glsl[];
-extern char datatoc_common_view_lib_glsl[];
 extern char datatoc_common_colormanagement_lib_glsl[];
+extern char datatoc_common_globals_lib_glsl[];
+extern char datatoc_common_view_lib_glsl[];
 
-extern char datatoc_editors_image_vert_glsl[];
 extern char datatoc_editors_image_frag_glsl[];
+extern char datatoc_editors_image_unavailable_frag_glsl[];
+extern char datatoc_editors_image_unavailable_vert_glsl[];
+extern char datatoc_editors_image_vert_glsl[];
 
 typedef struct EDITORS_Shaders {
   GPUShader *image_sh;
+  GPUShader *image_unavailable_sh;
 } EDITORS_Shaders;
 
 static struct {
@@ -50,8 +53,9 @@ void EDITORS_shader_library_ensure(void)
   if (e_data.lib == NULL) {
     e_data.lib = DRW_shader_library_create();
     /* NOTE: Theses needs to be ordered by dependencies. */
-    DRW_SHADER_LIB_ADD(e_data.lib, common_view_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, common_colormanagement_lib);
+    DRW_SHADER_LIB_ADD(e_data.lib, common_globals_lib);
+    DRW_SHADER_LIB_ADD(e_data.lib, common_view_lib);
   }
 }
 
@@ -71,6 +75,20 @@ GPUShader *EDITORS_shaders_image_get(void)
   return sh_data->image_sh;
 }
 
+GPUShader *EDITORS_shaders_image_unavailable_get(void)
+{
+  EDITORS_Shaders *sh_data = &e_data.shaders;
+  if (!sh_data->image_unavailable_sh) {
+    sh_data->image_unavailable_sh = DRW_shader_create_with_shaderlib(
+        datatoc_editors_image_unavailable_vert_glsl,
+        NULL,
+        datatoc_editors_image_unavailable_frag_glsl,
+        e_data.lib,
+        NULL);
+  }
+  return sh_data->image_unavailable_sh;
+}
+/* \} */
 void EDITORS_shaders_free(void)
 {
   GPUShader **sh_data_as_array = (GPUShader **)&e_data.shaders;

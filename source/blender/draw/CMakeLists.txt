@@ -424,8 +424,10 @@ data_to_c_simple(engines/overlay2d/shaders/uv_face_dots_vert.glsl SRC)
 data_to_c_simple(engines/overlay2d/shaders/uv_verts_vert.glsl SRC)
 data_to_c_simple(engines/overlay2d/shaders/uv_verts_frag.glsl SRC)
 
-data_to_c_simple(engines/editors/shaders/editors_image_vert.glsl SRC)
 data_to_c_simple(engines/editors/shaders/editors_image_frag.glsl SRC)
+data_to_c_simple(engines/editors/shaders/editors_image_unavailable_frag.glsl SRC)
+data_to_c_simple(engines/editors/shaders/editors_image_unavailable_vert.glsl SRC)
+data_to_c_simple(engines/editors/shaders/editors_image_vert.glsl SRC)
 
 list(APPEND INC
 )

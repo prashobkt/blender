@@ -162,6 +162,13 @@ static void editors_image_cache_image(EDITORS_PassList *psl,
     DRW_shgroup_call_instances_with_attrs(
         shgrp, NULL, e_data.gpu_batch_image, e_data.gpu_batch_instances);
   }
+  else {
+    /* No image available. use the image unavailable shader. */
+    GPUShader *shader = EDITORS_shaders_image_unavailable_get();
+    DRWShadingGroup *grp = DRW_shgroup_create(shader, psl->image_pass);
+    DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+    DRW_shgroup_call(grp, e_data.gpu_batch_image, NULL);
+  }
 }
 
 /* \} */
