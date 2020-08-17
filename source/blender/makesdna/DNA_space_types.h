@@ -146,6 +146,9 @@ typedef struct SpaceInfo {
   ListBase filter_log_file_line;
   ListBase filter_log_type;
   ListBase filter_log_function;
+
+  int last_view_height;
+  char _pad3[4];
 } SpaceInfo;
 
 /* SpaceInfo.use_log_filter */
