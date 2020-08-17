@@ -73,6 +73,7 @@ class OBJMesh : NonMovable, NonCopyable {
   uint tot_polygons() const;
   uint tot_uv_vertices() const;
   uint tot_edges() const;
+  uint tot_normals() const;
   short tot_col() const;
   uint tot_smooth_groups() const;
   int ith_smooth_group(int poly_index) const;

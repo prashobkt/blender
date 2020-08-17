@@ -167,6 +167,13 @@ uint OBJMesh::tot_edges() const
   return export_mesh_eval_->totedge;
 }
 
+uint OBJMesh::tot_normals() const
+{
+  /* Calculate smooth groups first. Or use total polygons if suitable. */
+  BLI_assert(poly_smooth_groups_);
+  return tot_smooth_groups_ > 0 ? export_mesh_eval_->totvert : export_mesh_eval_->totpoly;
+}
+
 /**
  * Total materials in the object to export.
  */
@@ -369,7 +376,7 @@ void OBJMesh::calc_vertex_normal(const uint vert_index, float r_vertex_normal[3]
 void OBJMesh::calc_poly_normal_indices(const uint poly_index, Vector<uint> &r_normal_indices) const
 {
   r_normal_indices.resize(export_mesh_eval_->mpoly[poly_index].totloop);
-  if (export_params_.export_smooth_groups && tot_smooth_groups_ > 0) {
+  if (tot_smooth_groups_ > 0) {
     const MPoly &mpoly = export_mesh_eval_->mpoly[poly_index];
     const MLoop *mloop = &export_mesh_eval_->mloop[mpoly.loopstart];
     for (int i = 0; i < r_normal_indices.size(); i++) {

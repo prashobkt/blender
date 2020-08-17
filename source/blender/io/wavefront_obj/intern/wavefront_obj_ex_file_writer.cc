@@ -191,7 +191,7 @@ void OBJWriter::write_poly_normals(OBJMesh &obj_mesh_data) const
 {
   obj_mesh_data.ensure_mesh_normals();
   obj_mesh_data.calc_smooth_groups();
-  if (export_params_.export_smooth_groups && obj_mesh_data.tot_smooth_groups() > 0) {
+  if (obj_mesh_data.tot_smooth_groups() > 0) {
     float vertex_normal[3];
     for (uint i = 0; i < obj_mesh_data.tot_vertices(); i++) {
       obj_mesh_data.calc_vertex_normal(i, vertex_normal);
@@ -418,7 +418,7 @@ void OBJWriter::update_index_offsets(const OBJMesh &obj_mesh_data)
 {
   index_offset_[VERTEX_OFF] += obj_mesh_data.tot_vertices();
   index_offset_[UV_VERTEX_OFF] += obj_mesh_data.tot_uv_vertices();
-  index_offset_[NORMAL_OFF] += obj_mesh_data.tot_polygons();
+  index_offset_[NORMAL_OFF] += obj_mesh_data.tot_normals();
 }
 
 /**
