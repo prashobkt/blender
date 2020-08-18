@@ -2286,6 +2286,10 @@ class VIEW3D_MT_object(Menu):
 
         layout.separator()
 
+        layout.operator("gpencil.trace_image")
+
+        layout.separator()
+
         layout.menu("VIEW3D_MT_object_showhide")
 
         layout.separator()

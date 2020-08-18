@@ -49,7 +49,6 @@ _modules = [
     "vertexpaint_dirt",
     "view3d",
     "gpencil_mesh_bake",
-    "gpencil_trace_image",
     "wm",
 ]
 

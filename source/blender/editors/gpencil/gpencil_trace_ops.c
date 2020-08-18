@@ -56,6 +56,7 @@
 #include "IMB_imbuf_types.h"
 
 #include "ED_gpencil.h"
+#include "ED_object.h"
 
 #include "gpencil_trace.h"
 #include "potracelib.h"
@@ -140,13 +141,12 @@ static bool gpencil_trace_image(
 /* Trace Image to Grease Pencil. */
 static bool gpencil_trace_image_poll(bContext *C)
 {
-  SpaceLink *sl = CTX_wm_space_data(C);
-  if ((sl != NULL) && (sl->spacetype == SPACE_IMAGE)) {
-    SpaceImage *sima = CTX_wm_space_image(C);
-    return (sima->image != NULL);
+  Object *ob = CTX_data_active_object(C);
+  if ((ob == NULL) || (ob->type != OB_EMPTY) || (ob->data == NULL)) {
+    return false;
   }
 
-  return false;
+  return true;
 }
 
 static int gpencil_trace_image_exec(bContext *C, wmOperator *op)
@@ -154,39 +154,34 @@ static int gpencil_trace_image_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   View3D *v3d = CTX_wm_view3d(C);
-  SpaceImage *sima = CTX_wm_space_image(C);
-  Object *ob = NULL;
+  Base *base_active = CTX_data_active_base(C);
+  Object *ob_active = base_active->object;
+  Image *image = (Image *)ob_active->data;
   bool ob_created = false;
 
-  if (sima->image->type != IMA_TYPE_IMAGE) {
-    BKE_report(op->reports, RPT_ERROR, "Image format not supported");
-    return OPERATOR_CANCELLED;
+  const int frame_target = CFRA;
+  Object *ob_gpencil = (Object *)RNA_pointer_get(op->ptr, "target").data;
+
+  /* Create a new grease pencil object. */
+  if (ob_gpencil == NULL) {
+    ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+    ob_gpencil = ED_gpencil_add_object(C, ob_active->loc, local_view_bits);
+    /* Apply image rotation. */
+    copy_v3_v3(ob_gpencil->rot, ob_active->rot);
+    /* Grease pencil is rotated 90 degrees in X axis by default. */
+    ob_gpencil->rot[0] -= DEG2RADF(90.0f);
+    ob_created = true;
+    /* Apply image Scale. */
+    copy_v3_v3(ob_gpencil->scale, ob_active->scale);
   }
 
-  char target[64];
-  RNA_string_get(op->ptr, "target", target);
-  const int frame_target = RNA_int_get(op->ptr, "frame_target");
-
-  /* Create a new grease pencil object in origin. */
-  if (ob == NULL) {
-    if (STREQ(target, "*NEW")) {
-      ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
-      float loc[3] = {0.0f, 0.0f, 0.0f};
-      ob = ED_gpencil_add_object(C, loc, local_view_bits);
-      ob_created = true;
-    }
-    else {
-      ob = BLI_findstring(&bmain->objects, target, offsetof(ID, name) + 2);
-    }
-  }
-
-  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+  if ((ob_gpencil == NULL) || (ob_gpencil->type != OB_GPENCIL)) {
     BKE_report(op->reports, RPT_ERROR, "Target grease pencil object not valid");
     return OPERATOR_CANCELLED;
   }
 
   /* Create Layer. */
-  bGPdata *gpd = (bGPdata *)ob->data;
+  bGPdata *gpd = (bGPdata *)ob_gpencil->data;
   bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
   if (gpl == NULL) {
     gpl = BKE_gpencil_layer_addnew(gpd, DATA_("Trace"), true);
@@ -194,7 +189,10 @@ static int gpencil_trace_image_exec(bContext *C, wmOperator *op)
 
   /* Create frame. */
   bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, frame_target, GP_GETFRAME_ADD_NEW);
-  gpencil_trace_image(C, op, ob, sima->image, gpf);
+  gpencil_trace_image(C, op, ob_gpencil, image, gpf);
+
+  /* Back to active base. */
+  ED_object_base_activate(C, base_active);
 
   /* notifiers */
   if (ob_created) {
@@ -210,8 +208,15 @@ static int gpencil_trace_image_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static bool rna_GPencil_object_poll(PointerRNA *UNUSED(ptr), PointerRNA value)
+{
+  return ((Object *)value.owner_id)->type == OB_GPENCIL;
+}
+
 void GPENCIL_OT_trace_image(wmOperatorType *ot)
 {
+  PropertyRNA *prop;
+
   static const EnumPropertyItem turnpolicy_type[] = {
       {POTRACE_TURNPOLICY_BLACK,
        "BLACK",
@@ -244,7 +249,7 @@ void GPENCIL_OT_trace_image(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Trace Image to Grease Pencil";
   ot->idname = "GPENCIL_OT_trace_image";
-  ot->description = "Extract Grease Pencil strokes from Black and White image";
+  ot->description = "Extract Grease Pencil strokes from image";
 
   /* callbacks */
   ot->exec = gpencil_trace_image_exec;
@@ -254,13 +259,9 @@ void GPENCIL_OT_trace_image(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_string(ot->srna,
-                 "target",
-                 "*NEW",
-                 64,
-                 "Target Object",
-                 "Target grease pencil object name. Leave empty for new object");
-  RNA_def_int(ot->srna, "frame_target", 1, 1, 100000, "Frame Target", "", 1, 100000);
+  prop = RNA_def_pointer_runtime(ot->srna, "target", &RNA_Object, "Target", "");
+  RNA_def_property_poll_runtime(prop, rna_GPencil_object_poll);
+
   RNA_def_int(ot->srna, "thickness", 10, 1, 1000, "Thickness", "", 1, 1000);
   RNA_def_int(
       ot->srna, "resolution", 5, 1, 20, "Resolution", "Resolution of the generated curves", 1, 20);
