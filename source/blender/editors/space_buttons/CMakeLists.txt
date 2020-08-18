@@ -54,6 +54,11 @@ if(WITH_FREESTYLE)
   add_definitions(-DWITH_FREESTYLE)
 endif()
 
+if(WITH_EXPERIMENTAL_FEATURES)
+  add_definitions(-DWITH_PARTICLE_NODES)
+  add_definitions(-DWITH_HAIR_NODES)
+endif()
+
 if(WITH_LINEART)
   add_definitions(-DWITH_LINEART)
 endif()

@@ -47,7 +47,6 @@ set(DEFSRC
   rna_fluid.c
   rna_gpencil.c
   rna_gpencil_modifier.c
-  rna_hair.c
   rna_image.c
   rna_key.c
   rna_lattice.c
@@ -70,7 +69,6 @@ set(DEFSRC
   rna_packedfile.c
   rna_palette.c
   rna_particle.c
-  rna_pointcloud.c
   rna_pose.c
   rna_render.c
   rna_rigidbody.c
@@ -80,7 +78,6 @@ set(DEFSRC
   rna_sculpt_paint.c
   rna_sequencer.c
   rna_shader_fx.c
-  rna_simulation.c
   rna_sound.c
   rna_space.c
   rna_speaker.c
@@ -99,6 +96,16 @@ set(DEFSRC
   rna_world.c
   rna_xr.c
 )
+
+if(WITH_EXPERIMENTAL_FEATURES)
+  add_definitions(-DWITH_PARTICLE_NODES)
+  add_definitions(-DWITH_HAIR_NODES)
+  list(APPEND DEFSRC
+    rna_pointcloud.c
+    rna_simulation.c
+    rna_hair.c
+  )
+endif()
 
 set(APISRC
   rna_action_api.c
