@@ -66,11 +66,8 @@ GPUShader *IMAGE_shaders_image_get(void)
 {
   IMAGE_Shaders *sh_data = &e_data.shaders;
   if (!sh_data->image_sh) {
-    sh_data->image_sh = DRW_shader_create_with_shaderlib(datatoc_engine_image_vert_glsl,
-                                                         NULL,
-                                                         datatoc_engine_image_frag_glsl,
-                                                         e_data.lib,
-                                                         "#define INSTANCED_ATTR\n");
+    sh_data->image_sh = DRW_shader_create_with_shaderlib(
+        datatoc_engine_image_vert_glsl, NULL, datatoc_engine_image_frag_glsl, e_data.lib, NULL);
   }
   return sh_data->image_sh;
 }

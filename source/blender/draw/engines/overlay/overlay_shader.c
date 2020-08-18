@@ -1574,7 +1574,7 @@ GPUShader *OVERLAY_shader_edit_uv_tiled_image_borders_get(void)
         NULL,
         datatoc_gpu_shader_uniform_color_frag_glsl,
         e_data.lib,
-        "#define INSTANCED_ATTR\n#define blender_srgb_to_framebuffer_space(a) a\n");
+        "#define blender_srgb_to_framebuffer_space(a) a\n");
   }
   return sh_data->edit_uv_tiled_image_borders;
 }
