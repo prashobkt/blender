@@ -1916,7 +1916,7 @@ static void outliner_mode_toggle_fn(bContext *C, void *tselem_poin, void *UNUSED
     return;
   }
 
-  outliner_item_mode_toggle(C, &tvc, te, true);
+  outliner_item_mode_toggle(C, &tvc, te);
 }
 
 /* Return the icon for a given interaction mode
