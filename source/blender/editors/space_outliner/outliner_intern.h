@@ -297,11 +297,6 @@ void outliner_item_mode_toggle(struct bContext *C,
                                TreeElement *te,
                                const bool extend);
 
-void outliner_set_active_data(struct bContext *C,
-                              TreeViewContext *tvc,
-                              TreeElement *te,
-                              struct TreeStoreElem *tselem);
-
 /* outliner_edit.c ---------------------------------------------- */
 typedef void (*outliner_operation_fn)(struct bContext *C,
                                       struct ReportList *,

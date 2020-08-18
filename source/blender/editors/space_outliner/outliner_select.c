@@ -1378,54 +1378,6 @@ static void outliner_set_properties_tab(bContext *C, TreeElement *te, TreeStoreE
   }
 }
 
-/* TODO (Nathan): Temporary while testing */
-static void outliner_set_active_camera(bContext *C, Scene *scene, TreeStoreElem *tselem)
-{
-  Object *ob = (Object *)tselem->id;
-
-  scene->camera = ob;
-  Main *bmain = CTX_data_main(C);
-  wmWindowManager *wm = bmain->wm.first;
-
-  WM_windows_scene_data_sync(&wm->windows, scene);
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
-  DEG_relations_tag_update(bmain);
-  WM_event_add_notifier(C, NC_SCENE | NA_EDITED, NULL);
-}
-
-/* TODO (Nathan): Remove */
-void outliner_set_active_data(bContext *C,
-                              TreeViewContext *tvc,
-                              TreeElement *te,
-                              TreeStoreElem *tselem)
-{
-  if (tselem->type == 0 && te->idcode == ID_OB) {
-    Object *ob = (Object *)tselem->id;
-    if (ob->type == OB_CAMERA) {
-      outliner_set_active_camera(C, tvc->scene, tselem);
-    }
-  }
-  else if (tselem->type == 0 && te->idcode == ID_SCE) {
-    Scene *scene = (Scene *)tselem->id;
-    if (scene != tvc->scene) {
-      WM_window_set_active_scene(CTX_data_main(C), C, CTX_wm_window(C), scene);
-    }
-  }
-  else if (tselem->type == TSE_VIEW_COLLECTION_BASE) {
-    ViewLayer *view_layer = CTX_data_view_layer(C);
-    LayerCollection *layer_collection = view_layer->layer_collections.first;
-    BKE_layer_collection_activate(view_layer, layer_collection);
-    WM_main_add_notifier(NC_SCENE | ND_LAYER, NULL);
-  }
-  else if (tselem->type == TSE_LAYER_COLLECTION) {
-    Scene *scene = CTX_data_scene(C);
-    LayerCollection *layer_collection = te->directdata;
-    ViewLayer *view_layer = BKE_view_layer_find_from_collection(scene, layer_collection);
-    BKE_layer_collection_activate(view_layer, layer_collection);
-    WM_main_add_notifier(NC_SCENE | ND_LAYER, NULL);
-  }
-}
-
 /* ================================================ */
 
 /**

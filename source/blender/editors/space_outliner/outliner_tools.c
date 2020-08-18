@@ -2601,10 +2601,6 @@ static int do_outliner_operation_event(bContext *C,
    * become invalid and operations will crash. */
   ED_region_tag_redraw_no_rebuild(region);
   ED_outliner_select_sync_from_outliner(C, space_outliner);
-  /* Only redraw, don't rebuild here because TreeElement pointers will
-   * become invalid and operations will crash. */
-  ED_region_tag_redraw_no_rebuild(region);
-  ED_outliner_select_sync_from_outliner(C, space_outliner);
 
   get_element_operation_type(te, &scenelevel, &objectlevel, &idlevel, &datalevel);
 
