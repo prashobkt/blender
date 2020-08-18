@@ -96,7 +96,6 @@
 #include "engines/gpencil/gpencil_engine.h"
 #include "engines/image/image_engine.h"
 #include "engines/overlay/overlay_engine.h"
-#include "engines/overlay2d/overlay2d_engine.h"
 #include "engines/select/select_engine.h"
 #include "engines/workbench/workbench_engine.h"
 
@@ -1236,7 +1235,7 @@ static void drw_engines_enable_editors(void)
 
   if (space_data->spacetype == SPACE_IMAGE) {
     use_drw_engine(&draw_engine_editors_type);
-    use_drw_engine(&draw_engine_overlay2d_type);
+    use_drw_engine(&draw_engine_overlay_type);
   }
 }
 
@@ -2896,7 +2895,6 @@ void DRW_engines_register(void)
   DRW_engine_register(&draw_engine_basic_type);
 
   DRW_engine_register(&draw_engine_editors_type);
-  DRW_engine_register(&draw_engine_overlay2d_type);
 
   /* setup callbacks */
   {

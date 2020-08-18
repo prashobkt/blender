@@ -1,5 +1,5 @@
 #pragma BLENDER_REQUIRE(common_globals_lib.glsl)
-#pragma BLENDER_REQUIRE(common_overlay2d_lib.glsl)
+#pragma BLENDER_REQUIRE(common_overlay_lib.glsl)
 
 uniform int lineStyle;
 uniform bool doSmoothWire;
