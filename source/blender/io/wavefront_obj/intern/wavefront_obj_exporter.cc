@@ -191,13 +191,11 @@ void exporter_main(bContext *C, const OBJExportParams &export_params)
     return;
   }
 
-  int start_frame = export_params.start_frame;
-  int end_frame = export_params.end_frame;
   char filepath_with_frames[FILE_MAX];
   /* To reset the Scene to its original state. */
-  int original_frame = CFRA;
+  const int original_frame = CFRA;
 
-  for (int frame = start_frame; frame <= end_frame; frame++) {
+  for (int frame = export_params.start_frame; frame <= export_params.end_frame; frame++) {
     bool filepath_ok = insert_frame_in_path(filepath, filepath_with_frames, frame);
     if (!filepath_ok) {
       fprintf(stderr, "Error: File Path too long.\n%s\n", filepath_with_frames);

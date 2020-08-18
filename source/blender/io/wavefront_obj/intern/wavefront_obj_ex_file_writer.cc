@@ -457,12 +457,12 @@ void MTLWriter::append_materials(const OBJMesh &mesh_to_export)
     fprintf(mtl_outfile_, "\nnewmtl %s\n", mtl_material.name.c_str());
     fprintf(mtl_outfile_, "Ns %.6f\n", mtl_material.Ns);
     fprintf(mtl_outfile_,
-            "Ka %.6f %.6f %.6f\n",
+            "Ka %0.6f %0.6f %0.6f\n",
             mtl_material.Ka[0],
             mtl_material.Ka[1],
             mtl_material.Ka[2]);
     fprintf(mtl_outfile_,
-            "Kd %.6f %.6f %.6f\n",
+            "Kd %0.6f %0.6f %0.6f\n",
             mtl_material.Kd[0],
             mtl_material.Kd[1],
             mtl_material.Kd[2]);
@@ -490,7 +490,8 @@ void MTLWriter::append_materials(const OBJMesh &mesh_to_export)
       if (texture_map.key == "map_Bump" && mtl_material.map_Bump_strength > -0.9f) {
         map_bump_strength = " -bm " + std::to_string(mtl_material.map_Bump_strength);
       }
-      /* Always keep only one space between options. map_Bump string has its leading space. */
+      /* Always keep only one space between options since filepaths may have leading spaces too.
+       * map_Bump string has its leading space. */
       fprintf(mtl_outfile_,
               "%s -o %.6f %.6f %.6f -s %.6f %.6f %.6f%s %s\n",
               texture_map.key.c_str(),

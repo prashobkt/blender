@@ -584,8 +584,8 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
       Vector<string_view> str_map_xx_split{};
       split_by_char(rest_line, ' ', str_map_xx_split);
 
-      /* TODO ankitm: use `skip_unsupported_options` for parsing this options too. */
-      int64_t pos_o{str_map_xx_split.first_index_of_try("-o")};
+      /* TODO ankitm: use `skip_unsupported_options` for parsing these options too? */
+      const int64_t pos_o{str_map_xx_split.first_index_of_try("-o")};
       if (pos_o != string::npos && pos_o + 3 < str_map_xx_split.size()) {
         copy_string_to_float({str_map_xx_split[pos_o + 1],
                               str_map_xx_split[pos_o + 2],
@@ -593,7 +593,7 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
                              0.0f,
                              {tex_map.translation, 3});
       }
-      int64_t pos_s{str_map_xx_split.first_index_of_try("-s")};
+      const int64_t pos_s{str_map_xx_split.first_index_of_try("-s")};
       if (pos_s != string::npos && pos_s + 3 < str_map_xx_split.size()) {
         copy_string_to_float({str_map_xx_split[pos_s + 1],
                               str_map_xx_split[pos_s + 2],
@@ -602,7 +602,7 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
                              {tex_map.scale, 3});
       }
       /* Only specific to Normal Map node. */
-      int64_t pos_bm{str_map_xx_split.first_index_of_try("-bm")};
+      const int64_t pos_bm{str_map_xx_split.first_index_of_try("-bm")};
       if (pos_bm != string::npos && pos_bm + 1 < str_map_xx_split.size()) {
         copy_string_to_float(
             str_map_xx_split[pos_bm + 1], 0.0f, current_mtlmaterial->map_Bump_strength);
