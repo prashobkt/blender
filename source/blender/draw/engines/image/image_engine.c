@@ -56,7 +56,7 @@ static void image_batch_instances_update(IMAGE_Data *id, Image *image)
   rcti instances;
 
   if (is_tiled_texture) {
-    pd->draw_batch = BKE_image_tiled_gpu_batch_create(image);
+    pd->draw_batch = IMAGE_batches_image_tiled_create(image);
   }
   else {
     /* repeat */

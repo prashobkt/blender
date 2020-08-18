@@ -65,3 +65,4 @@ void IMAGE_shaders_free(void);
 
 /* image_batches.c */
 struct GPUBatch *IMAGE_batches_image_create(struct rcti *rect);
+struct GPUBatch *IMAGE_batches_image_tiled_create(Image *image);

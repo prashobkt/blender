@@ -65,6 +65,62 @@ static OVERLAY_UVLineStyle edit_uv_line_style_from_space_image(const SpaceImage 
   }
 }
 
+GPUBatch *edit_uv_tiled_border_gpu_batch_create(Image *image)
+{
+  BLI_assert(image);
+  BLI_assert(image->source == IMA_SRC_TILED);
+
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  }
+
+  GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+
+  const int32_t num_tiles = BLI_listbase_count(&image->tiles);
+  const int32_t num_verts = num_tiles * 4;
+  const int32_t num_lines = num_tiles * 4;
+  const int32_t num_indexes = num_lines * 2;
+
+  GPU_vertbuf_data_alloc(vbo, num_verts);
+
+  float local_pos[3] = {0.0f, 0.0f, 0.0f};
+  int vbo_index = 0;
+
+  GPUIndexBufBuilder elb;
+  GPU_indexbuf_init(&elb, GPU_PRIM_LINES, num_indexes, num_verts);
+
+  LISTBASE_FOREACH (ImageTile *, tile, &image->tiles) {
+    const int min_x = ((tile->tile_number - 1001) % 10);
+    const int min_y = ((tile->tile_number - 1001) / 10);
+    const int max_x = min_x + 1;
+    const int max_y = min_y + 1;
+    local_pos[0] = min_x;
+    local_pos[1] = min_y;
+    GPU_vertbuf_vert_set(vbo, vbo_index, &local_pos);
+    local_pos[0] = max_x;
+    local_pos[1] = min_y;
+    GPU_vertbuf_vert_set(vbo, vbo_index + 1, &local_pos);
+    local_pos[0] = max_x;
+    local_pos[1] = max_y;
+    GPU_vertbuf_vert_set(vbo, vbo_index + 2, &local_pos);
+    local_pos[0] = min_x;
+    local_pos[1] = max_y;
+    GPU_vertbuf_vert_set(vbo, vbo_index + 3, &local_pos);
+
+    GPU_indexbuf_add_line_verts(&elb, vbo_index, vbo_index + 1);
+    GPU_indexbuf_add_line_verts(&elb, vbo_index + 1, vbo_index + 2);
+    GPU_indexbuf_add_line_verts(&elb, vbo_index + 2, vbo_index + 3);
+    GPU_indexbuf_add_line_verts(&elb, vbo_index + 3, vbo_index);
+
+    vbo_index += 4;
+  }
+
+  GPUBatch *batch = GPU_batch_create_ex(
+      GPU_PRIM_LINES, vbo, GPU_indexbuf_build(&elb), GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
+  return batch;
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Internal API
  * \{ */
@@ -235,7 +291,7 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
     DRW_shgroup_uniform_vec4_copy(grp, "color", theme_color);
     DRW_shgroup_uniform_vec3_copy(grp, "offset", (float[3]){0.0f, 0.0f, 0.0f});
 
-    pd->edit_uv.draw_batch = BKE_image_tiled_border_gpu_batch_create(image);
+    pd->edit_uv.draw_batch = edit_uv_tiled_border_gpu_batch_create(image);
     DRW_shgroup_call(grp, pd->edit_uv.draw_batch, NULL);
 
     /* Active tile border */
