@@ -23,6 +23,6 @@
 #ifndef __IMAGE_UV_EDITOR_H__
 #define __IMAGE_UV_EDITOR_H__
 
-extern DrawEngineType draw_engine_editors_type;
+extern DrawEngineType draw_engine_image_type;
 
 #endif /* __IMAGE_UV_EDITOR_H__ */

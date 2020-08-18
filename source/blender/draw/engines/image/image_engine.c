@@ -291,7 +291,7 @@ static void IMAGE_engine_free(void)
 /* \} */
 static const DrawEngineDataSize IMAGE_data_size = DRW_VIEWPORT_DATA_SIZE(IMAGE_Data);
 
-DrawEngineType draw_engine_editors_type = {
+DrawEngineType draw_engine_image_type = {
     NULL,                  /* next */
     NULL,                  /* prev */
     N_("Editor"),          /* idname */

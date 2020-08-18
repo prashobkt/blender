@@ -1234,7 +1234,7 @@ static void drw_engines_enable_editors(void)
   }
 
   if (space_data->spacetype == SPACE_IMAGE) {
-    use_drw_engine(&draw_engine_editors_type);
+    use_drw_engine(&draw_engine_image_type);
     use_drw_engine(&draw_engine_overlay_type);
   }
 }
@@ -2894,7 +2894,7 @@ void DRW_engines_register(void)
   DRW_engine_register(&draw_engine_select_type);
   DRW_engine_register(&draw_engine_basic_type);
 
-  DRW_engine_register(&draw_engine_editors_type);
+  DRW_engine_register(&draw_engine_image_type);
 
   /* setup callbacks */
   {
