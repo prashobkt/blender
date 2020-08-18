@@ -2891,6 +2891,22 @@ static void outliner_icon_background_colors(float icon_color[4], float icon_bord
   icon_border[3] = 0.2f;
 }
 
+static void outliner_draw_active_highlight(const float minx,
+                                           const float miny,
+                                           const float maxx,
+                                           const float maxy,
+                                           const float ufac,
+                                           const float icon_color[4],
+                                           const float icon_border[4])
+{
+  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  UI_draw_roundbox_aa(true, minx, miny + ufac, maxx, maxy - ufac, UI_UNIT_Y / 4.0f, icon_color);
+
+  /* border around it */
+  UI_draw_roundbox_aa(false, minx, miny + ufac, maxx, maxy - ufac, UI_UNIT_Y / 4.0f, icon_border);
+  GPU_blend(true); /* Roundbox disables. */
+}
+
 static void outliner_draw_iconrow_doit(uiBlock *block,
                                        TreeElement *te,
                                        const uiFontStyle *fstyle,
@@ -2911,24 +2927,14 @@ static void outliner_draw_iconrow_doit(uiBlock *block,
       UI_GetThemeColor4fv(TH_EDITED_OBJECT, icon_color);
       icon_border[3] = 0.3f;
     }
-    UI_draw_roundbox_corner_set(UI_CNR_ALL);
 
-    UI_draw_roundbox_aa(true,
-                        (float)*offsx,
-                        (float)ys + ufac,
-                        (float)*offsx + UI_UNIT_X,
-                        (float)ys + UI_UNIT_Y - ufac,
-                        (float)UI_UNIT_Y / 4.0f,
-                        icon_color);
-    /* border around it */
-    UI_draw_roundbox_aa(false,
-                        (float)*offsx,
-                        (float)ys + ufac,
-                        (float)*offsx + UI_UNIT_X,
-                        (float)ys + UI_UNIT_Y - ufac,
-                        (float)UI_UNIT_Y / 4.0f,
-                        icon_border);
-    GPU_blend(true); /* Roundbox disables. */
+    outliner_draw_active_highlight((float)*offsx,
+                                   (float)ys,
+                                   (float)*offsx + UI_UNIT_X,
+                                   (float)ys + UI_UNIT_Y,
+                                   ufac,
+                                   icon_color,
+                                   icon_border);
   }
 
   if (tselem->flag & TSE_HIGHLIGHTED) {
@@ -3192,23 +3198,13 @@ static void outliner_draw_tree_element(bContext *C,
 
     /* active circle */
     if (active != OL_DRAWSEL_NONE) {
-      UI_draw_roundbox_corner_set(UI_CNR_ALL);
-      UI_draw_roundbox_aa(true,
-                          (float)startx + offsx + UI_UNIT_X,
-                          (float)*starty + ufac,
-                          (float)startx + offsx + 2.0f * UI_UNIT_X,
-                          (float)*starty + UI_UNIT_Y - ufac,
-                          UI_UNIT_Y / 4.0f,
-                          icon_bgcolor);
-      /* border around it */
-      UI_draw_roundbox_aa(false,
-                          (float)startx + offsx + UI_UNIT_X,
-                          (float)*starty + ufac,
-                          (float)startx + offsx + 2.0f * UI_UNIT_X,
-                          (float)*starty + UI_UNIT_Y - ufac,
-                          UI_UNIT_Y / 4.0f,
-                          icon_border);
-      GPU_blend(true); /* roundbox disables it */
+      outliner_draw_active_highlight((float)startx + offsx + UI_UNIT_X,
+                                     (float)*starty,
+                                     (float)startx + offsx + 2.0f * UI_UNIT_X,
+                                     (float)*starty + UI_UNIT_Y,
+                                     ufac,
+                                     icon_bgcolor,
+                                     icon_border);
 
       te->flag |= TE_ACTIVE; /* For lookup in display hierarchies. */
     }
