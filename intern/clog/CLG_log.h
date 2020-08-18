@@ -85,7 +85,8 @@ extern "C" {
 #  define _CLOG_ATTR_PRINTF_FORMAT(format_param, dots_param)
 #endif
 
-/* workaround: copied from blender\source\blender\blenlib\BLI_compiler_attrs.h to avoid making dependency on blenlib */
+/* workaround: copied from blender\source\blender\blenlib\BLI_compiler_attrs.h to avoid making
+ * dependency on blenlib */
 /* Use to suppress '-Wimplicit-fallthrough' (in place of 'break'). */
 #ifndef ATTR_FALLTHROUGH
 #  if defined(__GNUC__) && (__GNUC__ >= 7) /* gcc7.0+ only */
@@ -155,7 +156,7 @@ typedef struct CLG_LogRecord {
   /** Link for clog version of ListBase */
   struct CLG_LogRecord *next, *prev;
   /** track where does the log comes from */
-  CLG_LogType *type;
+  const CLG_LogType *type;
   enum CLG_Severity severity;
   unsigned short verbosity;
   uint64_t timestamp;
@@ -176,24 +177,30 @@ typedef struct CLG_LogRecordList {
   struct CLG_LogRecord *first, *last;
 } CLG_LogRecordList;
 
-void CLG_log_str(CLG_LogType *lg,
-                 enum CLG_Severity severity,
-                 unsigned short verbosity,
+void CLG_log_str(const CLG_LogType *lg,
+                 const enum CLG_Severity severity,
+                 const unsigned short verbosity,
                  const char *file_line,
                  const char *fn,
                  const char *message) _CLOG_ATTR_NONNULL(1, 4, 5, 6);
-void CLG_logf(CLG_LogType *lg,
-              enum CLG_Severity severity,
-              unsigned short verbosity,
+void CLG_logf(const CLG_LogType *lg,
+              const enum CLG_Severity severity,
+              const unsigned short verbosity,
               const char *file_line,
               const char *fn,
               const char *format,
               ...) _CLOG_ATTR_NONNULL(1, 4, 5, 6) _CLOG_ATTR_PRINTF_FORMAT(6, 7);
+void CLG_log_write_callback_default(const struct CLG_LogType *lg,
+                                    const enum CLG_Severity severity,
+                                    const unsigned short verbosity,
+                                    const char *file_line,
+                                    const char *fn,
+                                    const char *message);
 
 const char *clg_severity_as_text(enum CLG_Severity severity);
-CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
-                                    enum CLG_Severity severity,
-                                    unsigned short verbosity,
+CLG_LogRecord *clog_log_record_init(const CLG_LogType *type,
+                                    const enum CLG_Severity severity,
+                                    const unsigned short verbosity,
                                     const char *file_line,
                                     const char *function,
                                     const char *message);
@@ -215,6 +222,12 @@ bool CLG_output_use_timestamp_get(void);
 void CLG_output_use_timestamp_set(int value);
 void CLG_fatal_fn_set(void (*fatal_fn)(void *file_handle));
 void CLG_backtrace_fn_set(void (*fatal_fn)(void *file_handle));
+void CLG_log_write_fn_set(void (*log_write_fn)(const CLG_LogType *lg,
+                                               const enum CLG_Severity severity,
+                                               const unsigned short verbosity,
+                                               const char *file_line,
+                                               const char *fn,
+                                               const char *message)) _CLOG_ATTR_NONNULL(1);
 
 void CLG_type_filter_set(const char *glob_str);
 int CLG_type_filter_get(char *buff, int buff_len);

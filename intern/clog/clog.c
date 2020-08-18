@@ -74,7 +74,7 @@ typedef struct CLG_IDFilter {
 } CLG_IDFilter;
 
 typedef struct CLogContext {
-  /** Single linked list of types.  */
+  /** Single linked list of types. */
   CLG_LogType *types;
   CLG_LogRecordList log_records;
 
@@ -102,13 +102,19 @@ typedef struct CLogContext {
   } default_type;
 
   struct {
+    void (*log_write_fn)(const CLG_LogType *lg,
+                         const enum CLG_Severity severity,
+                         const unsigned short verbosity,
+                         const char *file_line,
+                         const char *fn,
+                         const char *message);
     void (*fatal_fn)(void *file_handle);
     void (*backtrace_fn)(void *file_handle);
   } callbacks;
 
   bool use_stdout;
   bool always_show_warnings;
-  /** used only is use_stdout is false */
+  /** Used only is use_stdout is false. */
   char output_file_path[256];
 } CLogContext;
 
@@ -120,8 +126,7 @@ typedef struct CLogContext {
  * Use so we can do a single call to write.
  * \{ */
 
-/* TODO (grzelins) temporary fix for handling big log messages */
-#define CLOG_BUF_LEN_INIT 4096
+#define CLOG_BUF_LEN_INIT 512
 
 typedef struct CLogStringBuf {
   char *data;
@@ -389,6 +394,12 @@ static void clg_ctx_backtrace(CLogContext *ctx)
   fflush(ctx->output_file);
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Logging API
+ * \{ */
+
 static uint64_t clg_timestamp_ticks_get(void)
 {
   uint64_t tick;
@@ -402,16 +413,15 @@ static uint64_t clg_timestamp_ticks_get(void)
   return tick;
 }
 
-CLG_LogRecord *clog_log_record_init(CLG_LogType *type,
-                                    enum CLG_Severity severity,
-                                    unsigned short verbosity,
+CLG_LogRecord *clog_log_record_init(const CLG_LogType *type,
+                                    const enum CLG_Severity severity,
+                                    const unsigned short verbosity,
                                     const char *file_line,
                                     const char *function,
                                     const char *message)
 {
   CLG_LogRecord *log_record = MEM_callocN(sizeof(*log_record), "ClogRecord");
   log_record->type = type;
-  log_record->severity = severity;
   log_record->severity = severity;
   log_record->verbosity = verbosity;
   log_record->timestamp = clg_timestamp_ticks_get() - type->ctx->timestamp_tick_start;
@@ -430,12 +440,6 @@ void CLG_log_record_free(CLG_LogRecord *log_record)
   MEM_freeN(log_record);
 }
 
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Logging API
- * \{ */
-
 static void write_timestamp(CLogStringBuf *cstr, const uint64_t timestamp_tick_start)
 {
   char timestamp_str[64];
@@ -448,7 +452,9 @@ static void write_timestamp(CLogStringBuf *cstr, const uint64_t timestamp_tick_s
   clg_str_append_with_len(cstr, timestamp_str, timestamp_len);
 }
 
-static void write_severity(CLogStringBuf *cstr, enum CLG_Severity severity, bool use_color)
+static void write_severity(CLogStringBuf *cstr,
+                           const enum CLG_Severity severity,
+                           const bool use_color)
 {
   assert((unsigned int)severity < CLG_SEVERITY_LEN);
   if (use_color) {
@@ -462,7 +468,7 @@ static void write_severity(CLogStringBuf *cstr, enum CLG_Severity severity, bool
   }
 }
 
-static void write_type(CLogStringBuf *cstr, CLG_LogType *lg)
+static void write_type(CLogStringBuf *cstr, const CLG_LogType *lg)
 {
   clg_str_append(cstr, " (");
   clg_str_append(cstr, lg->identifier);
@@ -513,12 +519,12 @@ static void CLG_record_append(CLG_LogRecordList *listbase, CLG_LogRecord *link)
   listbase->last = link;
 }
 
-void CLG_log_str(CLG_LogType *lg,
-                 enum CLG_Severity severity,
-                 unsigned short verbosity,
-                 const char *file_line,
-                 const char *fn,
-                 const char *message)
+void CLG_log_write_callback_default(const CLG_LogType *lg,
+                                    const enum CLG_Severity severity,
+                                    const unsigned short verbosity,
+                                    const char *file_line,
+                                    const char *fn,
+                                    const char *message)
 {
   CLogStringBuf cstr;
   char cstr_stack_buf[CLOG_BUF_LEN_INIT];
@@ -547,6 +553,16 @@ void CLG_log_str(CLG_LogType *lg,
   (void)bytes_written;
 
   clg_str_free(&cstr);
+}
+
+void CLG_log_str(const CLG_LogType *lg,
+                 const enum CLG_Severity severity,
+                 unsigned short verbosity,
+                 const char *file_line,
+                 const char *fn,
+                 const char *message)
+{
+  lg->ctx->callbacks.log_write_fn(lg, severity, verbosity, file_line, fn, message);
 
   CLG_LogRecord *log_record = clog_log_record_init(
       lg, severity, verbosity, file_line, fn, message);
@@ -561,58 +577,31 @@ void CLG_log_str(CLG_LogType *lg,
   }
 }
 
-
-/* TODO (grzelins) there is problem with handling big messages (example is report from duplicating object) */
-void CLG_logf(CLG_LogType *lg,
-              enum CLG_Severity severity,
-              unsigned short verbosity,
+void CLG_logf(const CLG_LogType *lg,
+              const enum CLG_Severity severity,
+              const unsigned short verbosity,
               const char *file_line,
               const char *fn,
               const char *fmt,
               ...)
 {
-  CLogStringBuf cstr;
-  char cstr_stack_buf[CLOG_BUF_LEN_INIT];
-  clg_str_init(&cstr, cstr_stack_buf, sizeof(cstr_stack_buf));
-
-  if (lg->ctx->use_timestamp) {
-    write_timestamp(&cstr, lg->ctx->timestamp_tick_start);
-  }
-
-  write_severity(&cstr, severity, lg->ctx->use_color);
-  if (severity <= CLG_SEVERITY_VERBOSE) {
-    char verbosity_str[8];
-    sprintf(verbosity_str, ":%u", verbosity);
-    clg_str_append(&cstr, verbosity_str);
-  }
-  write_type(&cstr, lg);
-
-  write_file_line_fn(&cstr, file_line, fn, lg->ctx->use_basename);
-
-  int cstr_size_before_va = cstr.len;
+  CLogStringBuf message;
+  char message_stack_buf[CLOG_BUF_LEN_INIT];
+  clg_str_init(&message, message_stack_buf, sizeof(message_stack_buf));
   {
     va_list ap;
     va_start(ap, fmt);
-    clg_str_vappendf(&cstr, fmt, ap);
+    clg_str_vappendf(&message, fmt, ap);
     va_end(ap);
   }
 
-  size_t mem_size = cstr.len - cstr_size_before_va + 1;  // +1 to null terminate?
-  char *message = MEM_callocN(mem_size, "LogMessage");
-  strcpy(message, cstr.data + cstr_size_before_va);
+  lg->ctx->callbacks.log_write_fn(lg, severity, verbosity, file_line, fn, message.data);
 
   CLG_LogRecord *log_record = clog_log_record_init(
-      lg, severity, verbosity, file_line, fn, message);
+      lg, severity, verbosity, file_line, fn, message.data);
   CLG_record_append(&(lg->ctx->log_records), log_record);
-  MEM_freeN(message);
 
-  clg_str_append(&cstr, "\n");
-
-  /* could be optional */
-  int bytes_written = write(lg->ctx->output, cstr.data, cstr.len);
-  (void)bytes_written;
-
-  clg_str_free(&cstr);
+  clg_str_free(&message);
 
   if (lg->ctx->callbacks.backtrace_fn) {
     clg_ctx_backtrace(lg->ctx);
@@ -723,6 +712,17 @@ static void CLG_ctx_fatal_fn_set(CLogContext *ctx, void (*fatal_fn)(void *file_h
 static void CLG_ctx_backtrace_fn_set(CLogContext *ctx, void (*backtrace_fn)(void *file_handle))
 {
   ctx->callbacks.backtrace_fn = backtrace_fn;
+}
+
+static void CLG_ctx_log_write_fn_set(CLogContext *ctx,
+                                     void (*log_write_fn)(const CLG_LogType *lg,
+                                                          const enum CLG_Severity severity,
+                                                          const unsigned short verbosity,
+                                                          const char *file_line,
+                                                          const char *fn,
+                                                          const char *message))
+{
+  ctx->callbacks.log_write_fn = log_write_fn;
 }
 
 static void clg_ctx_type_filter_append(CLG_IDFilter **flt_list,
@@ -848,6 +848,7 @@ static CLogContext *CLG_ctx_init(void)
   ctx->use_stdout = CLG_DEFAULT_USE_STDOUT;
   ctx->always_show_warnings = CLG_DEFAULT_ALWAYS_SHOW_WARNINGS;
   ctx->timestamp_tick_start = clg_timestamp_ticks_get();
+  ctx->callbacks.log_write_fn = CLG_log_write_callback_default;
 
   /* enable all loggers by default */
   CLG_ctx_type_filter_include(
@@ -970,6 +971,16 @@ void CLG_backtrace_fn_set(void (*fatal_fn)(void *file_handle))
   CLG_ctx_backtrace_fn_set(g_ctx, fatal_fn);
 }
 
+void CLG_log_write_fn_set(void (*log_write_fn)(const CLG_LogType *lg,
+                                               const enum CLG_Severity severity,
+                                               const unsigned short verbosity,
+                                               const char *file_line,
+                                               const char *fn,
+                                               const char *message))
+{
+  CLG_ctx_log_write_fn_set(g_ctx, log_write_fn);
+}
+
 void CLG_type_filter_exclude(const char *type_match, int type_match_len)
 {
   CLG_ctx_type_filter_exclude(g_ctx, type_match, type_match_len);
@@ -1007,6 +1018,7 @@ int CLG_type_filter_get(char *buff, int buff_len)
     }
     filters_iter = filters_iter->next;
   }
+  (void)buff_len;
   assert(written <= buff_len);
   return written;
 }

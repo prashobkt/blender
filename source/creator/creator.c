@@ -86,6 +86,7 @@
 #endif
 
 #include <signal.h>
+#include <WM_types.h>
 
 #ifdef __FreeBSD__
 #  include <floatingpoint.h>
@@ -181,6 +182,17 @@ static void callback_main_atexit(void *user_data)
 static void callback_clg_fatal(void *fp)
 {
   BLI_system_backtrace(fp);
+}
+
+static void callback_clg_log_write_fn(const CLG_LogType *lg,
+                                      const enum CLG_Severity severity,
+                                      const unsigned short verbosity,
+                                      const char *file_line,
+                                      const char *fn,
+                                      const char *message)
+{
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+  CLG_log_write_callback_default(lg, severity, verbosity, file_line, fn, message);
 }
 
 /** \} */
@@ -541,6 +553,7 @@ int main(int argc,
     if (!G.file_loaded) {
       WM_init_splash(C);
     }
+    CLG_log_write_fn_set(callback_clg_log_write_fn);
   }
 
   WM_main(C);
