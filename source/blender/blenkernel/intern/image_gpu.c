@@ -39,7 +39,6 @@
 #include "BKE_image.h"
 #include "BKE_main.h"
 
-#include "GPU_batch.h"
 #include "GPU_extensions.h"
 #include "GPU_state.h"
 #include "GPU_texture.h"
@@ -401,7 +400,6 @@ void BKE_image_free_unused_gpu_textures()
 }
 
 /** \} */
-
 
 /* -------------------------------------------------------------------- */
 /** \name Deletion
