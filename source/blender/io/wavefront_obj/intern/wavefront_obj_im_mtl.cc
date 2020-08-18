@@ -136,7 +136,7 @@ ShaderNodetreeWrap::ShaderNodetreeWrap(Main *bmain, const MTLMaterial &mtl_mat)
 
   set_bsdf_socket_values();
   add_image_textures(bmain);
-  link_sockets(std::move(bsdf_), "BSDF", shader_output_.get(), "Surface");
+  link_sockets(std::move(bsdf_), "BSDF", shader_output_.get(), "Surface", 4);
 
   nodeSetActive(nodetree_.get(), shader_output_.get());
 }
@@ -175,15 +175,43 @@ bNode *ShaderNodetreeWrap::add_node_to_tree(const int node_type)
 }
 
 /**
+ * Return x-y coordinates for a node where y is determined by other nodes present in
+ * the same vertical column.
+ */
+std::tuple<float, float> ShaderNodetreeWrap::set_node_locations(const int pos_x)
+{
+  int pos_y = 0;
+  bool found = false;
+  while (true) {
+    for (const Array<int, 2> &location : node_locations) {
+      if (location[0] == pos_x && location[1] == pos_y) {
+        pos_y += 1;
+        found = true;
+      }
+      else {
+        found = false;
+      }
+    }
+    if (!found) {
+      node_locations.append({pos_x, pos_y});
+      return std::make_tuple(pos_x * node_size, pos_y * node_size * 2 / 3);
+    }
+  }
+}
+
+/**
  * Link two nodes by the sockets of given IDs.
  * Also releases the ownership of the "from" node for nodetree to free it.
+ * \param from_node_pos_x 0 to 4 value as per nodetree arrangement.
  */
 void ShaderNodetreeWrap::link_sockets(unique_node_ptr from_node,
                                       StringRef from_node_id,
                                       bNode *to_node,
-                                      StringRef to_node_id)
+                                      StringRef to_node_id,
+                                      const int from_node_pos_x)
 {
-  to_node->locx = from_node->locx + 300;
+  std::tie(from_node->locx, from_node->locy) = set_node_locations(from_node_pos_x);
+  std::tie(to_node->locx, to_node->locy) = set_node_locations(from_node_pos_x + 1);
   bNodeSocket *from_sock{nodeFindSocket(from_node.get(), SOCK_OUT, from_node_id.data())};
   bNodeSocket *to_sock{nodeFindSocket(to_node, SOCK_IN, to_node_id.data())};
   BLI_assert(from_sock && to_sock);
@@ -210,8 +238,6 @@ void ShaderNodetreeWrap::set_bsdf_socket_values()
 /**
  * Create image texture, vector and normal mapping nodes from MTL materials and link the
  * nodes to p-BSDF node.
- * Texture Coordinates -> Mapping -> Image Texture -> (optional) Normal Map -> p-BSDF.
- *
  */
 void ShaderNodetreeWrap::add_image_textures(Main *bmain)
 {
@@ -240,15 +266,15 @@ void ShaderNodetreeWrap::add_image_textures(Main *bmain)
         SOCK_VECTOR, "Location", {texture_map.value.translation, 3}, mapping.get());
     set_property_of_socket(SOCK_VECTOR, "Scale", {texture_map.value.scale, 3}, mapping.get());
 
-    link_sockets(std::move(texture_coordinate), "UV", mapping.get(), "Vector");
-    link_sockets(std::move(mapping), "Vector", image_texture.get(), "Vector");
+    link_sockets(std::move(texture_coordinate), "UV", mapping.get(), "Vector", 0);
+    link_sockets(std::move(mapping), "Vector", image_texture.get(), "Vector", 1);
     if (normal_map) {
-      link_sockets(std::move(image_texture), "Color", normal_map.get(), "Color");
-      link_sockets(std::move(normal_map), "Normal", bsdf_.get(), "Normal");
+      link_sockets(std::move(image_texture), "Color", normal_map.get(), "Color", 2);
+      link_sockets(std::move(normal_map), "Normal", bsdf_.get(), "Normal", 3);
     }
     else {
       link_sockets(
-          std::move(image_texture), "Color", bsdf_.get(), texture_map.value.dest_socket_id);
+          std::move(image_texture), "Color", bsdf_.get(), texture_map.value.dest_socket_id, 2);
     }
   }
 }

@@ -164,6 +164,7 @@ BLI_INLINE void copy_string_to_int(string_view src, const int fallback_value, in
   catch (const std::out_of_range &out_of_range) {
     std::cerr << "Out of range for int:'" << out_of_range.what() << ":'" << src << "'"
               << std::endl;
+    r_dst = fallback_value;
   }
 }
 
@@ -465,7 +466,9 @@ static string_view skip_unsupported_options(string_view line)
   /* Find the last texture map option. */
   for (string_view option : map_options.all_options()) {
     string_view::size_type pos{line.find(option)};
-    if (pos != string_view::npos && pos > last_option_pos) {
+    /* Equality (>=) takes care of finding an option in the beginning of the line. Avoid messing
+     * with signed-unsigned int comparison. */
+    if (pos != string_view::npos && pos >= last_option_pos) {
       last_option = option;
       last_option_pos = pos;
     }

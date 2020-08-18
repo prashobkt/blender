@@ -27,8 +27,10 @@
 
 #include "DNA_node_types.h"
 
+#include "BLI_array.hh"
 #include "BLI_float3.hh"
 #include "BLI_map.hh"
+#include "BLI_vector.hh"
 #include "BLI_string_ref.hh"
 
 namespace blender::io::obj {
@@ -105,10 +107,16 @@ using unique_nodetree_ptr = std::unique_ptr<bNodeTree, UniqueNodetreeDeleter>;
 
 class ShaderNodetreeWrap {
  private:
+  /* Node arrangement:
+   * Texture Coordinates -> Mapping -> Image Texture -> (optional) Normal Map -> p-BSDF. */
   unique_nodetree_ptr nodetree_;
   unique_node_ptr bsdf_;
   unique_node_ptr shader_output_;
   const MTLMaterial *mtl_mat_;
+
+  /* List of all locations occupied by nodes. */
+  Vector<Array<int, 2>> node_locations;
+  const float node_size{300.f};
 
  public:
   ShaderNodetreeWrap(Main *bmain, const MTLMaterial &mtl_mat);
@@ -118,10 +126,12 @@ class ShaderNodetreeWrap {
 
  private:
   bNode *add_node_to_tree(const int node_type);
+  std::tuple<float, float> set_node_locations(const int pos_x);
   void link_sockets(unique_node_ptr from_node,
                     StringRef from_node_id,
                     bNode *to_node,
-                    StringRef to_node_id);
+                    StringRef to_node_id,
+                    const int from_node_pos_x);
   void set_bsdf_socket_values();
   void add_image_textures(Main *bmain);
 };
