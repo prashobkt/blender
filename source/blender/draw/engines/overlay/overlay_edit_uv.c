@@ -65,7 +65,7 @@ static OVERLAY_UVLineStyle edit_uv_line_style_from_space_image(const SpaceImage 
   }
 }
 
-GPUBatch *edit_uv_tiled_border_gpu_batch_create(Image *image)
+static GPUBatch *edit_uv_tiled_border_gpu_batch_create(Image *image)
 {
   BLI_assert(image);
   BLI_assert(image->source == IMA_SRC_TILED);

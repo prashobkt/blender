@@ -42,7 +42,6 @@ struct GPUBatch *DRW_cache_groundline_get(void);
 struct GPUBatch *DRW_cache_grid_get(void);
 struct GPUBatch *DRW_cache_fullscreen_quad_get(void);
 struct GPUBatch *DRW_cache_quad_get(void);
-struct GPUBatch *DRW_cache_quad_image_get(void);
 struct GPUBatch *DRW_cache_quad_image_wires_get(void);
 struct GPUBatch *DRW_cache_quad_wires_get(void);
 struct GPUBatch *DRW_cache_cube_get(void);

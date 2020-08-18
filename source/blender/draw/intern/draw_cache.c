@@ -86,7 +86,6 @@ static struct DRWShapeCache {
   GPUBatch *drw_cursor_only_circle;
   GPUBatch *drw_fullscreen_quad;
   GPUBatch *drw_quad;
-  GPUBatch *drw_quad_image;
   GPUBatch *drw_quad_image_wires;
   GPUBatch *drw_quad_wires;
   GPUBatch *drw_grid;
@@ -398,26 +397,6 @@ GPUBatch *DRW_cache_quad_get(void)
     SHC.drw_quad = GPU_batch_create_ex(GPU_PRIM_TRI_FAN, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
   return SHC.drw_quad;
-}
-
-GPUBatch *DRW_cache_quad_image_get(void)
-{
-  if (!SHC.drw_quad_image) {
-    GPUVertFormat format = extra_vert_format();
-
-    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-    GPU_vertbuf_data_alloc(vbo, 4);
-
-    int v = 0;
-    int flag = VCLASS_EMPTY_SCALED;
-    float p[4][2] = {{0.0f, 0.0f}, {0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f}};
-    for (int a = 0; a < 4; a++) {
-      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{p[a][0], p[a][1], 0.0f}, flag});
-    }
-
-    SHC.drw_quad_image = GPU_batch_create_ex(GPU_PRIM_TRI_FAN, vbo, NULL, GPU_BATCH_OWNS_VBO);
-  }
-  return SHC.drw_quad_image;
 }
 
 GPUBatch *DRW_cache_quad_image_wires_get(void)
