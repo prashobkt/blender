@@ -294,7 +294,7 @@ static const DrawEngineDataSize IMAGE_data_size = DRW_VIEWPORT_DATA_SIZE(IMAGE_D
 DrawEngineType draw_engine_image_type = {
     NULL,                  /* next */
     NULL,                  /* prev */
-    N_("Editor"),          /* idname */
+    N_("UV/Image"),        /* idname */
     &IMAGE_data_size,      /*vedata_size */
     &IMAGE_engine_init,    /* engine_init */
     &IMAGE_engine_free,    /* engine_free */
