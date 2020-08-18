@@ -711,170 +711,197 @@ TEST(mesh_intersect, CubeCubeStep)
 
 #if DO_PERF_TESTS
 
+static void get_sphere_params(int nrings,
+                              int nsegs,
+                              bool triangulate,
+                              int *r_num_verts,
+                              int *r_num_faces)
+{
+  *r_num_verts = nsegs * (nrings - 1) + 2;
+  if (triangulate) {
+    *r_num_faces = 2 * nsegs + 2 * nsegs * (nrings - 2);
+  }
+  else {
+    *r_num_faces = nsegs * nrings;
+  }
+}
+
+static void fill_sphere_data(int nrings,
+                             int nsegs,
+                             const double3 &center,
+                             double radius,
+                             bool triangulate,
+                             MutableSpan<Facep> face,
+                             int vid_start,
+                             int fid_start,
+                             MArena *arena)
+{
+  int num_verts;
+  int num_faces;
+  get_sphere_params(nrings, nsegs, triangulate, &num_verts, &num_faces);
+  BLI_assert(num_faces == face.size());
+  Array<Vertp> vert(num_verts);
+  const bool nrings_even = (nrings % 2 == 0);
+  int half_nrings = nrings / 2;
+  const bool nsegs_even = (nsegs % 2) == 0;
+  const bool nsegs_four_divisible = (nsegs % 4 == 0);
+  int half_nsegs = nrings;
+  int quarter_nsegs = half_nsegs / 2;
+  double delta_phi = 2 * M_PI / nsegs;
+  double delta_theta = M_PI / nrings;
+  int fid = fid_start;
+  int vid = vid_start;
+  auto vert_index_fn = [nrings, num_verts](int seg, int ring) {
+    if (ring == 0) { /* Top vert. */
+      return num_verts - 2;
+    }
+    if (ring == nrings) { /* Bottom vert. */
+      return num_verts - 1;
+    }
+    return seg * (nrings - 1) + (ring - 1);
+  };
+  auto face_index_fn = [nrings](int seg, int ring) {
+    return seg * nrings + ring;
+  };
+  auto tri_index_fn = [nrings, nsegs](int seg, int ring, int tri) {
+    if (ring == 0) {
+      return seg;
+    }
+    if (ring < nrings - 1) {
+      return nsegs + 2 * (ring - 1) * nsegs + 2 * seg + tri;
+    }
+    return nsegs + 2 * (nrings - 2) * nsegs + seg;
+  };
+  Array<int> eid = {0, 0, 0, 0}; /* Don't care about edge ids. */
+  /*
+   * (x, y , z) is given from inclination theta and azimuth phi,
+   * where 0 <= theta <= pi;  0 <= phi <= 2pi.
+   * x = radius * sin(theta) cos(phi)
+   * y = radius * sin(theta) sin(phi)
+   * z = radius * cos(theta)
+   */
+  for (int s = 0; s < nsegs; ++s) {
+    double phi = s * delta_phi;
+    double sin_phi;
+    double cos_phi;
+    /* Avoid use of trig functions for pi/2 divisible angles. */
+    if (s == 0) {
+      /* phi = 0. */
+      sin_phi = 0.0;
+      cos_phi = 1.0;
+    }
+    else if (nsegs_even && s == half_nsegs) {
+      /* phi = pi. */
+      sin_phi = 0.0;
+      cos_phi = -1.0;
+    }
+    else if (nsegs_four_divisible && s == quarter_nsegs) {
+      /* phi = pi/2. */
+      sin_phi = 1.0;
+      cos_phi = 0.0;
+    }
+    else if (nsegs_four_divisible && s == 3 * quarter_nsegs) {
+      /* phi = 3pi/2. */
+      sin_phi = -1.0;
+      cos_phi = 0.0;
+    }
+    else {
+      sin_phi = sin(phi);
+      cos_phi = cos(phi);
+    }
+    for (int r = 1; r < nrings; ++r) {
+      double theta = r * delta_theta;
+      double r_sin_theta;
+      double r_cos_theta;
+      if (nrings_even && r == half_nrings) {
+        /* theta = pi/2. */
+        r_sin_theta = radius;
+        r_cos_theta = 0.0;
+      }
+      else {
+        r_sin_theta = radius * sin(theta);
+        r_cos_theta = radius * cos(theta);
+      }
+      double x = r_sin_theta * cos_phi + center[0];
+      double y = r_sin_theta * sin_phi + center[1];
+      double z = r_cos_theta + center[2];
+      Vertp v = arena->add_or_find_vert(mpq3(x, y, z), vid++);
+      vert[vert_index_fn(s, r)] = v;
+    }
+  }
+  Vertp vtop = arena->add_or_find_vert(mpq3(center[0], center[1], center[2] + radius), vid++);
+  Vertp vbot = arena->add_or_find_vert(mpq3(center[0], center[1], center[2] - radius), vid++);
+  vert[vert_index_fn(0, 0)] = vtop;
+  vert[vert_index_fn(0, nrings)] = vbot;
+  for (int s = 0; s < nsegs; ++s) {
+    int snext = (s + 1) % nsegs;
+    for (int r = 0; r < nrings; ++r) {
+      int rnext = r + 1;
+      int i0 = vert_index_fn(s, r);
+      int i1 = vert_index_fn(s, rnext);
+      int i2 = vert_index_fn(snext, rnext);
+      int i3 = vert_index_fn(snext, r);
+      Facep f;
+      Facep f2 = nullptr;
+      if (r == 0) {
+        f = arena->add_face({vert[i0], vert[i1], vert[i2]}, fid++, eid);
+      }
+      else if (r == nrings - 1) {
+        f = arena->add_face({vert[i0], vert[i1], vert[i3]}, fid++, eid);
+      }
+      else {
+        if (triangulate) {
+          f = arena->add_face({vert[i0], vert[i1], vert[i2]}, fid++, eid);
+          f2 = arena->add_face({vert[i2], vert[i3], vert[i0]}, fid++, eid);
+        }
+        else {
+          f = arena->add_face({vert[i0], vert[i1], vert[i2], vert[i3]}, fid++, eid);
+        }
+      }
+      if (triangulate) {
+        int f_index = tri_index_fn(s, r, 0);
+        face[f_index] = f;
+        if (r != 0 && r != nrings - 1) {
+          int f_index2 = tri_index_fn(s, r, 1);
+          face[f_index2] = f2;
+        }
+      }
+      else {
+        int f_index = face_index_fn(s, r);
+        face[f_index] = f;
+      }
+    }
+  }
+}
+
 static void spheresphere_test(int nrings, double y_offset, bool use_self)
 {
-  /* Make two icospheres with nrings rings ad 2*nrings segments. */
+  /* Make two uvspheres with nrings rings ad 2*nrings segments. */
   if (nrings < 2) {
     return;
   }
   BLI_task_scheduler_init(); /* Without this, no parallelism. */
   double time_start = PIL_check_seconds_timer();
   MArena arena;
-  bool triangulate = true;
-  const bool nrings_even = (nrings % 2 == 0);
-  int half_nrings = nrings / 2;
   int nsegs = 2 * nrings;
-  const bool nsegs_even = true;
-  const bool nsegs_four_divisible = (nsegs % 4 == 0);
-  int half_nsegs = nrings;
-  int quarter_nsegs = half_nsegs / 2;
-  double radius = 1.0;
-  int num_sphere_verts = nsegs * (nrings - 1) + 2;
-  int num_sphere_faces = nsegs * nrings;
-  int num_sphere_tris = 2 * nsegs + 2 * nsegs * (nrings - 2);
-  arena.reserve(2 * 2 * num_sphere_verts,
-                2 * 2 * (triangulate ? num_sphere_tris : num_sphere_faces));
-  double center_y[2] = {0.0, y_offset};
-  double delta_phi = 2 * M_PI / nsegs;
-  double delta_theta = M_PI / nrings;
-  int fid = 0;
-  int vid = 0;
-  Array<Facep> faces(2 * (triangulate ? num_sphere_tris : num_sphere_faces));
-  Array<Vertp> verts(2 * num_sphere_verts);
-  int face_start[2] = {0, (triangulate ? num_sphere_tris : num_sphere_faces)};
-  int vert_start[2] = {0, num_sphere_verts};
-  auto vert_index_fn = [nrings, &vert_start](int sphere, int seg, int ring) {
-    if (ring == 0) { /* Top vert. */
-      return vert_start[sphere] + vert_start[1] - 2;
-    }
-    if (ring == nrings) { /* Bottom vert. */
-      return vert_start[sphere] + vert_start[1] - 1;
-    }
-    return vert_start[sphere] + seg * (nrings - 1) + (ring - 1);
-  };
-  auto face_index_fn = [nrings, &face_start](int sphere, int seg, int ring) {
-    return face_start[sphere] + seg * nrings + ring;
-  };
-  auto tri_index_fn = [nrings, nsegs, &face_start](int sphere, int seg, int ring, int tri) {
-    if (ring == 0) {
-      return face_start[sphere] + seg;
-    }
-    if (ring < nrings - 1) {
-      return face_start[sphere] + nsegs + 2 * (ring - 1) * nsegs + 2 * seg + tri;
-    }
-    return face_start[sphere] + nsegs + 2 * (nrings - 2) * nsegs + seg;
-  };
-  Array<int> eid = {0, 0, 0, 0}; /* Don't care about edge ids. */
-  for (int sphere : {0, 1}) {
-    /*
-     * (x, y , z) is given from inclination theta and azimuth phi,
-     * where 0 <= theta <= pi;  0 <= phi <= 2pi.
-     * x = radius * sin(theta) cos(phi)
-     * y = radius * sin(theta) sin(phi)
-     * z = radius * cos(theta)
-     */
-    for (int s = 0; s < nsegs; ++s) {
-      double phi = s * delta_phi;
-      double sin_phi;
-      double cos_phi;
-      if (s == 0) {
-        /* phi = 0. */
-        sin_phi = 0.0;
-        cos_phi = 1.0;
-      }
-      else if (nsegs_even && s == half_nsegs) {
-        /* phi = pi. */
-        sin_phi = 0.0;
-        cos_phi = -1.0;
-      }
-      else if (nsegs_four_divisible && s == quarter_nsegs) {
-        /* phi = pi/2. */
-        sin_phi = 1.0;
-        cos_phi = 0.0;
-      }
-      else if (nsegs_four_divisible && s == 3 * quarter_nsegs) {
-        /* phi = 3pi/2. */
-        sin_phi = -1.0;
-        cos_phi = 0.0;
-      }
-      else {
-        sin_phi = sin(phi);
-        cos_phi = cos(phi);
-      }
-      for (int r = 1; r < nrings; ++r) {
-        double theta = r * delta_theta;
-        double r_sin_theta;
-        double r_cos_theta;
-        if (nrings_even && r == half_nrings) {
-          /* theta = pi/2. */
-          r_sin_theta = radius;
-          r_cos_theta = 0.0;
-        }
-        else {
-          r_sin_theta = radius * sin(theta);
-          r_cos_theta = radius * cos(theta);
-        }
-        double x = r_sin_theta * cos_phi;
-        double y = r_sin_theta * sin_phi + center_y[sphere];
-        double z = r_cos_theta;
-        Vertp v = arena.add_or_find_vert(mpq3(x, y, z), vid++);
-        int vindex = vert_index_fn(sphere, s, r);
-        verts[vindex] = v;
-      }
-    }
-    Vertp vtop = arena.add_or_find_vert(mpq3(0, center_y[sphere], radius), vid++);
-    Vertp vbot = arena.add_or_find_vert(mpq3(0, center_y[sphere], -radius), vid++);
-    verts[vert_index_fn(sphere, 0, 0)] = vtop;
-    verts[vert_index_fn(sphere, 0, nrings)] = vbot;
-    for (int s = 0; s < nsegs; ++s) {
-      int snext = (s + 1) % nsegs;
-      for (int r = 0; r < nrings; ++r) {
-        int rnext = r + 1;
-        int i0 = vert_index_fn(sphere, s, r);
-        int i1 = vert_index_fn(sphere, s, rnext);
-        int i2 = vert_index_fn(sphere, snext, rnext);
-        int i3 = vert_index_fn(sphere, snext, r);
-        Facep f;
-        Facep f2 = nullptr;
-        if (r == 0) {
-          f = arena.add_face({verts[i0], verts[i1], verts[i2]}, fid++, eid);
-        }
-        else if (r == nrings - 1) {
-          f = arena.add_face({verts[i0], verts[i1], verts[i3]}, fid++, eid);
-        }
-        else {
-          if (triangulate) {
-            f = arena.add_face({verts[i0], verts[i1], verts[i2]}, fid++, eid);
-            f2 = arena.add_face({verts[i2], verts[i3], verts[i0]}, fid++, eid);
-          }
-          else {
-            f = arena.add_face({verts[i0], verts[i1], verts[i2], verts[i3]}, fid++, eid);
-          }
-        }
-        if (triangulate) {
-          int f_index = tri_index_fn(sphere, s, r, 0);
-          faces[f_index] = f;
-          if (r != 0 && r != nrings - 1) {
-            int f_index2 = tri_index_fn(sphere, s, r, 1);
-            faces[f_index2] = f2;
-          }
-        }
-        else {
-          int f_index = face_index_fn(sphere, s, r);
-          faces[f_index] = f;
-        }
-      }
-    }
-  }
-  Mesh mesh(faces);
+  int num_sphere_verts;
+  int num_sphere_tris;
+  get_sphere_params(nrings, nsegs, true, &num_sphere_verts, &num_sphere_tris);
+  Array<Facep> tris(2 * num_sphere_tris);
+  arena.reserve(2 * num_sphere_verts, 2 * num_sphere_tris);
+  double3 center1(0.0, 0.0, 0.0);
+  fill_sphere_data(nrings, nsegs, center1, 1.0, true, MutableSpan<Facep>(tris.begin(), num_sphere_tris), 0, 0, &arena);
+  double3 center2(0.0, y_offset, 0.0);
+  fill_sphere_data(nrings, nsegs, center2, 1.0, true, MutableSpan<Facep>(tris.begin() + num_sphere_tris, num_sphere_tris), num_sphere_verts, num_sphere_verts, &arena);
+  Mesh mesh(tris);
   double time_create = PIL_check_seconds_timer();
-  // write_obj_mesh(mesh, "spheresphere_in");
+  write_obj_mesh(mesh, "spheresphere_in");
   Mesh out;
   if (use_self) {
     out = trimesh_self_intersect(mesh, &arena);
   }
   else {
-    int nf = triangulate ? num_sphere_tris : num_sphere_faces;
+    int nf = num_sphere_tris;
     out = trimesh_nary_intersect(
         mesh, 2, [nf](int t) { return t < nf ? 0 : 1; }, false, &arena);
   }
@@ -882,13 +909,141 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
   std::cout << "Create time: " << time_create - time_start << "\n";
   std::cout << "Intersect time: " << time_intersect - time_create << "\n";
   std::cout << "Total time: " << time_intersect - time_start << "\n";
-  // write_obj_mesh(out, "spheresphere");
+  write_obj_mesh(out, "spheresphere");
   BLI_task_scheduler_exit();
 }
 
+
+static void get_grid_params(int x_subdiv, int y_subdiv, bool triangulate, int *r_num_verts, int *r_num_faces)
+{
+  *r_num_verts = x_subdiv * y_subdiv;
+  if (triangulate) {
+    *r_num_faces = 2 * (x_subdiv - 1) * (y_subdiv - 1);
+  }
+  else {
+    *r_num_faces = (x_subdiv - 1) * (y_subdiv - 1);
+  }
+}
+
+static void fill_grid_data(int x_subdiv,
+                           int y_subdiv,
+                           bool triangulate,
+                           double size,
+                           const double3 &center,
+                           MutableSpan<Facep> face,
+                           int vid_start,
+                           int fid_start,
+                           MArena *arena)
+{
+  if (x_subdiv <= 1 || y_subdiv <= 1) {
+    return;
+  }
+  int num_verts;
+  int num_faces;
+  get_grid_params(x_subdiv, y_subdiv, triangulate, &num_verts, &num_faces);
+  BLI_assert(face.size() == num_faces);
+  Array<Vertp> vert(num_verts);
+  auto vert_index_fn = [x_subdiv](int ix, int iy) {
+    return iy * x_subdiv + ix;
+  };
+  auto face_index_fn = [x_subdiv](int ix, int iy) {
+    return iy * (x_subdiv - 1) + ix;
+  };
+  auto tri_index_fn = [x_subdiv](int ix, int iy, int tri) {
+    return 2 * iy * (x_subdiv - 1) + 2 * ix + tri;
+  };
+  Array<int> eid = {0, 0, 0, 0}; /* Don't care about edge ids. */
+  double r = size / 2.0;
+  double delta_x = size / (x_subdiv - 1);
+  double delta_y = size / (y_subdiv - 1);
+  int vid = vid_start;
+  for (int iy = 0; iy < y_subdiv; ++iy) {
+    for (int ix = 0; ix < x_subdiv; ++ix) {
+      double x = center[0] - r + ix * delta_x;
+      double y = center[1] - r + iy * delta_y;
+      double z = center[2];
+      Vertp v = arena->add_or_find_vert(mpq3(x, y, z), vid++);
+      vert[vert_index_fn(ix, iy)] = v;
+    }
+  }
+  int fid = fid_start;
+  for (int iy = 0; iy < y_subdiv - 1; ++iy) {
+    for (int ix = 0; ix < x_subdiv - 1; ++ix) {
+      int i0 = vert_index_fn(ix, iy);
+      int i1 = vert_index_fn(ix, iy + 1);
+      int i2 = vert_index_fn(ix + 1, iy + 1);
+      int i3 = vert_index_fn(ix +1, iy);
+      if (triangulate) {
+        Facep f = arena->add_face({vert[i0], vert[i1], vert[i2]}, fid++, eid);
+        Facep f2 = arena->add_face({vert[i2], vert[i3], vert[i0]}, fid++, eid);
+        face[tri_index_fn(ix, iy, 0)] = f;
+        face[tri_index_fn(ix, iy, 1)] = f2;
+      }
+      else {
+        Facep f = arena->add_face({vert[i0], vert[i1], vert[i2], vert[i3]}, fid++, eid);
+        face[face_index_fn(ix, iy)] = f;
+      }
+    }
+  }
+}
+
+static void spheregrid_test(int nrings, int grid_level, double z_offset, bool use_self)
+{
+  /* Make a uvsphere and a grid.
+   * The sphere is radius 1, has nrings rings and 2 * nrings segs,
+   * and is centered at (0,0,z_offset).
+   * The plane is 4x4, has 2**grid_level subdivisions x and y,
+   * and is centered at the origin.
+   */
+  if (nrings < 2 || grid_level < 1) {
+    return;
+  }
+  BLI_task_scheduler_init(); /* Without this, no parallelism. */
+  double time_start = PIL_check_seconds_timer();
+  MArena arena;
+  int num_sphere_verts;
+  int num_sphere_tris;
+  int nsegs = 2 * nrings;
+  int num_grid_verts;
+  int num_grid_tris;
+  int subdivs = 1 << grid_level;
+  get_sphere_params(nrings, nsegs, true, &num_sphere_verts, &num_sphere_tris);
+  get_grid_params(subdivs, subdivs, true, &num_grid_verts, &num_grid_tris);
+  Array<Facep> tris(num_sphere_tris + num_grid_tris);
+  arena.reserve(num_sphere_verts + num_grid_verts, num_sphere_tris + num_grid_tris);
+  double3 center(0.0, 0.0, z_offset);
+  fill_sphere_data(nrings, nsegs, center, 1.0, true, MutableSpan<Facep>(tris.begin(), num_sphere_tris), 0, 0, &arena);
+  fill_grid_data(subdivs, subdivs, true, 4.0, double3(0,0,0), MutableSpan<Facep>(tris.begin() + num_sphere_tris, num_grid_tris), num_sphere_verts, num_sphere_tris, &arena);
+  Mesh mesh(tris);
+  double time_create = PIL_check_seconds_timer();
+  // write_obj_mesh(mesh, "spheregrid_in");
+  Mesh out;
+  if (use_self) {
+    out = trimesh_self_intersect(mesh, &arena);
+  }
+  else {
+    int nf = num_sphere_tris;
+    out = trimesh_nary_intersect(
+        mesh, 2, [nf](int t) { return t < nf ? 0 : 1; }, false, &arena);
+  }
+  double time_intersect = PIL_check_seconds_timer();
+  std::cout << "Create time: " << time_create - time_start << "\n";
+  std::cout << "Intersect time: " << time_intersect - time_create << "\n";
+  std::cout << "Total time: " << time_intersect - time_start << "\n";
+  write_obj_mesh(out, "spheregrid");
+  BLI_task_scheduler_exit();
+}
+
+#if 0
 TEST(mesh_intersect_perf, SphereSphere)
 {
   spheresphere_test(64, 0.5, false);
+}
+#endif
+
+TEST(mesh_intersect_perf, SphereGrid)
+{
+  spheregrid_test(64, 4, 0.1, false);
 }
 
 #endif
