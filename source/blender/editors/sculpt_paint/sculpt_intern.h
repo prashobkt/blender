@@ -100,7 +100,7 @@ const float *SCULPT_vertex_color_get(SculptSession *ss, int index);
 const float *SCULPT_vertex_persistent_co_get(SculptSession *ss, int index);
 void SCULPT_vertex_persistent_normal_get(SculptSession *ss, int index, float no[3]);
 
-/* Returs the info of the limit surface when Multires is available, otherwise it returns the
+/* Returns the info of the limit surface when Multires is available, otherwise it returns the
  * current coordinate of the vertex. */
 void SCULPT_vertex_limit_surface_get(SculptSession *ss, int index, float r_co[3]);
 
@@ -352,6 +352,30 @@ void SCULPT_do_cloth_brush(struct Sculpt *sd,
                            int totnode);
 void SCULPT_cloth_simulation_free(struct SculptClothSimulation *cloth_sim);
 
+struct SculptClothSimulation *SCULPT_cloth_brush_simulation_create(struct SculptSession *ss,
+                                                                   struct Brush *brush,
+                                                                   const float cloth_mass,
+                                                                   const float cloth_damping,
+                                                                   const bool use_collisions);
+void SCULPT_cloth_brush_simulation_init(struct SculptSession *ss,
+                                        struct SculptClothSimulation *cloth_sim);
+void SCULPT_cloth_brush_store_simulation_state(struct SculptSession *ss,
+                                               struct SculptClothSimulation *cloth_sim);
+
+void SCULPT_cloth_brush_do_simulation_step(struct Sculpt *sd,
+                                           struct Object *ob,
+                                           struct SculptClothSimulation *cloth_sim,
+                                           struct PBVHNode **nodes,
+                                           int totnode);
+
+void SCULPT_cloth_brush_build_nodes_constraints(struct Sculpt *sd,
+                                                struct Object *ob,
+                                                struct PBVHNode **nodes,
+                                                int totnode,
+                                                struct SculptClothSimulation *cloth_sim,
+                                                float initial_location[3],
+                                                const float radius);
+
 void SCULPT_cloth_simulation_limits_draw(const uint gpuattr,
                                          const struct Brush *brush,
                                          const float location[3],
@@ -401,7 +425,7 @@ struct SculptBoundary *SCULPT_boundary_data_init(Object *object,
                                                  Brush *brush,
                                                  const int initial_vertex,
                                                  const float radius);
-void SCULPT_boundary_data_free(struct SculptBoundary *bdata);
+void SCULPT_boundary_data_free(struct SculptBoundary *boundary);
 void SCULPT_do_boundary_brush(struct Sculpt *sd,
                               struct Object *ob,
                               struct PBVHNode **nodes,
@@ -880,7 +904,7 @@ typedef struct StrokeCache {
   float true_initial_normal[3];
 
   /* Boundary brush */
-  struct SculptBoundary *bdata[PAINT_SYMM_AREAS];
+  struct SculptBoundary *boundaries[PAINT_SYMM_AREAS];
 
   /* Surface Smooth Brush */
   /* Stores the displacement produced by the laplacian step of HC smooth. */
@@ -922,6 +946,7 @@ typedef struct StrokeCache {
 
 typedef struct FilterCache {
   bool enabled_axis[3];
+  bool enabled_force_axis[3];
   int random_seed;
 
   /* Used for alternating between filter operations in filters that need to apply different ones to

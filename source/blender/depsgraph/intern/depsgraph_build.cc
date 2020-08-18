@@ -44,6 +44,7 @@
 #include "DEG_depsgraph_debug.h"
 
 #include "builder/deg_builder_relations.h"
+#include "builder/pipeline_all_objects.h"
 #include "builder/pipeline_compositor.h"
 #include "builder/pipeline_from_ids.h"
 #include "builder/pipeline_render.h"
@@ -218,6 +219,15 @@ void DEG_graph_build_from_view_layer(Depsgraph *graph,
   builder.build();
 }
 
+void DEG_graph_build_for_all_objects(struct Depsgraph *graph,
+                                     struct Main *bmain,
+                                     struct Scene *scene,
+                                     struct ViewLayer *view_layer)
+{
+  deg::AllObjectsBuilderPipeline builder(graph, bmain, scene, view_layer);
+  builder.build();
+}
+
 void DEG_graph_build_for_render_pipeline(Depsgraph *graph,
                                          Main *bmain,
                                          Scene *scene,
@@ -241,7 +251,8 @@ void DEG_graph_build_from_ids(Depsgraph *graph,
                               ID **ids,
                               const int num_ids)
 {
-  deg::FromIDsBuilderPipeline builder(graph, bmain, scene, view_layer, ids, num_ids);
+  deg::FromIDsBuilderPipeline builder(
+      graph, bmain, scene, view_layer, blender::Span(ids, num_ids));
   builder.build();
 }
 

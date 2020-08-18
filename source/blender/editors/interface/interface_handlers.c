@@ -2025,6 +2025,8 @@ static void ui_apply_but_TRACKPREVIEW(bContext *C, uiBut *but, uiHandleButtonDat
 static void ui_apply_but(
     bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const bool interactive)
 {
+  const int but_type = but->type; /* Store as const to quiet maybe uninitialized warning. */
+
   char *editstr;
   double *editval;
   float *editvec;
@@ -2086,36 +2088,36 @@ static void ui_apply_but(
   editstr = but->editstr;
   editval = but->editval;
   editvec = but->editvec;
-  if (but->type == UI_BTYPE_COLORBAND) {
+  if (but_type == UI_BTYPE_COLORBAND) {
     uiButColorBand *but_coba = (uiButColorBand *)but;
     editcoba = but_coba->edit_coba;
   }
-  else if (but->type == UI_BTYPE_CURVE) {
+  else if (but_type == UI_BTYPE_CURVE) {
     uiButCurveMapping *but_cumap = (uiButCurveMapping *)but;
     editcumap = but_cumap->edit_cumap;
   }
-  else if (but->type == UI_BTYPE_CURVEPROFILE) {
+  else if (but_type == UI_BTYPE_CURVEPROFILE) {
     uiButCurveProfile *but_profile = (uiButCurveProfile *)but;
     editprofile = but_profile->edit_profile;
   }
   but->editstr = NULL;
   but->editval = NULL;
   but->editvec = NULL;
-  if (but->type == UI_BTYPE_COLORBAND) {
+  if (but_type == UI_BTYPE_COLORBAND) {
     uiButColorBand *but_coba = (uiButColorBand *)but;
     but_coba->edit_coba = NULL;
   }
-  else if (but->type == UI_BTYPE_CURVE) {
+  else if (but_type == UI_BTYPE_CURVE) {
     uiButCurveMapping *but_cumap = (uiButCurveMapping *)but;
     but_cumap->edit_cumap = NULL;
   }
-  else if (but->type == UI_BTYPE_CURVEPROFILE) {
+  else if (but_type == UI_BTYPE_CURVEPROFILE) {
     uiButCurveProfile *but_profile = (uiButCurveProfile *)but;
     but_profile->edit_profile = NULL;
   }
 
   /* handle different types */
-  switch (but->type) {
+  switch (but_type) {
     case UI_BTYPE_BUT:
     case UI_BTYPE_DECORATOR:
       ui_apply_but_BUT(C, but, data);
@@ -2221,15 +2223,15 @@ static void ui_apply_but(
   but->editstr = editstr;
   but->editval = editval;
   but->editvec = editvec;
-  if (but->type == UI_BTYPE_COLORBAND) {
+  if (but_type == UI_BTYPE_COLORBAND) {
     uiButColorBand *but_coba = (uiButColorBand *)but;
     but_coba->edit_coba = editcoba;
   }
-  else if (but->type == UI_BTYPE_CURVE) {
+  else if (but_type == UI_BTYPE_CURVE) {
     uiButCurveMapping *but_cumap = (uiButCurveMapping *)but;
     but_cumap->edit_cumap = editcumap;
   }
-  else if (but->type == UI_BTYPE_CURVEPROFILE) {
+  else if (but_type == UI_BTYPE_CURVEPROFILE) {
     uiButCurveProfile *but_profile = (uiButCurveProfile *)but;
     but_profile->edit_profile = editprofile;
   }
@@ -4843,7 +4845,7 @@ static bool ui_numedit_but_NUM(uiBut *but,
 
     if (is_float == false) {
       /* at minimum, moving cursor 2 pixels should change an int button. */
-      CLAMP_MIN(non_linear_scale, 0.5f * U.pixelsize);
+      CLAMP_MIN(non_linear_scale, 0.5f * UI_DPI_FAC);
     }
 
     data->dragf += (((float)(mx - data->draglastx)) / deler) * non_linear_scale;

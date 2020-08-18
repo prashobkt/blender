@@ -6371,8 +6371,8 @@ void SCULPT_cache_free(StrokeCache *cache)
   }
 
   for (int i = 0; i < PAINT_SYMM_AREAS; i++) {
-    if (cache->bdata[i]) {
-      SCULPT_boundary_data_free(cache->bdata[i]);
+    if (cache->boundaries[i]) {
+      SCULPT_boundary_data_free(cache->boundaries[i]);
     }
   }
 
@@ -7125,6 +7125,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
 
   /* Update the active vertex of the SculptSession. */
   ss->active_vertex_index = srd.active_vertex_index;
+  SCULPT_vertex_random_access_ensure(ss);
   copy_v3_v3(out->active_vertex_co, SCULPT_active_vertex_co_get(ss));
 
   switch (BKE_pbvh_type(ss->pbvh)) {
