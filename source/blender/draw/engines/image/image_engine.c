@@ -46,50 +46,36 @@
 #define SIMA_DRAW_FLAG_DEPTH (1 << 3)
 #define SIMA_DRAW_FLAG_TILED (1 << 4)
 
-static struct {
-  rcti gpu_batch_instances_rect;
-  GPUBatch *gpu_batch_instances;
-
-} e_data = {{0}};
-
-static void image_batch_instances_update(Image *image)
+static void image_batch_instances_update(IMAGE_Data *id, Image *image)
 {
+  IMAGE_StorageList *stl = id->stl;
+  IMAGE_PrivateData *pd = stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
   const bool is_tiled_texture = image && image->source == IMA_SRC_TILED;
   rcti instances;
 
   if (is_tiled_texture) {
-    GPU_BATCH_DISCARD_SAFE(e_data.gpu_batch_instances);
-    e_data.gpu_batch_instances = BKE_image_tiled_gpu_instance_batch_create(image);
-    return;
+    pd->draw_batch = BKE_image_tiled_gpu_batch_create(image);
   }
+  else {
+    /* repeat */
+    BLI_rcti_init(&instances, 0, 0, 0, 0);
+    if ((sima->flag & SI_DRAW_TILE) != 0) {
+      float view_inv_m4[4][4];
+      DRW_view_viewmat_get(NULL, view_inv_m4, true);
+      float v3min[3] = {0.0f, 0.0f, 0.0f};
+      float v3max[3] = {1.0f, 1.0f, 0.0f};
+      mul_m4_v3(view_inv_m4, v3min);
+      mul_m4_v3(view_inv_m4, v3max);
 
-  /* repeat */
-  BLI_rcti_init(&instances, 0, 0, 0, 0);
-  if ((sima->flag & SI_DRAW_TILE) != 0) {
-    float view_inv_m4[4][4];
-    DRW_view_viewmat_get(NULL, view_inv_m4, true);
-    float v3min[3] = {0.0f, 0.0f, 0.0f};
-    float v3max[3] = {1.0f, 1.0f, 0.0f};
-    mul_m4_v3(view_inv_m4, v3min);
-    mul_m4_v3(view_inv_m4, v3max);
-
-    instances.xmin = (int)floorf(v3min[0]);
-    instances.ymin = (int)floorf(v3min[1]);
-    instances.xmax = (int)floorf(v3max[0]);
-    instances.ymax = (int)floorf(v3max[1]);
-  }
-
-  if (e_data.gpu_batch_instances) {
-    if (!BLI_rcti_compare(&e_data.gpu_batch_instances_rect, &instances)) {
-      GPU_BATCH_DISCARD_SAFE(e_data.gpu_batch_instances);
+      instances.xmin = (int)floorf(v3min[0]);
+      instances.ymin = (int)floorf(v3min[1]);
+      instances.xmax = (int)floorf(v3max[0]);
+      instances.ymax = (int)floorf(v3max[1]);
     }
-  }
 
-  if (!e_data.gpu_batch_instances) {
-    e_data.gpu_batch_instances = IMAGE_batches_image_instance_create(&instances);
-    e_data.gpu_batch_instances_rect = instances;
+    pd->draw_batch = IMAGE_batches_image_create(&instances);
   }
 }
 
@@ -187,15 +173,14 @@ static void image_cache_image(IMAGE_Data *id, Image *ima, ImageUser *iuser, ImBu
     DRW_shgroup_uniform_int_copy(shgrp, "drawFlags", draw_flags);
     DRW_shgroup_uniform_bool_copy(shgrp, "imgPremultiplied", use_premul_alpha);
 
-    DRW_shgroup_call_instances_with_attrs(
-        shgrp, NULL, DRW_cache_quad_image_get(), e_data.gpu_batch_instances);
+    DRW_shgroup_call(shgrp, pd->draw_batch, NULL);
   }
   else {
     /* No image available. use the image unavailable shader. */
     GPUShader *shader = IMAGE_shaders_image_unavailable_get();
     DRWShadingGroup *grp = DRW_shgroup_create(shader, psl->image_pass);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
-    DRW_shgroup_call(grp, DRW_cache_quad_image_get(), NULL);
+    DRW_shgroup_call(grp, pd->draw_batch, NULL);
   }
 }
 
@@ -243,7 +228,7 @@ static void IMAGE_cache_init(void *vedata)
     }
   }
 
-  image_batch_instances_update(image);
+  image_batch_instances_update(id, image);
 
   {
     /* Write depth is needed for background rendering. Near depth is used for transparency
@@ -285,9 +270,7 @@ static void image_draw_finish(IMAGE_Data *vedata)
   }
   pd->texture = NULL;
 
-  if (e_data.gpu_batch_instances) {
-    GPU_BATCH_DISCARD_SAFE(e_data.gpu_batch_instances);
-  }
+  GPU_BATCH_DISCARD_SAFE(pd->draw_batch);
 }
 
 static void IMAGE_draw_scene(void *vedata)

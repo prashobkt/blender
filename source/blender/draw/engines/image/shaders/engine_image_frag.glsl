@@ -64,7 +64,7 @@ void main()
     }
   }
   else {
-    vec2 uvs_clamped = clamp(uvs, 0.0, 1.0);
+    vec2 uvs_clamped = fract(uvs);
     tex_color = texture(imageTexture, uvs_clamped);
   }
 

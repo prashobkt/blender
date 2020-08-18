@@ -43,10 +43,6 @@ typedef struct OVERLAY_StretchingAreaTotals {
   float *total_area_uv;
 } OVERLAY_StretchingAreaTotals;
 
-static struct {
-  GPUBatch *gpu_batch_instances;
-} e_data = {0}; /* Engine data */
-
 static OVERLAY_UVLineStyle edit_uv_line_style_from_space_image(const SpaceImage *sima)
 {
   const bool is_uv_editor = sima->mode == SI_MODE_UV;
@@ -239,10 +235,8 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
     DRW_shgroup_uniform_vec4_copy(grp, "color", theme_color);
     DRW_shgroup_uniform_vec3_copy(grp, "offset", (float[3]){0.0f, 0.0f, 0.0f});
 
-    GPU_BATCH_DISCARD_SAFE(e_data.gpu_batch_instances);
-    e_data.gpu_batch_instances = BKE_image_tiled_gpu_instance_batch_create(image);
-    DRW_shgroup_call_instances_with_attrs(
-        grp, NULL, DRW_cache_quad_image_wires_get(), e_data.gpu_batch_instances);
+    pd->edit_uv.draw_batch = BKE_image_tiled_border_gpu_batch_create(image);
+    DRW_shgroup_call(grp, pd->edit_uv.draw_batch, NULL);
 
     /* Active tile border */
     ImageTile *active_tile = BLI_findlink(&image->tiles, image->active_tile_index);
@@ -333,9 +327,12 @@ void OVERLAY_edit_uv_cache_populate(OVERLAY_Data *vedata, Object *ob)
   }
 }
 
-static void edit_uv_draw_finish(void)
+static void edit_uv_draw_finish(OVERLAY_Data *vedata)
 {
-  GPU_BATCH_DISCARD_SAFE(e_data.gpu_batch_instances);
+  OVERLAY_StorageList *stl = vedata->stl;
+  OVERLAY_PrivateData *pd = stl->pd;
+
+  GPU_BATCH_DISCARD_SAFE(pd->edit_uv.draw_batch);
 }
 
 void OVERLAY_edit_uv_draw(OVERLAY_Data *vedata)
@@ -362,7 +359,7 @@ void OVERLAY_edit_uv_draw(OVERLAY_Data *vedata)
   else if (pd->edit_uv.do_uv_shadow_overlay) {
     DRW_draw_pass(psl->edit_uv_edges_ps);
   }
-  edit_uv_draw_finish();
+  edit_uv_draw_finish(vedata);
 }
 
 /* \{ */
