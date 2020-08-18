@@ -85,8 +85,8 @@
 #  include "FRS_freestyle.h"
 #endif
 
-#include <signal.h>
 #include <WM_types.h>
+#include <signal.h>
 
 #ifdef __FreeBSD__
 #  include <floatingpoint.h>
@@ -191,7 +191,7 @@ static void callback_clg_log_write_fn(const CLG_LogType *lg,
                                       const char *fn,
                                       const char *message)
 {
-  WM_main_add_notifier(NC_SPACE | ND_SPACE_INFO_REPORT, NULL);
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_INFO_CLOG, NULL);
   CLG_log_write_callback_default(lg, severity, verbosity, file_line, fn, message);
 }
 

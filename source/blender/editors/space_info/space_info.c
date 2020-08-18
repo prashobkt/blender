@@ -252,17 +252,24 @@ static void info_header_region_draw(const bContext *C, ARegion *region)
 }
 
 static void info_main_region_listener(wmWindow *UNUSED(win),
-                                      ScrArea *UNUSED(area),
+                                      ScrArea *area,
                                       ARegion *region,
                                       wmNotifier *wmn,
                                       const Scene *UNUSED(scene))
 {
+  SpaceInfo *sinfo = area->spacedata.first;
   /* context changes */
   switch (wmn->category) {
     case NC_SPACE:
-      if (wmn->data == ND_SPACE_INFO_REPORT) {
+      if (wmn->data == ND_SPACE_INFO_REPORT && (sinfo->view == INFO_VIEW_REPORTS)) {
         /* redraw also but only for report view, could do less redraws by checking the type */
         ED_region_tag_redraw(region);
+        break;
+      }
+      if (wmn->data == ND_SPACE_INFO_CLOG && (sinfo->view == INFO_VIEW_CLOG)) {
+        /* redraw also but only for report view, could do less redraws by checking the type */
+        ED_region_tag_redraw(region);
+        break;
       }
       break;
   }
