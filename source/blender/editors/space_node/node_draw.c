@@ -52,6 +52,7 @@
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
+#include "GPU_viewport.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -866,46 +867,18 @@ void ED_node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[
 
 static void node_draw_preview_background(float tile, rctf *rect)
 {
-  float x, y;
-
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
-  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+  immBindBuiltinProgram(GPU_SHADER_2D_CHECKER);
 
-  /* draw checkerboard backdrop to show alpha */
-  immUniformColor3ub(120, 120, 120);
+  /* Drawing the checkerboard. */
+  const float checker_dark = UI_ALPHA_CHECKER_DARK / 255.0f;
+  const float checker_light = UI_ALPHA_CHECKER_LIGHT / 255.0f;
+  immUniform4f("color1", checker_dark, checker_dark, checker_dark, 1.0f);
+  immUniform4f("color2", checker_light, checker_light, checker_light, 1.0f);
+  immUniform1i("size", 8);
   immRectf(pos, rect->xmin, rect->ymin, rect->xmax, rect->ymax);
-  immUniformColor3ub(160, 160, 160);
-
-  for (y = rect->ymin; y < rect->ymax; y += tile * 2) {
-    for (x = rect->xmin; x < rect->xmax; x += tile * 2) {
-      float tilex = tile, tiley = tile;
-
-      if (x + tile > rect->xmax) {
-        tilex = rect->xmax - x;
-      }
-      if (y + tile > rect->ymax) {
-        tiley = rect->ymax - y;
-      }
-
-      immRectf(pos, x, y, x + tilex, y + tiley);
-    }
-  }
-  for (y = rect->ymin + tile; y < rect->ymax; y += tile * 2) {
-    for (x = rect->xmin + tile; x < rect->xmax; x += tile * 2) {
-      float tilex = tile, tiley = tile;
-
-      if (x + tile > rect->xmax) {
-        tilex = rect->xmax - x;
-      }
-      if (y + tile > rect->ymax) {
-        tiley = rect->ymax - y;
-      }
-
-      immRectf(pos, x, y, x + tilex, y + tiley);
-    }
-  }
   immUnbindProgram();
 }
 
@@ -1755,10 +1728,15 @@ void drawnodespace(const bContext *C, ARegion *region)
   SpaceNode *snode = CTX_wm_space_node(C);
   View2D *v2d = &region->v2d;
 
-  UI_ThemeClearColor(TH_BACK);
-  GPU_clear(GPU_COLOR_BIT);
+  /* Setup offscreen buffers. */
+  GPUViewport *viewport = WM_draw_region_get_viewport(region);
+
+  GPUFrameBuffer *framebuffer_overlay = GPU_viewport_framebuffer_overlay_get(viewport);
+  GPU_framebuffer_bind_no_srgb(framebuffer_overlay);
 
   UI_view2d_view_ortho(v2d);
+  UI_ThemeClearColor(TH_BACK);
+  GPU_clear(GPU_COLOR_BIT);
 
   /* XXX snode->cursor set in coordspace for placing new nodes, used for drawing noodles too */
   UI_view2d_region_to_view(&region->v2d,

@@ -13,32 +13,32 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2013 Blender Foundation.
+ * The Original Code is Copyright (C) 2020 Blender Foundation.
  * All rights reserved.
  */
 
 /** \file
  * \ingroup depsgraph
- *
- * Core routines for how the Depsgraph works.
  */
 
 #pragma once
 
-struct Main;
+#include "pipeline_view_layer.h"
 
 namespace blender {
 namespace deg {
 
-struct Depsgraph;
+/* Builds a dependency graph that contains all objects in the view layer.
+ * This is contrary to the regular ViewLayerBuilderPipeline, which is limited to visible objects
+ * (and their dependencies). */
+class AllObjectsBuilderPipeline : public ViewLayerBuilderPipeline {
+ public:
+  AllObjectsBuilderPipeline(::Depsgraph *graph);
 
-/* Flush updates from tagged nodes outwards until all affected nodes
- * are tagged.
- */
-void deg_graph_flush_updates(struct Depsgraph *graph);
-
-/* Clear tags from all operation nodes. */
-void deg_graph_clear_tags(struct Depsgraph *graph);
+ protected:
+  virtual unique_ptr<DepsgraphNodeBuilder> construct_node_builder() override;
+  virtual unique_ptr<DepsgraphRelationBuilder> construct_relation_builder() override;
+};
 
 }  // namespace deg
 }  // namespace blender
