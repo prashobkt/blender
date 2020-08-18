@@ -131,8 +131,6 @@ static void do_outliner_item_editmode_toggle(bContext *C, Scene *scene, Base *ba
   }
   else {
     ok = ED_object_editmode_enter_ex(CTX_data_main(C), scene, ob, EM_NO_CONTEXT);
-    /* TODO (Nathan): Why does this crash on undo? */
-    // ED_object_base_activate(C, base);
   }
   if (ok) {
     ED_object_base_select(base, (ob->mode & OB_MODE_EDIT) ? BA_SELECT : BA_DESELECT);
@@ -186,18 +184,6 @@ static void do_outliner_item_mode_toggle_generic(bContext *C, TreeViewContext *t
   ED_object_mode_set(C, active_mode);
 
   ED_outliner_select_sync_from_object_tag(C);
-}
-
-/* For draw callback to run mode switching */
-void outliner_object_mode_toggle(bContext *C, Scene *scene, ViewLayer *view_layer, Base *base)
-{
-  Object *obact = OBACT(view_layer);
-  if (obact->mode & OB_MODE_EDIT) {
-    do_outliner_item_editmode_toggle(C, scene, base);
-  }
-  else if (obact->mode & OB_MODE_POSE) {
-    do_outliner_item_posemode_toggle(C, scene, base);
-  }
 }
 
 /* Toggle the item's interaction mode if supported */

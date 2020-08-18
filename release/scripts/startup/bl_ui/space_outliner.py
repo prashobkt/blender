@@ -297,16 +297,6 @@ class OUTLINER_MT_object(Menu):
 
         layout.separator()
 
-        if object_mode in {'EDIT', 'POSE'}:
-            name = bpy.types.Object.bl_rna.properties["mode"].enum_items[object_mode].name
-            layout.operator("outliner.object_operation",
-                            text=iface_("%s Set", i18n_contexts.operator_default) % name).type = 'OBJECT_MODE_ENTER'
-            layout.operator("outliner.object_operation",
-                            text=iface_("%s Clear", i18n_contexts.operator_default) % name).type = 'OBJECT_MODE_EXIT'
-            del name
-
-            layout.separator()
-
         if not (space.display_mode == 'VIEW_LAYER' and not space.use_filter_collection):
             layout.operator("outliner.id_operation", text="Unlink").type = 'UNLINK'
             layout.separator()
