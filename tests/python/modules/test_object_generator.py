@@ -19,6 +19,7 @@
 # <pep8 compliant>
 
 """blender -b --python tests/python/modules/test_object_generator.py -- /path/to/blend/file/new_or_existing.blend"""
+
 import bpy
 import os
 import sys
@@ -121,40 +122,15 @@ def create_test_objects(collection_name, obj_dict):
         test_obj_name = "testObj" + obj_name
 
         if test_obj_name not in bpy.data.objects.keys():
-            if obj_type == "Circle":
-                bpy.ops.mesh.primitive_circle_add(location=(0, offset_y, 0))
-
-            elif obj_type == "Cube":
-                bpy.ops.mesh.primitive_cube_add(location=(0, offset_y, 0))
-
-            elif obj_type == "Plane":
-                bpy.ops.mesh.primitive_plane_add(location=(0, offset_y, 0))
-
-            elif obj_type == "Sphere":
-                bpy.ops.mesh.primitive_uv_sphere_add(location=(0, offset_y, 0))
-
-            elif obj_type == "Cone":
-                bpy.ops.mesh.primitive_cone_add(location=(0, offset_y, 0))
-
-            elif obj_type == "Cylinder":
-                bpy.ops.mesh.primitive_cylinder_add(location=(0, offset_y, 0))
-
-            elif obj_type == "Icosphere":
-                bpy.ops.mesh.primitive_ico_sphere_add(location=(0, offset_y, 0))
-
-            elif obj_type == "Torus":
-                bpy.ops.mesh.primitive_torus_add(location=(0, offset_y, 0))
-
-            elif obj_type == "Monkey":
-                bpy.ops.mesh.primitive_monkey_add(location=(0, offset_y, 0))
-
-            elif obj_type == "Grid":
-                bpy.ops.mesh.primitive_grid_add(location=(0, offset_y, 0))
-            else:
+            try:
+                getattr(bpy.ops.mesh, obj_type)
+                mesh_obj = getattr(bpy.ops.mesh, obj_type)
+            except AttributeError:
                 global fail
                 fail = 1
-                raise Exception("'{}' object type not yet supported.".format(obj_type))
+                raise AttributeError("Incorrect parameter: {} for adding object.".format(obj_type))
 
+            mesh_obj(location=(0, offset_y, 0))
 
             bpy.context.active_object.name = test_obj_name
             bpy.ops.object.duplicate_move(TRANSFORM_OT_translate={"value": (offset_x, 0, 0)})
@@ -194,10 +170,9 @@ argv = argv[argv.index("--") + 1:]
 path_to_file = str(Path(argv[0]))
 new_file = 0
 print(path_to_file)
+
 if os.path.exists(path_to_file):
-
     bpy.ops.wm.open_mainfile(filepath=path_to_file)
-
 
 else:
     # Looking at the global fail variable
@@ -211,7 +186,7 @@ else:
 try:
     # create_test_objects("Skin", {'PlaneSkin': 'Plane'})
     # create_test_objects("SurfaceDeform", {'MonkeySurfaceDeform': 'Monkey'})
-    create_test_objects("MeshDeform", {'MonkeyMeshDeform': 'Monkey'})
+    create_test_objects("MeshDeform", {'MonkeyMeshDeform': 'primitive_monkey_add'})
 
     #
     # create_test_objects("WavePlane", {'PlaneWave': 'Plane'})
