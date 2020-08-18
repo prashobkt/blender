@@ -2877,7 +2877,7 @@ static void outliner_draw_iconrow_number(const uiFontStyle *fstyle,
                            number_text,
                            text_col);
   UI_fontstyle_set(fstyle);
-  GPU_blend(true); /* Roundbox and text drawing disables. */
+  GPU_blend(GPU_BLEND_ALPHA); /* Roundbox and text drawing disables. */
 }
 
 static void outliner_draw_active_highlight(const float minx,
@@ -3110,7 +3110,7 @@ static void outliner_draw_tree_element(bContext *C,
       xmax -= restrict_column_width + UI_UNIT_X;
     }
 
-    GPU_blend(true);
+    GPU_blend(GPU_BLEND_ALPHA);
 
     /* colors for active/selected data */
     if (tselem->type == 0) {
@@ -3218,7 +3218,7 @@ static void outliner_draw_tree_element(bContext *C,
         offsx += UI_UNIT_X + 4 * ufac;
       }
     }
-    GPU_blend(false);
+    GPU_blend(GPU_BLEND_NONE);
 
     /* name */
     if ((tselem->flag & TSE_TEXTBUT) == 0) {
@@ -3243,7 +3243,7 @@ static void outliner_draw_tree_element(bContext *C,
         else if (tselem->type != TSE_R_LAYER) {
           int tempx = startx + offsx;
 
-          GPU_blend(true);
+          GPU_blend(GPU_BLEND_ALPHA);
 
           MergedIconRow merged = {{0}};
           outliner_draw_iconrow(C,
@@ -3259,7 +3259,7 @@ static void outliner_draw_tree_element(bContext *C,
                                 alpha_fac,
                                 &merged);
 
-          GPU_blend(false);
+          GPU_blend(GPU_BLEND_NONE);
         }
       }
     }
@@ -3379,9 +3379,9 @@ static void outliner_draw_hierarchy_lines(SpaceOutliner *space_outliner,
   UI_GetThemeColorBlend3ubv(TH_BACK, TH_TEXT, 0.4f, col);
   col[3] = 255;
 
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
   outliner_draw_hierarchy_lines_recursive(pos, space_outliner, lb, startx, col, false, starty);
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 
   immUnbindProgram();
 }
@@ -3563,8 +3563,7 @@ static void outliner_draw_tree(bContext *C,
     mode_column_offset -= UI_UNIT_X;
   }
 
-  GPU_blend_set_func_separate(
-      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA); /* Only once. */
+  GPU_blend(GPU_BLEND_ALPHA); /* Only once. */
 
   if (space_outliner->outlinevis == SO_DATA_API) {
     /* struct marks */
@@ -3578,12 +3577,12 @@ static void outliner_draw_tree(bContext *C,
   outliner_draw_highlights(region, space_outliner, startx, &starty);
 
   /* set scissor so tree elements or lines can't overlap restriction icons */
-  float scissor[4] = {0};
+  int scissor[4] = {0};
   if (restrict_column_width > 0.0f) {
     int mask_x = BLI_rcti_size_x(&region->v2d.mask) - (int)restrict_column_width + 1;
     CLAMP_MIN(mask_x, 0);
 
-    GPU_scissor_get_f(scissor);
+    GPU_scissor_get(scissor);
     GPU_scissor(0, 0, mask_x, region->winy);
   }
 
