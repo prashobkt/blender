@@ -2897,22 +2897,6 @@ static void outliner_draw_active_highlight(const float minx,
   GPU_blend(true); /* Roundbox disables. */
 }
 
-static void outliner_draw_active_highlight(const float minx,
-                                           const float miny,
-                                           const float maxx,
-                                           const float maxy,
-                                           const float ufac,
-                                           const float icon_color[4],
-                                           const float icon_border[4])
-{
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  UI_draw_roundbox_aa(true, minx, miny + ufac, maxx, maxy - ufac, UI_UNIT_Y / 4.0f, icon_color);
-
-  /* border around it */
-  UI_draw_roundbox_aa(false, minx, miny + ufac, maxx, maxy - ufac, UI_UNIT_Y / 4.0f, icon_border);
-  GPU_blend(true); /* Roundbox disables. */
-}
-
 static void outliner_draw_iconrow_doit(uiBlock *block,
                                        TreeElement *te,
                                        const uiFontStyle *fstyle,
