@@ -3428,6 +3428,17 @@ static void outliner_draw_tree_element(bContext *C,
 
 #endif /* if 0 */
 
+static bool subtree_contains_object(ListBase *lb)
+{
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
+    TreeStoreElem *tselem = TREESTORE(te);
+    if (tselem->type == 0 && te->idcode == ID_OB) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static void outliner_draw_hierarchy_lines_recursive(uint pos,
                                                     SpaceOutliner *space_outliner,
                                                     ListBase *lb,
@@ -3438,7 +3449,7 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
 {
   bTheme *btheme = UI_GetTheme();
   int y = *starty;
-  short color;
+  short color = 0;
 
   /* Small vertical padding */
   const short line_padding = UI_UNIT_Y / 4.0f;
@@ -3459,6 +3470,12 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
         color = collection->color;
 
         y = *starty;
+      }
+      else if (tselem->type == 0 && te->idcode == ID_OB) {
+        if (subtree_contains_object(&te->subtree)) {
+          draw_hierarchy_line = true;
+          y = *starty;
+        }
       }
 
       outliner_draw_hierarchy_lines_recursive(
