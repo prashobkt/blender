@@ -163,10 +163,9 @@ static const char *get_image_filepath(const bNode *tex_node)
  */
 void MaterialWrap::init_bsdf_node(StringRefNull object_name)
 {
-  BLI_assert(export_mtl_);
   if (!export_mtl_->use_nodes) {
     fprintf(stderr,
-            "No Principled-BSDF node found in the material node tree of: %s.\n",
+            "No Principled-BSDF node found in the shader node tree of: '%s'.\n",
             object_name.data());
     bsdf_node_ = nullptr;
     return;
@@ -179,7 +178,7 @@ void MaterialWrap::init_bsdf_node(StringRefNull object_name)
     }
   }
   fprintf(stderr,
-          "No Principled-BSDF node found in the material node tree of: %s.\n",
+          "No Principled-BSDF node found in the shader node tree of: '%s'.\n",
           object_name.data());
   bsdf_node_ = nullptr;
 }

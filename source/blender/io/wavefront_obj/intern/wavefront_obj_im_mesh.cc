@@ -69,7 +69,11 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
   create_uv_verts();
   create_materials(bmain, materials);
 
-  BKE_mesh_validate(blender_mesh_.get(), true, false);
+  bool verbose_validate = false;
+#ifdef DEBUG
+  verbose_validate = true;
+#endif
+  BKE_mesh_validate(blender_mesh_.get(), verbose_validate, false);
 #if 0
   add_custom_normals();
 #endif
@@ -119,14 +123,17 @@ void MeshFromGeometry::create_polys_loops()
     }
 
     for (const FaceCorner &curr_corner : curr_face.face_corners) {
-      MLoop *mloop = &blender_mesh_->mloop[tot_loop_idx];
+      MLoop &mloop = blender_mesh_->mloop[tot_loop_idx];
       tot_loop_idx++;
-      mloop->v = curr_corner.vert_index;
+      mloop.v = curr_corner.vert_index;
+      normal_float_to_short_v3(blender_mesh_->mvert[mloop.v].no,
+                               global_vertices_.vertex_normals[curr_corner.vertex_normal_index]);
+
       if (blender_mesh_->dvert) {
         /* Iterating over mloop results in finding the same vertex multiple times.
          * Another way is to allocate memory for dvert while creating vertices and fill them here.
          */
-        MDeformVert &def_vert = blender_mesh_->dvert[mloop->v];
+        MDeformVert &def_vert = blender_mesh_->dvert[mloop.v];
         if (!def_vert.dw) {
           def_vert.dw = static_cast<MDeformWeight *>(
               MEM_callocN(sizeof(MDeformWeight), "OBJ Import Deform Weight"));
