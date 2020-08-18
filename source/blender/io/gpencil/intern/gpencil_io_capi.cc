@@ -109,8 +109,7 @@ static bool gpencil_io_export_frame(GpencilExporterSVG *exporter,
 }
 
 /* Export full animation in Storyboard mode. */
-static bool gpencil_io_export_storyboard(Main *bmain,
-                                         Depsgraph *depsgraph,
+static bool gpencil_io_export_storyboard(Depsgraph *depsgraph,
                                          Scene *scene,
                                          Object *ob,
                                          const char *filename,
@@ -172,7 +171,7 @@ static bool gpencil_io_export_storyboard(Main *bmain,
     }
 
     CFRA = i;
-    BKE_scene_graph_update_for_newframe(depsgraph, bmain);
+    BKE_scene_graph_update_for_newframe(depsgraph);
     sprintf(iparams->file_subfix, "%04d", page);
     iparams->framenum = i;
 
@@ -218,7 +217,6 @@ static bool gpencil_io_export_storyboard(Main *bmain,
 /* Main export entry point function. */
 bool gpencil_io_export(const char *filename, GpencilExportParams *iparams)
 {
-  Main *bmain = CTX_data_main(iparams->C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(iparams->C);
   Scene *scene = CTX_data_scene(iparams->C);
   Object *ob = CTX_data_active_object(iparams->C);
@@ -242,11 +240,11 @@ bool gpencil_io_export(const char *filename, GpencilExportParams *iparams)
   else {
     int oldframe = (int)DEG_get_ctime(depsgraph);
 
-    done |= gpencil_io_export_storyboard(bmain, depsgraph, scene, ob, filename, iparams);
+    done |= gpencil_io_export_storyboard(depsgraph, scene, ob, filename, iparams);
 
     /* Return frame state and DB to original state. */
     CFRA = oldframe;
-    BKE_scene_graph_update_for_newframe(depsgraph, bmain);
+    BKE_scene_graph_update_for_newframe(depsgraph);
   }
 
   return done;
