@@ -411,7 +411,7 @@ void CLG_logref_init(CLG_LogRef *clg_ref);
     } while (false)
 #endif  // DEBUG
 #define CLOG_STR_VERBOSE_N(clg_ref, log_level, str) \
-  CLOG_STR_AT_SEVERITY(clg_ref, CLG_SEVERITY_VERBOSE, log_level, str)
+  CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_VERBOSE, log_level, str)
 #define CLOG_STR_INFO_N(clg_ref, str) CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_INFO, 0, str)
 #define CLOG_STR_WARN_N(clg_ref, str) CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_WARN, 0, str)
 #define CLOG_STR_ERROR_N(clg_ref, str) CLOG_STR_AT_SEVERITY_N(clg_ref, CLG_SEVERITY_ERROR, 0, str)
