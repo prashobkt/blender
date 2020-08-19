@@ -16,7 +16,7 @@
 #include "BLI_vector.hh"
 
 #define DO_REGULAR_TESTS 1
-#define DO_PERF_TESTS 0
+#define DO_PERF_TESTS 1
 
 namespace blender::meshintersect {
 
@@ -711,11 +711,8 @@ TEST(mesh_intersect, CubeCubeStep)
 
 #if DO_PERF_TESTS
 
-static void get_sphere_params(int nrings,
-                              int nsegs,
-                              bool triangulate,
-                              int *r_num_verts,
-                              int *r_num_faces)
+static void get_sphere_params(
+    int nrings, int nsegs, bool triangulate, int *r_num_verts, int *r_num_faces)
 {
   *r_num_verts = nsegs * (nrings - 1) + 2;
   if (triangulate) {
@@ -760,9 +757,7 @@ static void fill_sphere_data(int nrings,
     }
     return seg * (nrings - 1) + (ring - 1);
   };
-  auto face_index_fn = [nrings](int seg, int ring) {
-    return seg * nrings + ring;
-  };
+  auto face_index_fn = [nrings](int seg, int ring) { return seg * nrings + ring; };
   auto tri_index_fn = [nrings, nsegs](int seg, int ring, int tri) {
     if (ring == 0) {
       return seg;
@@ -890,9 +885,25 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
   Array<Facep> tris(2 * num_sphere_tris);
   arena.reserve(2 * num_sphere_verts, 2 * num_sphere_tris);
   double3 center1(0.0, 0.0, 0.0);
-  fill_sphere_data(nrings, nsegs, center1, 1.0, true, MutableSpan<Facep>(tris.begin(), num_sphere_tris), 0, 0, &arena);
+  fill_sphere_data(nrings,
+                   nsegs,
+                   center1,
+                   1.0,
+                   true,
+                   MutableSpan<Facep>(tris.begin(), num_sphere_tris),
+                   0,
+                   0,
+                   &arena);
   double3 center2(0.0, y_offset, 0.0);
-  fill_sphere_data(nrings, nsegs, center2, 1.0, true, MutableSpan<Facep>(tris.begin() + num_sphere_tris, num_sphere_tris), num_sphere_verts, num_sphere_verts, &arena);
+  fill_sphere_data(nrings,
+                   nsegs,
+                   center2,
+                   1.0,
+                   true,
+                   MutableSpan<Facep>(tris.begin() + num_sphere_tris, num_sphere_tris),
+                   num_sphere_verts,
+                   num_sphere_verts,
+                   &arena);
   Mesh mesh(tris);
   double time_create = PIL_check_seconds_timer();
   write_obj_mesh(mesh, "spheresphere_in");
@@ -913,8 +924,8 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
   BLI_task_scheduler_exit();
 }
 
-
-static void get_grid_params(int x_subdiv, int y_subdiv, bool triangulate, int *r_num_verts, int *r_num_faces)
+static void get_grid_params(
+    int x_subdiv, int y_subdiv, bool triangulate, int *r_num_verts, int *r_num_faces)
 {
   *r_num_verts = x_subdiv * y_subdiv;
   if (triangulate) {
@@ -943,12 +954,8 @@ static void fill_grid_data(int x_subdiv,
   get_grid_params(x_subdiv, y_subdiv, triangulate, &num_verts, &num_faces);
   BLI_assert(face.size() == num_faces);
   Array<Vertp> vert(num_verts);
-  auto vert_index_fn = [x_subdiv](int ix, int iy) {
-    return iy * x_subdiv + ix;
-  };
-  auto face_index_fn = [x_subdiv](int ix, int iy) {
-    return iy * (x_subdiv - 1) + ix;
-  };
+  auto vert_index_fn = [x_subdiv](int ix, int iy) { return iy * x_subdiv + ix; };
+  auto face_index_fn = [x_subdiv](int ix, int iy) { return iy * (x_subdiv - 1) + ix; };
   auto tri_index_fn = [x_subdiv](int ix, int iy, int tri) {
     return 2 * iy * (x_subdiv - 1) + 2 * ix + tri;
   };
@@ -972,7 +979,7 @@ static void fill_grid_data(int x_subdiv,
       int i0 = vert_index_fn(ix, iy);
       int i1 = vert_index_fn(ix, iy + 1);
       int i2 = vert_index_fn(ix + 1, iy + 1);
-      int i3 = vert_index_fn(ix +1, iy);
+      int i3 = vert_index_fn(ix + 1, iy);
       if (triangulate) {
         Facep f = arena->add_face({vert[i0], vert[i1], vert[i2]}, fid++, eid);
         Facep f2 = arena->add_face({vert[i2], vert[i3], vert[i0]}, fid++, eid);
@@ -1012,8 +1019,24 @@ static void spheregrid_test(int nrings, int grid_level, double z_offset, bool us
   Array<Facep> tris(num_sphere_tris + num_grid_tris);
   arena.reserve(num_sphere_verts + num_grid_verts, num_sphere_tris + num_grid_tris);
   double3 center(0.0, 0.0, z_offset);
-  fill_sphere_data(nrings, nsegs, center, 1.0, true, MutableSpan<Facep>(tris.begin(), num_sphere_tris), 0, 0, &arena);
-  fill_grid_data(subdivs, subdivs, true, 4.0, double3(0,0,0), MutableSpan<Facep>(tris.begin() + num_sphere_tris, num_grid_tris), num_sphere_verts, num_sphere_tris, &arena);
+  fill_sphere_data(nrings,
+                   nsegs,
+                   center,
+                   1.0,
+                   true,
+                   MutableSpan<Facep>(tris.begin(), num_sphere_tris),
+                   0,
+                   0,
+                   &arena);
+  fill_grid_data(subdivs,
+                 subdivs,
+                 true,
+                 4.0,
+                 double3(0, 0, 0),
+                 MutableSpan<Facep>(tris.begin() + num_sphere_tris, num_grid_tris),
+                 num_sphere_verts,
+                 num_sphere_tris,
+                 &arena);
   Mesh mesh(tris);
   double time_create = PIL_check_seconds_timer();
   // write_obj_mesh(mesh, "spheregrid_in");
@@ -1030,16 +1053,14 @@ static void spheregrid_test(int nrings, int grid_level, double z_offset, bool us
   std::cout << "Create time: " << time_create - time_start << "\n";
   std::cout << "Intersect time: " << time_intersect - time_create << "\n";
   std::cout << "Total time: " << time_intersect - time_start << "\n";
-  write_obj_mesh(out, "spheregrid");
+  // write_obj_mesh(out, "spheregrid");
   BLI_task_scheduler_exit();
 }
 
-#if 0
 TEST(mesh_intersect_perf, SphereSphere)
 {
   spheresphere_test(64, 0.5, false);
 }
-#endif
 
 TEST(mesh_intersect_perf, SphereGrid)
 {

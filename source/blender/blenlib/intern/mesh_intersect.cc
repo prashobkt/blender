@@ -53,7 +53,7 @@ static void dump_perfdata(void);
 #  endif
 
 /* For debugging, can disable threading in intersect code with this static constant. */
-static constexpr bool intersect_use_threading = false; /*DEBUG!!*/
+static constexpr bool intersect_use_threading = true;
 
 Vert::Vert(const mpq3 &mco, const double3 &dco, int id, int orig)
     : co_exact(mco), co(dco), id(id), orig(orig)
@@ -2459,6 +2459,79 @@ class TriOverlaps {
   }
 };
 
+/* Data needed for parallelization of calc_overlap_itts. */
+struct OverlapIttsData {
+  Vector<std::pair<int, int>> intersect_pairs;
+  Map<std::pair<int, int>, ITT_value> &itt_map;
+  const Mesh &tm;
+  MArena *arena;
+
+  OverlapIttsData(Map<std::pair<int, int>, ITT_value> &itt_map, const Mesh &tm, MArena *arena)
+      : itt_map(itt_map), tm(tm), arena(arena)
+  {
+  }
+};
+
+static void calc_overlap_itts_range_func(void *__restrict userdata,
+                                         const int iter,
+                                         const TaskParallelTLS *__restrict UNUSED(tls))
+{
+  constexpr int dbg_level = 0;
+  OverlapIttsData *data = static_cast<OverlapIttsData *>(userdata);
+  std::pair<int, int> tri_pair = data->intersect_pairs[iter];
+  int a = tri_pair.first;
+  int b = tri_pair.second;
+  if (dbg_level > 0) {
+    std::cout << "calc_overlap_itts_range_func a=" << a << ", b=" << b << "\n";
+  }
+  ITT_value itt = intersect_tri_tri(data->tm, a, b);
+  if (dbg_level > 0) {
+    std::cout << "result of intersecting " << a << " and " << b << " = " << itt << "\n";
+  }
+  BLI_assert(data->itt_map.contains(tri_pair));
+  data->itt_map.add_overwrite(tri_pair, itt);
+}
+
+/* Fill in itt_map with the vector of ITT_values that result from intersecting the triangles in ov.
+ * Use a canonical order for triangles: (a,b) where  a < b.
+ * Don't bother doing this if both a and b are part of the same coplanar cluster, as the
+ * intersection for those will be handled by CDT, later.
+ */
+static void calc_overlap_itts(Map<std::pair<int, int>, ITT_value> &itt_map,
+                              const Mesh &tm,
+                              const CoplanarClusterInfo &clinfo,
+                              const TriOverlaps &ov,
+                              MArena *arena)
+{
+  OverlapIttsData data(itt_map, tm, arena);
+  /* Put dummy values in itt_map intially, so map entries will exist when doing the range function.
+   * This means we won't have to protect the itt_map.add_overwrite function with a lock.
+   */
+  for (const BVHTreeOverlap &olap : ov.overlap()) {
+    int a = olap.indexA;
+    int b = olap.indexB;
+    if (a >= b) {
+      std::swap(a, b);
+    }
+    std::pair<int, int> key(a, b);
+    if (!itt_map.contains(key)) {
+      int ca = clinfo.tri_cluster(a);
+      int cb = clinfo.tri_cluster(b);
+      if (ca == NO_INDEX || ca != cb) {
+        itt_map.add_new(key, ITT_value());
+        data.intersect_pairs.append(key);
+      }
+    }
+  }
+  int tot_intersect_pairs = data.intersect_pairs.size();
+  TaskParallelSettings settings;
+  BLI_parallel_range_settings_defaults(&settings);
+  constexpr int intersect_threading_threshold = 100;
+  settings.use_threading = (intersect_use_threading &&
+                            tot_intersect_pairs > intersect_threading_threshold);
+  BLI_task_parallel_range(0, tot_intersect_pairs, &data, calc_overlap_itts_range_func, &settings);
+}
+
 /* Data needed for parallelization of calc_subdivided_tris. */
 
 struct OverlapTriRange {
@@ -2469,6 +2542,7 @@ struct OverlapTriRange {
 struct SubdivideTrisData {
   Array<Mesh> &r_tri_subdivided;
   const Mesh &tm;
+  const Map<std::pair<int, int>, ITT_value> &itt_map;
   Span<BVHTreeOverlap> overlap;
   MArena *arena;
 
@@ -2481,10 +2555,12 @@ struct SubdivideTrisData {
 
   SubdivideTrisData(Array<Mesh> &r_tri_subdivided,
                     const Mesh &tm,
+                    const Map<std::pair<int, int>, ITT_value> &itt_map,
                     Span<BVHTreeOverlap> overlap,
                     MArena *arena)
       : r_tri_subdivided(r_tri_subdivided),
         tm(tm),
+        itt_map(itt_map),
         overlap(overlap),
         arena(arena),
         overlap_tri_range{}
@@ -2508,7 +2584,16 @@ static void calc_subdivided_tri_range_func(void *__restrict userdata,
   Vector<ITT_value, inline_capacity> itts(otr.len);
   for (int j = otr.overlap_start; j < otr.overlap_start + otr.len; ++j) {
     int t_other = data->overlap[j].indexB;
-    ITT_value itt = intersect_tri_tri(data->tm, t, t_other);
+    int a = t;
+    int b = t_other;
+    if (a >= b) {
+      std::swap(a, b);
+    }
+    std::pair<int, int> key(a, b);
+    ITT_value itt;
+    if (data->itt_map.contains(key)) {
+      itt = data->itt_map.lookup(key);
+    }
     if (itt.kind != INONE) {
       itts.append(itt);
     }
@@ -2531,10 +2616,10 @@ static void calc_subdivided_tri_range_func(void *__restrict userdata,
  * all the other triangles in the mesh, if it intersects any others.
  * But don't do this for triangles that are part of a cluster.
  * Also, do nothing here if the answer is just the triangle itself.
- * TODO: parallelize this loop.
  */
 static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
                                  const Mesh &tm,
+                                 const Map<std::pair<int, int>, ITT_value> &itt_map,
                                  const CoplanarClusterInfo &clinfo,
                                  const TriOverlaps &ov,
                                  MArena *arena)
@@ -2544,10 +2629,7 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
     std::cout << "\nCALC_SUBDIVIDED_TRIS\n\n";
   }
   Span<BVHTreeOverlap> overlap = ov.overlap();
-  SubdivideTrisData data(r_tri_subdivided, tm, overlap, arena);
-  data.r_tri_subdivided = r_tri_subdivided;
-  data.overlap = overlap;
-  data.arena = arena;
+  SubdivideTrisData data(r_tri_subdivided, tm, itt_map, overlap, arena);
   int overlap_tot = overlap.size();
   data.overlap_tri_range = Vector<OverlapTriRange>();
   data.overlap_tri_range.reserve(overlap_tot);
@@ -2577,14 +2659,39 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
   int overlap_tri_range_tot = data.overlap_tri_range.size();
   TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
-  settings.use_threading = (intersect_use_threading && overlap_tri_range_tot > 1000);
+  constexpr int trisubdiv_threading_threshold = 100;
+  settings.use_threading = (intersect_use_threading &&
+                            overlap_tri_range_tot > trisubdiv_threading_threshold);
   BLI_task_parallel_range(
       0, overlap_tri_range_tot, &data, calc_subdivided_tri_range_func, &settings);
+}
+
+/* Get first index in ov where indexA == t. Assuming sorted on indexA. */
+static int find_first_overlap_index(const TriOverlaps &ov, int t)
+{
+  Span<BVHTreeOverlap> span = ov.overlap();
+  int min = 0;
+  int max = static_cast<int>(span.size()) - 1;
+  while (min < max) {
+    int mid = (min + max) / 2;
+    if (t <= span[mid].indexA) {
+      max = mid;
+    }
+    else {
+      min = mid + 1;
+    }
+  }
+  if (span[min].indexA == t) {
+    return min;
+  }
+  return -1;
 }
 
 static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
                                         int c,
                                         const Mesh &tm,
+                                        const TriOverlaps &ov,
+                                        const Map<std::pair<int, int>, ITT_value> &itt_map,
                                         MArena *UNUSED(arena))
 {
   constexpr int dbg_level = 0;
@@ -2592,28 +2699,42 @@ static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
   const CoplanarCluster &cl = clinfo.cluster(c);
   /* Make a CDT input with triangles from C and intersects from other triangles in tm. */
   if (dbg_level > 0) {
-    std::cout << "calc_cluster_subdivided for cluster " << c << " = " << cl << "\n";
+    std::cout << "CALC_CLUSTER_SUBDIVIDED for cluster " << c << " = " << cl << "\n";
   }
   /* Get vector itts of all intersections of a triangle of cl with any triangle of tm not
    * in cl and not coplanar with it (for that latter, if there were an intersection,
    * it should already be in cluster cl).
    */
   Vector<ITT_value> itts;
-  for (int t_other : tm.face_index_range()) {
-    if (clinfo.tri_cluster(t_other) != c) {
-      if (dbg_level > 0) {
-        std::cout << "intersect cluster " << c << " with tri " << t_other << "\n";
-      }
-      for (const int t : cl) {
-        ITT_value itt = intersect_tri_tri(tm, t, t_other);
-#  ifdef PERFDEBUG
-        incperfcount(5); /* intersect_tri_tri calls from calc_cluster_subdivided. */
-#  endif
+  Span<BVHTreeOverlap> ovspan = ov.overlap();
+  for (int t : cl) {
+    if (dbg_level > 0) {
+      std::cout << "find intersects with triangle " << t << " of cluster\n";
+    }
+    int first_i = find_first_overlap_index(ov, t);
+    if (first_i == -1) {
+      continue;
+    }
+    for (int i = first_i; i < ovspan.size() && ovspan[i].indexA == t; ++i) {
+      int t_other = ovspan[i].indexB;
+      if (clinfo.tri_cluster(t_other) != c) {
         if (dbg_level > 0) {
-          std::cout << "intersect tri " << t << " with tri " << t_other << " = " << itt << "\n";
+          std::cout << "use intersect(" << t << "," << t_other << "\n";
         }
-        if (itt.kind != INONE && itt.kind != ICOPLANAR) {
-          itts.append(itt);
+        int a = t;
+        int b = t_other;
+        if (a >= b) {
+          std::swap(a, b);
+        }
+        std::pair<int, int> key(a, b);
+        if (itt_map.contains(key)) {
+          ITT_value itt = itt_map.lookup(key);
+          if (itt.kind != INONE && itt.kind != ICOPLANAR) {
+            itts.append(itt);
+            if (dbg_level > 0) {
+              std::cout << "  itt = " << itt << "\n";
+            }
+          }
         }
       }
     }
@@ -2834,12 +2955,18 @@ Mesh trimesh_nary_intersect(
   doperfmax(1, static_cast<int>(clinfo.tot_cluster()));
   doperfmax(2, static_cast<int>(tri_ov.overlap().size()));
 #  endif
+  /* itt_map((a,b)) will hold the intersection value resulting from intersecting
+   * triangles with indices a and b, where a < b.
+   */
+  Map<std::pair<int, int>, ITT_value> itt_map;
+  itt_map.reserve(tri_ov.overlap().size());
+  calc_overlap_itts(itt_map, *tm_clean, clinfo, tri_ov, arena);
+  Array<Mesh> tri_subdivided(tm_clean->face_size());
+  calc_subdivided_tris(tri_subdivided, *tm_clean, itt_map, clinfo, tri_ov, arena);
   Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
   for (int c : clinfo.index_range()) {
-    cluster_subdivided[c] = calc_cluster_subdivided(clinfo, c, *tm_clean, arena);
+    cluster_subdivided[c] = calc_cluster_subdivided(clinfo, c, *tm_clean, tri_ov, itt_map, arena);
   }
-  blender::Array<Mesh> tri_subdivided(tm_clean->face_size());
-  calc_subdivided_tris(tri_subdivided, *tm_clean, clinfo, tri_ov, arena);
   for (int t : tm_clean->face_index_range()) {
     int c = clinfo.tri_cluster(t);
     if (c != NO_INDEX) {
@@ -2981,10 +3108,6 @@ static void perfdata_init(void)
   /* count 4. */
   perfdata.count.append(0);
   perfdata.count_name.append("final non-NONE intersects");
-
-  /* count 5. */
-  perfdata.count.append(0);
-  perfdata.count_name.append("intersect_tri_tri calls from calc_cluster_subdivided");
 
   /* max 0. */
   perfdata.max.append(0);
