@@ -1293,7 +1293,7 @@ static const EnumPropertyItem *rna_UserDef_icons_itemf(bContext *UNUSED(C),
                                                        bool *r_free)
 {
   int totitem = 0;
-  EnumPropertyItem *list = rna_enum_icon_items;
+  const EnumPropertyItem *list = rna_enum_icon_items;
   EnumPropertyItem *item = NULL;
 
   int i;
