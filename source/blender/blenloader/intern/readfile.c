@@ -5688,10 +5688,6 @@ static void direct_link_object(BlendDataReader *reader, Object *ob)
     sb->bpoint = NULL;
     sb->bspring = NULL;
     sb->scratch = NULL;
-    //sb->admmpd = NULL;
-
-    /* Re-alloc or read custom data structs */
-    sbCustomRead(ob);
 
     /* although not used anymore */
     /* still have to be loaded to be compatible with old files */

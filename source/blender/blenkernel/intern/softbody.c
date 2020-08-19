@@ -3578,6 +3578,27 @@ static void sbStoreLastFrame(struct Depsgraph *depsgraph, Object *object, float 
   object_orig->soft->last_frame = framenr;
 }
 
+static inline ADMMPDInterfaceData* get_admmpd_for_object(Object *ob)
+{
+  SoftBody *sb = ob->soft;
+  if (!sb) {
+    return NULL;
+  }
+  int found = 0;
+  ADMMPDInterfaceData *admmpd = sb->shared->admmpd_list->first;
+  while (admmpd != NULL) {
+      if (strcmp(admmpd->name,ob->id.name)==0) {
+        found = 1;
+        break;
+      }
+      admmpd = admmpd->next;
+  }
+  if (!found) {
+    return NULL;
+  }
+  return admmpd;
+}
+
 static void update_collider_admmpd(Depsgraph *depsgraph,
                                    Collection *collection,
                                    Object *vertexowner)
@@ -3586,8 +3607,10 @@ static void update_collider_admmpd(Depsgraph *depsgraph,
   if (!sb) {
     return;
   }
-  ADMMPDInterfaceData *admmpd = NULL;//sb->admmpd;//sb->shared->admmpd;
+
+  ADMMPDInterfaceData *admmpd = get_admmpd_for_object(vertexowner);
   if (!admmpd) {
+    CLOG_ERROR(&LOG, "No ADMM-PD data found for object %s", vertexowner->id.name);
     return;
   }
 
@@ -3659,29 +3682,6 @@ static void update_collider_admmpd(Depsgraph *depsgraph,
   BKE_collision_objects_free(objects);
 }
 
-static inline ADMMPDInterfaceData* get_admmpd_for_object(Object *ob)
-{
-  SoftBody *sb = ob->soft;
-  if (!sb) {
-    return NULL;
-  }
-  int found = 0;
-  int num_list = 0;
-  ADMMPDInterfaceData *admmpd = sb->shared->admmpd_list->first;
-  while (admmpd != NULL) {
-      if (strcmp(admmpd->name,ob->id.name)==0) {
-        found = 1;
-        break;
-      }
-      admmpd = admmpd->next;
-      num_list++;
-  }
-  if (!found) {
-    return NULL;
-  }
-  return admmpd;
-}
-
 void sbCustomCopy(Object *dest, Object *src)
 {
   (void)(src);
@@ -3709,19 +3709,6 @@ void sbCustomCopy(Object *dest, Object *src)
   }
 }
 
-
-void sbCustomRead(struct Object *ob)
-{
-  SoftBody *sb = ob->soft;
-  if (!sb) {
-    return;
-  }
-
-  // ADMM-PD data is not currently written to file.
-  // Instead, we'll create new data when a .blend file is loaded.
-  //sb->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), "SoftBody_admmpd");
-}
-
 /* simulates one step. framenr is in frames */
 void sbObjectStep(struct Depsgraph *depsgraph,
                   Scene *scene,
@@ -3736,12 +3723,10 @@ void sbObjectStep(struct Depsgraph *depsgraph,
     return;
   }
 
-  ADMMPDInterfaceData *admmpd = NULL;//sb->admmpd;//sb->shared->admmpd;
-  admmpd = get_admmpd_for_object(ob);
-
+  ADMMPDInterfaceData *admmpd = get_admmpd_for_object(ob);
   if (admmpd == NULL) {
     CLOG_ERROR(&LOG, "No ADMM-PD data in sbObjectStep");
-    WM_reportf(RPT_ERROR, "No ADMM-PD data in sbObjectStep");
+    WM_report(RPT_ERROR, "No ADMM-PD data in sbObjectStep");
     return;
   }
 
@@ -3790,11 +3775,11 @@ void sbObjectStep(struct Depsgraph *depsgraph,
       init_mesh = admmpd_update_mesh(admmpd, ob, vertexCos);
       if (init_mesh == 0) {
         CLOG_ERROR(&LOG, "%s", admmpd->last_error);
-        WM_reportf(RPT_ERROR, admmpd->last_error);
+        WM_report(RPT_ERROR, admmpd->last_error);
         return;
       }
       else if (init_mesh == -1) {
-        WM_reportf(RPT_WARNING, admmpd->last_error);
+        WM_report(RPT_WARNING, admmpd->last_error);
       }
     }
 
@@ -3807,11 +3792,11 @@ void sbObjectStep(struct Depsgraph *depsgraph,
       init_solver = admmpd_update_solver(admmpd, scene, ob, vertexCos);
       if (init_solver == 0) {
         CLOG_ERROR(&LOG, "%s", admmpd->last_error);
-        WM_reportf(RPT_ERROR, admmpd->last_error);
+        WM_report(RPT_ERROR, admmpd->last_error);
         return;
       }
       else if (init_solver == -1) {
-        WM_reportf(RPT_WARNING, admmpd->last_error);
+        WM_report(RPT_WARNING, admmpd->last_error);
       }
     }
 
@@ -3932,10 +3917,10 @@ void sbObjectStep(struct Depsgraph *depsgraph,
     int solve_retval = admmpd_solve(admmpd, ob, vertexCos);
     if (solve_retval == 0) {
       CLOG_ERROR(&LOG, "%s", admmpd->last_error);
-      WM_reportf(RPT_ERROR, admmpd->last_error);
+      WM_report(RPT_ERROR, admmpd->last_error);
     }
     else if (solve_retval == -1) {
-      WM_reportf(RPT_WARNING, admmpd->last_error);
+      WM_report(RPT_WARNING, admmpd->last_error);
     }
     admmpd_copy_to_object(admmpd, ob, vertexCos);
   }

@@ -53,9 +53,6 @@ extern struct SoftBody *sbNew(struct Scene *scene);
 /* copies custom solver data from src to dest */
 extern void sbCustomCopy(struct Object *dest, struct Object *src);
 
-/* reads custom structs for file i/o */
-extern void sbCustomRead(struct Object *ob);
-
 /* frees internal data and softbody itself */
 extern void sbFree(struct Object *ob);
 
