@@ -848,8 +848,8 @@ typedef struct RestrictProperties {
   PropertyRNA *object_hide_viewport, *object_hide_select, *object_hide_render;
   PropertyRNA *base_hide_viewport;
   PropertyRNA *collection_hide_viewport, *collection_hide_select, *collection_hide_render;
-  PropertyRNA *layer_collection_holdout, *layer_collection_indirect_only,
-      *layer_collection_hide_viewport;
+  PropertyRNA *layer_collection_exclude, *layer_collection_holdout,
+      *layer_collection_indirect_only, *layer_collection_hide_viewport;
   PropertyRNA *modifier_show_viewport, *modifier_show_render;
   PropertyRNA *constraint_enable;
   PropertyRNA *bone_hide_viewport;
@@ -865,6 +865,7 @@ typedef struct RestrictPropertiesActive {
   bool collection_hide_viewport;
   bool collection_hide_select;
   bool collection_hide_render;
+  bool layer_collection_exclude;
   bool layer_collection_holdout;
   bool layer_collection_indirect_only;
   bool layer_collection_hide_viewport;
@@ -954,8 +955,7 @@ static bool outliner_restrict_properties_collection_set(Scene *scene,
                                                                                NULL;
   Collection *collection = outliner_collection_from_tree_element(te);
 
-  if ((collection->flag & COLLECTION_IS_MASTER) ||
-      (layer_collection && ((layer_collection->flag & LAYER_COLLECTION_EXCLUDE) != 0))) {
+  if (collection->flag & COLLECTION_IS_MASTER) {
     return false;
   }
 
@@ -995,6 +995,8 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                                                    "hide_viewport");
     props.collection_hide_select = RNA_struct_type_find_property(&RNA_Collection, "hide_select");
     props.collection_hide_render = RNA_struct_type_find_property(&RNA_Collection, "hide_render");
+    props.layer_collection_exclude = RNA_struct_type_find_property(&RNA_LayerCollection,
+                                                                   "exclude");
     props.layer_collection_holdout = RNA_struct_type_find_property(&RNA_LayerCollection,
                                                                    "holdout");
     props.layer_collection_indirect_only = RNA_struct_type_find_property(&RNA_LayerCollection,
@@ -1012,6 +1014,7 @@ static void outliner_draw_restrictbuts(uiBlock *block,
   }
 
   struct {
+    int enable;
     int select;
     int hide;
     int viewport;
@@ -1042,6 +1045,11 @@ static void outliner_draw_restrictbuts(uiBlock *block,
   if (space_outliner->show_restrict_flags & SO_RESTRICT_SELECT) {
     restrict_offsets.select = (++restrict_column_offset) * UI_UNIT_X + V2D_SCROLL_WIDTH;
   }
+  if (space_outliner->outlinevis == SO_VIEW_LAYER &&
+      space_outliner->show_restrict_flags & SO_RESTRICT_ENABLE) {
+    restrict_offsets.enable = (++restrict_column_offset) * UI_UNIT_X + V2D_SCROLL_WIDTH;
+  }
+
   BLI_assert((restrict_column_offset * UI_UNIT_X + V2D_SCROLL_WIDTH) ==
              outliner_restrict_columns_width(space_outliner));
 
@@ -1430,6 +1438,26 @@ static void outliner_draw_restrictbuts(uiBlock *block,
           Collection *collection = outliner_collection_from_tree_element(te);
 
           if (layer_collection != NULL) {
+            if (space_outliner->show_restrict_flags & SO_RESTRICT_ENABLE) {
+              bt = uiDefIconButR_prop(block,
+                                      UI_BTYPE_ICON_TOGGLE,
+                                      0,
+                                      0,
+                                      (int)(region->v2d.cur.xmax) - restrict_offsets.enable,
+                                      te->ys,
+                                      UI_UNIT_X,
+                                      UI_UNIT_Y,
+                                      &layer_collection_ptr,
+                                      props.layer_collection_exclude,
+                                      -1,
+                                      0,
+                                      0,
+                                      0,
+                                      0,
+                                      NULL);
+              UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
+            }
+
             if (space_outliner->show_restrict_flags & SO_RESTRICT_HIDE) {
               bt = uiDefIconButR_prop(block,
                                       UI_BTYPE_ICON_TOGGLE,
@@ -1823,7 +1851,6 @@ static void outliner_buttons(const bContext *C,
                              const float restrict_column_width,
                              TreeElement *te)
 {
-  SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
   uiBut *bt;
   TreeStoreElem *tselem;
   int spx, dx, len;
@@ -1849,10 +1876,6 @@ static void outliner_buttons(const bContext *C,
   }
 
   spx = te->xs + 1.8f * UI_UNIT_X;
-  if ((tselem->type == TSE_LAYER_COLLECTION) &&
-      (space_outliner->show_restrict_flags & SO_RESTRICT_ENABLE)) {
-    spx += UI_UNIT_X;
-  }
   dx = region->v2d.cur.xmax - (spx + restrict_column_width + 0.2f * UI_UNIT_X);
 
   bt = uiDefBut(block,
@@ -2347,7 +2370,7 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
           data.drag_parent = (data.drag_id && te->parent) ? TREESTORE(te->parent)->id : NULL;
         }
 
-        data.icon = ICON_GROUP;
+        data.icon = ICON_OUTLINER_COLLECTION;
         break;
       }
       case TSE_GP_LAYER: {
@@ -2578,60 +2601,6 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
   return data;
 }
 
-static void tselem_draw_layer_collection_enable_icon(
-    Scene *scene, uiBlock *block, int xmax, float x, float y, TreeElement *te, float alpha)
-{
-  /* Get RNA property (once for speed). */
-  static PropertyRNA *exclude_prop = NULL;
-  if (exclude_prop == NULL) {
-    exclude_prop = RNA_struct_type_find_property(&RNA_LayerCollection, "exclude");
-  }
-
-  if (x >= xmax) {
-    /* Placement of icons, copied from interface_widgets.c. */
-    float aspect = (0.8f * UI_UNIT_Y) / ICON_DEFAULT_HEIGHT;
-    x += 2.0f * aspect;
-    y += 2.0f * aspect;
-
-    /* restrict column clip... it has been coded by simply overdrawing,
-     * doesn't work for buttons */
-    uchar color[4];
-    int icon = RNA_property_ui_icon(exclude_prop);
-    if (UI_icon_get_theme_color(icon, color)) {
-      UI_icon_draw_ex(x, y, icon, U.inv_dpi_fac, alpha, 0.0f, color, true);
-    }
-    else {
-      UI_icon_draw_ex(x, y, icon, U.inv_dpi_fac, alpha, 0.0f, NULL, false);
-    }
-  }
-  else {
-    LayerCollection *layer_collection = te->directdata;
-    PointerRNA layer_collection_ptr;
-    RNA_pointer_create(&scene->id, &RNA_LayerCollection, layer_collection, &layer_collection_ptr);
-
-    char emboss = UI_block_emboss_get(block);
-    UI_block_emboss_set(block, UI_EMBOSS_NONE);
-    uiBut *bt = uiDefIconButR_prop(block,
-                                   UI_BTYPE_ICON_TOGGLE,
-                                   0,
-                                   0,
-                                   x,
-                                   y,
-                                   UI_UNIT_X,
-                                   UI_UNIT_Y,
-                                   &layer_collection_ptr,
-                                   exclude_prop,
-                                   -1,
-                                   0,
-                                   0,
-                                   0,
-                                   0,
-                                   NULL);
-    UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
-    UI_block_emboss_set(block, emboss);
-  }
-}
-
 static void tselem_draw_icon(uiBlock *block,
                              int xmax,
                              float x,
@@ -2647,8 +2616,30 @@ static void tselem_draw_icon(uiBlock *block,
     return;
   }
 
+  if (outliner_is_collection_tree_element(te)) {
+    Collection *collection = outliner_collection_from_tree_element(te);
+
+    /* placement of icons, copied from interface_widgets.c */
+    float aspect = (0.8f * UI_UNIT_Y) / ICON_DEFAULT_HEIGHT;
+    x += 2.0f * aspect;
+    y += 2.0f * aspect;
+    if (collection->color != COLLECTION_COLOR_NONE) {
+      bTheme *btheme = UI_GetTheme();
+      UI_icon_draw_ex(x,
+                      y,
+                      data.icon,
+                      U.inv_dpi_fac,
+                      alpha,
+                      0.0f,
+                      btheme->collection_color[collection->color - 1].color,
+                      true);
+    }
+    else {
+      UI_icon_draw_ex(x, y, data.icon, U.inv_dpi_fac, alpha, 0.0f, NULL, true);
+    }
+  }
   /* Icon is covered by restrict buttons */
-  if (!is_clickable || x >= xmax) {
+  else if (!is_clickable || x >= xmax) {
     /* Reduce alpha to match icon buttons */
     alpha *= 0.8f;
 
@@ -3039,15 +3030,6 @@ static void outliner_draw_tree_element(bContext *C,
     else {
       active = tree_element_type_active(C, tvc, space_outliner, te, tselem, OL_SETSEL_NONE, false);
       /* active collection*/
-      icon_bgcolor[3] = 0.2f;
-    }
-
-    /* Checkbox to enable collections. */
-    if ((tselem->type == TSE_LAYER_COLLECTION) &&
-        (space_outliner->show_restrict_flags & SO_RESTRICT_ENABLE)) {
-      tselem_draw_layer_collection_enable_icon(
-          tvc->scene, block, xmax, (float)startx + offsx + UI_UNIT_X, (float)*starty, te, 0.8f);
-      offsx += UI_UNIT_X;
     }
 
     /* active circle */
@@ -3196,6 +3178,17 @@ static void outliner_draw_tree_element(bContext *C,
   }
 }
 
+static bool subtree_contains_object(ListBase *lb)
+{
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
+    TreeStoreElem *tselem = TREESTORE(te);
+    if (tselem->type == 0 && te->idcode == ID_OB) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static void outliner_draw_hierarchy_lines_recursive(uint pos,
                                                     SpaceOutliner *space_outliner,
                                                     ListBase *lb,
@@ -3204,100 +3197,50 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
                                                     bool draw_grayed_out,
                                                     int *starty)
 {
-  TreeElement *te, *te_vertical_line_last = NULL, *te_vertical_line_last_dashed = NULL;
-  int y1, y2, y1_dashed, y2_dashed;
+  bTheme *btheme = UI_GetTheme();
+  int y = *starty;
+  short color = 0;
 
-  if (BLI_listbase_is_empty(lb)) {
-    return;
-  }
+  /* Small vertical padding */
+  const short line_padding = UI_UNIT_Y / 4.0f;
 
-  struct {
-    int steps_num;
-    int step_len;
-    int gap_len;
-  } dash = {
-      .steps_num = 4,
-  };
-
-  dash.step_len = UI_UNIT_X / dash.steps_num;
-  dash.gap_len = dash.step_len / 2;
-
-  const uchar grayed_alpha = col[3] / 2;
-
-  /* For vertical lines between objects. */
-  y1 = y2 = y1_dashed = y2_dashed = *starty;
-  for (te = lb->first; te; te = te->next) {
-    bool draw_children_grayed_out = draw_grayed_out || (te->flag & TE_DRAGGING);
+  /* Draw vertical lines between collections */
+  bool draw_hierarchy_line;
+  LISTBASE_FOREACH (TreeElement *, te, lb) {
     TreeStoreElem *tselem = TREESTORE(te);
-
-    if (draw_children_grayed_out) {
-      immUniformColor3ubvAlpha(col, grayed_alpha);
-    }
-    else {
-      immUniformColor4ubv(col);
-    }
-
-    if ((te->flag & TE_CHILD_NOT_IN_COLLECTION) == 0) {
-      /* Horizontal Line? */
-      if (tselem->type == 0 && (te->idcode == ID_OB || te->idcode == ID_SCE)) {
-        immRecti(pos, startx, *starty, startx + UI_UNIT_X, *starty - U.pixelsize);
-
-        /* Vertical Line? */
-        if (te->idcode == ID_OB) {
-          te_vertical_line_last = te;
-          y2 = *starty;
-        }
-        y1_dashed = *starty - UI_UNIT_Y;
-      }
-    }
-    else {
-      BLI_assert(te->idcode == ID_OB);
-      /* Horizontal line - dashed. */
-      int start = startx;
-      for (int i = 0; i < dash.steps_num; i++) {
-        immRecti(pos, start, *starty, start + dash.step_len - dash.gap_len, *starty - U.pixelsize);
-        start += dash.step_len;
-      }
-
-      te_vertical_line_last_dashed = te;
-      y2_dashed = *starty;
-    }
-
+    draw_hierarchy_line = false;
     *starty -= UI_UNIT_Y;
 
-    if (TSELEM_OPEN(tselem, space_outliner)) {
-      outliner_draw_hierarchy_lines_recursive(pos,
-                                              space_outliner,
-                                              &te->subtree,
-                                              startx + UI_UNIT_X,
-                                              col,
-                                              draw_children_grayed_out,
-                                              starty);
+    /* Only draw hierarchy lines for open collections. */
+    if (TSELEM_OPEN(tselem, space_outliner) && !BLI_listbase_is_empty(&te->subtree)) {
+      if (tselem->type == TSE_LAYER_COLLECTION) {
+        draw_hierarchy_line = true;
+
+        Collection *collection = outliner_collection_from_tree_element(te);
+        color = collection->color;
+
+        y = *starty;
+      }
+      else if (tselem->type == 0 && te->idcode == ID_OB) {
+        if (subtree_contains_object(&te->subtree)) {
+          draw_hierarchy_line = true;
+          y = *starty;
+        }
+      }
+
+      outliner_draw_hierarchy_lines_recursive(
+          pos, space_outliner, &te->subtree, startx + UI_UNIT_X, col, draw_grayed_out, starty);
     }
-  }
 
-  if (draw_grayed_out) {
-    immUniformColor3ubvAlpha(col, grayed_alpha);
-  }
-  else {
-    immUniformColor4ubv(col);
-  }
+    if (draw_hierarchy_line) {
+      if (color != COLLECTION_COLOR_NONE) {
+        immUniformColor4ubv(btheme->collection_color[color - 1].color);
+      }
+      else {
+        immUniformColor4ubv(col);
+      }
 
-  /* Vertical line. */
-  te = te_vertical_line_last;
-  if ((te != NULL) && (te->parent || lb->first != lb->last)) {
-    immRecti(pos, startx, y1 + UI_UNIT_Y, startx + U.pixelsize, y2);
-  }
-
-  /* Children that are not in the collection are always in the end of the subtree.
-   * This way we can draw their own dashed vertical lines. */
-  te = te_vertical_line_last_dashed;
-  if ((te != NULL) && (te->parent || lb->first != lb->last)) {
-    const int steps_num = ((y1_dashed + UI_UNIT_Y) - y2_dashed) / dash.step_len;
-    int start = y1_dashed + UI_UNIT_Y;
-    for (int i = 0; i < steps_num; i++) {
-      immRecti(pos, startx, start, startx + U.pixelsize, start - dash.step_len + dash.gap_len);
-      start -= dash.step_len;
+      immRecti(pos, startx, y - line_padding, startx + (U.pixelsize * 1), *starty + line_padding);
     }
   }
 }
