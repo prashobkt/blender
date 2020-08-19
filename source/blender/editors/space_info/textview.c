@@ -93,9 +93,7 @@ static void textview_draw_sel(const char *str,
     const int sta = BLI_str_utf8_offset_to_column(str, max_ii(sel[0], 0));
     const int end = BLI_str_utf8_offset_to_column(str, min_ii(sel[1], str_len_draw));
 
-    GPU_blend(true);
-    GPU_blend_set_func_separate(
-        GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+    GPU_blend(GPU_BLEND_ALPHA);
 
     GPUVertFormat *format = immVertexFormat();
     uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
@@ -106,7 +104,7 @@ static void textview_draw_sel(const char *str,
 
     immUnbindProgram();
 
-    GPU_blend(false);
+    GPU_blend(GPU_BLEND_NONE);
   }
 }
 
@@ -289,7 +287,7 @@ static bool textview_draw_string(TextViewDrawState *tds,
                          2;
     const int hpadding = tds->draw_rect->xmin - (UI_DPI_ICON_SIZE * 1.3f);
 
-    GPU_blend(true);
+    GPU_blend(GPU_BLEND_ALPHA);
     UI_icon_draw_ex(hpadding,
                     line_top - UI_DPI_ICON_SIZE - vpadding,
                     icon,
@@ -298,7 +296,7 @@ static bool textview_draw_string(TextViewDrawState *tds,
                     0.0f,
                     icon_fg,
                     false);
-    GPU_blend(false);
+    GPU_blend(GPU_BLEND_NONE);
   }
 
   if (pad_after) {
