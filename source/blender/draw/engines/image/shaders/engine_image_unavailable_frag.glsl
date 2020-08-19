@@ -3,15 +3,14 @@
 
 uniform float zoomLevel;
 uniform float zoomScale;
-
-#define UNAVAILABLE_TEXTURE_SIZE 256
+uniform ivec2 imageSize;
 
 in vec2 uvs;
 out vec4 fragColor;
 
 void main()
 {
-  float d = UNAVAILABLE_TEXTURE_SIZE * zoomScale;
+  ivec2 d = ivec2(imageSize * zoomScale);
   ivec2 tex_coord = ivec2(uvs * d);
   ivec2 tex_coord_prev = tex_coord - ivec2(1);
 
@@ -21,7 +20,7 @@ void main()
   float line_2_alpha = fract(zoomLevel);
 
   int num_lines_in_level2 = (1 << zoom_level_2) * (1 << zoom_level_2);
-  float spacing_between_lines = d / num_lines_in_level2;
+  float spacing_between_lines = max(d.x, d.y) / num_lines_in_level2;
 
   ivec2 line_index = ivec2(tex_coord * num_lines_in_level2 / d);
   ivec2 line_index_prev = ivec2(tex_coord_prev * num_lines_in_level2 / d);
