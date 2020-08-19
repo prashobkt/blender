@@ -170,25 +170,18 @@ void USERPREF_restore_global_log_settings(bool use_command_line_mask)
   }
   if (!(mask & ARGS_LOG_FILE)) {
     CLG_use_stdout_set(U.log_use_stdout);
+    CLG_file_output_path_set(U.log_output_file_path);
   }
   /*
     if (!(mask & ARGS_LOG_DISABLE_ALWAYS_SHOW_WARNINGS)) {
       CLG_always_show_warnings_set(U.log_always_show_warnings);
     }
   */
-  if (!(mask & ARGS_VERBOSE)) {
-    CLG_file_output_path_set(U.log_output_file_path);
-  }
   if (!(mask & ARGS_DEBUG)) {
-    /* TODO (grzelins) we need proper setter, not only enabler */
-    G_debug_enable(U.debug_flags);
     G.debug = U.debug_flags;
   }
   if (!(mask & ARGS_DEBUG_VALUE)) {
     G.debug_value = U.debug_value;
-  }
-  if (!(mask & ARGS_VERBOSE)) {
-    G_verbose_set(U.verbose);
   }
 }
 

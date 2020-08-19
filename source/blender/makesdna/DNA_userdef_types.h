@@ -599,7 +599,6 @@ typedef enum UserDef_RuntimeCommandLineArgs {
   ARGS_LOG_SHOW_BASENAME = (1 << 5),
   ARGS_LOG_SHOW_TIMESTAMP = (1 << 6),
   ARGS_LOG_FILE = (1 << 7),
-  ARGS_VERBOSE = (1 << 8),
   //  ARGS_LOG_DISABLE_ALWAYS_SHOW_WARNINGS = (1 << 6), // needed?
 } UserDef_RuntimeCommandLineArgs;
 

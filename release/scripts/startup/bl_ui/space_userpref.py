@@ -649,10 +649,8 @@ class USERPREF_PT_system_logging(SystemPanel, CenterAlignMixIn, Panel):
 
     def draw_header_preset(self, _context):
         layout = self.layout
-        # TODO (grzelins) this is mocap:
         layout.operator("preferences.log_preferences_save", icon='IMPORT', text="Save")
         layout.operator("preferences.log_preferences_reset_default", icon='IMPORT', text="Restore Default")
-        layout.operator("preferences.studiolight_install", icon='PRESET', text="")
         layout.separator()
 
     def draw_centered(self, context, layout):

@@ -71,6 +71,14 @@
 
 #  include "WM_api.h"
 
+#  ifdef WITH_LIBMV
+#    include "libmv-capi.h"
+#  endif
+
+#  ifdef WITH_CYCLES_LOGGING
+#    include "CCL_api.h"
+#  endif
+
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
 #  include "DEG_depsgraph_debug.h"
@@ -895,9 +903,13 @@ static const char arg_handle_debug_mode_set_doc[] =
     "\t* Keeps Python's 'sys.stdin' rather than setting it to None";
 static int arg_handle_debug_mode_set(int UNUSED(argc), const char **UNUSED(argv), void *data)
 {
-  G_debug_enable(G_DEBUG);
+  G.debug |= G_DEBUG; /* std output printf's */
   U.runtime.use_settings_from_command_line |= ARGS_DEBUG;
   printf("Blender %s\n", BKE_blender_version_string());
+  MEM_set_memory_debug();
+#  ifndef NDEBUG
+  BLI_mempool_set_memory_debug();
+#  endif
 
 #  ifdef WITH_BUILDINFO
   printf("Build: %s %s %s %s\n", build_date, build_time, build_platform, build_type);
@@ -975,7 +987,7 @@ static int arg_handle_debug_mode_generic_set(int UNUSED(argc),
                                              const char **UNUSED(argv),
                                              void *data)
 {
-  G_debug_enable(POINTER_AS_INT(data));
+  G.debug |= POINTER_AS_INT(data);
   U.runtime.use_settings_from_command_line |= ARGS_DEBUG;
   return 0;
 }
@@ -987,7 +999,7 @@ static int arg_handle_debug_mode_io(int UNUSED(argc),
                                     const char **UNUSED(argv),
                                     void *UNUSED(data))
 {
-  G_debug_enable(G_DEBUG_IO);
+  G.debug |= G_DEBUG_IO;
   U.runtime.use_settings_from_command_line |= ARGS_DEBUG;
   return 0;
 }
@@ -999,8 +1011,13 @@ static int arg_handle_debug_mode_all(int UNUSED(argc),
                                      const char **UNUSED(argv),
                                      void *UNUSED(data))
 {
-  G_debug_enable(G_DEBUG_ALL);
-  U.runtime.use_settings_from_command_line |= ARGS_DEBUG;
+  G.debug |= G_DEBUG_ALL;
+#  ifdef WITH_LIBMV
+  libmv_startDebugLogging();
+#  endif
+#  ifdef WITH_CYCLES_LOGGING
+  CCL_start_debug_logging();
+#  endif
   return 0;
 }
 
@@ -1012,7 +1029,8 @@ static int arg_handle_debug_mode_libmv(int UNUSED(argc),
                                        const char **UNUSED(argv),
                                        void *UNUSED(data))
 {
-  G_debug_enable(G_DEBUG_LIBMV);
+  libmv_startDebugLogging();
+
   return 0;
 }
 #  endif
@@ -1025,12 +1043,11 @@ static int arg_handle_debug_mode_cycles(int UNUSED(argc),
                                         const char **UNUSED(argv),
                                         void *UNUSED(data))
 {
-  G_debug_enable(G_DEBUG_CYCLES);
+  CCL_start_debug_logging();
   return 0;
 }
 #  endif
 
-/* TODO (grzelins) this is useless it is done in --debug */
 static const char arg_handle_debug_mode_memory_set_doc[] =
     "\n\t"
     "Enable fully guarded memory allocation and debugging.";
@@ -1038,7 +1055,7 @@ static int arg_handle_debug_mode_memory_set(int UNUSED(argc),
                                             const char **UNUSED(argv),
                                             void *UNUSED(data))
 {
-  G_debug_enable(G_DEBUG_MEMORY);
+  MEM_set_memory_debug();
   return 0;
 }
 
@@ -1074,9 +1091,7 @@ static int arg_handle_debug_fpe_set(int UNUSED(argc),
                                     const char **UNUSED(argv),
                                     void *UNUSED(data))
 {
-  // G_debug_enable(G_DEBUG_FPE);
   main_signal_setup_fpe();
-  U.runtime.use_settings_from_command_line |= ARGS_DEBUG;
   return 0;
 }
 
@@ -1483,7 +1498,13 @@ static int arg_handle_verbosity_set(int argc, const char **argv, void *UNUSED(da
       printf("\nError: %s '%s %s'.\n", err_msg, arg_id, argv[1]);
     }
 
-  G_verbose_set(level);
+#  ifdef WITH_LIBMV
+    libmv_setLoggingVerbosity(level);
+#  elif defined(WITH_CYCLES_LOGGING)
+    CCL_logging_verbosity_set(level);
+#  else
+    (void)level;
+#  endif
 
     return 1;
   }
