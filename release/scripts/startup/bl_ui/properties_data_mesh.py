@@ -502,7 +502,7 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
         row = layout.row()
 
         mesh = context.mesh
-        row.prop(mesh, "remesh_mode", text="Mode", expand=True)
+        row.prop(mesh, "remesh_mode", text="Mode", expand=False)
         col = layout.column()
         if mesh.remesh_mode == 'VOXEL':
             col.prop(mesh, "remesh_voxel_size")
