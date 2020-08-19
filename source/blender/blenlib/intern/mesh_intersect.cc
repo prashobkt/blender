@@ -17,6 +17,7 @@
 /* The blender::meshintersect API needs GMP. */
 #ifdef WITH_GMP
 
+#  include <algorithm>
 #  include <fstream>
 #  include <iostream>
 
@@ -2673,19 +2674,13 @@ static int find_first_overlap_index(const TriOverlaps &ov, int t)
   if (span.size() == 0) {
     return -1;
   }
-  int min = 0;
-  int max = static_cast<int>(span.size()) - 1;
-  while (min < max) {
-    int mid = (min + max) / 2;
-    if (t <= span[mid].indexA) {
-      max = mid;
-    }
-    else {
-      min = mid + 1;
-    }
-  }
-  if (span[min].indexA == t) {
-    return min;
+  BVHTreeOverlap bo{t, -1};
+  const BVHTreeOverlap *p = std::lower_bound(
+      span.begin(), span.end(), bo, [](const BVHTreeOverlap &o1, const BVHTreeOverlap &o2) {
+        return o1.indexA < o2.indexA;
+      });
+  if (p != span.end()) {
+    return p - span.begin();
   }
   return -1;
 }
