@@ -215,28 +215,28 @@ typedef struct SoftBody {
   struct ADMMPDInterfaceData *admmpd;
 
   /* ADMM-PD settings */
-  int solver_mode; // 0=legacy, 1=admmpd
-  int admmpd_mesh_mode; // 0=embedded, 1=tetgen, 2=cloth
-  int admmpd_substeps; // break time step into smaller bits
-  int admmpd_max_admm_iters; // max solver iterations
-  int admmpd_self_collision; // 0 or 1
-  int admmpd_material; // see enum
-  int admmpd_embed_res; // embedded resolution depth
-  float admmpd_converge_eps; // convergence epsilon
-  float admmpd_youngs_exp; // Youngs mod exponent
-  float admmpd_poisson; // Poisson ratio
-  float admmpd_density_kgm3; // unit-density of object
-  float admmpd_ck_exp; // collision stiffness exponent (10^n)
-  float admmpd_pk_exp; // goal stiffness exponent (10^n)
-  float admmpd_floor_z; // floor position
-  float admmpd_gravity; // in m/s^2
-  float admmpd_strainlimit_min; // [0,1]
-  float admmpd_strainlimit_max; // [1,100]
-  int admmpd_maxthreads; // -1 = auto
-  int admmpd_loglevel; // 0=none, 1=low, 2=high
-  int admmpd_linsolver; // global step
+  int solver_mode;               // 0=legacy, 1=admmpd
+  int admmpd_mesh_mode;          // 0=embedded, 1=tetgen, 2=cloth
+  int admmpd_substeps;           // break time step into smaller bits
+  int admmpd_max_admm_iters;     // max solver iterations
+  int admmpd_self_collision;     // 0 or 1
+  int admmpd_material;           // see enum
+  int admmpd_embed_res;          // embedded resolution depth
+  float admmpd_converge_eps;     // convergence epsilon
+  float admmpd_youngs_exp;       // Youngs mod exponent
+  float admmpd_poisson;          // Poisson ratio
+  float admmpd_density_kgm3;     // unit-density of object
+  float admmpd_ck_exp;           // collision stiffness exponent (10^n)
+  float admmpd_pk_exp;           // goal stiffness exponent (10^n)
+  float admmpd_floor_z;          // floor position
+  float admmpd_gravity;          // in m/s^2
+  float admmpd_strainlimit_min;  // [0,1]
+  float admmpd_strainlimit_max;  // [1,100]
+  int admmpd_maxthreads;         // -1 = auto
+  int admmpd_loglevel;           // 0=none, 1=low, 2=high
+  int admmpd_linsolver;          // global step
   char admmpd_namedVG_selfcollision[64];
-//  int admmpd_pad; // padding
+  //  int admmpd_pad; // padding
 
   char _pad;
   char msg_lock;

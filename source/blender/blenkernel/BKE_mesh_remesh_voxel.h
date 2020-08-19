@@ -57,8 +57,8 @@ struct Mesh *BKE_mesh_remesh_quadriflow_to_mesh_nomain(struct Mesh *mesh,
                                                        void *update_cb,
                                                        void *update_cb_data);
 struct Mesh *BKE_mesh_remesh_tetgen_to_mesh_nomain(struct Mesh *mesh,
-													unsigned int **tets,
-													int *numtets);
+                                                   unsigned int **tets,
+                                                   int *numtets);
 
 /* Data reprojection functions */
 void BKE_mesh_remesh_reproject_paint_mask(struct Mesh *target, struct Mesh *source);

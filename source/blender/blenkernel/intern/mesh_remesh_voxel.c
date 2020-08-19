@@ -265,9 +265,7 @@ static Mesh *BKE_mesh_remesh_quadriflow(Mesh *input_mesh,
 #endif
 
 #ifdef WITH_TETGEN
-static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh,
-                                  unsigned int **tets,
-                                  int *numtets)
+static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh, unsigned int **tets, int *numtets)
 {
   // Ensure that the triangulated mesh data is up to data
   BKE_mesh_runtime_looptri_recalc(input_mesh);
@@ -318,11 +316,9 @@ static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh,
   verttri = NULL;
 
   Mesh *mesh = NULL;
-  if (success)
-  {
+  if (success) {
     // Construct the new output mesh
-    mesh = BKE_mesh_new_nomain(
-        tg.out_totverts, 0, 0, (tg.out_totfacets * 3), tg.out_totfacets);
+    mesh = BKE_mesh_new_nomain(tg.out_totverts, 0, 0, (tg.out_totfacets * 3), tg.out_totfacets);
 
     for (int i = 0; i < tg.out_totverts; i++) {
       copy_v3_v3(mesh->mvert[i].co, &tg.out_verts[i * 3]);
@@ -341,26 +337,24 @@ static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh,
     BKE_mesh_calc_normals(mesh);
 
     *numtets = tg.out_tottets;
-    *tets = (unsigned int *)MEM_malloc_arrayN(tg.out_tottets*4, sizeof(unsigned int), "remesh_output_tets");
+    *tets = (unsigned int *)MEM_malloc_arrayN(
+        tg.out_tottets * 4, sizeof(unsigned int), "remesh_output_tets");
     //*tets = (unsigned int *)malloc(tg.out_tottets*4*sizeof(unsigned int));
-    memcpy(*tets,tg.out_tets,tg.out_tottets*4*sizeof(unsigned int));
+    memcpy(*tets, tg.out_tets, tg.out_tottets * 4 * sizeof(unsigned int));
 
-  } // end success
+  }  // end success
 
-  if (tg.out_verts != NULL)
-  {
+  if (tg.out_verts != NULL) {
     MEM_freeN(tg.out_verts);
     tg.out_verts = NULL;
   }
 
-  if (tg.out_facets != NULL)
-  {
+  if (tg.out_facets != NULL) {
     MEM_freeN(tg.out_facets);
     tg.out_facets = NULL;
   }
 
-  if (tg.out_tets != NULL)
-  {
+  if (tg.out_tets != NULL) {
     MEM_freeN(tg.out_tets);
     tg.out_tets = NULL;
   }
@@ -370,16 +364,14 @@ static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh,
 #endif
 
 struct Mesh *BKE_mesh_remesh_tetgen_to_mesh_nomain(struct Mesh *mesh,
-                                                unsigned int **tets,
-                                                int *numtets)
+                                                   unsigned int **tets,
+                                                   int *numtets)
 {
-  #ifdef WITH_TETGEN
-  return BKE_mesh_remesh_tetgen(mesh,tets,numtets);  
-  #else
-  UNUSED_VARS(mesh,
-              tets,
-              numtets);
-  #endif
+#ifdef WITH_TETGEN
+  return BKE_mesh_remesh_tetgen(mesh, tets, numtets);
+#else
+  UNUSED_VARS(mesh, tets, numtets);
+#endif
   return NULL;
 }
 

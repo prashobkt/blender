@@ -605,8 +605,8 @@ static void rna_SoftBodySettings_spring_vgroup_set(PointerRNA *ptr, const char *
 static void rna_SoftBodySettings_selfcollide_vgroup_set(PointerRNA *ptr, const char *value)
 {
   SoftBody *sb = (SoftBody *)ptr->data;
-  rna_object_vgroup_name_set(ptr, value,
-    sb->admmpd_namedVG_selfcollision, sizeof(sb->admmpd_namedVG_selfcollision));
+  rna_object_vgroup_name_set(
+      ptr, value, sb->admmpd_namedVG_selfcollision, sizeof(sb->admmpd_namedVG_selfcollision));
 }
 
 static char *rna_SoftBodySettings_path(PointerRNA *ptr)
@@ -1821,14 +1821,22 @@ static void rna_def_softbody(BlenderRNA *brna)
 
   static const EnumPropertyItem admmpd_linsolver_items[] = {
       {0, "LTLD", 0, "LDL^T", "Factors the matrix on any collision or change in pin stiffness"},
-      {1, "PCG", 0, "Conjugate Gradients", "Iterative solver but factors preconditioner on change in pin stiffness"},
-      //{2, "MCGS", 0, "Multi-Color Gauss-Seidel", "Fast if many threads are available, no support for self collision"},
+      {1,
+       "PCG",
+       0,
+       "Conjugate Gradients",
+       "Iterative solver but factors preconditioner on change in pin stiffness"},
+      //{2, "MCGS", 0, "Multi-Color Gauss-Seidel", "Fast if many threads are available, no support
+      //for self collision"},
       {0, NULL, 0, NULL, NULL},
   };
 
   static const EnumPropertyItem aerodynamics_type[] = {
       {0, "SIMPLE", 0, "Simple", "Edges receive a drag force from surrounding media"},
-      {1, "LIFT_FORCE", 0, "Lift Force",
+      {1,
+       "LIFT_FORCE",
+       0,
+       "Lift Force",
        "Edges receive a lift force when passing through surrounding media"},
       {0, NULL, 0, NULL, NULL},
   };
@@ -1953,7 +1961,8 @@ static void rna_def_softbody(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "vertex_group_selfcollide", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "admmpd_namedVG_selfcollision");
-  RNA_def_property_ui_text(prop, "Self Collide VG", "Optional vertex group for self collision vertices");
+  RNA_def_property_ui_text(
+      prop, "Self Collide VG", "Optional vertex group for self collision vertices");
   RNA_def_property_string_funcs(prop, NULL, NULL, "rna_SoftBodySettings_selfcollide_vgroup_set");
   RNA_def_property_update(prop, 0, "rna_softbody_update");
 

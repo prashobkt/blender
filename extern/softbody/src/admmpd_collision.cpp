@@ -191,6 +191,9 @@ int EmbeddedMeshCollision::detect(
 
 	//
 	// Detection function for a single embedded vertex
+	// This function is very poorly optimized in terms of
+	// cache friendlyness.
+	// Some refactoring would greatly improve run time.
 	//
 //	auto per_embedded_vertex_detect = [](
 //		void *__restrict userdata,
@@ -299,8 +302,7 @@ int EmbeddedMeshCollision::detect(
 	// vertices next to eachother are on different threads to provide
 	// better concurrency. Otherwise a standard slice may end up doing
 	// all of the BVH traversals and the other threads do none.
-	// I haven't actually profiled this, so maybe I'm wrong. Either way it
-	// won't hurt. I think.
+	// I haven't actually profiled this, so maybe I'm wrong.
 	int max_threads = std::max(1, std::min(nev, admmpd::get_max_threads(options)));
 	const auto & per_thread_function = [&per_embedded_vertex_detect,&max_threads,&nev]
 		(DetectThreadData *td, int thread_idx)

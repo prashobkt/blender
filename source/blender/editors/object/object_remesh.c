@@ -1209,7 +1209,7 @@ static int tetgen_remesh_exec(bContext *C, wmOperator *op)
 
   unsigned int *tets = NULL;
   int numtets;
-  new_mesh = BKE_mesh_remesh_tetgen_to_mesh_nomain(mesh,&tets,&numtets);
+  new_mesh = BKE_mesh_remesh_tetgen_to_mesh_nomain(mesh, &tets, &numtets);
   if (tets) {
     MEM_freeN(tets);
   }
@@ -1250,8 +1250,6 @@ void OBJECT_OT_tetgen_remesh(wmOperatorType *ot)
   ot->exec = tetgen_remesh_exec;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-
-
 }
 
 /** \} */
