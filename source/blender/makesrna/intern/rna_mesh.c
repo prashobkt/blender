@@ -59,6 +59,7 @@ static const EnumPropertyItem rna_enum_mesh_remesh_mode_items[] = {
     {REMESH_VOXEL, "VOXEL", 0, "Voxel", "Use the voxel remesher"},
     {REMESH_QUAD, "QUAD", 0, "Quad", "Use the quad remesher"},
     {REMESH_TET, "TET", 0, "Tet", "Use the tetrahedralize remesher"},
+    {REMESH_TETLATTICE, "TETLATTICE", 0, "Tet lattice", "Use the tet-lattice remesher"},
     {0, NULL, 0, NULL, NULL},
 };
 

@@ -520,8 +520,10 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
             col.operator("object.voxel_remesh", text="Voxel Remesh")
         elif mesh.remesh_mode == 'QUAD':
             col.operator("object.quadriflow_remesh", text="QuadriFlow Remesh")
-        else:
+        elif mesh.remesh_mode == 'TET':
             col.operator("object.tetgen_remesh", text="Tetrahedralize")
+        elif mesh.remesh_mode == 'TETLATTICE':
+            col.operator("object.tetlattice_remesh", text="Generate Lattice")
             
 
 

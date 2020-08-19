@@ -39,6 +39,15 @@ typedef struct ADMMPDInterfaceData {
 // Frees ADMMPDInternalData
 void admmpd_dealloc(ADMMPDInterfaceData*);
 
+// Standalone function to compute embedding lattice
+// but without the embedding info (for visual debugging)
+void admmpd_compute_lattice(
+    int subdiv,
+    float *in_verts, int in_nv,
+    unsigned int *in_faces, int in_nf,
+    float **out_verts, int *out_nv,
+    unsigned int **out_tets, int *out_nt);
+
 // Test if the mesh topology has changed in a way that requires re-initialization.
 // Returns 0 (no update needed) or 1 (needs update)
 int admmpd_mesh_needs_update(ADMMPDInterfaceData*, Object*);

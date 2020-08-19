@@ -230,6 +230,51 @@ static inline int admmpd_init_as_cloth(ADMMPDInterfaceData *iface, Object *ob, f
   return 1;
 }
 
+void admmpd_compute_lattice(
+    int subdiv,
+    float *in_verts, int in_nv,
+    unsigned int *in_faces, int in_nf,
+    float **out_verts, int *out_nv,
+    unsigned int **out_tets, int *out_nt)
+{
+
+  admmpd::EmbeddedMesh emesh;
+  emesh.options.max_subdiv_levels = subdiv;
+  bool success = emesh.create(
+    in_verts, in_nv,
+    in_faces, in_nf,
+    nullptr,
+    0);
+
+  if (!success) {
+    return;
+  }
+
+  const Eigen::MatrixXd &vt = *emesh.rest_prim_verts();
+  const Eigen::MatrixXi &t = *emesh.prims();
+  if (vt.rows()==0 || t.rows()==0) {
+    return;
+  }
+
+  *out_nv = vt.rows();
+  *out_verts = (float*)MEM_callocN(sizeof(float)*3*(vt.rows()), "ADMMPD_lattice_verts");
+  *out_nt = t.rows();
+  *out_tets = (unsigned int*)MEM_callocN(sizeof(unsigned int)*4*(t.rows()), "ADMMPD_lattice_tets");
+
+  for (int i=0; i<vt.rows(); ++i) {
+    (*out_verts)[i*3+0] = vt(i,0);
+    (*out_verts)[i*3+1] = vt(i,1);
+    (*out_verts)[i*3+2] = vt(i,2);
+  }
+
+  for (int i=0; i<t.rows(); ++i) {
+    (*out_tets)[i*4+0] = t(i,0);
+    (*out_tets)[i*4+1] = t(i,1);
+    (*out_tets)[i*4+2] = t(i,2);
+    (*out_tets)[i*4+3] = t(i,3);
+  }
+}
+
 int admmpd_mesh_needs_update(ADMMPDInterfaceData *iface, Object *ob)
 {
   if (!iface) { return 0; }
