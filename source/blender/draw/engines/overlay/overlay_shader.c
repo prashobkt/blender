@@ -122,6 +122,7 @@ extern char datatoc_xray_fade_frag_glsl[];
 extern char datatoc_gpu_shader_depth_only_frag_glsl[];
 extern char datatoc_gpu_shader_point_varying_color_frag_glsl[];
 extern char datatoc_gpu_shader_3D_smooth_color_frag_glsl[];
+extern char datatoc_gpu_shader_2D_smooth_color_frag_glsl[];
 extern char datatoc_gpu_shader_uniform_color_frag_glsl[];
 extern char datatoc_gpu_shader_flat_color_frag_glsl[];
 extern char datatoc_gpu_shader_point_varying_color_varying_outline_aa_frag_glsl[];
@@ -1542,7 +1543,7 @@ GPUShader *OVERLAY_shader_edit_uv_stretching_area_get(void)
     sh_data->edit_uv_stretching_area = DRW_shader_create_with_shaderlib(
         datatoc_edit_uv_stretching_vert_glsl,
         NULL,
-        datatoc_gpu_shader_3D_smooth_color_frag_glsl,
+        datatoc_gpu_shader_2D_smooth_color_frag_glsl,
         e_data.lib,
         "#define blender_srgb_to_framebuffer_space(a) a\n");
   }
@@ -1557,7 +1558,7 @@ GPUShader *OVERLAY_shader_edit_uv_stretching_angle_get(void)
     sh_data->edit_uv_stretching_angle = DRW_shader_create_with_shaderlib(
         datatoc_edit_uv_stretching_vert_glsl,
         NULL,
-        datatoc_gpu_shader_3D_smooth_color_frag_glsl,
+        datatoc_gpu_shader_2D_smooth_color_frag_glsl,
         e_data.lib,
         "#define blender_srgb_to_framebuffer_space(a) a\n#define STRETCH_ANGLE\n");
   }
