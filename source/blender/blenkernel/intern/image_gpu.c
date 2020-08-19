@@ -275,7 +275,7 @@ static GPUTexture *image_get_gpu_texture(Image *ima,
    * context and might as well ensure we have as much space free as possible. */
   gpu_free_unused_buffers();
 
-  /* Free GPU textures when displaying a different render pass/layer. */
+  /* Free GPU textures when requesting a different render pass/layer. */
   if (ima->gpu_pass != iuser->pass || ima->gpu_layer != iuser->layer) {
     ima->gpu_pass = iuser->pass;
     ima->gpu_layer = iuser->layer;
