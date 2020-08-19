@@ -4,6 +4,7 @@
 #include "admmpd_mesh.h"
 #include "admmpd_geom.h"
 #include "admmpd_timer.h"
+#include "admmpd_log.h"
 #include <unordered_map>
 #include <set>
 #include <iostream>
@@ -70,12 +71,18 @@ bool EmbeddedMesh::create(
 	const unsigned int *tets, // ignored
 	int nt)
 {
-	(void)(options);
+	admmpd::Logger log(options->log_level);
+	log.start_state(SOLVERSTATE_MESHCREATE);
+
 	P_updated = true;
-	if (nv<=0 || verts == nullptr)
+	if (nv<=0 || verts == nullptr) {
+		log.stop_state(SOLVERSTATE_MESHCREATE);
 		return false;
-	if (nf<=0 || faces == nullptr)
+	}
+	if (nf<=0 || faces == nullptr) {
+		log.stop_state(SOLVERSTATE_MESHCREATE);
 		return false;
+	}
 	(void)(tets);
 	(void)(nt);
 
@@ -185,6 +192,10 @@ bool EmbeddedMesh::create(
 	if (emb_V0.rows()==0)
 		throw_err("create","Did not set verts");
 
+	log.stop_state(SOLVERSTATE_MESHCREATE);
+	if (options->log_level >= LOGLEVEL_DEBUG) {
+		printf("%s\n",log.to_string().c_str());
+	}
 	return true;
 }
 
@@ -289,11 +300,6 @@ bool EmbeddedMesh::compute_embedding(const admmpd::Options *options)
 		FindTetThreadData *td = (FindTetThreadData*)userdata;
 		const MatrixXd *emb_x0 = td->emb_mesh->rest_facet_verts();
 		Vector3d pt = emb_x0->row(i);
-
-		if (td->opt->log_level >= LOGLEVEL_DEBUG) {
-			printf("\tTesting vertex %d\n", i);
-		}
-
 		PointInTetMeshTraverse<double> traverser(
 				pt,
 				td->lat_V0,
@@ -313,6 +319,15 @@ bool EmbeddedMesh::compute_embedding(const admmpd::Options *options)
 			td->emb_v_to_tet->operator[](i) = tet_idx;
 			Vector4d b = geom::point_tet_barys<double>(pt,t[0],t[1],t[2],t[3]);
 			td->emb_barys->row(i) = b;
+
+			if (td->opt->log_level >= LOGLEVEL_DEBUG) {
+				printf("\tFound embedding for %d: %f %f %f %f\n", i, b[0],b[1],b[2],b[3]);
+			}
+		}
+		else {
+			if (td->opt->log_level >= LOGLEVEL_DEBUG) {
+				printf("\tDid NOT find embedding for %d!\n", i);
+			}
 		}
 	}; // end parallel find tet
 

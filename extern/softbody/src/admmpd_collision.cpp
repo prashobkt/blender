@@ -171,8 +171,9 @@ int EmbeddedMeshCollision::detect(
 	// We store the results of the collisions in a per-vertex buffer.
 	// This is a workaround so we can create them in threads.
 	int nev = mesh->rest_facet_verts()->rows();
-	if ((int)per_vertex_pairs.size() != nev)
+	if ((int)per_vertex_pairs.size() != nev) {
 		per_vertex_pairs.resize(nev, std::vector<VFCollisionPair>());
+	}
 
 	//
 	// Thread data for detection
@@ -214,6 +215,10 @@ int EmbeddedMeshCollision::detect(
 		vi_pairs.clear();
 		Vector3d pt_t0 = td->mesh->get_mapped_facet_vertex(td->x0,vi);
 		Vector3d pt_t1 = td->mesh->get_mapped_facet_vertex(td->x1,vi);
+
+		if (td->options->log_level >= LOGLEVEL_DEBUG) {
+			printf("\tDetecting collisions for emb vertex %d: %f %f %f\n", vi, pt_t1[0], pt_t1[1], pt_t1[2]);
+		}
 
 		// Special case, check if we are below the floor
 		if (pt_t1[2] < td->options->floor)
@@ -304,6 +309,9 @@ int EmbeddedMeshCollision::detect(
 	// all of the BVH traversals and the other threads do none.
 	// I haven't actually profiled this, so maybe I'm wrong.
 	int max_threads = std::max(1, std::min(nev, admmpd::get_max_threads(options)));
+	if (options->log_level >= LOGLEVEL_DEBUG) {
+		max_threads = 1;
+	}
 	const auto & per_thread_function = [&per_embedded_vertex_detect,&max_threads,&nev]
 		(DetectThreadData *td, int thread_idx)
 	{
