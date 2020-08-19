@@ -2452,6 +2452,7 @@ extern "C" void BLI_delaunay_2d_cdt_free(::CDT_result *result)
   MEM_freeN(result->verts_orig);
   MEM_freeN(result->verts_orig_start_table);
   MEM_freeN(result->verts_orig_len_table);
+  MEM_freeN(result->edges_orig);
   MEM_freeN(result->edges_orig_start_table);
   MEM_freeN(result->edges_orig_len_table);
   MEM_freeN(result->faces_orig);
