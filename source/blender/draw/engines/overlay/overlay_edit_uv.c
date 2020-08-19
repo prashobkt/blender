@@ -135,8 +135,9 @@ void OVERLAY_edit_uv_init(OVERLAY_Data *vedata)
   const ToolSettings *ts = scene->toolsettings;
 
   Image *image = sima->image;
+  /* By design no image is an image type. This so editor shows UV's by default. */
   const bool is_image_type =
-      image && ELEM(image->type, IMA_TYPE_IMAGE, IMA_TYPE_MULTILAYER, IMA_TYPE_UV_TEST);
+      (image == NULL) || ELEM(image->type, IMA_TYPE_IMAGE, IMA_TYPE_MULTILAYER, IMA_TYPE_UV_TEST);
   const bool is_uv_editor = sima->mode == SI_MODE_UV;
   const bool has_edit_object = (draw_ctx->object_edit) != NULL;
   const bool is_paint_mode = sima->mode == SI_MODE_PAINT;
@@ -198,8 +199,7 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
             pd->edit_uv_shadow_edges_grp, "alpha", pd->edit_uv.uv_opacity);
         DRW_shgroup_uniform_float(
             pd->edit_uv_shadow_edges_grp, "dashLength", &pd->edit_uv.dash_length, 1);
-        DRW_shgroup_uniform_bool(
-            pd->edit_uv_shadow_edges_grp, "doSmoothWire", &pd->edit_uv.do_smooth_wire, 1);
+        DRW_shgroup_uniform_bool_copy(pd->edit_uv_shadow_edges_grp, "doSmoothWire", true);
       }
 
       if (pd->edit_uv.do_uv_overlay) {

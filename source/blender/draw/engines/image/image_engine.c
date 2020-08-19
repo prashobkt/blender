@@ -184,7 +184,7 @@ static void image_cache_image(IMAGE_Data *id, Image *ima, ImageUser *iuser, ImBu
     /* sima->zoom = 1 texel covers (sima->zoom * sima->zoom) screen pixels.
      * Creates a curve function for better visual result. */
     float zoom_level = powf(MAX2(sima->zoom - 1.0, 0.1), 0.33f);
-    zoom_level = clamp_f(zoom_level, 1.2, 5.0);
+    zoom_level = clamp_f(zoom_level, 1.25, 4.75);
     DRW_shgroup_uniform_float_copy(grp, "zoomScale", sima->zoom);
     DRW_shgroup_uniform_float_copy(grp, "zoomLevel", zoom_level);
     DRW_shgroup_call(grp, pd->draw_batch, NULL);
