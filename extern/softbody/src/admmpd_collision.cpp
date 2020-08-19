@@ -315,12 +315,18 @@ int EmbeddedMeshCollision::detect(
 	const auto & per_thread_function = [&per_embedded_vertex_detect,&max_threads,&nev]
 		(DetectThreadData *td, int thread_idx)
 	{
-    	int slice = std::max((int)std::round((nev+1)/double(max_threads)),1);
+		float slice_f = float(nev+1) / float(max_threads);
+    	int slice = std::max((int)std::ceil(slice_f),1);
 		for (int i=0; i<slice; ++i)
 		{
 			int vi = i*max_threads + thread_idx;
-			if (vi >= nev)
+
+			// Yeah okay I know this is dumb and I can just do a better job
+			// of calculating the slice. We can save thread optimization
+			// for the future, since this will be written different anyway.
+			if (vi >= nev) {
 				break;
+			}
 
 			per_embedded_vertex_detect(td,thread_idx,vi);
 		}
