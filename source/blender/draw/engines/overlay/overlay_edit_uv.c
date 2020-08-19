@@ -383,6 +383,28 @@ void OVERLAY_edit_uv_cache_populate(OVERLAY_Data *vedata, Object *ob)
   }
 }
 
+static void edit_uv_stretching_update_ratios(OVERLAY_Data *vedata)
+{
+  OVERLAY_StorageList *stl = vedata->stl;
+  OVERLAY_PrivateData *pd = stl->pd;
+
+  if (pd->edit_uv.draw_type == SI_UVDT_STRETCH_AREA) {
+    float total_area = 0.0f;
+    float total_area_uv = 0.0f;
+
+    LISTBASE_FOREACH (OVERLAY_StretchingAreaTotals *, totals, &pd->edit_uv.totals) {
+      total_area += *totals->total_area;
+      total_area_uv += *totals->total_area_uv;
+    }
+
+    if (total_area > FLT_EPSILON && total_area_uv > FLT_EPSILON) {
+      pd->edit_uv.total_area_ratio = total_area / total_area_uv;
+      pd->edit_uv.total_area_ratio_inv = total_area_uv / total_area;
+    }
+  }
+  BLI_freelistN(&pd->edit_uv.totals);
+}
+
 static void edit_uv_draw_finish(OVERLAY_Data *vedata)
 {
   OVERLAY_StorageList *stl = vedata->stl;
@@ -402,6 +424,7 @@ void OVERLAY_edit_uv_draw(OVERLAY_Data *vedata)
   }
 
   if (pd->edit_uv.do_uv_stretching_overlay) {
+    edit_uv_stretching_update_ratios(vedata);
     DRW_draw_pass(psl->edit_uv_stretching_ps);
   }
   if (pd->edit_uv.do_uv_overlay) {
