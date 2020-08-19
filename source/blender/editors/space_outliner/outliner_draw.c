@@ -3460,7 +3460,7 @@ static void outliner_draw_tree(bContext *C,
   }
 
   /* Gray hierarchy lines. */
-  starty = (int)region->v2d.tot.ymax - UI_UNIT_Y / 2 - OL_Y_OFFSET;
+  starty = (int)region->v2d.tot.ymax - OL_Y_OFFSET;
   startx = UI_UNIT_X / 2 - (U.pixelsize + 1) / 2;
   outliner_draw_hierarchy_lines(space_outliner, &space_outliner->tree, startx, &starty);
 
