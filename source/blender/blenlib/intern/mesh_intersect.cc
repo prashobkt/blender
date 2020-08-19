@@ -838,7 +838,7 @@ static Array<BoundingBox> calc_face_bounding_boxes(const Mesh &m)
     for (Vertp v : face) {
       bb.combine(v->co);
       for (int i = 0; i < 3; ++i) {
-        max_abs_val = max_dd(max_abs_val, fabs(v->co[i]));
+        max_abs_val = max_dd(max_abs_val, std::abs(v->co[i]));
       }
     }
   }
@@ -1422,7 +1422,7 @@ static int filter_orient3d(const double3 &a, const double3 &b, const double3 &c,
     return 0;
   }
   double err_bound = supremum_orient3d(a, b, c, d) * index_orient3d * DBL_EPSILON;
-  if (fabs(o3dfast) > err_bound) {
+  if (std::abs(o3dfast) > err_bound) {
     return o3dfast > 0.0 ? 1 : -1;
   }
   return 0;

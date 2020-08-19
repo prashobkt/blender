@@ -218,7 +218,7 @@ struct double3 {
 
   static double3 abs(const double3 &a)
   {
-    return double3(fabs(a.x), fabs(a.y), fabs(a.z));
+    return double3(std::abs(a.x), std::abs(a.y), std::abs(a.z));
   }
 
   /* orient3d gives the exact result, using multiprecision artihmetic when result
