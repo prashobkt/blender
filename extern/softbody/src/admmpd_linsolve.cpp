@@ -108,7 +108,7 @@ void LDLT::solve(
 	if (nx==0)
 		throw_err("solve","no vertices");
 
-	if (!data->ls.ldlt_A_PtP || !data->ls.ldlt_A_PtP->info()==Eigen::Success)
+	if (!data->ls.ldlt_A_PtP)
 		init_solve(mesh,options,collision,data);
 
 	// Linearize collision constraints
