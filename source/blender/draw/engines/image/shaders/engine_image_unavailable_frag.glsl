@@ -1,23 +1,38 @@
 #pragma BLENDER_REQUIRE(common_colormanagement_lib.glsl)
 #pragma BLENDER_REQUIRE(common_globals_lib.glsl)
 
-flat in vec4 origin;
-in vec2 uvs;
+uniform float zoomLevel;
+uniform float zoomScale;
 
+#define UNAVAILABLE_TEXTURE_SIZE 256
+
+in vec2 uvs;
 out vec4 fragColor;
 
-/* XXX(jbakker): this is incomplete code. */
 void main()
 {
-  ivec2 view_coord = ivec2(gl_FragCoord.xy - origin.xy);
-  vec3 final_color = vec3(1.0, 0.0, 1.0);
+  float d = UNAVAILABLE_TEXTURE_SIZE * zoomScale;
+  ivec2 tex_coord = ivec2(uvs * d);
+  ivec2 tex_coord_prev = tex_coord - ivec2(1);
 
-  if (view_coord.x % 100 == 0) {
-    final_color = vec3(0.0);
-  }
-  else {
-    final_color = colorBackground.rgb;
-  }
+  int zoom_level_1 = int(zoomLevel);
+  int zoom_level_2 = zoom_level_1 + 1;
+  float line_1_alpha = 1.0 - fract(zoomLevel);
+  float line_2_alpha = fract(zoomLevel);
 
+  int num_lines_in_level2 = (1 << zoom_level_2) * (1 << zoom_level_2);
+  float spacing_between_lines = d / num_lines_in_level2;
+
+  ivec2 line_index = ivec2(tex_coord * num_lines_in_level2 / d);
+  ivec2 line_index_prev = ivec2(tex_coord_prev * num_lines_in_level2 / d);
+  bvec2 is_line_2 = notEqual(line_index, line_index_prev);
+  bvec2 is_line_1 = notEqual(line_index / 4, line_index_prev / 4);
+
+  float line_alpha = max(any(is_line_2) ? line_2_alpha : 0.0, any(is_line_1) ? line_1_alpha : 0.0);
+
+  float color_offset = 20.0 / 256.0;
+  vec3 line_color = clamp(colorBackground.rgb - color_offset, 0.0, 1.0);
+  vec3 bg_color = clamp(colorBackground.rgb + color_offset, 0.0, 1.0);
+  vec3 final_color = mix(bg_color, line_color, line_alpha);
   fragColor = vec4(final_color, 1.0);
 }
