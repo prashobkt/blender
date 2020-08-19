@@ -604,7 +604,7 @@ static void image_rect_update(void *rjv, RenderResult *rr, volatile rcti *renrec
         ED_draw_imbuf_method(ibuf) != IMAGE_DRAW_METHOD_GLSL) {
       image_buffer_rect_update(rj, rr, ibuf, &rj->iuser, renrect, viewname);
     }
-    BKE_image_free_gputextures(ima);
+    ima->gpuflag |= IMA_GPU_REFRESH;
 
     /* make jobs timer to send notifier */
     *(rj->do_update) = true;
