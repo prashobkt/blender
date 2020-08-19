@@ -162,7 +162,7 @@ int EmbeddedMeshCollision::detect(
 	// Do we even need to process collisions?
 	if (!this->obsdata.has_obs() && !options->self_collision)
 	{
-		if (x1->col(1).minCoeff() > options->floor)
+		if (x1->col(2).minCoeff() > options->floor)
 		{
 			return 0;
 		}
