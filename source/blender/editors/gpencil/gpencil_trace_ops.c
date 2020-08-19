@@ -123,8 +123,13 @@ static bool gpencil_trace_image(
   int offset[2];
   offset[0] = ibuf->x / 2;
   offset[1] = ibuf->y / 2;
+
+  /* Scale correction for Potrace. */
+  const float scale_potrace = scale * (640.0f / (float)ibuf->x) *
+                              ((float)ibuf->x / (float)ibuf->y);
+
   ED_gpencil_trace_data_to_strokes(
-      bmain, st, ob, gpf, offset, scale, sample, resolution, thickness);
+      bmain, st, ob, gpf, offset, scale_potrace, sample, resolution, thickness);
 
   /* Free memory. */
   potrace_state_free(st);

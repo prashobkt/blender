@@ -287,7 +287,7 @@ void ED_gpencil_trace_data_to_strokes(Main *bmain,
   int n, *tag;
   potrace_dpoint_t(*c)[3];
 
-  const float scalef = 0.005f * scale;
+  const float scalef = 0.008f * scale;
   /* Draw each curve. */
   path = st->plist;
   while (path != NULL) {
