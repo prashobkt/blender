@@ -2670,6 +2670,9 @@ static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
 static int find_first_overlap_index(const TriOverlaps &ov, int t)
 {
   Span<BVHTreeOverlap> span = ov.overlap();
+  if (span.size() == 0) {
+    return -1;
+  }
   int min = 0;
   int max = static_cast<int>(span.size()) - 1;
   while (min < max) {
