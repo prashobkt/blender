@@ -62,6 +62,7 @@ static void gather_octree_tets(
 } // end gather octree tets
 
 bool EmbeddedMesh::create(
+	const Options *options,
 	const float *verts, // size nv*3
 	int nv,
 	const unsigned int *faces, // size nf*3
@@ -69,6 +70,7 @@ bool EmbeddedMesh::create(
 	const unsigned int *tets, // ignored
 	int nt)
 {
+	(void)(options);
 	P_updated = true;
 	if (nv<=0 || verts == nullptr)
 		return false;
@@ -153,8 +155,12 @@ bool EmbeddedMesh::create(
 	compute_sdf(&emb_V0, &emb_F, &emb_sdf);
 	emb_rest_facet_tree.init(emb_leaves);
 
-	compute_lattice();
-	compute_embedding();
+	if (!compute_lattice(options)) {
+		throw_err("create","Failed lattice generation");
+	}
+	if (!compute_embedding(options)) {
+		throw_err("create","Failed embedding calculation");
+	}
 
 	// Verify embedding is correct
 	for (int i=0; i<nv; ++i)
@@ -212,7 +218,7 @@ void EmbeddedMesh::compute_sdf(
 	sdf->addFunction(func, &thread_map, false);
 }
 
-bool EmbeddedMesh::compute_lattice()
+bool EmbeddedMesh::compute_lattice(const admmpd::Options *options)
 {
 	// Create subset of faces
 //	if (emb_faces.size()==0) { return false; }
@@ -228,7 +234,7 @@ bool EmbeddedMesh::compute_lattice()
 
 	// Create an octree to generate the tets from
 	Octree<double,3> octree;
-	octree.init(&emb_V0,&F,options.max_subdiv_levels);
+	octree.init(&emb_V0,&F,options->lattice_subdiv);
 
 	std::vector<Vector3d> lat_verts;
 	std::vector<RowVector4i> lat_tets;
@@ -258,9 +264,10 @@ bool EmbeddedMesh::compute_lattice()
 	return nlt>0;
 }
 
-bool EmbeddedMesh::compute_embedding()
+bool EmbeddedMesh::compute_embedding(const admmpd::Options *options)
 {
 	struct FindTetThreadData {
+		const Options *opt;
 		AABBTree<double,3> *tree;
 		EmbeddedMesh *emb_mesh; // thread sets vtx_to_tet and barys
 		MatrixXd *lat_V0;
@@ -268,6 +275,10 @@ bool EmbeddedMesh::compute_embedding()
 		MatrixXd *emb_barys;
 		VectorXi *emb_v_to_tet;
 	};
+
+	if (options->log_level >= LOGLEVEL_DEBUG) {
+		printf("Computing embedding for %d verts\n", (int)emb_V0.rows());
+	}
 
 	auto parallel_point_in_tet = [](
 		void *__restrict userdata,
@@ -278,6 +289,11 @@ bool EmbeddedMesh::compute_embedding()
 		FindTetThreadData *td = (FindTetThreadData*)userdata;
 		const MatrixXd *emb_x0 = td->emb_mesh->rest_facet_verts();
 		Vector3d pt = emb_x0->row(i);
+
+		if (td->opt->log_level >= LOGLEVEL_DEBUG) {
+			printf("\tTesting vertex %d\n", i);
+		}
+
 		PointInTetMeshTraverse<double> traverser(
 				pt,
 				td->lat_V0,
@@ -309,14 +325,15 @@ bool EmbeddedMesh::compute_embedding()
 	emb_barys.resize(nv,4);
 	emb_barys.setZero();
 	emb_v_to_tet.resize(nv);
-	emb_v_to_tet.array() = -1;
+	emb_v_to_tet.setOnes();
+	emb_v_to_tet *= -1;
 	int nt = lat_T.rows();
 
 	// BVH tree for finding point-in-tet and computing
 	// barycoords for each embedded vertex
 	std::vector<AlignedBox<double,3> > tet_aabbs;
 	tet_aabbs.resize(nt);
-	Vector3d veta = Vector3d::Ones()*1e-12;
+	Vector3d veta = Vector3d::Ones()*1e-4;
 	for (int i=0; i<nt; ++i)
 	{
 		tet_aabbs[i].setEmpty();
@@ -332,6 +349,7 @@ bool EmbeddedMesh::compute_embedding()
 	tree.init(tet_aabbs);
 
 	FindTetThreadData thread_data = {
+		options,
 		&tree,
 		this,
 		&lat_V0,
@@ -341,6 +359,9 @@ bool EmbeddedMesh::compute_embedding()
 	};
 	TaskParallelSettings settings;
 	BLI_parallel_range_settings_defaults(&settings);
+	if (options->log_level >= LOGLEVEL_DEBUG) {
+		settings.use_threading = false;
+	}
 	BLI_task_parallel_range(0, nv, &thread_data, parallel_point_in_tet, &settings);
 
 	// Double check we set (valid) barycoords for every embedded vertex
@@ -497,6 +518,7 @@ bool EmbeddedMesh::linearize_pins(
 }
 
 bool TetMesh::create(
+	const Options *options,
 	const float *verts, // size nv*3
 	int nv,
 	const unsigned int *faces, // size nf*3 (surface faces)
@@ -664,6 +686,7 @@ bool TetMesh::linearize_pins(
 }
 
 bool TriangleMesh::create(
+	const Options *options,
 	const float *verts,
 	int nv,
 	const unsigned int *faces,
@@ -671,6 +694,7 @@ bool TriangleMesh::create(
 	const unsigned int *tets,
 	int nt)
 {
+	(void)(options);
 	P_updated = true;
 	(void)(tets); (void)(nt);
 	if (nv<=0 || verts == nullptr)

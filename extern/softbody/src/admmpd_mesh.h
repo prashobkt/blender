@@ -18,6 +18,7 @@ public:
     // Copy buffers to internal data, 
     // calculates BVH/SDF, etc...
     virtual bool create(
+        const Options *options,
         const float *verts, // size nv*3
         int nv,
         const unsigned int *faces, // size nf*3
@@ -88,10 +89,10 @@ protected:
     SDFType emb_sdf;
     mutable bool P_updated; // set to false on linearize_pins
 
-    bool compute_embedding();
+    bool compute_embedding(const admmpd::Options *options);
 
     // Computes the tet mesh on a subset of faces
-    bool compute_lattice();
+    bool compute_lattice(const admmpd::Options *options);
 
     void compute_sdf(
         const Eigen::MatrixXd *emb_v,
@@ -102,15 +103,8 @@ public:
 
     int type() const { return MESHTYPE_EMBEDDED; }
 
-    struct Options
-    {
-        int max_subdiv_levels;
-        Options() :
-            max_subdiv_levels(3)
-            {}
-    } options;
-
     bool create(
+        const Options *options,
         const float *verts, // size nv*3
         int nv,
         const unsigned int *faces, // size nf*3
@@ -177,6 +171,7 @@ public:
     int type() const { return MESHTYPE_TET; }
 
     bool create(
+        const Options *options,
         const float *verts, // size nv*3
         int nv,
         const unsigned int *faces, // size nf*3 (surface faces)
@@ -237,6 +232,7 @@ public:
     int type() const { return MESHTYPE_TRIANGLE; }
 
     bool create(
+        const Options *options,
         const float *verts, // size nv*3
         int nv,
         const unsigned int *faces, // size nf*3

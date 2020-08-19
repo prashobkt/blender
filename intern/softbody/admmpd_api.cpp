@@ -104,6 +104,7 @@ static inline void options_from_object(
   op->linsolver = std::max(0, std::min(LINSOLVER_NUM-1, sb->admmpd_linsolver));
   op->strain_limit[0] = std::min(1.f, sb->admmpd_strainlimit_min);
   op->strain_limit[1] = std::max(1.f, sb->admmpd_strainlimit_max);
+  op->lattice_subdiv = std::max(1,sb->admmpd_embed_res);
 
   if (!skip_require_reset)
   {
@@ -186,10 +187,8 @@ static inline int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, Object *o
   std::vector<unsigned int> f;
   vecs_from_object(ob,vertexCos,v,f);
   iface->idata->mesh = std::make_shared<admmpd::EmbeddedMesh>();
-
-  admmpd::EmbeddedMesh* emb_msh = static_cast<admmpd::EmbeddedMesh*>(iface->idata->mesh.get());
-  emb_msh->options.max_subdiv_levels = ob->soft->admmpd_embed_res;
   bool success = iface->idata->mesh->create(
+    iface->idata->options.get(),
     v.data(),
     v.size()/3,
     f.data(),
@@ -197,7 +196,7 @@ static inline int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, Object *o
     nullptr,
     0);
 
-  if (!success) {
+  if (!success) { // soft unknown fail
     strcpy_error(iface, "EmbeddedMesh failed on creation");
     return 0;
   }
@@ -214,6 +213,7 @@ static inline int admmpd_init_as_cloth(ADMMPDInterfaceData *iface, Object *ob, f
 
   iface->idata->mesh = std::make_shared<admmpd::TriangleMesh>();
   bool success = iface->idata->mesh->create(
+    iface->idata->options.get(),
     v.data(),
     v.size()/3,
     f.data(),
@@ -239,8 +239,10 @@ void admmpd_compute_lattice(
 {
 
   admmpd::EmbeddedMesh emesh;
-  emesh.options.max_subdiv_levels = subdiv;
+  admmpd::Options opt;
+  opt.lattice_subdiv = subdiv;
   bool success = emesh.create(
+    &opt,
     in_verts, in_nv,
     in_faces, in_nf,
     nullptr,
@@ -303,9 +305,15 @@ int admmpd_update_mesh(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos
   if (!ob) { return 0; }
   if (!ob->soft) { return 0; }
 
-  if (!iface->idata)
+  if (!iface->idata) {
     iface->idata = (ADMMPDInternalData*)MEM_callocN(sizeof(ADMMPDInternalData), "ADMMPD_idata");
+  }
 
+  if (!iface->idata->options) {
+    iface->idata->options = std::make_shared<admmpd::Options>();
+  }
+
+  options_from_object(iface,NULL,ob,iface->idata->options.get(),false);
   int mode = ob->soft->admmpd_mesh_mode;
   iface->idata->mesh.reset();
 
@@ -407,7 +415,9 @@ int admmpd_update_solver(ADMMPDInterfaceData *iface,  Scene *sc, Object *ob, flo
   if (!iface->idata->mesh) { return 0; }
 
   // Reset options and data
-  iface->idata->options = std::make_shared<admmpd::Options>();
+  if (!iface->idata->options) {
+    iface->idata->options = std::make_shared<admmpd::Options>();
+  }
   iface->idata->data = std::make_shared<admmpd::SolverData>();
   iface->idata->obs.reset();
 
@@ -909,6 +919,7 @@ static inline int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, Object *ob
 
   iface->idata->mesh = std::make_shared<admmpd::TetMesh>();
   bool success = iface->idata->mesh->create(
+    iface->idata->options.get(),
     verts.data(),
     nv,
     faces.data(),

@@ -581,7 +581,7 @@ void EmbeddedMeshCollision::linearize(
 	//int nx = x->rows();
 	d->reserve((int)d->size() + np);
 	trips->reserve((int)trips->size() + np*3*4);
-	double eta = std::max(0.0,options->collision_thickness);
+	double eta = 0;//std::max(0.0,options->collision_thickness);
 
 	for (int i=0; i<np; ++i)
 	{
