@@ -20,6 +20,8 @@
 
 #include <stdio.h>
 
+#include <BKE_report.h>
+#include <CLG_log.h>
 #include <Python.h>
 
 #include "MEM_guardedalloc.h"
@@ -43,6 +45,8 @@
 #include "bpy_traceback.h"
 
 #include "../generic/py_capi_utils.h"
+#include "bpy.h"
+#include "bpy_interface_inoutwrapper.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Private Utilities
@@ -96,10 +100,16 @@ static bool python_script_exec(
 
   PyC_MainModule_Backup(&main_mod);
 
-  if (text) {
-    char fn_dummy[FILE_MAXDIR];
-    bpy_text_filename_get(fn_dummy, bmain_old, sizeof(fn_dummy), text);
+  bool wrapper_init_ok = BPY_intern_init_io_wrapper();
+  if (!wrapper_init_ok) {
+    CLOG_WARN(
+        BPY_LOG_RNA,
+        "Setting python IO wrapper failed! Script output will not be visible in Info Editor");
+  }
 
+  char fn_dummy[FILE_MAXDIR];
+  bpy_text_filename_get(fn_dummy, bmain_old, sizeof(fn_dummy), text);
+  if (text) {
     if (text->compiled == NULL) { /* if it wasn't already compiled, do it now */
       char *buf;
       PyObject *fn_dummy_py;
@@ -165,6 +175,31 @@ static bool python_script_exec(
           PyExc_IOError, "Python file \"%s\" could not be opened: %s", fn, strerror(errno));
       py_result = NULL;
     }
+  }
+
+  if (wrapper_init_ok) {
+    /* printing io buffer will fail if error is set */
+    if (PyErr_Occurred()) {
+      PyObject *error_type, *error_value, *error_traceback;
+      PyErr_Fetch(&error_type, &error_value, &error_traceback);
+      PyErr_Clear();
+      PyObject *pystring = BPY_intern_get_io_buffer();
+      BKE_reportf(reports,
+                  RPT_INFO,
+                  "Python output from \"%s\":\n%s",
+                  fn ? fn : fn_dummy,
+                  _PyUnicode_AsString(pystring));
+      PyErr_Restore(error_type, error_value, error_traceback);
+    }
+    else {
+      PyObject *pystring = BPY_intern_get_io_buffer();
+      BKE_reportf(reports,
+                  RPT_INFO,
+                  "Python output from \"%s\":\n%s",
+                  fn ? fn : fn_dummy,
+                  _PyUnicode_AsString(pystring));
+    }
+    BPY_intern_free_io_twrapper();
   }
 
   if (!py_result) {
@@ -246,12 +281,50 @@ static bool bpy_run_string_impl(bContext *C,
 
   py_dict = PyC_DefaultNameSpace("<blender string>");
 
+  bool wrapper_init_ok = BPY_intern_init_io_wrapper();
+  if (!wrapper_init_ok) {
+    CLOG_WARN(
+        BPY_LOG_RNA,
+        "Setting python IO wrapper failed! Script output will not be visible in Info Editor");
+  }
+
   if (imports && (!PyC_NameSpace_ImportArray(py_dict, imports))) {
     Py_DECREF(py_dict);
     retval = NULL;
   }
   else {
     retval = PyRun_String(expr, mode, py_dict, py_dict);
+  }
+
+  if (wrapper_init_ok) {
+    /* printing io buffer will fail if error is set */
+    if (PyErr_Occurred()) {
+      PyObject *error_type, *error_value, *error_traceback;
+      PyErr_Fetch(&error_type, &error_value, &error_traceback);
+      PyErr_Clear();
+      PyObject *pystring = BPY_intern_get_io_buffer();
+      if (pystring != NULL) {
+        BKE_reportf(CTX_wm_reports(C),
+                    RPT_INFO,
+                    "Python output from running: \"%s\":\n%s",
+                    expr,
+                    _PyUnicode_AsString(pystring));
+        Py_DecRef(pystring);
+      }
+      PyErr_Restore(error_type, error_value, error_traceback);
+    }
+    else {
+      PyObject *pystring = BPY_intern_get_io_buffer();
+      if (pystring != NULL) {
+        BKE_reportf(CTX_wm_reports(C),
+                    RPT_INFO,
+                    "Python output from running \"%s\":\n%s",
+                    expr,
+                    _PyUnicode_AsString(pystring));
+        Py_DecRef(pystring);
+      }
+    }
+    BPY_intern_free_io_twrapper();
   }
 
   if (retval == NULL) {

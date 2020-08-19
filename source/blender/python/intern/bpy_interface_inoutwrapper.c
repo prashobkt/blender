@@ -21,11 +21,9 @@
  */
 
 #include <Python.h>
+#include <stdbool.h>
 
-#include "MEM_guardedalloc.h"
-
-#include "BLI_string_utf8.h"
-#include "BLI_utildefines.h"
+#include <BLI_assert.h>
 
 #include "bpy_interface_inoutwrapper.h"
 
@@ -36,21 +34,25 @@ PyObject *stderr_backup = NULL;
 PyObject *string_io_buf = NULL;
 PyObject *string_io_getvalue = NULL;
 
-/* TODO (grzelins) move this whole implementation to bpy_capi_utils? */
 bool BPY_intern_init_io_wrapper()
 {
+  BLI_assert(string_io_mod == NULL);
+  BLI_assert(string_io == NULL);
+  BLI_assert(stderr_backup == NULL);
+  BLI_assert(stdout_backup == NULL);
+  BLI_assert(string_io_buf == NULL);
+  BLI_assert(string_io_getvalue == NULL);
   PyImport_ImportModule("sys");
   stdout_backup = PySys_GetObject("stdout"); /* borrowed */
   stderr_backup = PySys_GetObject("stderr"); /* borrowed */
-  BLI_assert(stderr_backup != NULL);
 
   if (!(string_io_mod = PyImport_ImportModule("io"))) {
     return false;
   }
-  else if (!(string_io = PyObject_CallMethod(string_io_mod, "StringIO", NULL))) {
+  if (!(string_io = PyObject_CallMethod(string_io_mod, "StringIO", NULL))) {
     return false;
   }
-  else if (!(string_io_getvalue = PyObject_GetAttrString(string_io, "getvalue"))) {
+  if (!(string_io_getvalue = PyObject_GetAttrString(string_io, "getvalue"))) {
     return false;
   }
   Py_INCREF(stdout_backup);  // since these were borrowed we don't want them freed when replaced.
@@ -75,13 +77,15 @@ PyObject *BPY_intern_get_io_buffer()
 
 void BPY_intern_free_io_twrapper()
 {
-  Py_DECREF(stdout_backup);  // since these were borrowed we don't want them freed when replaced.
+  Py_DECREF(stdout_backup);
   Py_DECREF(stderr_backup);
   Py_DECREF(string_io_mod);
   Py_DECREF(string_io_getvalue);
-  Py_DECREF(string_io); /* free the original reference */
+  Py_DECREF(string_io);
   stdout_backup = NULL;
   stderr_backup = NULL;
   string_io_buf = NULL;
   string_io_getvalue = NULL;
+  string_io_mod = NULL;
+  string_io = NULL;
 }
