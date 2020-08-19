@@ -119,8 +119,7 @@ layout(std140) uniform globalsBlock
   float sizeEdgeFix;
   float sizeFaceDot;
   float sizeChecker;
-
-  float pad_globalsBlock;
+  float sizeVertexGpencil;
 };
 
 #define sizeViewportInv (sizeViewport.zw)
