@@ -3128,7 +3128,7 @@ SoftBody *sbNew(Scene *scene)
   SoftBody *sb;
   sb = MEM_callocN(sizeof(SoftBody), "softbody");
 
-  sb->solver_mode = SOLVER_MODE_LEGACY;  // SOLVER_MODE_ADMMPD;
+  sb->solver_mode = SOLVER_MODE_LEGACY;
   sb->admmpd_mesh_mode = 0;              // embedded
   sb->admmpd_substeps = 1;
   sb->admmpd_max_admm_iters = 20;
@@ -3148,7 +3148,7 @@ SoftBody *sbNew(Scene *scene)
   sb->admmpd_maxthreads = -1;
   sb->admmpd_loglevel = 1;   // low
   sb->admmpd_linsolver = 1;  // PCG
-  sb->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), "SoftBody_admmpd");
+  //sb->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), "SoftBody_ADMMPD");
 
   sb->mediafrict = 0.5f;
   sb->nodemass = 1.0f;
@@ -3189,6 +3189,7 @@ SoftBody *sbNew(Scene *scene)
 
   sb->shared = MEM_callocN(sizeof(*sb->shared), "SoftBody_Shared");
   sb->shared->pointcache = BKE_ptcache_add(&sb->shared->ptcaches);
+  sb->shared->admmpd_list = MEM_callocN(sizeof(ListBase), "SoftBody_ADMMPD_List");
 
   if (!sb->effector_weights) {
     sb->effector_weights = BKE_effector_add_weights(NULL);
@@ -3209,15 +3210,28 @@ void sbFree(Object *ob)
 
   free_softbody_intern(sb);
 
+  /* Only free shared data on non-CoW copies */
   if ((ob->id.tag & LIB_TAG_NO_MAIN) == 0) {
 
-    if (sb->admmpd) {
-      admmpd_dealloc(sb->admmpd);
-      MEM_freeN(sb->admmpd);
-      sb->admmpd = NULL;
+    /* Clear the ADMMPD linked list. Because the linked
+    * list pointer is copied to all soft body objects, we
+    * want to be careful not to free twice. */
+    {
+      ADMMPDInterfaceData *admmpd;
+      int cleared_admmpd_list = 0;
+      while ((admmpd = BLI_pophead(sb->shared->admmpd_list))) {
+        cleared_admmpd_list = 1;
+        if (admmpd != NULL) {
+          admmpd_dealloc(admmpd);
+          MEM_freeN(admmpd);
+        }
+      }
+      if (cleared_admmpd_list) {
+        MEM_freeN(sb->shared->admmpd_list);
+        sb->shared->admmpd_list = NULL;
+      }
     }
 
-    /* Only free shared data on non-CoW copies */
     BKE_ptcache_free_list(&sb->shared->ptcaches);
     sb->shared->pointcache = NULL;
     MEM_freeN(sb->shared);
@@ -3572,7 +3586,8 @@ static void update_collider_admmpd(Depsgraph *depsgraph,
   if (!sb) {
     return;
   }
-  if (!sb->admmpd) {
+  ADMMPDInterfaceData *admmpd = NULL;//sb->admmpd;//sb->shared->admmpd;
+  if (!admmpd) {
     return;
   }
 
@@ -3635,7 +3650,7 @@ static void update_collider_admmpd(Depsgraph *depsgraph,
   }
 
   // Update via API
-  admmpd_update_obstacles(sb->admmpd, obs_v0, obs_v1, tot_verts, obs_faces, tot_faces);
+  admmpd_update_obstacles(admmpd, obs_v0, obs_v1, tot_verts, obs_faces, tot_faces);
 
   // Cleanup
   MEM_freeN(obs_v0);
@@ -3643,6 +3658,57 @@ static void update_collider_admmpd(Depsgraph *depsgraph,
   MEM_freeN(obs_faces);
   BKE_collision_objects_free(objects);
 }
+
+static inline ADMMPDInterfaceData* get_admmpd_for_object(Object *ob)
+{
+  SoftBody *sb = ob->soft;
+  if (!sb) {
+    return NULL;
+  }
+  int found = 0;
+  int num_list = 0;
+  ADMMPDInterfaceData *admmpd = sb->shared->admmpd_list->first;
+  while (admmpd != NULL) {
+      if (strcmp(admmpd->name,ob->id.name)==0) {
+        found = 1;
+        break;
+      }
+      admmpd = admmpd->next;
+      num_list++;
+  }
+  if (!found) {
+    return NULL;
+  }
+  return admmpd;
+}
+
+void sbCustomCopy(Object *dest, Object *src)
+{
+  (void)(src);
+  SoftBody *sb_dest = dest->soft;
+  if (!sb_dest) {
+    CLOG_ERROR(&LOG, "No softbody in sbCustomCopy");
+    return;
+  }
+  if (!sb_dest->shared) {
+    CLOG_ERROR(&LOG, "No shared in sbCustomCopy");
+    return;
+  }
+
+  /* This can happen on readfile: */
+  if (!sb_dest->shared->admmpd_list) {
+    sb_dest->shared->admmpd_list = MEM_callocN(sizeof(ListBase), "SoftBody_ADMMPD_List");
+  }
+
+  /* Create ADMM-PD data for this object if it does not already exist. */
+  ADMMPDInterfaceData *admmpd = get_admmpd_for_object(dest);
+  if (admmpd==NULL) {
+    admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), "ADMMPD");
+    strcpy(admmpd->name, dest->id.name);
+    BLI_addtail(sb_dest->shared->admmpd_list, admmpd);
+  }
+}
+
 
 void sbCustomRead(struct Object *ob)
 {
@@ -3653,7 +3719,7 @@ void sbCustomRead(struct Object *ob)
 
   // ADMM-PD data is not currently written to file.
   // Instead, we'll create new data when a .blend file is loaded.
-  sb->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), "SoftBody_admmpd");
+  //sb->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), "SoftBody_admmpd");
 }
 
 /* simulates one step. framenr is in frames */
@@ -3670,9 +3736,12 @@ void sbObjectStep(struct Depsgraph *depsgraph,
     return;
   }
 
-  if (sb->admmpd == NULL) {
-    CLOG_ERROR(&LOG, "No ADMM-PD data");
-    WM_reportf(RPT_ERROR, "No ADMM-PD data");
+  ADMMPDInterfaceData *admmpd = NULL;//sb->admmpd;//sb->shared->admmpd;
+  admmpd = get_admmpd_for_object(ob);
+
+  if (admmpd == NULL) {
+    CLOG_ERROR(&LOG, "No ADMM-PD data in sbObjectStep");
+    WM_reportf(RPT_ERROR, "No ADMM-PD data in sbObjectStep");
     return;
   }
 
@@ -3717,15 +3786,15 @@ void sbObjectStep(struct Depsgraph *depsgraph,
      * b) The mesh topology has changed.
      * TODO: ob->obmat or vertexCos change. */
     int init_mesh = 0;
-    if (is_first_frame || admmpd_mesh_needs_update(sb->admmpd, ob)) {
-      init_mesh = admmpd_update_mesh(sb->admmpd, ob, vertexCos);
+    if (is_first_frame || admmpd_mesh_needs_update(admmpd, ob)) {
+      init_mesh = admmpd_update_mesh(admmpd, ob, vertexCos);
       if (init_mesh == 0) {
-        CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
-        WM_reportf(RPT_ERROR, sb->admmpd->last_error);
+        CLOG_ERROR(&LOG, "%s", admmpd->last_error);
+        WM_reportf(RPT_ERROR, admmpd->last_error);
         return;
       }
       else if (init_mesh == -1) {
-        WM_reportf(RPT_WARNING, sb->admmpd->last_error);
+        WM_reportf(RPT_WARNING, admmpd->last_error);
       }
     }
 
@@ -3734,22 +3803,22 @@ void sbObjectStep(struct Depsgraph *depsgraph,
      * b) Some settings require re-initialization
      * c) The mesh has changed */
     int init_solver = 0;
-    if (is_first_frame || init_mesh || admmpd_solver_needs_update(sb->admmpd, scene, ob)) {
-      init_solver = admmpd_update_solver(sb->admmpd, scene, ob, vertexCos);
+    if (is_first_frame || init_mesh || admmpd_solver_needs_update(admmpd, scene, ob)) {
+      init_solver = admmpd_update_solver(admmpd, scene, ob, vertexCos);
       if (init_solver == 0) {
-        CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
-        WM_reportf(RPT_ERROR, sb->admmpd->last_error);
+        CLOG_ERROR(&LOG, "%s", admmpd->last_error);
+        WM_reportf(RPT_ERROR, admmpd->last_error);
         return;
       }
       else if (init_solver == -1) {
-        WM_reportf(RPT_WARNING, sb->admmpd->last_error);
+        WM_reportf(RPT_WARNING, admmpd->last_error);
       }
     }
 
     /* In case of paramter change, ob->soft->bpoint has not
      * been set yet. So we need to resize which can be done
      * in the copy_to_object function while leaving vertexCos to null. */
-    admmpd_copy_to_object(sb->admmpd, ob, NULL);
+    admmpd_copy_to_object(admmpd, ob, NULL);
 
     if (init_mesh || init_solver) {
       BKE_ptcache_invalidate(cache);
@@ -3790,7 +3859,7 @@ void sbObjectStep(struct Depsgraph *depsgraph,
 
     /* first frame, no simulation to do, just set the positions */
     if (sb->solver_mode == SOLVER_MODE_ADMMPD) {
-      admmpd_copy_from_object(sb->admmpd, ob);
+      admmpd_copy_from_object(admmpd, ob);
     }
     else if (sb->solver_mode == SOLVER_MODE_LEGACY) {
       softbody_update_positions(ob, sb, vertexCos, numVerts);
@@ -3816,10 +3885,10 @@ void sbObjectStep(struct Depsgraph *depsgraph,
 
     if (sb->solver_mode == SOLVER_MODE_ADMMPD) {
       /* We have read the cache into softbody, so we need to pass it to ADMM-PD */
-      admmpd_copy_from_object(sb->admmpd, ob);
+      admmpd_copy_from_object(admmpd, ob);
       /* Now that we have the updated ADMM-PD vertices, we have
        * to map them to surface vertices (vertexCos) */
-      admmpd_copy_to_object(sb->admmpd, ob, vertexCos);
+      admmpd_copy_to_object(admmpd, ob, vertexCos);
     }
     else if (sb->solver_mode == SOLVER_MODE_LEGACY) {
       softbody_to_object(ob, vertexCos, numVerts, sb->local);
@@ -3858,17 +3927,17 @@ void sbObjectStep(struct Depsgraph *depsgraph,
   }
 
   if (sb->solver_mode == SOLVER_MODE_ADMMPD) {
-    admmpd_copy_from_object(sb->admmpd, ob);
+    admmpd_copy_from_object(admmpd, ob);
     update_collider_admmpd(depsgraph, sb->collision_group, ob);
-    int solve_retval = admmpd_solve(sb->admmpd, ob, vertexCos);
+    int solve_retval = admmpd_solve(admmpd, ob, vertexCos);
     if (solve_retval == 0) {
-      CLOG_ERROR(&LOG, "%s", sb->admmpd->last_error);
-      WM_reportf(RPT_ERROR, sb->admmpd->last_error);
+      CLOG_ERROR(&LOG, "%s", admmpd->last_error);
+      WM_reportf(RPT_ERROR, admmpd->last_error);
     }
     else if (solve_retval == -1) {
-      WM_reportf(RPT_WARNING, sb->admmpd->last_error);
+      WM_reportf(RPT_WARNING, admmpd->last_error);
     }
-    admmpd_copy_to_object(sb->admmpd, ob, vertexCos);
+    admmpd_copy_to_object(admmpd, ob, vertexCos);
   }
   else if (sb->solver_mode == SOLVER_MODE_LEGACY) {
     softbody_update_positions(ob, sb, vertexCos, numVerts);

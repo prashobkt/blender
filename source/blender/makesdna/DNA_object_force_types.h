@@ -202,6 +202,7 @@ typedef struct ADMMPDInterfaceData ADMMPDInterfaceData;
 typedef struct SoftBody_Shared {
   struct PointCache *pointcache;
   struct ListBase ptcaches;
+  struct ListBase *admmpd_list;
 } SoftBody_Shared;
 
 typedef struct SoftBody {
@@ -212,7 +213,7 @@ typedef struct SoftBody {
   /** Not saved in file. */
   struct BodySpring *bspring;
 
-  struct ADMMPDInterfaceData *admmpd;
+  //struct ADMMPDInterfaceData *admmpd;
 
   /* ADMM-PD settings */
   int solver_mode;               // 0=legacy, 1=admmpd

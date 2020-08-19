@@ -1395,7 +1395,6 @@ Object *BKE_object_add_for_data(
 
 void BKE_object_copy_softbody(struct Object *ob_dst, const struct Object *ob_src, const int flag)
 {
-
   SoftBody *sb = ob_src->soft;
   SoftBody *sbn;
   bool tagged_no_main = ob_dst->id.tag & LIB_TAG_NO_MAIN;
@@ -1407,6 +1406,8 @@ void BKE_object_copy_softbody(struct Object *ob_dst, const struct Object *ob_src
   }
 
   sbn = MEM_dupallocN(sb);
+
+  sbCustomCopy(ob_dst,ob_src);
 
   if ((flag & LIB_ID_COPY_CACHES) == 0) {
     sbn->totspring = sbn->totpoint = 0;

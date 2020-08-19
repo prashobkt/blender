@@ -5684,10 +5684,11 @@ static void direct_link_object(BlendDataReader *reader, Object *ob)
   if (ob->soft) {
     SoftBody *sb = ob->soft;
 
-    sb->bpoint = NULL;  // init pointers so it gets rebuilt nicely
+    /* init pointers so it gets rebuilt nicely */
+    sb->bpoint = NULL;
     sb->bspring = NULL;
     sb->scratch = NULL;
-    sb->admmpd = NULL;
+    //sb->admmpd = NULL;
 
     /* Re-alloc or read custom data structs */
     sbCustomRead(ob);
