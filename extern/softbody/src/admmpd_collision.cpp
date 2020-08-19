@@ -216,9 +216,9 @@ int EmbeddedMeshCollision::detect(
 		Vector3d pt_t0 = td->mesh->get_mapped_facet_vertex(td->x0,vi);
 		Vector3d pt_t1 = td->mesh->get_mapped_facet_vertex(td->x1,vi);
 
-		if (td->options->log_level >= LOGLEVEL_DEBUG) {
-			printf("\tDetecting collisions for emb vertex %d: %f %f %f\n", vi, pt_t1[0], pt_t1[1], pt_t1[2]);
-		}
+//		if (td->options->log_level >= LOGLEVEL_DEBUG) {
+//			printf("\tDetecting collisions for emb vertex %d: %f %f %f\n", vi, pt_t1[0], pt_t1[1], pt_t1[2]);
+//		}
 
 		// Special case, check if we are below the floor
 		if (pt_t1[2] < td->options->floor)
