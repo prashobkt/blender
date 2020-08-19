@@ -3085,8 +3085,6 @@ static void softbody_to_object(Object *ob, float (*vertexCos)[3], int numVerts, 
 {
   SoftBody *sb = ob->soft;
   if (sb) {
-    // int sb_totpt = sb->totpoint;
-
     BodyPoint *bp = sb->bpoint;
     int a;
     if (sb->solverflags & SBSO_ESTIMATEIPO) {
@@ -3129,26 +3127,25 @@ SoftBody *sbNew(Scene *scene)
   sb = MEM_callocN(sizeof(SoftBody), "softbody");
 
   sb->solver_mode = SOLVER_MODE_LEGACY;
-  sb->admmpd_mesh_mode = 0;              // embedded
+  sb->admmpd_mesh_mode = 0; /* Embedded. */
   sb->admmpd_substeps = 1;
   sb->admmpd_max_admm_iters = 20;
   sb->admmpd_self_collision = 0;
-  sb->admmpd_material = 0;  // ARAP
-  sb->admmpd_embed_res = 3;
-  sb->admmpd_converge_eps = 1e-4;
-  sb->admmpd_youngs_exp = 6;
-  sb->admmpd_poisson = 0.399;
-  sb->admmpd_density_kgm3 = 1522;
-  sb->admmpd_ck_exp = 7;
-  sb->admmpd_pk_exp = 4;
+  sb->admmpd_material = 0;  /* ARAP. */
+  sb->admmpd_embed_res = 3; /* Max subdivisions for embedded lattice. */
+  sb->admmpd_converge_eps = 1e-4; /* Solver residual stop condition. */
+  sb->admmpd_youngs_exp = 6; /* Exponent of Young's mod. */
+  sb->admmpd_poisson = 0.399; 
+  sb->admmpd_density_kgm3 = 1522; /* Density of rubber. */
+  sb->admmpd_ck_exp = 7; /* Exponent of collision stiffness. */
+  sb->admmpd_pk_exp = 4; /* Exponent of pin stiffness. */
   sb->admmpd_floor_z = -999;
   sb->admmpd_gravity = -9.8;
-  sb->admmpd_strainlimit_min = 0;    // no compression
-  sb->admmpd_strainlimit_max = 100;  // 100x stretch
-  sb->admmpd_maxthreads = -1;
-  sb->admmpd_loglevel = 1;   // low
-  sb->admmpd_linsolver = 1;  // PCG
-  //sb->admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), "SoftBody_ADMMPD");
+  sb->admmpd_strainlimit_min = 0;    /* 0 = compression allowed. */
+  sb->admmpd_strainlimit_max = 100;  /* 100 = 100x strech allowed. */
+  sb->admmpd_maxthreads = -1; /* Auto detect. */
+  sb->admmpd_loglevel = 1;   /* Low terminal output. */
+  sb->admmpd_linsolver = 1;  /* PCG solver. */
 
   sb->mediafrict = 0.5f;
   sb->nodemass = 1.0f;
@@ -3226,10 +3223,14 @@ void sbFree(Object *ob)
           MEM_freeN(admmpd);
         }
       }
+      /* If we deleted data from the linked list
+      * we can delete the head ptr */
       if (cleared_admmpd_list) {
         MEM_freeN(sb->shared->admmpd_list);
-        sb->shared->admmpd_list = NULL;
       }
+      /* Otherwise we've allready freed, just
+      * set the ptr to NULL */
+      sb->shared->admmpd_list = NULL;
     }
 
     BKE_ptcache_free_list(&sb->shared->ptcaches);
@@ -3618,7 +3619,7 @@ static void update_collider_admmpd(Depsgraph *depsgraph,
   Object **objects = BKE_collision_objects_create(
       depsgraph, vertexowner, collection, &numobjects, eModifierType_Collision);
 
-  // How many faces and vertices do we need to allocate?
+  /* How many faces and vertices do we need to allocate? */
   int tot_verts = 0;
   int tot_faces = 0;
   for (int i = 0; i < numobjects; ++i) {
@@ -3639,7 +3640,7 @@ static void update_collider_admmpd(Depsgraph *depsgraph,
   float *obs_v1 = MEM_callocN(sizeof(float) * 3 * tot_verts, __func__);
   unsigned int *obs_faces = MEM_callocN(sizeof(unsigned int) * 3 * tot_faces, __func__);
 
-  // Copy over vertices and faces
+  /* Copy over vertices and faces */
   int curr_verts = 0;
   int curr_faces = 0;
   for (int i = 0; i < numobjects; ++i) {
@@ -3672,10 +3673,9 @@ static void update_collider_admmpd(Depsgraph *depsgraph,
     }
   }
 
-  // Update via API
+  /* Pass obstacle data to ADMMPD */
   admmpd_update_obstacles(admmpd, obs_v0, obs_v1, tot_verts, obs_faces, tot_faces);
 
-  // Cleanup
   MEM_freeN(obs_v0);
   MEM_freeN(obs_v1);
   MEM_freeN(obs_faces);
@@ -3768,8 +3768,7 @@ void sbObjectStep(struct Depsgraph *depsgraph,
 
     /* Do we need to initialize the ADMM-PD mesh?
      * a) Has never been initialized.
-     * b) The mesh topology has changed.
-     * TODO: ob->obmat or vertexCos change. */
+     * b) The mesh topology has changed. */
     int init_mesh = 0;
     if (is_first_frame || admmpd_mesh_needs_update(admmpd, ob)) {
       init_mesh = admmpd_update_mesh(admmpd, ob, vertexCos);

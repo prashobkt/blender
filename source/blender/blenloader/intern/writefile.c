@@ -1875,7 +1875,7 @@ static void write_object(BlendWriter *writer, Object *ob, const void *id_address
 
     BLO_write_struct(writer, PartDeflect, ob->pd);
     if (ob->soft) {
-      /* Don't write ADMM-PD data. */
+      /* Don't write ADMM-PD data. Just recompute when needed. */
       ListBase *admmpd_list = ob->soft->shared->admmpd_list;
       ob->soft->shared->admmpd_list = NULL;
       /* Set deprecated pointers to prevent crashes of older Blenders */
@@ -1885,7 +1885,7 @@ static void write_object(BlendWriter *writer, Object *ob, const void *id_address
       BLO_write_struct(writer, SoftBody_Shared, ob->soft->shared);
       write_pointcaches(writer, &(ob->soft->shared->ptcaches));
       BLO_write_struct(writer, EffectorWeights, ob->soft->effector_weights);
-      /* Reset the ADMM-PD data pointer */
+      /* Reset the ADMM-PD data pointer. */
       ob->soft->shared->admmpd_list = admmpd_list;
     }
 

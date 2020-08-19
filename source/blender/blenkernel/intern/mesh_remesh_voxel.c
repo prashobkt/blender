@@ -169,11 +169,11 @@ static Mesh *BKE_mesh_remesh_quadriflow(Mesh *input_mesh,
                                         void *update_cb,
                                         void *update_cb_data)
 {
-  /* Ensure that the triangulated mesh data is up to data */
+  /* Ensure that the triangulated mesh data is up to data. */
   BKE_mesh_runtime_looptri_recalc(input_mesh);
   const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(input_mesh);
 
-  /* Gather the required data for export to the internal quadiflow mesh format */
+  /* Gather the required data for export to the internal quadiflow mesh format. */
   MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(input_mesh),
                                   "remesh_looptri");
   BKE_mesh_runtime_verttri_from_looptri(
@@ -199,7 +199,7 @@ static Mesh *BKE_mesh_remesh_quadriflow(Mesh *input_mesh,
     faces[i * 3 + 2] = vt->tri[2];
   }
 
-  /* Fill out the required input data */
+  /* Fill out the required input data. */
   QuadriflowRemeshData qrd;
 
   qrd.totfaces = totfaces;
@@ -217,7 +217,7 @@ static Mesh *BKE_mesh_remesh_quadriflow(Mesh *input_mesh,
 
   qrd.out_faces = NULL;
 
-  /* Run the remesher */
+  /* Run the remesher. */
   QFLOW_quadriflow_remesh(&qrd, update_cb, update_cb_data);
 
   MEM_freeN(verts);
@@ -225,7 +225,7 @@ static Mesh *BKE_mesh_remesh_quadriflow(Mesh *input_mesh,
   MEM_freeN(verttri);
 
   if (qrd.out_faces == NULL) {
-    /* The remeshing was canceled */
+    /* The remeshing was canceled. */
     return NULL;
   }
 
@@ -269,11 +269,11 @@ static Mesh *BKE_mesh_remesh_quadriflow(Mesh *input_mesh,
 #ifdef WITH_TETGEN
 static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh, unsigned int **tets, int *numtets)
 {
-  // Ensure that the triangulated mesh data is up to data
+  /* Ensure that the triangulated mesh data is up to data. */
   BKE_mesh_runtime_looptri_recalc(input_mesh);
   const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(input_mesh);
 
-  // Gather the required data
+  /* Gather the required data. */
   MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(input_mesh),
                                   "remesh_looptri");
   BKE_mesh_runtime_verttri_from_looptri(
@@ -299,7 +299,7 @@ static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh, unsigned int **tets, int *
     faces[i * 3 + 2] = vt->tri[2];
   }
 
-  // Call the tetgen remesher
+  /* Call the tetgen remesher. */
   TetGenRemeshData tg;
   init_tetgenremeshdata(&tg);
   tg.in_totfaces = totfaces;
@@ -319,7 +319,7 @@ static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh, unsigned int **tets, int *
 
   Mesh *mesh = NULL;
   if (success) {
-    // Construct the new output mesh
+    /* Construct the new output mesh. */
     mesh = BKE_mesh_new_nomain(tg.out_totverts, 0, 0, (tg.out_totfacets * 3), tg.out_totfacets);
 
     for (int i = 0; i < tg.out_totverts; i++) {
@@ -341,10 +341,9 @@ static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh, unsigned int **tets, int *
     *numtets = tg.out_tottets;
     *tets = (unsigned int *)MEM_malloc_arrayN(
         tg.out_tottets * 4, sizeof(unsigned int), "remesh_output_tets");
-    //*tets = (unsigned int *)malloc(tg.out_tottets*4*sizeof(unsigned int));
     memcpy(*tets, tg.out_tets, tg.out_tottets * 4 * sizeof(unsigned int));
 
-  }  // end success
+  }
 
   if (tg.out_verts != NULL) {
     MEM_freeN(tg.out_verts);
@@ -383,11 +382,11 @@ static Mesh *BKE_mesh_remesh_tetlattice(struct Mesh *input_mesh,
                                         int *numtets)
 {
 
-  // Ensure that the triangulated mesh data is up to data
+  /* Ensure that the triangulated mesh data is up to data. */
   BKE_mesh_runtime_looptri_recalc(input_mesh);
   const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(input_mesh);
 
-  // Gather the required data
+  /* Gather the required data. */
   MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(input_mesh),
                                   "remesh_looptri");
   BKE_mesh_runtime_verttri_from_looptri(
@@ -436,7 +435,7 @@ static Mesh *BKE_mesh_remesh_tetlattice(struct Mesh *input_mesh,
     int nt = *numtets;
     int nf = *numtets * 4;
 
-    // Construct the new output mesh
+    /* Construct the new output mesh. */
     mesh = BKE_mesh_new_nomain(out_totverts, 0, 0, (nf*3), nf);
 
     for (int i = 0; i < out_totverts; i++) {
@@ -469,7 +468,7 @@ static Mesh *BKE_mesh_remesh_tetlattice(struct Mesh *input_mesh,
       }
     }
 
-  }  // end success
+  }
   BKE_mesh_calc_edges(mesh, false, false);
   BKE_mesh_calc_normals(mesh);
 
