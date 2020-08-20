@@ -45,8 +45,8 @@ set(SRC
  intern/gpencil_io_export_svg.cc
 
  gpencil_io_exporter.h
- intern/gpencil_io_export_svg.h
-intern/gpencil_io_export_base.h
+ intern/gpencil_io_export_svg.hh
+intern/gpencil_io_export_base.hh
 )
 
 set(LIB
