@@ -279,7 +279,7 @@ def main():
          [ModifierSpec('build', 'BUILD', {'frame_start': 0, 'frame_duration': 1})]],
 
         ["CurveDecimate", "testObjBezierCurveDecimate", "expObjBezierCurveDecimate",
-         [ModifierSpec('decimate', 'DECIMATE', {'ratio':0.5})]],
+         [ModifierSpec('decimate', 'DECIMATE', {'ratio': 0.5})]],
 
         ["CurveEdgeSplit", "testObjBezierCurveEdgeSplit", "expObjBezierCurveEdgeSplit",
          [ModifierSpec('edgeSplit', 'EDGE_SPLIT', {})]],
@@ -291,7 +291,7 @@ def main():
          [ModifierSpec('screw', 'SCREW', {})]],
 
         ["CurveSolidify", "testObjBezierCurveSolidify", "expObjBezierCurveSolidify",
-         [ModifierSpec('solidify', 'SOLIDIFY', {'thickness':1})]],
+         [ModifierSpec('solidify', 'SOLIDIFY', {'thickness': 1})]],
 
         ["CurveSubSurf", "testObjBezierCurveSubSurf", "expObjBezierCurveSubSurf",
          [ModifierSpec('subSurf', 'SUBSURF', {})]],
@@ -320,7 +320,6 @@ def main():
         ["CurveSimpleDeform", "testObjBezierCurveSimpleDeform", "expObjBezierCurveSimpleDeform",
          [ModifierSpec('simple_deform', 'SIMPLE_DEFORM', {'angle': math.radians(90)})]],
 
-
         ["CurveSmooth", "testObjBezierCurveSmooth", "expObjBezierCurveSmooth",
          [ModifierSpec('smooth', 'SMOOTH', {'factor': 10})]],
 
@@ -329,10 +328,6 @@ def main():
 
         ["CurveCurve", "testObjBezierCurveCurve", "expObjBezierCurveCurve",
          [ModifierSpec('curve_Curve', 'CURVE', {'object': bpy.data.objects['NurbsCurve']})]],
-
-
-
-
 
     ]
 

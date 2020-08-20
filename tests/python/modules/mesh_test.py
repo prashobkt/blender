@@ -45,7 +45,6 @@ import functools
 import inspect
 import os
 
-
 # Output from this module and from blender itself will occur during tests.
 # We need to flush python so that the output is properly interleaved, otherwise
 # blender's output for one test will end up showing in the middle of another test...
@@ -147,6 +146,7 @@ class DeformModifierSpec:
     Holds a list of deform modifier and OperatorSpecObjectMode.
     For deform modifiers which have an object operator
     """
+
     def __init__(self, frame_number: int, modifier_list: list, object_operator_spec: OperatorSpecObjectMode = None):
         """
         Constructs a Deform Modifier spec (for user input)
@@ -169,16 +169,17 @@ class MeshTest:
     the public method run_test().
     """
 
-    def __init__(self, test_name: str, test_object_name: str, expected_object_name: str, operations_stack=None, apply_modifiers=False, threshold=None):
+    def __init__(self, test_name: str, test_object_name: str, expected_object_name: str, operations_stack=None,
+                 apply_modifiers=False, threshold=None):
         """
         Constructs a MeshTest object. Raises a KeyError if objects with names expected_object_name
         or test_object_name don't exist.
         :param test_name: str - unique test name identifier.
-        :param test_object: str - Name of object of mesh type to run the operations on.
-        :param expected_object: str - Name of object of mesh type that has the expected
+        :param test_object_name: str - Name of object of mesh type to run the operations on.
+        :param expected_object_name: str - Name of object of mesh type that has the expected
                                 geometry after running the operations.
         :param operations_stack: list - stack holding operations to perform on the test_object.
-        :param apply_modifier: bool - True if we want to apply the modifiers right after adding them to the object.
+        :param apply_modifiers: bool - True if we want to apply the modifiers right after adding them to the object.
                                     - True if we want to apply the modifier to a list of modifiers, after some operation.
                                This affects operations of type ModifierSpec and DeformModifierSpec.
         :param threshold : exponent: To allow variations and accept difference to a certain degree.
@@ -294,7 +295,7 @@ class MeshTest:
                 try:
                     # We want to set the attribute only when we have reached the last setting
                     # Applying of intermediate settings is meaningless.
-                    if i == len(nested_settings_path)-1:
+                    if i == len(nested_settings_path) - 1:
                         setattr(modifier, setting, modifier_parameters)
 
                     else:
@@ -466,7 +467,6 @@ class MeshTest:
         mesh_operator = getattr(bpy.ops.mesh, operator.operator_name)
 
         try:
-            mesh_operator(**operator.operator_parameters)
             retval = mesh_operator(**operator.operator_parameters)
         except AttributeError:
             raise AttributeError("bpy.ops.mesh has no attribute {}".format(operator.operator_name))
@@ -488,7 +488,6 @@ class MeshTest:
         object_operator = getattr(bpy.ops.object, operator.operator_name)
 
         try:
-            object_operator(**operator.operator_parameters)
             retval = object_operator(**operator.operator_parameters)
         except AttributeError:
             raise AttributeError("bpy.ops.mesh has no attribute {}".format(operator.operator_name))
@@ -554,7 +553,7 @@ class MeshTest:
             if isinstance(operation, ModifierSpec):
                 self._add_modifier(evaluated_test_object, operation)
                 if self.apply_modifier:
-                    self._apply_modifier(evaluated_test_object,operation.modifier_name)
+                    self._apply_modifier(evaluated_test_object, operation.modifier_name)
 
             elif isinstance(operation, OperatorSpecEditMode):
                 self._apply_operator(evaluated_test_object, operation)
@@ -660,7 +659,7 @@ class OperatorTest:
         len_test = len(self.operator_tests)
         count = 0
         # Finding the index of the test to match the "test name"
-        for index,_ in enumerate(self.operator_tests):
+        for index, _ in enumerate(self.operator_tests):
             if test_name == self.operator_tests[index][2]:
                 case = self.operator_tests[index]
                 break
@@ -782,7 +781,7 @@ class ModifierTest:
             if test_name == self.modifier_tests[index][0]:
                 case = self.modifier_tests[index]
                 break
-            count = count+1
+            count = count + 1
         if count == len_test:
             raise Exception("No test {} found!".format(test_name))
 
@@ -895,7 +894,7 @@ class DeformModifierTest:
             if test_name == self.deform_tests[index].test_name:
                 case = self.deform_tests[index]
                 break
-            count = count+1
+            count = count + 1
 
         if count == len_test:
             raise Exception('No test called {} found!'.format(test_name))
