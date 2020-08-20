@@ -3473,6 +3473,7 @@ static void outliner_draw_highlights_recursive(const ARegion *region,
   LISTBASE_FOREACH (TreeElement *, te, lb) {
     const TreeStoreElem *tselem = TREESTORE(te);
     const int start_y = *io_start_y;
+    const int end_x = (int)region->v2d.cur.xmax;
 
     /* selection status */
     if ((tselem->flag & TSE_ACTIVE) && (tselem->flag & TSE_SELECTED)) {
@@ -3485,7 +3486,6 @@ static void outliner_draw_highlights_recursive(const ARegion *region,
 
     /* highlights */
     if (tselem->flag & (TSE_DRAG_ANY | TSE_HIGHLIGHTED | TSE_SEARCHMATCH)) {
-      const int end_x = (int)region->v2d.cur.xmax;
 
       if (tselem->flag & TSE_DRAG_ANY) {
         /* drag and drop highlight */
@@ -3532,6 +3532,11 @@ static void outliner_draw_highlights_recursive(const ARegion *region,
                                          col_searchmatch,
                                          start_x + UI_UNIT_X,
                                          io_start_y);
+    }
+    else if (outliner_find_element_with_flag(&te->subtree, TSE_ACTIVE)) {
+      /* Parent highlight for active element in collapsed subtree. */
+      immUniformColor4fv(col_highlight);
+      immRecti(pos, 0, start_y, end_x, start_y + UI_UNIT_Y);
     }
   }
 }
