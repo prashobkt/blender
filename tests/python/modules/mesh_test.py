@@ -98,14 +98,14 @@ class ParticleSystemSpec:
                " with parameters: " + str(self.modifier_parameters) + " with frame end: " + str(self.frame_end)
 
 
-class OperatorSpec:
+class OperatorSpecEditMode:
     """
     Holds one operator and its parameters.
     """
 
     def __init__(self, operator_name: str, operator_parameters: dict, select_mode: str, selection: set):
         """
-        Constructs an operatorSpec. Raises ValueError if selec_mode is invalid.
+        Constructs an OperatorSpecEditMode. Raises ValueError if selec_mode is invalid.
         :param operator_name: str - name of mesh operator from bpy.ops.mesh, e.g. "bevel" or "fill"
         :param operator_parameters: dict - {name : val} dictionary containing operator parameters.
         :param select_mode: str - mesh selection mode, must be either 'VERT', 'EDGE' or 'FACE'
@@ -123,10 +123,10 @@ class OperatorSpec:
                " in selection mode: " + self.select_mode + ", selecting " + str(self.selection)
 
 
-class ObjectOperatorSpec:
+class OperatorSpecObjectMode:
     """
     Holds an object operator and its parameters. Helper class for DeformModifierSpec.
-    Needed to support operations in Object Mode and not Edit Mode which is supported by OperatorSpec.
+    Needed to support operations in Object Mode and not Edit Mode which is supported by OperatorSpecEditMode.
     """
 
     def __init__(self, operator_name: str, operator_parameters: dict):
@@ -144,15 +144,15 @@ class ObjectOperatorSpec:
 
 class DeformModifierSpec:
     """
-    Holds a list of deform modifier and ObjectOperatorSpec.
+    Holds a list of deform modifier and OperatorSpecObjectMode.
     For deform modifiers which have an object operator
     """
-    def __init__(self, frame_number: int, modifier_list: list, object_operator_spec: ObjectOperatorSpec = None):
+    def __init__(self, frame_number: int, modifier_list: list, object_operator_spec: OperatorSpecObjectMode = None):
         """
         Constructs a Deform Modifier spec (for user input)
         :param frame_number: int - the frame at which animated keyframe is inserted
         :param modifier_list: ModifierSpec - contains modifiers
-        :param object_operator_spec: ObjectOperatorSpec - contains object operators
+        :param object_operator_spec: OperatorSpecObjectMode - contains object operators
         """
         self.frame_number = frame_number
         self.modifier_list = modifier_list
@@ -187,11 +187,11 @@ class MeshTest:
         if operations_stack is None:
             operations_stack = []
         for operation in operations_stack:
-            if not (isinstance(operation, ModifierSpec) or isinstance(operation, OperatorSpec)
-                    or isinstance(operation, ObjectOperatorSpec) or isinstance(operation, DeformModifierSpec)
+            if not (isinstance(operation, ModifierSpec) or isinstance(operation, OperatorSpecEditMode)
+                    or isinstance(operation, OperatorSpecObjectMode) or isinstance(operation, DeformModifierSpec)
                     or isinstance(operation, ParticleSystemSpec)):
                 raise ValueError("Expected operation of type {} or {} or {} or {}. Got {}".
-                                 format(type(ModifierSpec), type(OperatorSpec),
+                                 format(type(ModifierSpec), type(OperatorSpecEditMode),
                                         type(DeformModifierSpec), type(ParticleSystemSpec),
                                         type(operation)))
         self.operations_stack = operations_stack
@@ -238,10 +238,10 @@ class MeshTest:
         if self.verbose:
             print("Added modifier {}".format(modifier_spec))
 
-    def add_operator_to_stack(self, operator_spec: OperatorSpec):
+    def add_operator_to_stack(self, operator_spec: OperatorSpecEditMode):
         """
         Adds an operator to the operations stack.
-        :param operator_spec: OperatorSpec - operator to add to the operations stack.
+        :param operator_spec: OperatorSpecEditMode - operator to add to the operations stack.
         """
         self.operations_stack.append(operator_spec)
 
@@ -435,11 +435,11 @@ class MeshTest:
         if self.apply_modifier:
             self._apply_modifier(test_object, particle_sys_spec.modifier_name)
 
-    def _apply_operator(self, test_object, operator: OperatorSpec):
+    def _apply_operator(self, test_object, operator: OperatorSpecEditMode):
         """
         Apply operator on test object.
         :param test_object: bpy.types.Object - Blender object to apply operator on.
-        :param operator: OperatorSpec - OperatorSpec object with parameters.
+        :param operator: OperatorSpecEditMode - OperatorSpecEditMode object with parameters.
         """
         mesh = test_object.data
         bpy.ops.object.mode_set(mode='EDIT')
@@ -480,7 +480,7 @@ class MeshTest:
 
         bpy.ops.object.mode_set(mode='OBJECT')
 
-    def _apply_object_operator(self, operator: ObjectOperatorSpec):
+    def _apply_object_operator(self, operator: OperatorSpecObjectMode):
         """
         Applies the object operator.
         """
@@ -516,7 +516,7 @@ class MeshTest:
                 self._add_modifier(test_object, modifier_operations)
                 modifier_names.append(modifier_operations.modifier_name)
 
-        if isinstance(object_operations, ObjectOperatorSpec):
+        if isinstance(object_operations, OperatorSpecObjectMode):
             self._apply_object_operator(object_operations)
 
         print("NAME", list(test_object.modifiers))
@@ -556,10 +556,10 @@ class MeshTest:
                 if self.apply_modifier:
                     self._apply_modifier(evaluated_test_object,operation.modifier_name)
 
-            elif isinstance(operation, OperatorSpec):
+            elif isinstance(operation, OperatorSpecEditMode):
                 self._apply_operator(evaluated_test_object, operation)
 
-            elif isinstance(operation, ObjectOperatorSpec):
+            elif isinstance(operation, OperatorSpecObjectMode):
                 self._apply_object_operator(operation)
 
             elif isinstance(operation, DeformModifierSpec):
@@ -570,8 +570,8 @@ class MeshTest:
 
             else:
                 raise ValueError("Expected operation of type {} or {} or {} or {}. Got {}".
-                                 format(type(ModifierSpec), type(OperatorSpec),
-                                        type(ObjectOperatorSpec), type(ParticleSystemSpec), type(operation)))
+                                 format(type(ModifierSpec), type(OperatorSpecEditMode),
+                                        type(OperatorSpecObjectMode), type(ParticleSystemSpec), type(operation)))
 
         # Compare resulting mesh with expected one.
         if self.verbose:
@@ -679,7 +679,7 @@ class OperatorTest:
         operator_name = case[5]
         operator_parameters = case[6]
 
-        operator_spec = OperatorSpec(operator_name, operator_parameters, select_mode, selection)
+        operator_spec = OperatorSpecEditMode(operator_name, operator_parameters, select_mode, selection)
 
         test = MeshTest(test_name, test_object_name, expected_object_name)
         test.add_operator_to_stack(operator_spec)
@@ -859,7 +859,7 @@ class DeformModifierTest:
         Construct a deform modifier test.
         Each test is made up of a MeshTest Class with its parameters
         :param: deform_test: list: List of modifiers can be added.
-                                 Tt consists of a ModifierSpec and ObjectOperatorSpec
+                                 Tt consists of a ModifierSpec and OperatorSpecObjectMode
         """
         self.deform_tests = deform_tests
         self._check_for_unique_test_name()
