@@ -138,7 +138,7 @@ template<> mpq_class math_abs(const mpq_class v)
 
 template<> double math_abs(const double v)
 {
-  return std::abs(v);
+  return fabs(v);
 }
 
 /* Find an output index corresponding to a given coordinate (appproximately).
@@ -150,7 +150,7 @@ template<typename T> int get_vertex_by_coord(const CDT_result<T> &out, double x,
   for (int i = 0; i < nv; ++i) {
     double vx = math_to_double(out.vert[i][0]);
     double vy = math_to_double(out.vert[i][1]);
-    if (std::abs(vx - x) <= 1e-5 && std::abs(vy - y) <= 1e-5) {
+    if (fabs(vx - x) <= 1e-5 && fabs(vy - y) <= 1e-5) {
       return i;
     }
   }

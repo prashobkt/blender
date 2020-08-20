@@ -101,7 +101,7 @@ struct double2 {
 
   static double2 abs(const double2 &a)
   {
-    return double2(std::abs(a.x), std::abs(a.y));
+    return double2(fabsf(a.x), fabsf(a.y));
   }
 
   static double distance(const double2 &a, const double2 &b)

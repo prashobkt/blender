@@ -48,7 +48,7 @@ template<> mpq_class math_abs<mpq_class>(const mpq_class v)
 
 template<> double math_abs<double>(const double v)
 {
-  return std::abs(v);
+  return fabs(v);
 }
 
 template<typename T> double math_to_double(const T UNUSED(v))
