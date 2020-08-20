@@ -1384,7 +1384,7 @@ static void OVERLAY_volume_extra(OVERLAY_ExtraCallBuffers *cb,
                               CFRA >= fds->point_cache[0]->startframe);
 
   /* Show gridlines only for slices without interpolation */
-  const bool show_gridlines = (fds->show_gridlines &&
+  const bool show_gridlines = (fds->show_gridlines && fds->fluid &&
                                fds->axis_slice_method == AXIS_SLICE_SINGLE &&
                                (fds->interp_method == VOLUME_INTERP_CLOSEST ||
                                 fds->coba_field == FLUID_DOMAIN_FIELD_FLAGS));
