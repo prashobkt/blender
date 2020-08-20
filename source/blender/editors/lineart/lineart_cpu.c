@@ -2439,6 +2439,9 @@ LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *scene)
     rb->shift_x = rb->shift_y = 0.0f;
   }
   else {
+    if (!scene || !scene->camera) {
+      return NULL;
+    }
     Camera *c = scene->camera->data;
     copy_v3db_v3fl(rb->camera_pos, scene->camera->obmat[3]);
     copy_m4_m4(rb->cam_obmat, scene->camera->obmat);
@@ -3482,7 +3485,7 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
   SceneLineart *lineart = &scene->lineart;
   int intersections_only = 0; /* Not used right now, but preserve for future. */
 
-  if ((lineart->flags & LRT_AUTO_UPDATE) == 0) {
+  if ((lineart->flags & LRT_AUTO_UPDATE) == 0 || !scene->camera) {
     /* Release lock when early return. */
     BLI_spin_unlock(&lineart_share.lock_loader);
     return OPERATOR_CANCELLED;
