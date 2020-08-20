@@ -3855,7 +3855,7 @@ static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op)
     ED_lineart_calculation_flag_set(LRT_RENDER_IDLE);
 
     BKE_scene_frame_set(scene, frame);
-    BKE_scene_graph_update_for_newframe(dg, CTX_data_main(C));
+    BKE_scene_graph_update_for_newframe(dg);
 
     ED_lineart_update_render_progress((int)((float)(frame - frame_begin) / frame_total * 100),
                                       NULL);
@@ -3928,7 +3928,7 @@ static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op)
 
   /* Restore original frame. */
   BKE_scene_frame_set(scene, frame_orig);
-  BKE_scene_graph_update_for_newframe(dg, CTX_data_main(C));
+  BKE_scene_graph_update_for_newframe(dg);
 
   ED_lineart_modifier_sync_flag_set(LRT_SYNC_IDLE, false);
   ED_lineart_calculation_flag_set(LRT_RENDER_FINISHED);
