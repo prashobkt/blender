@@ -35,8 +35,7 @@ void main()
   float line_distance = distance(stipplePos_f, stippleStart_f) / max(dd.x, dd.y);
 
   if (lineStyle == OVERLAY_UV_LINE_STYLE_OUTLINE) {
-    vec4 base_color = vec4(1.0);
-    inner_color = mix(base_color, colorEdgeSelect, selectionFac_f);
+    inner_color = mix(colorWireEdit, colorEdgeSelect, selectionFac_f);
     outer_color = vec4(vec3(0.0), 1.0);
   }
   else if (lineStyle == OVERLAY_UV_LINE_STYLE_DASH) {
