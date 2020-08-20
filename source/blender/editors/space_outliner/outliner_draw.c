@@ -2897,6 +2897,23 @@ static void outliner_draw_active_highlight(const float minx,
   GPU_blend(true); /* Roundbox disables. */
 }
 
+/* Draw a rounded rectangle behind icons of active elements. */
+static void outliner_draw_active_indicator(const float minx,
+                                           const float miny,
+                                           const float maxx,
+                                           const float maxy,
+                                           const float icon_color[4],
+                                           const float icon_border[4])
+{
+  const float ufac = UI_UNIT_X / 20.0f;
+  const float radius = UI_UNIT_Y / 4.0f;
+
+  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  UI_draw_roundbox_aa(true, minx, miny + ufac, maxx, maxy - ufac, radius, icon_color);
+  UI_draw_roundbox_aa(false, minx, miny + ufac, maxx, maxy - ufac, radius, icon_border);
+  GPU_blend(GPU_BLEND_ALPHA); /* Roundbox disables. */
+}
+
 static void outliner_draw_iconrow_doit(uiBlock *block,
                                        TreeElement *te,
                                        const uiFontStyle *fstyle,
