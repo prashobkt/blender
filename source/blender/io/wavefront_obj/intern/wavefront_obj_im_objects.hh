@@ -137,6 +137,7 @@ class Geometry {
   int64_t vertex_index(const int64_t index) const;
   int64_t tot_verts() const;
   Span<FaceElement> face_elements() const;
+  const FaceElement &ith_face_element(const int64_t index) const;
   int64_t tot_face_elems() const;
   bool use_vertex_groups() const;
   Span<MEdge> edges() const;

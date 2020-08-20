@@ -71,6 +71,7 @@ class MeshFromGeometry : NonMovable, NonCopyable {
   }
 
  private:
+  std::pair<int64_t, int64_t> tessellate_polygons(Vector<FaceElement> &new_faces);
   void create_vertices();
   void create_polys_loops();
   void create_edges();

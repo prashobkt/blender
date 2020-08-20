@@ -77,6 +77,11 @@ Span<FaceElement> Geometry::face_elements() const
   return face_elements_;
 }
 
+const FaceElement &Geometry::ith_face_element(const int64_t index) const
+{
+  return face_elements_[index];
+}
+
 int64_t Geometry::tot_face_elems() const
 {
   return face_elements_.size();

@@ -30,12 +30,14 @@
 #include "BKE_object_deform.h"
 
 #include "BLI_map.hh"
+#include "BLI_set.hh"
 #include "BLI_vector_set.hh"
 
 #include "DNA_customdata_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
+#include "mesh_utils.hh"
 #include "wavefront_obj_im_mesh.hh"
 
 namespace blender::io::obj {
@@ -53,10 +55,14 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
   if (ob_name.empty()) {
     ob_name = "Untitled";
   }
+  Vector<FaceElement> new_faces;
+  const auto [removed_faces, removed_loops]{tessellate_polygons(new_faces)};
+
   const int64_t tot_verts_object{mesh_geometry_.tot_verts()};
   const int64_t tot_edges{mesh_geometry_.tot_edges()};
-  const int64_t tot_face_elems{mesh_geometry_.tot_face_elems()};
-  const int64_t tot_loops{mesh_geometry_.tot_loops()};
+  const int64_t tot_face_elems{mesh_geometry_.tot_face_elems() - removed_faces +
+                               3 * new_faces.size()};
+  const int64_t tot_loops{mesh_geometry_.tot_loops() - removed_loops + 3 * new_faces.size()};
 
   blender_mesh_.reset(
       BKE_mesh_new_nomain(tot_verts_object, tot_edges, 0, tot_loops, tot_face_elems));
@@ -84,12 +90,83 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
                           true);
 }
 
+std::pair<int64_t, int64_t> MeshFromGeometry::tessellate_polygons(Vector<FaceElement> &r_new_faces)
+{
+  int64_t removed_faces = 0;
+  int64_t removed_loops = 0;
+
+  Set<std::pair<int, int>> fgon_edges;
+  for (const FaceElement &curr_face : mesh_geometry_.face_elements()) {
+    if (curr_face.shaded_smooth) {  // should be valid/invalid
+      Vector<int> face_vert_indices;
+      Vector<int> face_uv_indices;
+      Vector<int> face_normal_indices;
+      face_vert_indices.reserve(curr_face.face_corners.size());
+      face_uv_indices.reserve(curr_face.face_corners.size());
+      face_normal_indices.reserve(curr_face.face_corners.size());
+      for (const FaceCorner &corner : curr_face.face_corners) {
+        face_vert_indices.append(corner.vert_index);
+        face_normal_indices.append(corner.vertex_normal_index);
+        face_uv_indices.append(corner.uv_vert_index);
+        removed_loops++;
+      }
+
+      Vector<Vector<int>> new_polygon_indices = ngon_tessellate(global_vertices_.vertices,
+                                                                face_vert_indices);
+      for (Span<int> triangle : new_polygon_indices) {
+        r_new_faces.append({curr_face.vertex_group,
+                            curr_face.shaded_smooth,
+                            {{face_vert_indices[triangle[0]],
+                              face_uv_indices[triangle[0]],
+                              face_normal_indices[triangle[0]]},
+                             {face_vert_indices[triangle[1]],
+                              face_uv_indices[triangle[1]],
+                              face_normal_indices[triangle[1]]},
+                             {face_vert_indices[triangle[2]],
+                              face_uv_indices[triangle[2]],
+                              face_normal_indices[triangle[2]]}}});
+      }
+      if (new_polygon_indices.size() > 1) {
+        Set<std::pair<int, int>> edge_users;
+        for (Span<int> triangle : new_polygon_indices) {
+          int prev_vidx = face_vert_indices[triangle.last()];
+          for (const int ngidx : triangle) {
+            int vidx = face_vert_indices[ngidx];
+            if (vidx == prev_vidx) {
+              continue;
+            }
+            std::pair<int, int> edge_key = {min_ii(prev_vidx, vidx), max_ii(prev_vidx, vidx)};
+            prev_vidx = vidx;
+            if (edge_users.contains(edge_key)) {
+              fgon_edges.add(edge_key);
+            }
+            else{
+              edge_users.add(edge_key);
+            }
+          }
+        }
+      }
+    }
+
+    removed_faces++;
+  }
+
+  return std::make_pair(removed_faces, removed_loops);
+}
+
 void MeshFromGeometry::create_vertices()
 {
   const int64_t tot_verts_object{mesh_geometry_.tot_verts()};
   for (int i = 0; i < tot_verts_object; ++i) {
-    copy_v3_v3(blender_mesh_->mvert[i].co,
-               global_vertices_.vertices[mesh_geometry_.vertex_index(i)]);
+    if (mesh_geometry_.vertex_index(i) < global_vertices_.vertices.size()) {
+      copy_v3_v3(blender_mesh_->mvert[i].co,
+                 global_vertices_.vertices[mesh_geometry_.vertex_index(i)]);
+    }
+    else {
+      std::cerr << "Vertex index:" << mesh_geometry_.vertex_index(i)
+                << " larger than total vertices:" << global_vertices_.vertices.size() << " ."
+                << std::endl;
+    }
   }
 }
 
@@ -114,7 +191,13 @@ void MeshFromGeometry::create_polys_loops()
   int tot_loop_idx = 0;
 
   for (int poly_idx = 0; poly_idx < tot_face_elems; ++poly_idx) {
-    const FaceElement &curr_face = mesh_geometry_.face_elements()[poly_idx];
+    const FaceElement &curr_face = mesh_geometry_.ith_face_element(poly_idx);
+    if (curr_face.face_corners.size() < 3) {
+      /* Don't add single vertex face, or edges. */
+      std::cerr << "Face with less than 3 vertices found, skipping." << std::endl;
+      continue;
+    }
+
     MPoly &mpoly = blender_mesh_->mpoly[poly_idx];
     mpoly.totloop = curr_face.face_corners.size();
     mpoly.loopstart = tot_loop_idx;
@@ -126,8 +209,12 @@ void MeshFromGeometry::create_polys_loops()
       MLoop &mloop = blender_mesh_->mloop[tot_loop_idx];
       tot_loop_idx++;
       mloop.v = curr_corner.vert_index;
-      normal_float_to_short_v3(blender_mesh_->mvert[mloop.v].no,
-                               global_vertices_.vertex_normals[curr_corner.vertex_normal_index]);
+      /* Set normals to silence mesh validate zero normals warnings. */
+      if (curr_corner.vertex_normal_index >= 0 &&
+          curr_corner.vertex_normal_index < global_vertices_.vertex_normals.size()) {
+        normal_float_to_short_v3(blender_mesh_->mvert[mloop.v].no,
+                                 global_vertices_.vertex_normals[curr_corner.vertex_normal_index]);
+      }
 
       if (blender_mesh_->dvert) {
         /* Iterating over mloop results in finding the same vertex multiple times.
@@ -188,9 +275,8 @@ void MeshFromGeometry::create_uv_verts()
 
   for (const FaceElement &curr_face : mesh_geometry_.face_elements()) {
     for (const FaceCorner &curr_corner : curr_face.face_corners) {
-      if (curr_corner.uv_vert_index >= 0) {
-        /* Current corner's UV vertex index indices into current object's UV vertex indices, which
-         * index into global list of UV vertex coordinates. */
+      if (curr_corner.uv_vert_index >= 0 &&
+          curr_corner.uv_vert_index < global_vertices_.uv_vertices.size()) {
         const float2 &mluv_src = global_vertices_.uv_vertices[curr_corner.uv_vert_index];
         copy_v2_v2(mluv_dst[tot_loop_idx].uv, mluv_src);
         tot_loop_idx++;
