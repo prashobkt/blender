@@ -26,7 +26,7 @@ from random import shuffle, seed
 seed(0)
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from modules.mesh_test import OperatorTest, OperatorSpec
+from modules.mesh_test import OperatorTest
 
 # Central vertical loop of Suzanne
 MONKEY_LOOP_VERT = {68, 69, 71, 73, 74, 75, 76, 77, 90, 129, 136, 175, 188, 189, 198, 207,
@@ -157,7 +157,7 @@ def main():
             break
         elif cmd == "--run-test":
             operators_test.apply_modifiers = False
-            name = str(command[i + 1])
+            name = command[i + 1]
             operators_test.run_test(name)
             break
 
