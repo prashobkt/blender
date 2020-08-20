@@ -828,6 +828,7 @@ static void ui_offset_panel_block(uiBlock *block)
 void ui_panel_set_search_filter_match(struct Panel *panel, const bool value)
 {
   SET_FLAG_FROM_TEST(panel->runtime_flag, value, PNL_SEARCH_FILTER_MATCHES);
+  // SET_FLAG_FROM_TEST(panel->flag, !value, PNL_CLOSED);
 }
 
 static void panel_matches_search_filter_recursive(const Panel *panel, bool *filter_matches)
