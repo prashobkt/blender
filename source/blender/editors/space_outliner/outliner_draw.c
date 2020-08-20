@@ -3535,8 +3535,7 @@ static void outliner_draw_highlights_recursive(const ARegion *region,
     }
     else if (outliner_find_element_with_flag(&te->subtree, TSE_ACTIVE)) {
       /* Parent highlight for active element in collapsed subtree. */
-      immUniformColor4fv(col_highlight);
-      immRecti(pos, 0, start_y, end_x, start_y + UI_UNIT_Y);
+      draw_line_highlight(0, start_y, end_x, start_y + UI_UNIT_Y, col_highlight);
     }
   }
 }
