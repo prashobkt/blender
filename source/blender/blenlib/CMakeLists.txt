@@ -62,7 +62,6 @@ set(SRC
   intern/astar.c
   intern/bitmap.c
   intern/bitmap_draw_2d.c
-  intern/boolean.cc
   intern/boxpack_2d.c
   intern/buffer.c
   intern/convexhull_2d.c
@@ -105,6 +104,7 @@ set(SRC
   intern/math_vector.c
   intern/math_vector_inline.c
   intern/memory_utils.c
+  intern/mesh_boolean.cc
   intern/mesh_intersect.cc
   intern/noise.c
   intern/path_util.c
@@ -160,7 +160,6 @@ set(SRC
   BLI_bitmap.h
   BLI_bitmap_draw_2d.h
   BLI_blenlib.h
-  BLI_boolean.hh
   BLI_boxpack_2d.h
   BLI_buffer.h
   BLI_color.hh
@@ -238,6 +237,7 @@ set(SRC
   BLI_memory_utils.h
   BLI_memory_utils.hh
   BLI_mempool.h
+  BLI_mesh_boolean.hh
   BLI_mesh_intersect.hh
   BLI_mpq2.hh
   BLI_mpq3.hh
@@ -373,7 +373,6 @@ if(WITH_GTESTS)
     tests/BLI_array_store_test.cc
     tests/BLI_array_test.cc
     tests/BLI_array_utils_test.cc
-    tests/BLI_boolean_test.cc
     tests/BLI_delaunay_2d_test.cc
     tests/BLI_disjoint_set_test.cc
     tests/BLI_edgehash_test.cc
@@ -398,6 +397,7 @@ if(WITH_GTESTS)
     tests/BLI_math_vector_test.cc
     tests/BLI_memiter_test.cc
     tests/BLI_memory_utils_test.cc
+    tests/BLI_mesh_boolean_test.cc
     tests/BLI_mesh_intersect_test.cc
     tests/BLI_multi_value_map_test.cc
     tests/BLI_path_util_test.cc

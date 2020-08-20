@@ -35,7 +35,7 @@
 #  include "BLI_vector.hh"
 #  include "BLI_vector_set.hh"
 
-#  include "BLI_boolean.hh"
+#  include "BLI_mesh_boolean.hh"
 
 namespace blender::meshintersect {
 

@@ -9,7 +9,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.hh"
-#include "BLI_boolean.hh"
+#include "BLI_mesh_boolean.hh"
 #include "BLI_map.hh"
 #include "BLI_math_mpq.hh"
 #include "BLI_mpq3.hh"
