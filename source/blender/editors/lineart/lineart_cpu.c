@@ -2429,8 +2429,12 @@ LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *scene)
     rb->cam_is_persp = (c->type == CAM_PERSP);
     rb->near_clip = c->clip_start;
     rb->far_clip = c->clip_end;
-    rb->shift_x = c->shiftx;
-    rb->shift_y = c->shifty;
+    rb->w = scene->r.xsch;
+    rb->h = scene->r.ysch;
+
+    double asp = ((double)rb->w / (double)rb->h);
+    rb->shift_x = (asp >= 1) ? c->shiftx : c->shiftx * asp;
+    rb->shift_y = (asp <= 1) ? c->shifty : c->shifty * asp;
   }
 
   rb->angle_splitting_threshold = scene->lineart.angle_splitting_threshold;
@@ -3472,9 +3476,6 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
   ED_lineart_calculation_flag_set(LRT_RENDER_RUNNING);
 
   lineart_share.render_buffer_shared = rb;
-
-  rb->w = scene->r.xsch;
-  rb->h = scene->r.ysch;
 
   rb->triangle_size = lineart_triangle_size_get(rb, scene);
 
