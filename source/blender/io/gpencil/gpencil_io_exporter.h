@@ -39,21 +39,21 @@ struct GpencilExportParams {
   /** Export mode.  */
   uint16_t mode;
   /** Start frame.  */
-  double frame_start;
+  int32_t frame_start;
   /** End frame.  */
-  double frame_end;
-  /** File subfix. */
-  char file_subfix[5];
+  int32_t frame_end;
   /* Current frame. */
   int32_t framenum;
   /** Flags. */
   uint32_t flag;
   /** Select mode */
   uint16_t select;
+  /** File subfix. */
+  char file_subfix[5];
   /** Stroke sampling. */
   float stroke_sample;
   /** Row and cols of storyboard. */
-  int page_layout[2];
+  int32_t page_layout[2];
   /** Page type (Landscape/Portrait). */
   uint16_t page_type;
   /** Paper size in pixels. */

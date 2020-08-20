@@ -46,7 +46,7 @@
 using blender::io::gpencil::GpencilExporterSVG;
 
 /* Check if frame is included. */
-static bool is_keyframe_selected(bContext *C, bGPdata *gpd, int framenum, bool use_markers)
+static bool is_keyframe_selected(bContext *C, bGPdata *gpd, int32_t framenum, bool use_markers)
 {
   if (!use_markers) {
     /* Check if exist a frame. */
@@ -130,7 +130,7 @@ static bool gpencil_io_export_storyboard(Depsgraph *depsgraph,
   }
 
   /* Calc paper sizes. */
-  const int blocks[2] = {iparams->page_layout[0], iparams->page_layout[1]};
+  const int32_t blocks[2] = {iparams->page_layout[0], iparams->page_layout[1]};
   float frame_box[2];
   float render_ratio[2];
 
@@ -146,16 +146,16 @@ static bool gpencil_io_export_storyboard(Depsgraph *depsgraph,
   const float gap[2] = {frame_box[0] / ((float)blocks[0] + 1.0f), ysize};
   float frame_offset[2] = {gap[0], gap[1]};
 
-  uint8_t col = 1;
-  uint8_t row = 1;
-  uint8_t page = 1;
+  uint16_t col = 1;
+  uint16_t row = 1;
+  uint16_t page = 1;
   bool header = true;
   bool pending_save = false;
-  uint8_t shot = 0;
+  uint16_t shot = 0;
 
   const bool use_markers = ((iparams->flag & GP_EXPORT_MARKERS) != 0);
 
-  for (int i = iparams->frame_start; i < iparams->frame_end + 1; i++) {
+  for (int32_t i = iparams->frame_start; i < iparams->frame_end + 1; i++) {
     if (is_keyframe_selected(iparams->C, gpd_eval, i, use_markers)) {
       continue;
     }
@@ -238,7 +238,7 @@ bool gpencil_io_export(const char *filename, GpencilExportParams *iparams)
     done |= gpencil_io_export_frame(&exporter, iparams, no_offset, true, true, true);
   }
   else {
-    int oldframe = (int)DEG_get_ctime(depsgraph);
+    int32_t oldframe = (int32_t)DEG_get_ctime(depsgraph);
 
     done |= gpencil_io_export_storyboard(depsgraph, scene, ob, filename, iparams);
 

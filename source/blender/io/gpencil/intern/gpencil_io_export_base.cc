@@ -71,7 +71,7 @@ GpencilExporter::GpencilExporter(const struct GpencilExportParams *iparams)
   frame_ratio_[0] = frame_ratio_[1] = 1.0f;
   zero_v2(frame_offset_);
 
-  copy_v2_v2_int(params_.page_layout, iparams->page_layout);
+  copy_v2_v2_int((int *)params_.page_layout, (int *)iparams->page_layout);
   params_.page_type = iparams->page_type;
   copy_v2_v2(params_.paper_size, iparams->paper_size);
   params_.text_type = iparams->text_type;
