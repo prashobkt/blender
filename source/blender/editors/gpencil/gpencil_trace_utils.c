@@ -349,7 +349,7 @@ void ED_gpencil_trace_data_to_strokes(Main *bmain,
       }
     }
     /* Resample stroke. */
-    BKE_gpencil_stroke_sample(gps, sample, false);
+    BKE_gpencil_stroke_sample(gps, MAX2(sample, 0.001f), false);
     /* Update geometry. */
     BKE_gpencil_stroke_geometry_update(gps);
 
