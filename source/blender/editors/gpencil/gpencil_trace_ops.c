@@ -13,9 +13,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2008, Blender Foundation
- * This is a new part of Blender
- * Operator for converting Grease Pencil data to geometry
+ * The Original Code is Copyright (C) 2020 Blender Foundation
+ * All rights reserved.
  */
 
 /** \file
@@ -81,9 +80,9 @@ static bool gpencil_trace_image(
   const float threshold = RNA_float_get(op->ptr, "threshold");
   const float scale = RNA_float_get(op->ptr, "scale");
   const float sample = RNA_float_get(op->ptr, "sample");
-  const int resolution = RNA_int_get(op->ptr, "resolution");
-  const int thickness = RNA_int_get(op->ptr, "thickness");
-  const int turnpolicy = RNA_enum_get(op->ptr, "turnpolicy");
+  const int32_t resolution = RNA_int_get(op->ptr, "resolution");
+  const int32_t thickness = RNA_int_get(op->ptr, "thickness");
+  const int32_t turnpolicy = RNA_enum_get(op->ptr, "turnpolicy");
 
   ImBuf *ibuf;
   void *lock;
@@ -120,7 +119,7 @@ static bool gpencil_trace_image(
   ED_gpencil_trace_bitmap_free(bm);
 
   /* Convert the trace to strokes. */
-  int offset[2];
+  int32_t offset[2];
   offset[0] = ibuf->x / 2;
   offset[1] = ibuf->y / 2;
 
@@ -166,7 +165,7 @@ static int gpencil_trace_image_exec(bContext *C, wmOperator *op)
   Image *image = (Image *)ob_active->data;
   bool ob_created = false;
 
-  const int frame_target = CFRA;
+  const int32_t frame_target = CFRA;
   Object *ob_gpencil = (Object *)RNA_pointer_get(op->ptr, "target").data;
 
   /* Create a new grease pencil object. */

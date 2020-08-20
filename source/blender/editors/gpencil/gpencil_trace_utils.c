@@ -13,8 +13,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2008, Blender Foundation
- * This is a new part of Blender
+ * The Original Code is Copyright (C) 2020 Blender Foundation
+ * All rights reserved.
  */
 
 /** \file
@@ -52,10 +52,10 @@
  */
 void ED_gpencil_trace_bitmap_print(FILE *f, const potrace_bitmap_t *bm)
 {
-  int x, y;
-  int xx, yy;
-  int d;
-  int sw, sh;
+  int32_t x, y;
+  int32_t xx, yy;
+  int32_t d;
+  int32_t sw, sh;
 
   sw = bm->w < 79 ? bm->w : 79;
   sh = bm->w < 79 ? bm->h : bm->h * sw * 44 / (79 * bm->w);
@@ -82,10 +82,10 @@ void ED_gpencil_trace_bitmap_print(FILE *f, const potrace_bitmap_t *bm)
  * \param h: Height in pixels
  * \return: Trace bitmap
  */
-potrace_bitmap_t *ED_gpencil_trace_bitmap_new(int w, int h)
+potrace_bitmap_t *ED_gpencil_trace_bitmap_new(int32_t w, int32_t h)
 {
   potrace_bitmap_t *bm;
-  int dy = (w + BM_WORDBITS - 1) / BM_WORDBITS;
+  int32_t dy = (w + BM_WORDBITS - 1) / BM_WORDBITS;
 
   bm = (potrace_bitmap_t *)MEM_mallocN(sizeof(potrace_bitmap_t), __func__);
   if (!bm) {
@@ -121,9 +121,9 @@ void ED_gpencil_trace_bitmap_free(const potrace_bitmap_t *bm)
  */
 void ED_gpencil_trace_bitmap_invert(const potrace_bitmap_t *bm)
 {
-  int dy = bm->dy;
-  int y;
-  int i;
+  int32_t dy = bm->dy;
+  int32_t y;
+  int32_t i;
   potrace_word *p;
 
   if (dy < 0) {
@@ -144,7 +144,7 @@ void ED_gpencil_trace_bitmap_invert(const potrace_bitmap_t *bm)
  * \param idx: Index of the pixel
  * \return: RGBA value
  */
-static void pixel_at_index(const ImBuf *ibuf, const int idx, float r_col[4])
+static void pixel_at_index(const ImBuf *ibuf, const int32_t idx, float r_col[4])
 {
   BLI_assert(idx < (ibuf->x * ibuf->y));
 
@@ -171,25 +171,25 @@ void ED_gpencil_trace_image_to_bitmap(ImBuf *ibuf,
                                       const float threshold)
 {
   float rgba[4];
-  int pixel = 0;
+  int32_t pixel = 0;
 
-  for (int y = 0; y < ibuf->y; y++) {
-    for (int x = 0; x < ibuf->x; x++) {
+  for (uint32_t y = 0; y < ibuf->y; y++) {
+    for (uint32_t x = 0; x < ibuf->x; x++) {
       pixel = (ibuf->x * y) + x;
       pixel_at_index(ibuf, pixel, rgba);
       /* Get a BW color. */
       mul_v3_fl(rgba, rgba[3]);
       float color = (rgba[0] + rgba[1] + rgba[2]) / 3.0f;
-      int bw = (color > threshold) ? 0 : 1;
+      int32_t bw = (color > threshold) ? 0 : 1;
       BM_PUT(bm, x, y, bw);
     }
   }
 }
 
 /* Helper to add point to stroke. */
-static void add_point(bGPDstroke *gps, float scale, int offset[2], float x, float y)
+static void add_point(bGPDstroke *gps, float scale, int32_t offset[2], float x, float y)
 {
-  int idx = gps->totpoints;
+  int32_t idx = gps->totpoints;
   if (gps->totpoints == 0) {
     gps->points = MEM_callocN(sizeof(bGPDspoint), "gp_stroke_points");
   }
@@ -209,8 +209,8 @@ static void add_point(bGPDstroke *gps, float scale, int offset[2], float x, floa
 /* helper to generate all points of curve. */
 static void add_bezier(bGPDstroke *gps,
                        float scale,
-                       int offset[2],
-                       int resolution,
+                       int32_t offset[2],
+                       int32_t resolution,
                        float bcp1[2],
                        float bcp2[2],
                        float bcp3[2],
@@ -220,7 +220,7 @@ static void add_bezier(bGPDstroke *gps,
   const float step = 1.0f / (float)(resolution - 1);
   float a = 0.0f;
 
-  for (int i = 0; i < resolution; i++) {
+  for (int32_t i = 0; i < resolution; i++) {
     if ((!skip) || (i > 0)) {
       float fpt[3];
       interp_v2_v2v2v2v2_cubic(fpt, bcp1, bcp2, bcp3, bcp4, a);
@@ -246,18 +246,18 @@ void ED_gpencil_trace_data_to_strokes(Main *bmain,
                                       potrace_state_t *st,
                                       Object *ob,
                                       bGPDframe *gpf,
-                                      int offset[2],
+                                      int32_t offset[2],
                                       const float scale,
                                       const float sample,
-                                      const int resolution,
-                                      const int thickness)
+                                      const int32_t resolution,
+                                      const int32_t thickness)
 {
   /* Find materials and create them if not found.  */
-  int mat_fill_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Stroke");
-  int mat_mask_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Mask");
+  int32_t mat_fill_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Stroke");
+  int32_t mat_mask_idx = BKE_gpencil_material_find_index_by_name_prefix(ob, "Mask");
 
   const float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-  int r_idx;
+  int32_t r_idx;
   /* Stroke and Fill material. */
   if (mat_fill_idx == -1) {
     Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob, "Stroke", &r_idx);
@@ -302,7 +302,7 @@ void ED_gpencil_trace_data_to_strokes(Main *bmain,
     start_point[0] = c[n - 1][2].x;
     start_point[1] = c[n - 1][2].y;
 
-    for (int i = 0; i < n; i++) {
+    for (int32_t i = 0; i < n; i++) {
       switch (tag[i]) {
         case POTRACE_CORNER: {
           if (gps->totpoints == 0) {

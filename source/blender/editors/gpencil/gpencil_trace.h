@@ -13,7 +13,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2009 Blender Foundation.
+ * The Original Code is Copyright (C) 2020 Blender Foundation.
  * All rights reserved.
  */
 
@@ -33,7 +33,7 @@ struct Object;
 
 #include "potracelib.h"
 
-/* Macros for writing individual bitmap pixels. */
+/* Potrace macros for writing individual bitmap pixels. */
 #define BM_WORDSIZE ((int)sizeof(potrace_word))
 #define BM_WORDBITS (8 * BM_WORDSIZE)
 #define BM_HIBIT (((potrace_word)1) << (BM_WORDBITS - 1))
@@ -58,7 +58,7 @@ struct Object;
 
 void ED_gpencil_trace_bitmap_print(FILE *f, const potrace_bitmap_t *bm);
 
-potrace_bitmap_t *ED_gpencil_trace_bitmap_new(int w, int h);
+potrace_bitmap_t *ED_gpencil_trace_bitmap_new(int32_t w, int32_t h);
 void ED_gpencil_trace_bitmap_free(const potrace_bitmap_t *bm);
 void ED_gpencil_trace_bitmap_invert(const potrace_bitmap_t *bm);
 
@@ -70,10 +70,10 @@ void ED_gpencil_trace_data_to_strokes(struct Main *bmain,
                                       potrace_state_t *st,
                                       struct Object *ob,
                                       struct bGPDframe *gpf,
-                                      int offset[2],
+                                      int32_t offset[2],
                                       const float scale,
                                       const float sample,
-                                      const int resolution,
-                                      const int thickness);
+                                      const int32_t resolution,
+                                      const int32_t thickness);
 
 #endif /* __GPENCIL_TRACE_H__ */
