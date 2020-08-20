@@ -40,7 +40,7 @@ void main()
 
   float half_size = sizeEdge;
   /* Enlarge edge for outline drawing. */
-  half_size += (lineStyle == OVERLAY2D_LINE_STYLE_OUTLINE) ? max(sizeEdge, 1.0) : 0.0;
+  half_size += (lineStyle == OVERLAY_UV_LINE_STYLE_OUTLINE) ? max(sizeEdge, 1.0) : 0.0;
   /* Add 1 px for AA */
   if (doSmoothWire) {
     half_size += 0.5;
