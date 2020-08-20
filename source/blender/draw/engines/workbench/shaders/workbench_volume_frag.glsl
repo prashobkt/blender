@@ -97,11 +97,13 @@ vec4 sample_tricubic(sampler3D ima, vec3 co)
   return color;
 }
 
+/* Nearest-neighbor interpolation */
 vec4 sample_closest(sampler3D ima, vec3 co)
 {
-  vec3 texture_size = vec3(textureSize(ima, 0).xyz);
-  vec3 texel_center = co - mod(co, 1.0 / texture_size) + 0.5 / texture_size;
-  return texture(ima, texel_center);
+  /* Unnormalize coordinates */
+  ivec3 cell_co = ivec3(co * vec3(textureSize(ima, 0).xyz));
+
+  return texelFetch(ima, cell_co, 0);
 }
 
 vec4 flag_to_color(uint flag)
