@@ -1666,6 +1666,7 @@ typedef enum eLineartMainFlags {
   LRT_INTERSECTION_AS_CONTOUR = (1 << 7),
   LRT_EVERYTHING_AS_CONTOUR = (1 << 8),
   LRT_ALLOW_DUPLI_OBJECTS = (1 << 9),
+  LRT_ALLOW_OVERLAPPING_EDGES = (1 << 10),
 } eLineartMainFlags;
 
 typedef struct SceneLineart {

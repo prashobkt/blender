@@ -7348,7 +7348,14 @@ static void rna_def_scene_lineart(BlenderRNA *brna)
       prop,
       "Duplicated Objects",
       "Allow particle objects and face/vertiex duplication to show in line art");
-  /* Also use this update callback to trigger the modifier to clear the frame */
+  RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
+
+  prop = RNA_def_property(srna, "allow_overlapping_edges", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", LRT_ALLOW_OVERLAPPING_EDGES);
+  RNA_def_property_boolean_default(prop, 1);
+  RNA_def_property_ui_text(prop,
+                           "Allow Overlapping Edges",
+                           "Allow lines from edge split to show properly, may run slower.");
   RNA_def_property_update(prop, NC_SCENE, "rna_lineart_update");
 
   prop = RNA_def_property(srna, "crease_threshold", PROP_FLOAT, PROP_NONE);

@@ -756,6 +756,7 @@ class RENDER_PT_lineart_line_types(RenderButtonsPanel, Panel):
 
         layout.label(text="Extras:")
         layout.prop(lineart, "allow_duplication")
+        layout.prop(lineart, "allow_overlapping_edges")
 
 
 class RENDER_PT_lineart_baking(RenderButtonsPanel, Panel):

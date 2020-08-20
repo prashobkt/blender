@@ -288,6 +288,10 @@ typedef struct LineartSharedResource {
   /* We only allocate once for all */
   LineartRenderBuffer *render_buffer_shared;
 
+  /* Don't put this in render buffer as the checker function doesn't have rb pointer, this design
+   * is for performance. */
+  char allow_overlapping_edges;
+
   /* cache */
   struct BLI_mempool *mp_sample;
   struct BLI_mempool *mp_line_strip;

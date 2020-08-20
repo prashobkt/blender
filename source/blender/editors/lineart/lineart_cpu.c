@@ -1678,6 +1678,22 @@ static int lineart_triangle_has_edge(const LineartRenderTriangle *rt, const Line
   if (rt->rl[0] == rl || rt->rl[1] == rl || rt->rl[2] == rl) {
     return 1;
   }
+  if (lineart_share.allow_overlapping_edges) {
+#define LRT_TRI_SAME_POINT(rt, i, pt) \
+  ((LRT_DOUBLE_CLOSE_ENOUGH(rt->rl[i]->l->gloc[0], pt->gloc[0]) && \
+    LRT_DOUBLE_CLOSE_ENOUGH(rt->rl[i]->l->gloc[1], pt->gloc[1]) && \
+    LRT_DOUBLE_CLOSE_ENOUGH(rt->rl[i]->l->gloc[2], pt->gloc[2])) || \
+   (LRT_DOUBLE_CLOSE_ENOUGH(rt->rl[i]->r->gloc[0], pt->gloc[0]) && \
+    LRT_DOUBLE_CLOSE_ENOUGH(rt->rl[i]->r->gloc[1], pt->gloc[1]) && \
+    LRT_DOUBLE_CLOSE_ENOUGH(rt->rl[i]->r->gloc[2], pt->gloc[2])))
+    if ((LRT_TRI_SAME_POINT(rt, 0, rl->l) || LRT_TRI_SAME_POINT(rt, 1, rl->l) ||
+         LRT_TRI_SAME_POINT(rt, 2, rl->l)) &&
+        (LRT_TRI_SAME_POINT(rt, 0, rl->r) || LRT_TRI_SAME_POINT(rt, 1, rl->r) ||
+         LRT_TRI_SAME_POINT(rt, 2, rl->r))) {
+      return 1;
+    }
+#undef LRT_TRI_SAME_POINT
+  }
   return 0;
 }
 
@@ -2453,6 +2469,8 @@ LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *scene)
   BLI_spin_init(&rb->lock_task);
   BLI_spin_init(&rb->render_data_pool.lock_mem);
 
+  lineart_share.allow_overlapping_edges = (scene->lineart.flags & LRT_ALLOW_OVERLAPPING_EDGES) !=
+                                          0;
   return rb;
 }
 
