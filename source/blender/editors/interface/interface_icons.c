@@ -462,7 +462,7 @@ DEF_ICON_VECTOR_COLORSET_DRAW_NTH(20, 19)
 #  undef DEF_ICON_VECTOR_COLORSET_DRAW_NTH
 
 static void vicon_collection_color_draw(
-    short color, int x, int y, int UNUSED(w), int UNUSED(), float UNUSED(alpha))
+    short color, int x, int y, int UNUSED(w), int UNUSED(h), float UNUSED(alpha))
 {
   bTheme *btheme = UI_GetTheme();
   const ThemeCollectionColor *collection_color = &btheme->collection_color[color - 1];
