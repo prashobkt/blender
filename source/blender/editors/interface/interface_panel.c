@@ -861,6 +861,19 @@ bool UI_panel_is_active(const Panel *panel)
   return panel->runtime_flag & PNL_ACTIVE;
 }
 
+/**
+ * Uses the panel's search filter flag to set its expansion,
+ * activating animation if it was closed or opened.
+ */
+void UI_panel_set_expansion_from_seach_filter(const bContext *C, Panel *panel)
+{
+  short start_flag = panel->flag;
+  SET_FLAG_FROM_TEST(panel->flag, !UI_panel_matches_search_filter(panel), PNL_CLOSED);
+  if (start_flag != panel->flag) {
+    panel_activate_state(C, panel, PANEL_STATE_ANIMATION);
+  }
+}
+
 /**************************** drawing *******************************/
 
 /* triangle 'icon' for panel header */

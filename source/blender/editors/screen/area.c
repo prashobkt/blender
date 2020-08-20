@@ -496,6 +496,9 @@ void ED_region_do_layout(bContext *C, ARegion *region)
 
   UI_SetTheme(area ? area->spacetype : 0, at->regionid);
   at->layout(C, region);
+
+  /* Clear temporary update flag. */
+  region->flag &= ~RGN_FLAG_SEARCH_FILTER_UPDATE;
 }
 
 /* only exported for WM */
@@ -761,6 +764,8 @@ char *ED_area_search_filter_get(const bContext *C)
 
 void ED_region_search_filter_update(const bContext *C, ARegion *region)
 {
+  region->flag |= RGN_FLAG_SEARCH_FILTER_UPDATE;
+
   const char *search_filter = ED_area_search_filter_get(C);
   SET_FLAG_FROM_TEST(region->flag, search_filter[0] != '\0', RGN_FLAG_SEARCH_FILTER_ACTIVE);
 }
@@ -2892,6 +2897,16 @@ void ED_region_panels_layout_ex(const bContext *C,
                     em,
                     unique_panel_str,
                     false);
+    }
+  }
+
+  if (region->flag & RGN_FLAG_SEARCH_FILTER_UPDATE &&
+      region->flag & RGN_FLAG_SEARCH_FILTER_ACTIVE) {
+    LISTBASE_FOREACH (Panel *, panel, &region->panels) {
+      if (panel->type == NULL || (panel->type->flag & PNL_NO_HEADER)) {
+        continue; /* Some panels don't have a type. */
+      }
+      UI_panel_set_expansion_from_seach_filter(C, panel);
     }
   }
 

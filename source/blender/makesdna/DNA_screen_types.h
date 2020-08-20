@@ -690,6 +690,12 @@ enum {
   RGN_FLAG_HIDDEN_BY_USER = (1 << 7),
   /** Property search filter is active. */
   RGN_FLAG_SEARCH_FILTER_ACTIVE = (1 << 8),
+  /**
+   * Update the expansion of the region's panels and switch contexts. Only Set
+   * temporarily when the search filter is updated so that interactions are still
+   * interactive, cleared at the end of the region's layout pass.
+   */
+  RGN_FLAG_SEARCH_FILTER_UPDATE = (1 << 9),
 };
 
 /** #ARegion.do_draw */

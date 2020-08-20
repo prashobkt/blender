@@ -396,7 +396,7 @@ static void property_search_all_tabs(const bContext *C,
     UI_blocklist_free(C_copy, &region_copy->uiblocks);
   }
 
-  if (!current_tab_has_search_match) {
+  if (!current_tab_has_search_match && main_region->flag & RGN_FLAG_SEARCH_FILTER_UPDATE) {
     property_search_move_to_next_tab_with_results(sbuts, context_tabs_array, tabs_tot);
   }
 
@@ -412,7 +412,7 @@ static void buttons_main_region_layout(const bContext *C, ARegion *region)
   /* draw entirely, view changes should be handled here */
   SpaceProperties *sbuts = CTX_wm_space_properties(C);
 
-  if (sbuts->search_string != NULL && sbuts->search_string[0] != '\0') {
+  if (region->flag & RGN_FLAG_SEARCH_FILTER_ACTIVE) {
     property_search_all_tabs(C, sbuts, region);
   }
   else {
