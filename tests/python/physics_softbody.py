@@ -31,7 +31,8 @@ def main():
     test = [
 
         ["SoftBodySimple", "testSoftBody", "expectedSoftBody",
-         [ModifierSpec('Softbody', 'SOFT_BODY', {'settings': {'use_goal': False, 'bend': 8, 'pull': 0.8, 'push': 0.8}}, 45)]],
+         [ModifierSpec('Softbody', 'SOFT_BODY', {'settings': {'use_goal': False, 'bend': 8, 'pull': 0.8, 'push': 0.8}},
+                       45)]],
     ]
     soft_body_test = ModifierTest(test)
 

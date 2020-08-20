@@ -33,7 +33,6 @@ def main():
         ["ParticleInstanceSimple", "testParticleInstance", "expectedParticleInstance",
          [ModifierSpec('ParticleInstance', 'PARTICLE_INSTANCE', {'object': bpy.data.objects['Cube']})]],
 
-
     ]
     particle_instance_test = ModifierTest(test, threshold=1e-3)
 
