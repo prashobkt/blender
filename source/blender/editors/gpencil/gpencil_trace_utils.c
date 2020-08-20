@@ -348,10 +348,9 @@ void ED_gpencil_trace_data_to_strokes(Main *bmain,
           break;
       }
     }
-    /* Resample stroke. */
+    /* Resample stroke. Don't need to call to BKE_gpencil_stroke_geometry_update() because
+     * the sample function already call that. */
     BKE_gpencil_stroke_sample(gps, MAX2(sample, 0.001f), false);
-    /* Update geometry. */
-    BKE_gpencil_stroke_geometry_update(gps);
 
     path = path->next;
   }
