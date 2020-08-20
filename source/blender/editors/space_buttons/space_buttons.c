@@ -310,6 +310,35 @@ static void main_region_layout_current_context(const bContext *C,
   }
 }
 
+static void property_search_move_to_next_tab_with_results(SpaceProperties *sbuts,
+                                                          const int *context_tabs_array,
+                                                          const int tabs_len)
+{
+  int current_tab_index = 0;
+  for (int i = 0; i < tabs_len; i++) {
+    if (sbuts->mainb == context_tabs_array[i]) {
+      current_tab_index = i;
+      break;
+    }
+  }
+
+  /* Try the tabs after the current tab. */
+  for (int i = current_tab_index; i < tabs_len; i++) {
+    if (sbuts->context_search_filter_active & (1 << i)) {
+      sbuts->mainbuser = context_tabs_array[i];
+      return;
+    }
+  }
+
+  /* Try the tabs before the current tab. */
+  for (int i = 0; i < current_tab_index; i++) {
+    if (sbuts->context_search_filter_active & (1 << i)) {
+      sbuts->mainbuser = context_tabs_array[i];
+      return;
+    }
+  }
+}
+
 static void property_search_all_tabs(const bContext *C,
                                      SpaceProperties *sbuts,
                                      ARegion *main_region)
@@ -327,6 +356,8 @@ static void property_search_all_tabs(const bContext *C,
 
   int context_tabs_array[32];
   int tabs_tot = ED_buttons_tabs_list(sbuts, context_tabs_array);
+
+  bool current_tab_has_search_match = false;
 
   /* Loop through the tabs added to the properties editor. */
   for (int i = 0; i < tabs_tot; i++) {
@@ -354,12 +385,19 @@ static void property_search_all_tabs(const bContext *C,
     }
     if (tab_has_search_match) {
       sbuts->context_search_filter_active |= (1 << i);
+      if (use_actual_region) {
+        current_tab_has_search_match = tab_has_search_match;
+      }
     }
 
     /* Free data created during the layout process. */
     UI_region_panels_remove_handlers(C_copy, region_copy);
     BKE_area_region_panels_free(&region_copy->panels);
     UI_blocklist_free(C_copy, &region_copy->uiblocks);
+  }
+
+  if (!current_tab_has_search_match) {
+    property_search_move_to_next_tab_with_results(sbuts, context_tabs_array, tabs_tot);
   }
 
   BKE_area_region_free(CTX_wm_area(C_copy)->type, region_copy);
