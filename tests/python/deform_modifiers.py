@@ -64,7 +64,7 @@ tests = [
                                  [ModifierSpec('hook2', 'HOOK', {'object': bpy.data.objects["Empty.001"],
                                                                 'vertex_group': 'hook_vg'}),
                                  ModifierSpec('laplace', 'LAPLACIANDEFORM', {'vertex_group': 'laplace_vg'})],
-                                 ObjectOperatorSpec('laplaciandeform_bind', {'modifier':'laplace'}))]),
+                                 ObjectOperatorSpec('laplaciandeform_bind', {'modifier': 'laplace'}))]),
 
 
     MeshTest("WarpPlane", "testObjPlaneWarp", "expObjPlaneWarp",
@@ -77,12 +77,12 @@ tests = [
     #############################################
     MeshTest("CurveArmature", "testObjBezierCurveArmature", "expObjBezierCurveArmature",
              [DeformModifierSpec(10, [ModifierSpec('curve_armature', 'ARMATURE',
-                                                   {'object': bpy.data.objects['testArmatureHelper'],'use_vertex_groups': False, 'use_bone_envelopes': True})])]),
+                                                   {'object': bpy.data.objects['testArmatureHelper'],
+                                                    'use_vertex_groups': False, 'use_bone_envelopes': True})])]),
 
     MeshTest("CurveLattice", "testObjBezierCurveLattice", "expObjBezierCurveLattice",
              [DeformModifierSpec(10, [ModifierSpec('curve_lattice', 'LATTICE',
                                                    {'object': bpy.data.objects['testLatticeCurve']})])]),
-
 
     # HOOK for Curves can't be tested with current framework, as it requires going to Edit Mode to select vertices,
     # here is no equivalent of a vertex group in Curves.
@@ -90,13 +90,10 @@ tests = [
     MeshTest("CurveHook", "testObjBezierCurveHook", "expObjBezierCurveHook",
              [DeformModifierSpec(10, [ModifierSpec('curve_Hook', 'HOOK', {'object': bpy.data.objects['EmptyCurve']})])]),
 
-
-
     MeshTest("MeshDeformCurve", "testObjCurveMeshDeform", "expObjCurveMeshDeform",
              [DeformModifierSpec(10, [ModifierSpec('mesh_deform_curve', 'MESH_DEFORM', {'object': bpy.data.objects["Cylinder"],
                                                                                   'precision': 2})],
                                  ObjectOperatorSpec('meshdeform_bind', {'modifier': 'mesh_deform_curve'}))]),
-
 
     MeshTest("WarpCurve", "testObjBezierCurveWarp", "expObjBezierCurveWarp",
              [DeformModifierSpec(10, [ModifierSpec('warp_curve', 'WARP',
@@ -114,6 +111,6 @@ for i, cmd in enumerate(command):
         break
     elif cmd == "--run-test":
         deform_tests.apply_modifiers = False
-        name = str(command[i + 1])
+        name = command[i + 1]
         deform_tests.run_test(name)
         break

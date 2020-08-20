@@ -43,7 +43,7 @@ def main():
             break
         elif cmd == "--run-test":
             soft_body_test.apply_modifiers = False
-            name = str(command[i + 1])
+            name = command[i + 1]
             soft_body_test.run_test(name)
             break
 

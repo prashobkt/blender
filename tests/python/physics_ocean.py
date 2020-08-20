@@ -43,8 +43,8 @@ def main():
             break
         elif cmd == "--run-test":
             ocean_test.apply_modifiers = False
-            index = int(command[i + 1])
-            ocean_test.run_test(index)
+            name = command[i + 1]
+            ocean_test.run_test(name)
             break
 
 

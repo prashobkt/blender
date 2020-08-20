@@ -42,7 +42,7 @@ def main():
             break
         elif cmd == "--run-test":
             particle_test.apply_modifiers = False
-            name = str(command[i + 1])
+            name = command[i + 1]
             particle_test.run_test(name)
             break
 

@@ -62,8 +62,6 @@ def get_generate_modifiers_list(test_object_name, randomize=False):
         # ModifierSpec('remesh', 'REMESH', {}),
 
         # ModifierSpec('screw', 'SCREW', {}), # screw can make the test very slow. Skipping for now.
-        # ModifierSpec('skin', 'SKIN', {}), # skin is not reproducible .
-
 
         ModifierSpec('solidify', 'SOLIDIFY', {}),
         ModifierSpec('subsurf', 'SUBSURF', {}),
@@ -348,7 +346,7 @@ def main():
             break
         elif cmd == "--run-test":
             modifiers_test.apply_modifiers = False
-            name = str(command[i + 1])
+            name = command[i + 1]
             modifiers_test.run_test(name)
             break
 
