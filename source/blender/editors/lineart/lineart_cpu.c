@@ -2546,15 +2546,16 @@ static int lineart_occlusion_get_max_level(Depsgraph *dg)
                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                              DEG_ITER_OBJECT_FLAG_DUPLI | DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET) {
     if (ob->type == OB_GPENCIL) {
-      LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
+      Object *use_ob = ob->id.orig_id ? (Object *)ob->id.orig_id : ob;
+      LISTBASE_FOREACH (GpencilModifierData *, md, &use_ob->greasepencil_modifiers) {
         if (md->type == eGpencilModifierType_Lineart) {
           if (mode == DAG_EVAL_RENDER) {
-            if (!(md->flag & eGpencilModifierMode_Render)) {
+            if (!(md->mode & eGpencilModifierMode_Render)) {
               continue;
             }
           }
           else {
-            if (!(md->flag & eGpencilModifierMode_Realtime)) {
+            if (!(md->mode & eGpencilModifierMode_Realtime)) {
               continue;
             }
           }
@@ -3501,6 +3502,7 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
   rb->triangle_size = lineart_triangle_size_get(rb, scene);
 
   rb->max_occlusion_level = lineart_occlusion_get_max_level(depsgraph);
+  printf("%d\n", rb->max_occlusion_level);
 
   if (show_frame_progress) {
     ED_lineart_update_render_progress(0, "LRT: Loading geometries.");
