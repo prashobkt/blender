@@ -1815,9 +1815,12 @@ static void rna_SpaceProperties_context_update(Main *UNUSED(bmain),
 static void rna_SpaceProperties_search_filter_update(struct bContext *C,
                                                      struct PointerRNA *UNUSED(ptr))
 {
-  ARegion *region = CTX_wm_region(C);
+  ScrArea *area = CTX_wm_area(C);
 
-  ED_region_search_filter_update(C, region);
+  /* Update the search filter flag for the main region with the panels. */
+  ARegion *main_region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+  BLI_assert(main_region != NULL);
+  ED_region_search_filter_update(C, main_region);
 }
 
 /* Space Console */
