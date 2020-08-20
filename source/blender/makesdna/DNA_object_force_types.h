@@ -193,8 +193,6 @@ typedef struct SBVertex {
   float vec[4];
 } SBVertex;
 
-typedef struct ADMMPDInterfaceData ADMMPDInterfaceData;
-
 /* Container for data that is shared among CoW copies.
  *
  * This is placed in a separate struct so that values can be changed
@@ -214,7 +212,7 @@ typedef struct SoftBody {
   struct BodySpring *bspring;
 
   /* ADMM-PD settings */
-  int solver_mode;               /* 0=admmpd, 1=legacy */
+  int solver_mode;               /* 0=legacy, 0=admmpd */
   int admmpd_mesh_mode;          /* 0=embedded, 1=tetgen, 2=cloth */
   int admmpd_substeps;           /* break time step into smaller bits */
   int admmpd_max_admm_iters;     /* max solver iterations */
@@ -433,8 +431,8 @@ typedef struct SoftBody {
 #define SBC_MODE_AVGMINMAX 4
 
 /* sb->solver_mode */
-#define SOLVER_MODE_ADMMPD 0
-#define SOLVER_MODE_LEGACY 1
+#define SOLVER_MODE_LEGACY 0
+#define SOLVER_MODE_ADMMPD 1
 
 #ifdef __cplusplus
 }

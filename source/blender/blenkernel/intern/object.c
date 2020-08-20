@@ -1407,7 +1407,7 @@ void BKE_object_copy_softbody(struct Object *ob_dst, const struct Object *ob_src
 
   sbn = MEM_dupallocN(sb);
 
-  sbCustomCopy(ob_dst,ob_src);
+  sbExternalCopy(ob_dst,ob_src);
 
   if ((flag & LIB_ID_COPY_CACHES) == 0) {
     sbn->totspring = sbn->totpoint = 0;

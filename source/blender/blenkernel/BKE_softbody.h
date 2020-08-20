@@ -50,8 +50,11 @@ typedef struct BodyPoint {
 /* allocates and initializes general main data */
 extern struct SoftBody *sbNew(struct Scene *scene);
 
-/* copies custom solver data from src to dest */
-extern void sbCustomCopy(struct Object *dest, struct Object *src);
+/* copies external solver data from src to dest */
+extern void sbExternalCopy(struct Object *dest, struct Object *src);
+
+/* initializes settings for external solvers */
+extern void sbExternalSetDefault(struct SoftBody *sb);
 
 /* frees internal data and softbody itself */
 extern void sbFree(struct Object *ob);

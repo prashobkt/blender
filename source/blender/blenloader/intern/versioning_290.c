@@ -33,6 +33,7 @@
 #include "DNA_gpencil_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
+#include "DNA_object_force_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_shader_fx_types.h"
 
@@ -42,6 +43,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
+#include "BKE_softbody.h"
 
 #include "BLO_readfile.h"
 #include "readfile.h"
@@ -403,6 +405,14 @@ void blo_do_versions_290(FileData *fd, Library *UNUSED(lib), Main *bmain)
           omd->wave_alignment *= 0.1f;
           omd->sharpen_peak_jonswap *= 0.1f;
         }
+      }
+    }
+  }
+
+  if (!DNA_struct_elem_find(fd->filesdna, "SoftBody", "int", "solver_mode")) {
+    for (Object *ob = bmain->objects.first; ob != NULL; ob = ob->id.next) {
+      if (ob->soft != NULL) {
+        sbExternalSetDefault(ob->soft);
       }
     }
   }

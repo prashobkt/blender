@@ -3126,27 +3126,6 @@ SoftBody *sbNew(Scene *scene)
   SoftBody *sb;
   sb = MEM_callocN(sizeof(SoftBody), "softbody");
 
-  sb->solver_mode = SOLVER_MODE_LEGACY;
-  sb->admmpd_mesh_mode = 0; /* Embedded. */
-  sb->admmpd_substeps = 1;
-  sb->admmpd_max_admm_iters = 20;
-  sb->admmpd_self_collision = 0;
-  sb->admmpd_material = 0;  /* ARAP. */
-  sb->admmpd_embed_res = 3; /* Max subdivisions for embedded lattice. */
-  sb->admmpd_converge_eps = 1e-4; /* Solver residual stop condition. */
-  sb->admmpd_youngs_exp = 6; /* Exponent of Young's mod. */
-  sb->admmpd_poisson = 0.399; 
-  sb->admmpd_density_kgm3 = 1522; /* Density of rubber. */
-  sb->admmpd_ck_exp = 7; /* Exponent of collision stiffness. */
-  sb->admmpd_pk_exp = 4; /* Exponent of pin stiffness. */
-  sb->admmpd_floor_z = -999;
-  sb->admmpd_gravity = -9.8;
-  sb->admmpd_strainlimit_min = 0;    /* 0 = compression allowed. */
-  sb->admmpd_strainlimit_max = 100;  /* 100 = 100x strech allowed. */
-  sb->admmpd_maxthreads = -1; /* Auto detect. */
-  sb->admmpd_loglevel = 1;   /* Low terminal output. */
-  sb->admmpd_linsolver = 1;  /* PCG solver. */
-
   sb->mediafrict = 0.5f;
   sb->nodemass = 1.0f;
   sb->grav = 9.8f;
@@ -3186,7 +3165,8 @@ SoftBody *sbNew(Scene *scene)
 
   sb->shared = MEM_callocN(sizeof(*sb->shared), "SoftBody_Shared");
   sb->shared->pointcache = BKE_ptcache_add(&sb->shared->ptcaches);
-  sb->shared->admmpd_list = MEM_callocN(sizeof(ListBase), "SoftBody_ADMMPD_List");
+
+  sbExternalSetDefault(sb);
 
   if (!sb->effector_weights) {
     sb->effector_weights = BKE_effector_add_weights(NULL);
@@ -3682,31 +3662,67 @@ static void update_collider_admmpd(Depsgraph *depsgraph,
   BKE_collision_objects_free(objects);
 }
 
-void sbCustomCopy(Object *dest, Object *src)
+void sbExternalCopy(Object *dest_ob, Object *src_ob)
 {
-  (void)(src);
-  SoftBody *sb_dest = dest->soft;
-  if (!sb_dest) {
-    CLOG_ERROR(&LOG, "No softbody in sbCustomCopy");
+  (void)(src_ob);
+  if (!dest_ob) {
+    CLOG_ERROR(&LOG, "No dest object in sbExternalCopy");
     return;
   }
-  if (!sb_dest->shared) {
-    CLOG_ERROR(&LOG, "No shared in sbCustomCopy");
+  SoftBody *dest = dest_ob->soft;
+  if (!dest) {
+    CLOG_ERROR(&LOG, "No softbody in sbExternalCopy");
     return;
   }
-
+  if (!dest->shared) {
+    CLOG_ERROR(&LOG, "No shared in sbExternalCopy");
+    return;
+  }
   /* This can happen on readfile: */
-  if (!sb_dest->shared->admmpd_list) {
-    sb_dest->shared->admmpd_list = MEM_callocN(sizeof(ListBase), "SoftBody_ADMMPD_List");
+  if (!dest->shared->admmpd_list) {
+    dest->shared->admmpd_list = MEM_callocN(sizeof(ListBase), "SoftBody_ADMMPD_List");
   }
-
   /* Create ADMM-PD data for this object if it does not already exist. */
-  ADMMPDInterfaceData *admmpd = get_admmpd_for_object(dest);
+  ADMMPDInterfaceData *admmpd = get_admmpd_for_object(dest_ob);
   if (admmpd==NULL) {
     admmpd = MEM_callocN(sizeof(ADMMPDInterfaceData), "ADMMPD");
-    strcpy(admmpd->name, dest->id.name);
-    BLI_addtail(sb_dest->shared->admmpd_list, admmpd);
+    strcpy(admmpd->name, dest_ob->id.name);
+    BLI_addtail(dest->shared->admmpd_list, admmpd);
   }
+}
+
+void sbExternalSetDefault(SoftBody *sb)
+{
+  if (!sb) {
+    return;
+  }
+  if (sb->shared == NULL) {
+    sb->shared = MEM_callocN(sizeof(*sb->shared), "SoftBody_Shared");
+  }
+  if (sb->shared->admmpd_list == NULL) {
+    sb->shared->admmpd_list = MEM_callocN(sizeof(ListBase), "SoftBody_ADMMPD_List");
+  }
+
+  sb->solver_mode = SOLVER_MODE_LEGACY;
+  sb->admmpd_mesh_mode = 0; /* Embedded. */
+  sb->admmpd_substeps = 1;
+  sb->admmpd_max_admm_iters = 20;
+  sb->admmpd_self_collision = 0;
+  sb->admmpd_material = 0;  /* ARAP. */
+  sb->admmpd_embed_res = 3; /* Max subdivisions for embedded lattice. */
+  sb->admmpd_converge_eps = 1e-4; /* Solver residual stop condition. */
+  sb->admmpd_youngs_exp = 6; /* Exponent of Young's mod. */
+  sb->admmpd_poisson = 0.399; 
+  sb->admmpd_density_kgm3 = 1522; /* Density of rubber. */
+  sb->admmpd_ck_exp = 7; /* Exponent of collision stiffness. */
+  sb->admmpd_pk_exp = 4; /* Exponent of pin stiffness. */
+  sb->admmpd_floor_z = -999;
+  sb->admmpd_gravity = -9.8;
+  sb->admmpd_strainlimit_min = 0;    /* 0 = compression allowed. */
+  sb->admmpd_strainlimit_max = 100;  /* 100 = 100x strech allowed. */
+  sb->admmpd_maxthreads = -1; /* Auto detect. */
+  sb->admmpd_loglevel = 1;   /* Low terminal output. */
+  sb->admmpd_linsolver = 1;  /* PCG solver. */
 }
 
 /* simulates one step. framenr is in frames */
