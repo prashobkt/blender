@@ -3502,7 +3502,6 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
   rb->triangle_size = lineart_triangle_size_get(rb, scene);
 
   rb->max_occlusion_level = lineart_occlusion_get_max_level(depsgraph);
-  printf("%d\n", rb->max_occlusion_level);
 
   if (show_frame_progress) {
     ED_lineart_update_render_progress(0, "LRT: Loading geometries.");
