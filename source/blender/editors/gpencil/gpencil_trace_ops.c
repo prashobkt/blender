@@ -125,8 +125,10 @@ static bool gpencil_trace_image(
   offset[1] = ibuf->y / 2;
 
   /* Scale correction for Potrace. */
-  const float scale_potrace = scale * (640.0f / (float)ibuf->x) *
-                              ((float)ibuf->x / (float)ibuf->y);
+  float scale_potrace = scale * (640.0f / (float)ibuf->x) * ((float)ibuf->x / (float)ibuf->y);
+  if (ibuf->x > ibuf->y) {
+    scale_potrace *= (float)ibuf->y / (float)ibuf->x;
+  }
 
   ED_gpencil_trace_data_to_strokes(
       bmain, st, ob, gpf, offset, scale_potrace, sample, resolution, thickness);
