@@ -3584,6 +3584,7 @@ static void update_collider_admmpd(Depsgraph *depsgraph,
                                    Collection *collection,
                                    Object *vertexowner)
 {
+
   SoftBody *sb = vertexowner->soft;
   if (!sb) {
     return;
@@ -3599,20 +3600,32 @@ static void update_collider_admmpd(Depsgraph *depsgraph,
   Object **objects = BKE_collision_objects_create(
       depsgraph, vertexowner, collection, &numobjects, eModifierType_Collision);
 
+  admmpd_update_obstacles(admmpd,objects,numobjects);
+
+  BKE_collision_objects_free(objects);
+
+#if 0
   /* How many faces and vertices do we need to allocate? */
   int tot_verts = 0;
   int tot_faces = 0;
   for (int i = 0; i < numobjects; ++i) {
     Object *ob = objects[i];
-    if (ob->type == OB_MESH) {
-      if (ob->pd && ob->pd->deflect) {
-        CollisionModifierData *cmd = (CollisionModifierData *)BKE_modifiers_findby_type(
-            ob, eModifierType_Collision);
-        if (!cmd)
-          continue;
-        tot_verts += cmd->mvert_num;
-        tot_faces += cmd->tri_num;
-      }
+    if (ob->type != OB_MESH) {
+      continue;
+    }
+    /* If the collision object is the same as the softbody object,
+    * we don't want to add it. Otherwise it creates a duplicate obstacle
+    * at the initial location of the softbody. */
+    if (strcmp(ob->id.name,vertexowner->id.name)==0) {
+      continue;
+    }
+    if (ob->pd && ob->pd->deflect) {
+      CollisionModifierData *cmd = (CollisionModifierData *)BKE_modifiers_findby_type(
+          ob, eModifierType_Collision);
+      if (!cmd)
+        continue;
+      tot_verts += cmd->mvert_num;
+      tot_faces += cmd->tri_num;
     }
   }
 
@@ -3660,6 +3673,7 @@ static void update_collider_admmpd(Depsgraph *depsgraph,
   MEM_freeN(obs_v1);
   MEM_freeN(obs_faces);
   BKE_collision_objects_free(objects);
+#endif
 }
 
 void sbExternalCopy(Object *dest_ob, Object *src_ob)

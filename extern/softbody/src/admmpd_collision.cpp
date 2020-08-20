@@ -26,81 +26,122 @@ VFCollisionPair::VFCollisionPair() :
 	q_bary(0,0,0)
 	{}
 
-void Collision::ObstacleData::clear() {
-	V = MatrixXd();
-	F = MatrixXi();
-	sdf = Discregrid::CubicLagrangeDiscreteGrid();
+bool Collision::ObstacleData::has_obs() const
+{
+	// The obstacle list may include non-closed obstacles,
+	// in which an SDF cannot be computed. This function
+	// instead returns true only if an SDF can be generated.
+	int n_box = box.size();
+	for (int i=0; i<n_box; ++i) {
+		if (!box[i].isEmpty()) {
+			return true;
+		}
+	}
+	return false;
 }
 
-
-bool Collision::set_obstacles(
-	const float *v0,
-	const float *v1,
-	int nv,
-	const unsigned int *faces,
-	int nf,
-	std::string *err)
+bool Collision::ObstacleData::compute_sdf(int idx)
 {
-	(void)(v0);
-	if (nv==0 || nf==0)
-	{
-		if (err) { *err = "Collision obstacle has no verts or faces"; }
-		obsdata.clear();
+	if (idx < 0 || idx >x1.size()) {
 		return false;
 	}
 
-	std::vector<double> v1_dbl(nv*3);
-    Eigen::AlignedBox<double,3> domain;
-
-	if (obsdata.V.rows() != nv)
-		obsdata.V.resize(nv,3);
-	for (int i=0; i<nv; ++i)
-	{
-		for (int j=0; j<3; ++j)
-		{
-			obsdata.V(i,j) = v1[i*3+j];
-			v1_dbl[i*3+j] = v1[i*3+j];
-		}
-		domain.extend(obsdata.V.row(i).transpose());
+	// There was an error in init
+	if (box[idx].isEmpty()) {
+		return false;
 	}
 
-	if (obsdata.F.rows() != nf)
-		obsdata.F.resize(nf,3);
-	for (int i=0; i<nf; ++i)
-	{
-		for (int j=0; j<3; ++j)
-			obsdata.F(i,j) = faces[i*3+j];
-	}
-
-	// Is the mesh closed?
-	Discregrid::TriangleMesh tm(v1_dbl.data(), faces, nv, nf);
+	// Test that the mesh is closed
+	Discregrid::TriangleMesh tm(
+		(double const*)x1[idx].data(),
+		(unsigned int const*)F[idx].data(),
+		x1[idx].rows(), F[idx].rows());
 	if (!tm.is_closed()) {
-		if (err) { *err = "Collision obstacle not a closed mesh - ignoring"; }
-		obsdata.clear();
 		return false;
 	}
 
 	// Generate signed distance field
-	{
-		Discregrid::MeshDistance md(tm);
-		domain.max() += 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
-		domain.min() -= 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
-		std::array<unsigned int, 3> resolution;
-		resolution[0] = 30; resolution[1] = 30; resolution[2] = 30;
-		obsdata.sdf = Discregrid::CubicLagrangeDiscreteGrid(domain, resolution);
-		auto func = Discregrid::DiscreteGrid::ContinuousFunction{};
-		std::vector<std::thread::id> thread_map;
-		md.set_thread_map(&thread_map);
-		func = [&md](Eigen::Vector3d const& xi) {
-			return md.signedDistanceCached(xi);
-		};
-		obsdata.sdf.addFunction(func, &thread_map, false);
+	Discregrid::MeshDistance md(tm);
+	std::array<unsigned int, 3> resolution;
+	resolution[0] = 30; resolution[1] = 30; resolution[2] = 30;
+	sdf[idx] = Discregrid::CubicLagrangeDiscreteGrid(box[idx], resolution);
+	auto func = Discregrid::DiscreteGrid::ContinuousFunction{};
+	std::vector<std::thread::id> thread_map;
+	md.set_thread_map(&thread_map);
+	func = [&md](Eigen::Vector3d const& xi) {
+		return md.signedDistanceCached(xi);
+	};
+	sdf[idx].addFunction(func, &thread_map, false);
+
+	if (sdf[idx].nCells()==0) {
+		return false;
+	}
+	return true;
+}
+
+bool Collision::set_obstacles(
+	std::vector<Eigen::MatrixXd> &v0,
+	std::vector<Eigen::MatrixXd> &v1,
+	std::vector<Eigen::MatrixXi> &F,
+	std::string *err)
+{
+	if (v0.size() != v1.size() || v0.size() != F.size()) {
+		if (err) { *err = "Bad dimensions on obstacle input"; }
+		return false;
 	}
 
-	if (obsdata.sdf.nCells()==0) {
-		if (err) { *err = "SDF gen failed for collision obstacle"; }
-		obsdata.clear();
-		return false;
+	// Copy the obstacle data from the input to the stored
+	// data container. If the vertex locations have changed,
+	// we need to recompute the SDF. Otherwise, leave it as is.
+	int n_obs_new = v0.size();
+	int n_obs_old = obsdata.x0.size();
+    obsdata.sdf.resize(n_obs_new);
+	obsdata.x0.resize(n_obs_new);
+	obsdata.x1.resize(n_obs_new);
+	obsdata.F.resize(n_obs_new);
+	obsdata.box.resize(n_obs_new);
+
+	// We can use isApprox for testing if the obstacle has
+	// moved from the last call to set_obstacles. The SDF
+	// has limited accuracy anyway...
+	double approx_eps = 1e-6;
+	for (int i=0; i<n_obs_new; ++i) {
+
+		bool reset_obs = false;
+		if (i >= n_obs_old) {
+			reset_obs=true; // is new obs
+		}
+		else if (!obsdata.x1[i].isApprox(v1[i],approx_eps) ||
+				!obsdata.x0[i].isApprox(v0[i],approx_eps)) {
+			reset_obs = true; // is different than before
+		}
+
+		if (reset_obs) {
+
+			obsdata.box[i].setEmpty();
+			int nv = v1[i].rows();
+			for (int j=0; j<nv; ++j) {
+				obsdata.box[i].extend(v1[i].row(j).transpose());
+			}
+			obsdata.box[i].max() += 1e-3 * obsdata.box[i].diagonal().norm() * Eigen::Vector3d::Ones();
+			obsdata.box[i].min() -= 1e-3 * obsdata.box[i].diagonal().norm() * Eigen::Vector3d::Ones();
+
+			obsdata.sdf[i] = SDFType(); // clear old sdf
+			obsdata.x0[i] = v0[i];
+			obsdata.x1[i] = v1[i];
+			obsdata.F[i] = F[i].cast<unsigned int>();
+
+			// Determine if the triangle mesh is closed or not.
+			// We want to provide a warning if it is.
+			Discregrid::TriangleMesh tm(
+				(double const*)obsdata.x1[i].data(),
+				(unsigned int const*)obsdata.F[i].data(),
+				obsdata.x1[i].rows(), obsdata.F[i].rows());
+			if (!tm.is_closed()) {
+				obsdata.box[i].setEmpty();
+				if (err) { *err = "Collision obstacle not a closed mesh - ignoring"; }
+			}
+		}
 	}
 
 	return true;
@@ -121,29 +162,31 @@ Collision::detect_against_obs(
 	(void)(data);
 	(void)(pt_t0);
 
-	std::pair<bool,VFCollisionPair> ret = 
-		std::make_pair(false, VFCollisionPair());
+	int n_obs = obs->num_obs();
+	if (n_obs==0) {
+		return std::make_pair(false, VFCollisionPair());
+	}
 
-	if (!obs->has_obs())
+	for (int i=0; i<n_obs; ++i)
+	{
+		if (obs->sdf[i].nCells()==0) {
+			continue; // not initialized
+		}
+		Vector3d n;
+		double dist = obs->sdf[i].interpolate(0, pt_t1, &n);
+		if (dist > 0) { continue; } // not colliding
+
+		std::pair<bool,VFCollisionPair> ret = 
+			std::make_pair(true, VFCollisionPair());
+		ret.first = true;
+		ret.second.q_idx = -1;
+		ret.second.q_is_obs = true;
+		ret.second.q_bary.setZero();
+		ret.second.q_pt = pt_t1 - dist*n;
+		ret.second.q_n = n.normalized();
 		return ret;
-
-	// So I feel bad because we're using the SDF only
-	// for inside/outside query. Unfortunately this implementation
-	// doesn't store the face indices within the grid cells, so
-	// the interpolate function won't return the nearest
-	// face at the gradient + distance.
-	Vector3d n;
-	double dist = obs->sdf.interpolate(0, pt_t1, &n);
-	if (dist > 0)
-		return ret;
-
-	ret.first = true;
-	ret.second.q_idx = -1;
-	ret.second.q_is_obs = true;
-	ret.second.q_bary.setZero();
-	ret.second.q_pt = pt_t1 - dist*n;
-	ret.second.q_n = n.normalized();
-	return ret;
+	}
+	return std::make_pair(false, VFCollisionPair());
 }
 
 int EmbeddedMeshCollision::detect(
@@ -159,8 +202,26 @@ int EmbeddedMeshCollision::detect(
 	if (mesh->type() != MESHTYPE_EMBEDDED)
 		return 0;
 
-	// Do we even need to process collisions?
-	if (!this->obsdata.has_obs() && !options->self_collision)
+	// Compute SDFs if the mesh is intersecting
+	// the associated obstacle. The sdf generation is internally threaded,
+	// but it might be faster to thread the different SDFs.
+	bool has_obs_intersection = false;
+	int n_obs = obsdata.num_obs();
+	AlignedBox<double,3> mesh_box = data->col.prim_tree.bounds();
+	for (int i=0; i<n_obs; ++i) {
+		AlignedBox<double,3> &box = obsdata.box[i];
+		if (box.isEmpty()) { continue; }
+		if (!box.intersects(mesh_box)) { continue; }
+		has_obs_intersection = true;
+		// Do we need to generate a new SDF?
+		if (obsdata.sdf[i].nCells()==0) {
+			obsdata.compute_sdf(i);
+		}
+	}
+
+	// Do we even need to process collisions and launch
+	// the per-vertex threads?
+	if (!has_obs_intersection && !options->self_collision)
 	{
 		if (x1->col(2).minCoeff() > options->floor)
 		{
@@ -236,7 +297,7 @@ int EmbeddedMeshCollision::detect(
 		}
 
 		// Detect against obstacles
-		if (td->obsdata->has_obs())
+		if (td->obsdata->num_obs()>0)
 		{
 			std::pair<bool,VFCollisionPair> pt_hit_obs =
 				td->collision->detect_against_obs(

@@ -79,16 +79,22 @@ void admmpd_copy_from_object(ADMMPDInterfaceData*, Object*);
 * If vertexCos is NULL, it is ignored. */
 void admmpd_copy_to_object(ADMMPDInterfaceData*, Object*, float (*vertexCos)[3]);
 
+/* Sets the obstacle data for collisions. */
+void admmpd_update_obstacles(
+    ADMMPDInterfaceData*,
+    Object**,
+    int numobjects);
+
 /* Sets the obstacle data for collisions.
 * Update obstacles has a different interface because of the
 * complexity of grabbing obstacle mesh data. We'll leave that in softbody.c */
-void admmpd_update_obstacles(
-    ADMMPDInterfaceData*,
-    float *in_verts_0,
-    float *in_verts_1,
-    int nv,
-    unsigned int *in_faces,
-    int nf);
+//void admmpd_update_obstacles(
+//    ADMMPDInterfaceData*,
+//    float *in_verts_0,
+//    float *in_verts_1,
+//    int nv,
+//    unsigned int *in_faces,
+//    int nf);
 
 /* Performs a time step. Object and vertexCos are not changed.
 * Returns 1 on success, 0 on failure, -1 on warning */
