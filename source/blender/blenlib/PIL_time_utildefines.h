@@ -131,7 +131,7 @@
 #define CLOG_TIMEIT_START(log_ref, level, var) \
   { \
     double _clog_debug_timeit_##var = PIL_check_seconds_timer(); \
-    CLOG_DEBUG(log_ref, level, "time start (" #var ")"); \
+    CLOG_VERBOSE(log_ref, level, "time start (" #var ")"); \
     { \
       (void)0
 
@@ -142,13 +142,13 @@
 
 #define CLOG_TIMEIT_VALUE_PRINT(log_ref, level, var) \
   { \
-    CLOG_DEBUG(log_ref, level, "time update   (" #var "): %.6f", CLOG_TIMEIT_VALUE(var)); \
+    CLOG_VERBOSE(log_ref, level, "time update   (" #var "): %.6f", CLOG_TIMEIT_VALUE(var)); \
   } \
   (void)0
 
 #define CLOG_TIMEIT_END(log_ref, level, var) \
   } \
-  CLOG_DEBUG(log_ref, level, "time end   (" #var "): %.6f", CLOG_TIMEIT_VALUE(var)); \
+  CLOG_VERBOSE(log_ref, level, "time end   (" #var "): %.6f", CLOG_TIMEIT_VALUE(var)); \
   } \
   (void)0
 
@@ -162,7 +162,7 @@
     static float _clog_debug_sum_##var = 0.0f; \
     static float _clog_debug_num_##var = 0.0f; \
     double _clog_debug_timeit_##var = PIL_check_seconds_timer(); \
-    CLOG_DEBUG(log_ref, level, "time start    (" #var ")"); \
+    CLOG_VERBOSE(log_ref, level, "time start    (" #var ")"); \
     { \
       (void)0
 
@@ -174,8 +174,8 @@
   const float _clog_debug_delta_##var = CLOG_TIMEIT_VALUE(var); \
   _clog_debug_sum_##var += _clog_debug_delta_##var; \
   _clog_debug_num_##var++; \
-  CLOG_DEBUG(log_ref, level, "time end      (" #var "): %.6f", _clog_debug_delta_##var); \
-  CLOG_DEBUG(log_ref, \
+  CLOG_VERBOSE(log_ref, level, "time end      (" #var "): %.6f", _clog_debug_delta_##var); \
+  CLOG_VERBOSE(log_ref, \
              level, \
              "time averaged (" #var "): %.6f (total: %.6f, in %d runs)", \
              (_clog_debug_sum_##var / _clog_debug_num_##var), \
@@ -213,7 +213,7 @@
 
 #define CLOG_TIMEIT_BLOCK_STATS(log_ref, level, id) \
   { \
-    CLOG_DEBUG(log_ref, level, "%s time (in seconds): %f", #id, _clog_debug_timeit_var_##id); \
+    CLOG_VERBOSE(log_ref, level, "%s time (in seconds): %f", #id, _clog_debug_timeit_var_##id); \
   } \
   (void)0
 
