@@ -195,7 +195,7 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
                                  string_view name,
                                  const GlobalVertices &global_vertices,
                                  Vector<std::unique_ptr<Geometry>> &r_all_geometries,
-                                 IndexOffsets &r_offsets)
+                                 VertexIndexOffset &r_offsets)
 {
   auto new_geometry = [&]() {
     if (name.empty()) {
@@ -204,7 +204,7 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
     else {
       r_all_geometries.append(std::make_unique<Geometry>(new_type, name));
     }
-    r_offsets.update_index_offsets(global_vertices);
+    r_offsets.set_index_offset(global_vertices.vertices.size());
     return r_all_geometries.last().get();
   };
 
@@ -236,15 +236,6 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
 }
 
 /**
- * Whenever a new Geometry instance is created, index offsets should be updated.
- */
-void IndexOffsets::update_index_offsets(const GlobalVertices &global_vertices)
-{
-  index_offsets_[VERTEX_OFF] = global_vertices.vertices.size();
-  index_offsets_[UV_VERTEX_OFF] = global_vertices.uv_vertices.size();
-}
-
-/**
  * Open OBJ file at the path given in import parameters.
  */
 OBJParser::OBJParser(const OBJImportParams &import_params) : import_params_(import_params)
@@ -268,11 +259,12 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
   }
 
   string line;
-  IndexOffsets offsets;
+  /* Store vertex coordinates that belong to other Geometry instances.  */
+  VertexIndexOffset offset;
   /* Non owning raw pointer to a Geometry.
    * Needed to update object data in the same while loop. */
   Geometry *current_geometry = create_geometry(
-      nullptr, GEOM_MESH, "", global_vertices, all_geometries, offsets);
+      nullptr, GEOM_MESH, "", global_vertices, all_geometries, offset);
 
   /* State-setting variables: if set, they remain the same for the remaining
    * elements in the object. */
@@ -293,7 +285,7 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
       shaded_smooth = false;
       object_group = {};
       current_geometry = create_geometry(
-          current_geometry, GEOM_MESH, rest_line, global_vertices, all_geometries, offsets);
+          current_geometry, GEOM_MESH, rest_line, global_vertices, all_geometries, offset);
     }
     else if (line_key == "v") {
       BLI_assert(current_geometry);
@@ -327,10 +319,8 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
       copy_string_to_int(str_edge_split[0], -1, edge_v1);
       copy_string_to_int(str_edge_split[1], -1, edge_v2);
       /* Always keep stored indices non-negative and zero-based. */
-      edge_v1 += edge_v1 < 0 ? global_vertices.vertices.size() :
-                               -offsets.get_index_offset(VERTEX_OFF) - 1;
-      edge_v2 += edge_v2 < 0 ? global_vertices.vertices.size() :
-                               -offsets.get_index_offset(VERTEX_OFF) - 1;
+      edge_v1 += edge_v1 < 0 ? global_vertices.vertices.size() : -offset.get_index_offset() - 1;
+      edge_v2 += edge_v2 < 0 ? global_vertices.vertices.size() : -offset.get_index_offset() - 1;
       BLI_assert(edge_v1 >= 0 && edge_v2 >= 0);
       current_geometry->edges_.append({static_cast<uint>(edge_v1), static_cast<uint>(edge_v2)});
     }
@@ -396,7 +386,7 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
         }
         /* Always keep stored indices non-negative and zero-based. */
         corner.vert_index += corner.vert_index < 0 ? global_vertices.vertices.size() :
-                                                     -offsets.get_index_offset(VERTEX_OFF) - 1;
+                                                     -offset.get_index_offset() - 1;
         corner.uv_vert_index += corner.uv_vert_index < 0 ? global_vertices.uv_vertices.size() : -1;
         corner.vertex_normal_index += corner.vertex_normal_index < 0 ?
                                           global_vertices.vertex_normals.size() :
@@ -410,7 +400,7 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
     else if (line_key == "cstype") {
       if (rest_line.find("bspline") != string::npos) {
         current_geometry = create_geometry(
-            current_geometry, GEOM_CURVE, object_group, global_vertices, all_geometries, offsets);
+            current_geometry, GEOM_CURVE, object_group, global_vertices, all_geometries, offset);
         current_geometry->nurbs_element_.group_ = object_group;
       }
       else {

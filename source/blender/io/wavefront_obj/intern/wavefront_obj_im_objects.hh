@@ -53,16 +53,17 @@ struct GlobalVertices {
  * vertices in the mesh) as opposed to the other OBJ indices ranging from (0 to total vertices
  * in the global list).
  */
-struct IndexOffsets {
+struct VertexIndexOffset {
  private:
-  Array<int64_t> index_offsets_{2, 0};
+  int offset_ = 0;
 
  public:
-  void update_index_offsets(const GlobalVertices &global_vertices);
-  int64_t get_index_offset(const eIndexOffsets type) const
+  void set_index_offset(const int64_t total_vertices){
+    offset_ = total_vertices;
+  }
+  int64_t get_index_offset() const
   {
-    BLI_assert(type == UV_VERTEX_OFF || type == VERTEX_OFF);
-    return index_offsets_[type];
+    return offset_;
   }
 };
 
