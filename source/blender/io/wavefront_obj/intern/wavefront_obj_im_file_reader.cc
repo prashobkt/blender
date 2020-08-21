@@ -88,7 +88,9 @@ static void split_line_key_rest(string_view line,
  * vector.
  * Caller should ensure that the given string has no leading spaces.
  */
-static void split_by_char(string_view in_string, char delimiter, Vector<string_view> &r_out_list)
+static void split_by_char(string_view in_string,
+                          const char delimiter,
+                          Vector<string_view> &r_out_list)
 {
   r_out_list.clear();
   while (!in_string.empty()) {
@@ -103,8 +105,10 @@ static void split_by_char(string_view in_string, char delimiter, Vector<string_v
     if (pos_delim == string_view::npos) {
       return;
     }
-    /* Add one in position of delimiter to skip it. */
-    in_string = in_string.substr(pos_delim + 1, string_view::npos);
+    /* Skip the word already stored. */
+    in_string.remove_prefix(word_len);
+    /* Skip all delimiters. */
+    in_string.remove_prefix(std::min(in_string.find_first_not_of(delimiter), in_string.size()));
   }
 }
 
