@@ -46,6 +46,10 @@ struct UniqueMeshDeleter {
  */
 using unique_mesh_ptr = std::unique_ptr<Mesh, UniqueMeshDeleter>;
 
+/**
+ * Make a Blender Mesh Object from a Geometry of GEOM_MESH type.
+ * Use the mover function to own the mesh after creation.
+ */
 class MeshFromGeometry : NonMovable, NonCopyable {
  private:
   /**
@@ -55,19 +59,21 @@ class MeshFromGeometry : NonMovable, NonCopyable {
   /**
    * An Object of type OB_MESH. Use the mover function to own it.
    */
-  unique_object_ptr blender_object_{nullptr};
+  unique_object_ptr mesh_object_{nullptr};
   const Geometry &mesh_geometry_;
   const GlobalVertices &global_vertices_;
 
  public:
-  MeshFromGeometry(Main *bmain,
-                   const Geometry &mesh_geometry,
-                   const GlobalVertices &global_vertices,
-                   const Map<std::string, MTLMaterial> &materials);
+  MeshFromGeometry(const Geometry &mesh_geometry, const GlobalVertices &global_vertices)
+      : mesh_geometry_(mesh_geometry), global_vertices_(global_vertices)
+  {
+  }
 
+  ~MeshFromGeometry();
+  void create_mesh(Main *bmain, const Map<std::string, MTLMaterial> &materials);
   unique_object_ptr mover()
   {
-    return std::move(blender_object_);
+    return std::move(mesh_object_);
   }
 
  private:

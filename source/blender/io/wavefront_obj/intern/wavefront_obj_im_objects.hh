@@ -58,7 +58,8 @@ struct VertexIndexOffset {
   int offset_ = 0;
 
  public:
-  void set_index_offset(const int64_t total_vertices){
+  void set_index_offset(const int64_t total_vertices)
+  {
     offset_ = total_vertices;
   }
   int64_t get_index_offset() const

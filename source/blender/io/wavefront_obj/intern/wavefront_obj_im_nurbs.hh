@@ -50,6 +50,10 @@ struct UniqueCurveDeleter {
  */
 using unique_curve_ptr = std::unique_ptr<Curve, UniqueCurveDeleter>;
 
+/**
+ * Make a Blender NURBS Curve block from a Geometry of GEOM_CURVE type.
+ * Use the mover function to own the curve.
+ */
 class CurveFromGeometry : NonMovable, NonCopyable {
  private:
   /**
@@ -64,10 +68,13 @@ class CurveFromGeometry : NonMovable, NonCopyable {
   const GlobalVertices &global_vertices_;
 
  public:
-  CurveFromGeometry(Main *bmain,
-                    const Geometry &curve_geometry,
-                    const GlobalVertices &global_vertices);
+  CurveFromGeometry(const Geometry &geometry, const GlobalVertices &global_vertices)
+      : curve_geometry_(geometry), global_vertices_(global_vertices)
+  {
+  }
+  ~CurveFromGeometry();
 
+  void create_curve(Main *bmain);
   unique_object_ptr mover()
   {
     return std::move(curve_object_);

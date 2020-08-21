@@ -29,6 +29,39 @@
 #include "wavefront_obj_im_objects.hh"
 
 namespace blender::io::obj {
+
+CurveFromGeometry::~CurveFromGeometry()
+{
+  if (curve_object_) {
+    /* Move the object to own it. */
+    BLI_assert(0);
+  }
+}
+
+void CurveFromGeometry::create_curve(Main *bmain)
+{
+  std::string ob_name{curve_geometry_.get_geometry_name()};
+  if (ob_name.empty() && !curve_geometry_.group().empty()) {
+    ob_name = curve_geometry_.group();
+  }
+  else {
+    ob_name = "Untitled";
+  }
+
+  blender_curve_.reset(BKE_curve_add(bmain, ob_name.c_str(), OB_CURVE));
+  curve_object_.reset(BKE_object_add_only_object(bmain, OB_CURVE, ob_name.c_str()));
+
+  blender_curve_->flag = CU_3D;
+  blender_curve_->resolu = blender_curve_->resolv = 12;
+  /* Only one NURBS spline will be created in the curve object. */
+  blender_curve_->actnu = 0;
+
+  Nurb *nurb = static_cast<Nurb *>(MEM_callocN(sizeof(Nurb), "OBJ import NURBS curve"));
+  BLI_addtail(BKE_curve_nurbs_get(blender_curve_.get()), nurb);
+  create_nurbs();
+
+  curve_object_->data = blender_curve_.release();
+}
 /**
  * Create a NURBS spline for the Curve converted from Geometry.
  */
@@ -81,35 +114,4 @@ void CurveFromGeometry::create_nurbs()
   }
 }
 
-/**
- * Make a Blender NURBS Curve block from a Geometry of GEOM_CURVE type.
- * Use the mover function to own the curve.
- */
-CurveFromGeometry::CurveFromGeometry(Main *bmain,
-                                     const Geometry &geometry,
-                                     const GlobalVertices &global_vertices)
-    : curve_geometry_(geometry), global_vertices_(global_vertices)
-{
-  std::string ob_name{curve_geometry_.get_geometry_name()};
-  if (ob_name.empty() && !curve_geometry_.group().empty()) {
-    ob_name = curve_geometry_.group();
-  }
-  else {
-    ob_name = "Untitled";
-  }
-
-  blender_curve_.reset(BKE_curve_add(bmain, ob_name.c_str(), OB_CURVE));
-  curve_object_.reset(BKE_object_add_only_object(bmain, OB_CURVE, ob_name.c_str()));
-
-  blender_curve_->flag = CU_3D;
-  blender_curve_->resolu = blender_curve_->resolv = 12;
-  /* Only one NURBS spline will be created in the curve object. */
-  blender_curve_->actnu = 0;
-
-  Nurb *nurb = static_cast<Nurb *>(MEM_callocN(sizeof(Nurb), "OBJ import NURBS curve"));
-  BLI_addtail(BKE_curve_nurbs_get(blender_curve_.get()), nurb);
-  create_nurbs();
-
-  curve_object_->data = blender_curve_.release();
-}
 }  // namespace blender::io::obj

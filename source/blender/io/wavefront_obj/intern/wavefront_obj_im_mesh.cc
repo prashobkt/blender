@@ -46,15 +46,16 @@
 #include "wavefront_obj_im_mesh.hh"
 
 namespace blender::io::obj {
-/**
- * Make a Blender Mesh Object from a Geometry of GEOM_MESH type.
- * Use the mover function to own the mesh.
- */
-MeshFromGeometry::MeshFromGeometry(Main *bmain,
-                                   const Geometry &mesh_geometry,
-                                   const GlobalVertices &global_vertices,
-                                   const Map<std::string, MTLMaterial> &materials)
-    : mesh_geometry_(mesh_geometry), global_vertices_(global_vertices)
+
+MeshFromGeometry::~MeshFromGeometry()
+{
+  if (mesh_object_) {
+    /* Move the object to own it. */
+    BLI_assert(0);
+  }
+}
+
+void MeshFromGeometry::create_mesh(Main *bmain, const Map<std::string, MTLMaterial> &materials)
 {
   std::string ob_name{mesh_geometry_.get_geometry_name()};
   if (ob_name.empty()) {
@@ -72,8 +73,8 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
 
   blender_mesh_.reset(
       BKE_mesh_new_nomain(tot_verts_object, tot_edges, 0, tot_loops, tot_face_elems));
-  blender_object_.reset(BKE_object_add_only_object(bmain, OB_MESH, ob_name.c_str()));
-  blender_object_->data = BKE_object_obdata_add_from_type(bmain, OB_MESH, ob_name.c_str());
+  mesh_object_.reset(BKE_object_add_only_object(bmain, OB_MESH, ob_name.c_str()));
+  mesh_object_->data = BKE_object_obdata_add_from_type(bmain, OB_MESH, ob_name.c_str());
 
   create_vertices();
   new_faces.extend(mesh_geometry_.face_elements());
@@ -95,8 +96,8 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
   dissolve_edges(fgon_edges);
 
   BKE_mesh_nomain_to_mesh(blender_mesh_.release(),
-                          static_cast<Mesh *>(blender_object_->data),
-                          blender_object_.get(),
+                          static_cast<Mesh *>(mesh_object_->data),
+                          mesh_object_.get(),
                           &CD_MASK_EVERYTHING,
                           true);
 }
@@ -293,7 +294,7 @@ void MeshFromGeometry::create_polys_loops(Span<FaceElement> all_faces)
   /* Add deform group(s) to the object's defbase. */
   for (StringRef name : group_names) {
     /* Adding groups in this order assumes that def_nr is an index into the names' list. */
-    BKE_object_defgroup_add_name(blender_object_.get(), name.data());
+    BKE_object_defgroup_add_name(mesh_object_.get(), name.data());
   }
 }
 
@@ -356,10 +357,10 @@ void MeshFromGeometry::create_materials(Main *bmain,
       continue;
     }
     const MTLMaterial &curr_mat = materials.lookup_as(material_name);
-    BKE_object_material_slot_add(bmain, blender_object_.get());
+    BKE_object_material_slot_add(bmain, mesh_object_.get());
     Material *mat = BKE_material_add(bmain, material_name.data());
     BKE_object_material_assign(
-        bmain, blender_object_.get(), mat, blender_object_.get()->totcol, BKE_MAT_ASSIGN_USERPREF);
+        bmain, mesh_object_.get(), mat, mesh_object_.get()->totcol, BKE_MAT_ASSIGN_USERPREF);
 
     ShaderNodetreeWrap mat_wrap{bmain, curr_mat};
     mat->use_nodes = true;
