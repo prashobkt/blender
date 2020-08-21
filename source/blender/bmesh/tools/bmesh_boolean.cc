@@ -38,15 +38,15 @@ namespace meshintersect {
  * We are given a triangulation of it from the caller via looptris,
  * which are looptris_tot triples of loops that together tessellate
  * the faces of bm.
- * Return a second Mesh in *r_triangulated that has the triangulated
+ * Return a second IMesh in *r_triangulated that has the triangulated
  * mesh, with face "orig" fields that connect the triangles back to
  * the faces in the returned (polygonal) mesh.
  */
-static Mesh mesh_from_bm(BMesh *bm,
-                         struct BMLoop *(*looptris)[3],
-                         const int looptris_tot,
-                         Mesh *r_triangulated,
-                         MArena *arena)
+static IMesh mesh_from_bm(BMesh *bm,
+                          struct BMLoop *(*looptris)[3],
+                          const int looptris_tot,
+                          IMesh *r_triangulated,
+                          IMeshArena *arena)
 {
   BLI_assert(r_triangulated != nullptr);
   BM_mesh_elem_index_ensure(bm, BM_VERT | BM_EDGE | BM_FACE);
@@ -55,14 +55,14 @@ static Mesh mesh_from_bm(BMesh *bm,
   const int estimate_num_outv = (3 * bm->totvert) / 2;
   const int estimate_num_outf = 4 * bm->totface;
   arena->reserve(estimate_num_outv, estimate_num_outf);
-  Array<Vertp> vert(bm->totvert);
+  Array<const Vert *> vert(bm->totvert);
   for (int v = 0; v < bm->totvert; ++v) {
     BMVert *bmv = BM_vert_at_index(bm, v);
     vert[v] = arena->add_or_find_vert(mpq3(bmv->co[0], bmv->co[1], bmv->co[2]), v);
   }
-  Array<Facep> face(bm->totface);
+  Array<const Face *> face(bm->totface);
   constexpr int estimated_max_facelen = 100;
-  Vector<Vertp, estimated_max_facelen> face_vert;
+  Vector<const Vert *, estimated_max_facelen> face_vert;
   Vector<int, estimated_max_facelen> face_edge_orig;
   for (int f = 0; f < bm->totface; ++f) {
     BMFace *bmf = BM_face_at_index(bm, f);
@@ -71,7 +71,7 @@ static Mesh mesh_from_bm(BMesh *bm,
     face_edge_orig.clear();
     BMLoop *l = bmf->l_first;
     for (int i = 0; i < flen; ++i) {
-      Vertp v = vert[BM_elem_index_get(l->v)];
+      const Vert *v = vert[BM_elem_index_get(l->v)];
       face_vert.append(v);
       int e_index = BM_elem_index_get(l->e);
       face_edge_orig.append(e_index);
@@ -84,7 +84,7 @@ static Mesh mesh_from_bm(BMesh *bm,
    * but their next and e pointers are not correct for the loops
    * that start added-diagonal edges.
    */
-  Array<Facep> tri_face(looptris_tot);
+  Array<const Face *> tri_face(looptris_tot);
   face_vert.resize(3);
   face_edge_orig.resize(3);
   for (int i = 0; i < looptris_tot; ++i) {
@@ -106,7 +106,7 @@ static Mesh mesh_from_bm(BMesh *bm,
     tri_face[i] = arena->add_face(face_vert, f, face_edge_orig);
   }
   r_triangulated->set_faces(tri_face);
-  return Mesh(face);
+  return IMesh(face);
 }
 
 static bool bmvert_attached_to_wire(const BMVert *bmv)
@@ -140,7 +140,7 @@ constexpr uint KEEP_FLAG = (1 << 6);
  * Also, the BM_ELEM_TAG header flag is set for those BMEdges that come from intersections
  * resulting from the intersection needed by the Boolean operation.
  */
-static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
+static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out)
 {
   bool any_change = false;
 
@@ -166,7 +166,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
    */
   Array<BMVert *> new_bmvs(m_out.vert_size());
   for (int v : m_out.vert_index_range()) {
-    Vertp vertp = m_out.vert(v);
+    const Vert *vertp = m_out.vert(v);
     int orig = vertp->orig;
     if (orig != NO_INDEX) {
       BLI_assert(orig >= 0 && orig < bm->totvert);
@@ -179,7 +179,7 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
     }
   }
   for (int v : m_out.vert_index_range()) {
-    Vertp vertp = m_out.vert(v);
+    const Vert *vertp = m_out.vert(v);
     if (new_bmvs[v] == NULL) {
       float co[3];
       const double3 &d_co = vertp->co;
@@ -217,16 +217,16 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, Mesh &m_out)
    * so we can declare some arrays outside of the face-creating loop.
    */
   int maxflen = 0;
-  for (Facep f : m_out.faces()) {
+  for (const Face *f : m_out.faces()) {
     maxflen = max_ii(maxflen, static_cast<int>(f->size()));
   }
   Array<BMVert *> face_bmverts(maxflen);
   Array<BMEdge *> face_bmedges(maxflen);
-  for (Facep f : m_out.faces()) {
+  for (const Face *f : m_out.faces()) {
     const Face &face = *f;
     int flen = static_cast<int>(face.size());
     for (int i = 0; i < flen; ++i) {
-      Vertp v = face[i];
+      const Vert *v = face[i];
       int v_index = m_out.lookup_vert(v);
       BLI_assert(v_index < new_bmvs.size());
       face_bmverts[i] = new_bmvs[v_index];
@@ -339,9 +339,9 @@ static bool bmesh_boolean(BMesh *bm,
                           const bool use_separate_all,
                           const int boolean_mode)
 {
-  MArena arena;
-  Mesh m_triangulated;
-  Mesh m_in = mesh_from_bm(bm, looptris, looptris_tot, &m_triangulated, &arena);
+  IMeshArena arena;
+  IMesh m_triangulated;
+  IMesh m_in = mesh_from_bm(bm, looptris, looptris_tot, &m_triangulated, &arena);
   std::function<int(int)> shape_fn;
   int nshapes;
   if (use_self) {
@@ -370,7 +370,7 @@ static bool bmesh_boolean(BMesh *bm,
     };
   }
   bool_optype op = static_cast<bool_optype>(boolean_mode);
-  Mesh m_out = boolean_mesh(m_in, op, nshapes, shape_fn, use_self, &m_triangulated, &arena);
+  IMesh m_out = boolean_mesh(m_in, op, nshapes, shape_fn, use_self, &m_triangulated, &arena);
   bool any_change = apply_mesh_output_to_bmesh(bm, m_out);
   if (use_separate_all) {
     /* We are supposed to separate all faces that are incident on intersection edges. */

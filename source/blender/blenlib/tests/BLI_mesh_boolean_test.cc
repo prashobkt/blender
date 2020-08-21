@@ -19,11 +19,11 @@ namespace blender::meshintersect {
 
 constexpr bool DO_OBJ = false;
 
-/* Build and hold a Mesh from a string spec. Also hold and own resources used by Mesh. */
-class MeshBuilder {
+/* Build and hold an IMesh from a string spec. Also hold and own resources used by IMesh. */
+class IMeshBuilder {
  public:
-  Mesh mesh;
-  MArena arena;
+  IMesh imesh;
+  IMeshArena arena;
 
   /* "Edge orig" indices are an encoding of <input face#, position in face of start of edge>. */
   static constexpr int MAX_FACE_LEN = 1000; /* Used for forming "orig edge" indices only. */
@@ -44,7 +44,7 @@ class MeshBuilder {
    *  mpq_class mpq_class mpq_clas [#verts lines]
    *  int int int ... [#faces lines; indices into verts for given face]
    */
-  MeshBuilder(const char *spec)
+  IMeshBuilder(const char *spec)
   {
     std::istringstream ss(spec);
     std::string line;
@@ -56,8 +56,8 @@ class MeshBuilder {
       return;
     }
     arena.reserve(nv, nf);
-    Vector<Vertp> verts;
-    Vector<Facep> faces;
+    Vector<const Vert *> verts;
+    Vector<const Face *> faces;
     bool spec_ok = true;
     int v_index = 0;
     while (v_index < nv && spec_ok && getline(ss, line)) {
@@ -76,7 +76,7 @@ class MeshBuilder {
     int f_index = 0;
     while (f_index < nf && spec_ok && getline(ss, line)) {
       std::istringstream fss(line);
-      Vector<Vertp> face_verts;
+      Vector<const Vert *> face_verts;
       Vector<int> edge_orig;
       int fpos = 0;
       while (spec_ok && fss >> v_index) {
@@ -88,7 +88,7 @@ class MeshBuilder {
         edge_orig.append(edge_index(f_index, fpos));
         ++fpos;
       }
-      Facep facep = arena.add_face(face_verts, f_index, edge_orig);
+      const Face *facep = arena.add_face(face_verts, f_index, edge_orig);
       faces.append(facep);
       ++f_index;
     }
@@ -99,15 +99,15 @@ class MeshBuilder {
       std::cout << "Bad spec: " << spec;
       return;
     }
-    mesh = Mesh(faces);
+    imesh = IMesh(faces);
   }
 };
 
 TEST(boolean_trimesh, Empty)
 {
-  MArena arena;
-  Mesh in;
-  Mesh out = boolean_trimesh(
+  IMeshArena arena;
+  IMesh in;
+  IMesh out = boolean_trimesh(
       in, BOOLEAN_NONE, 1, [](int) { return 0; }, true, &arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 0);
@@ -135,9 +135,9 @@ TEST(boolean_trimesh, TetTetTrimesh)
   6 4 7
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_trimesh(
-      mb.mesh, BOOLEAN_NONE, 1, [](int) { return 0; }, true, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_trimesh(
+      mb.imesh, BOOLEAN_NONE, 1, [](int) { return 0; }, true, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 11);
   EXPECT_EQ(out.face_size(), 20);
@@ -145,9 +145,9 @@ TEST(boolean_trimesh, TetTetTrimesh)
     write_obj_mesh(out, "tettet_tm");
   }
 
-  MeshBuilder mb2(spec);
-  Mesh out2 = boolean_trimesh(
-      mb2.mesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb2.arena);
+  IMeshBuilder mb2(spec);
+  IMesh out2 = boolean_trimesh(
+      mb2.imesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb2.arena);
   out2.populate_vert();
   EXPECT_EQ(out2.vert_size(), 10);
   EXPECT_EQ(out2.face_size(), 16);
@@ -155,9 +155,9 @@ TEST(boolean_trimesh, TetTetTrimesh)
     write_obj_mesh(out2, "tettet_union_tm");
   }
 
-  MeshBuilder mb3(spec);
-  Mesh out3 = boolean_trimesh(
-      mb3.mesh, BOOLEAN_UNION, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb3.arena);
+  IMeshBuilder mb3(spec);
+  IMesh out3 = boolean_trimesh(
+      mb3.imesh, BOOLEAN_UNION, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb3.arena);
   out3.populate_vert();
   EXPECT_EQ(out3.vert_size(), 10);
   EXPECT_EQ(out3.face_size(), 16);
@@ -165,9 +165,9 @@ TEST(boolean_trimesh, TetTetTrimesh)
     write_obj_mesh(out3, "tettet_union_binary_tm");
   }
 
-  MeshBuilder mb4(spec);
-  Mesh out4 = boolean_trimesh(
-      mb4.mesh, BOOLEAN_UNION, 2, [](int t) { return t < 4 ? 0 : 1; }, true, &mb4.arena);
+  IMeshBuilder mb4(spec);
+  IMesh out4 = boolean_trimesh(
+      mb4.imesh, BOOLEAN_UNION, 2, [](int t) { return t < 4 ? 0 : 1; }, true, &mb4.arena);
   out4.populate_vert();
   EXPECT_EQ(out4.vert_size(), 10);
   EXPECT_EQ(out4.face_size(), 16);
@@ -175,9 +175,9 @@ TEST(boolean_trimesh, TetTetTrimesh)
     write_obj_mesh(out4, "tettet_union_binary_self_tm");
   }
 
-  MeshBuilder mb5(spec);
-  Mesh out5 = boolean_trimesh(
-      mb5.mesh, BOOLEAN_ISECT, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb5.arena);
+  IMeshBuilder mb5(spec);
+  IMesh out5 = boolean_trimesh(
+      mb5.imesh, BOOLEAN_ISECT, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb5.arena);
   out5.populate_vert();
   EXPECT_EQ(out5.vert_size(), 4);
   EXPECT_EQ(out5.face_size(), 4);
@@ -185,9 +185,9 @@ TEST(boolean_trimesh, TetTetTrimesh)
     write_obj_mesh(out5, "tettet_intersect_binary_tm");
   }
 
-  MeshBuilder mb6(spec);
-  Mesh out6 = boolean_trimesh(
-      mb6.mesh, BOOLEAN_DIFFERENCE, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb6.arena);
+  IMeshBuilder mb6(spec);
+  IMesh out6 = boolean_trimesh(
+      mb6.imesh, BOOLEAN_DIFFERENCE, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb6.arena);
   out6.populate_vert();
   EXPECT_EQ(out6.vert_size(), 6);
   EXPECT_EQ(out6.face_size(), 8);
@@ -195,9 +195,9 @@ TEST(boolean_trimesh, TetTetTrimesh)
     write_obj_mesh(out6, "tettet_difference_binary_tm");
   }
 
-  MeshBuilder mb7(spec);
-  Mesh out7 = boolean_trimesh(
-      mb7.mesh, BOOLEAN_DIFFERENCE, 2, [](int t) { return t < 4 ? 1 : 0; }, false, &mb7.arena);
+  IMeshBuilder mb7(spec);
+  IMesh out7 = boolean_trimesh(
+      mb7.imesh, BOOLEAN_DIFFERENCE, 2, [](int t) { return t < 4 ? 1 : 0; }, false, &mb7.arena);
   out7.populate_vert();
   EXPECT_EQ(out7.vert_size(), 8);
   EXPECT_EQ(out7.face_size(), 12);
@@ -227,9 +227,9 @@ TEST(boolean_trimesh, TetTet2Trimesh)
   6 7 4
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_trimesh(
-      mb.mesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_trimesh(
+      mb.imesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 10);
   EXPECT_EQ(out.face_size(), 16);
@@ -271,9 +271,9 @@ TEST(boolean_trimesh, CubeTetTrimesh)
   10 11 8
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_trimesh(
-      mb.mesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_trimesh(
+      mb.imesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 14);
   EXPECT_EQ(out.face_size(), 24);
@@ -303,9 +303,9 @@ TEST(boolean_trimesh, BinaryTetTetTrimesh)
   6 4 7
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_trimesh(
-      mb.mesh, BOOLEAN_ISECT, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_trimesh(
+      mb.imesh, BOOLEAN_ISECT, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 4);
   EXPECT_EQ(out.face_size(), 4);
@@ -335,9 +335,9 @@ TEST(boolean_trimesh, TetTetCoplanarTrimesh)
   6 4 7
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_trimesh(
-      mb.mesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_trimesh(
+      mb.imesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 5);
   EXPECT_EQ(out.face_size(), 6);
@@ -367,9 +367,9 @@ TEST(boolean_trimesh, TetInsideTetTrimesh)
   6 4 7
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_trimesh(
-      mb.mesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_trimesh(
+      mb.imesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 4);
   EXPECT_EQ(out.face_size(), 4);
@@ -399,9 +399,9 @@ TEST(boolean_trimesh, TetBesideTetTrimesh)
   6 4 7
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_trimesh(
-      mb.mesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_trimesh(
+      mb.imesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 8);
   EXPECT_EQ(out.face_size(), 8);
@@ -435,9 +435,9 @@ TEST(boolean_trimesh, DegenerateTris)
   0 1 9
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_trimesh(
-      mb.mesh, BOOLEAN_ISECT, 2, [](int t) { return t < 5 ? 0 : 1; }, false, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_trimesh(
+      mb.imesh, BOOLEAN_ISECT, 2, [](int t) { return t < 5 ? 0 : 1; }, false, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 4);
   EXPECT_EQ(out.face_size(), 4);
@@ -467,9 +467,9 @@ TEST(boolean_polymesh, TetTet)
   6 4 7
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_mesh(
-      mb.mesh, BOOLEAN_NONE, 1, [](int) { return 0; }, true, nullptr, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_mesh(
+      mb.imesh, BOOLEAN_NONE, 1, [](int) { return 0; }, true, nullptr, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 11);
   EXPECT_EQ(out.face_size(), 13);
@@ -477,9 +477,9 @@ TEST(boolean_polymesh, TetTet)
     write_obj_mesh(out, "tettet");
   }
 
-  MeshBuilder mb2(spec);
-  Mesh out2 = boolean_mesh(
-      mb2.mesh, BOOLEAN_NONE, 2, [](int t) { return t < 4 ? 0 : 1; }, false, nullptr, &mb2.arena);
+  IMeshBuilder mb2(spec);
+  IMesh out2 = boolean_mesh(
+      mb2.imesh, BOOLEAN_NONE, 2, [](int t) { return t < 4 ? 0 : 1; }, false, nullptr, &mb2.arena);
   out2.populate_vert();
   EXPECT_EQ(out2.vert_size(), 11);
   EXPECT_EQ(out2.face_size(), 13);
@@ -521,12 +521,12 @@ TEST(boolean_polymesh, CubeCube)
   11 9 13 15
   )";
 
-  MeshBuilder mb(spec);
+  IMeshBuilder mb(spec);
   if (DO_OBJ) {
-    write_obj_mesh(mb.mesh, "cube_cube_in");
+    write_obj_mesh(mb.imesh, "cube_cube_in");
   }
-  Mesh out = boolean_mesh(
-      mb.mesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; }, true, nullptr, &mb.arena);
+  IMesh out = boolean_mesh(
+      mb.imesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; }, true, nullptr, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 20);
   EXPECT_EQ(out.face_size(), 12);
@@ -534,9 +534,9 @@ TEST(boolean_polymesh, CubeCube)
     write_obj_mesh(out, "cubecube_union");
   }
 
-  MeshBuilder mb2(spec);
-  Mesh out2 = boolean_mesh(
-      mb2.mesh, BOOLEAN_NONE, 2, [](int t) { return t < 6 ? 0 : 1; }, false, nullptr, &mb2.arena);
+  IMeshBuilder mb2(spec);
+  IMesh out2 = boolean_mesh(
+      mb2.imesh, BOOLEAN_NONE, 2, [](int t) { return t < 6 ? 0 : 1; }, false, nullptr, &mb2.arena);
   out2.populate_vert();
   EXPECT_EQ(out2.vert_size(), 22);
   EXPECT_EQ(out2.face_size(), 18);
@@ -575,9 +575,9 @@ TEST(boolean_polymesh, CubeCone)
   13 11 8
   8 9 10 12 13)";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_mesh(
-      mb.mesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; }, true, nullptr, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_mesh(
+      mb.imesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; }, true, nullptr, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 14);
   EXPECT_EQ(out.face_size(), 12);
@@ -619,9 +619,9 @@ TEST(boolean_polymesh, CubeCubeCoplanar)
   15 11 9 13
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_mesh(
-      mb.mesh, BOOLEAN_UNION, 2, [](int t) { return t < 6 ? 0 : 1; }, false, nullptr, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_mesh(
+      mb.imesh, BOOLEAN_UNION, 2, [](int t) { return t < 6 ? 0 : 1; }, false, nullptr, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 16);
   EXPECT_EQ(out.face_size(), 12);
@@ -651,9 +651,9 @@ TEST(boolean_polymesh, TetTeTCoplanarDiff)
   6 4 7
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_mesh(
-      mb.mesh,
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_mesh(
+      mb.imesh,
       BOOLEAN_DIFFERENCE,
       2,
       [](int t) { return t < 4 ? 0 : 1; },
@@ -701,9 +701,9 @@ TEST(boolean_polymesh, CubeCubeStep)
   15 11 9 13
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_mesh(
-      mb.mesh,
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_mesh(
+      mb.imesh,
       BOOLEAN_DIFFERENCE,
       2,
       [](int t) { return t < 6 ? 0 : 1; },
@@ -751,9 +751,9 @@ TEST(boolean_polymesh, CubeCyl4)
   15 11 9 13
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_mesh(
-      mb.mesh,
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_mesh(
+      mb.imesh,
       BOOLEAN_DIFFERENCE,
       2,
       [](int t) { return t < 6 ? 1 : 0; },
@@ -822,9 +822,9 @@ TEST(boolean_polymesh, CubeCubesubdivDiff)
   23 25 21 19
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_mesh(
-      mb.mesh,
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_mesh(
+      mb.imesh,
       BOOLEAN_DIFFERENCE,
       2,
       [](int t) { return t < 16 ? 1 : 0; },
@@ -863,9 +863,9 @@ TEST(boolean_polymesh, CubePlane)
   11 7 5 9
 )";
 
-  MeshBuilder mb(spec);
-  Mesh out = boolean_mesh(
-      mb.mesh,
+  IMeshBuilder mb(spec);
+  IMesh out = boolean_mesh(
+      mb.imesh,
       BOOLEAN_DIFFERENCE,
       2,
       [](int t) { return t >= 1 ? 0 : 1; },

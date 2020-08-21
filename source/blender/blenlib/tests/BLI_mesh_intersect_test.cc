@@ -22,11 +22,11 @@ namespace blender::meshintersect {
 
 constexpr bool DO_OBJ = false;
 
-/* Build and hold a Mesh from a string spec. Also hold and own resources used by Mesh. */
-class MeshBuilder {
+/* Build and hold an IMesh from a string spec. Also hold and own resources used by IMesh. */
+class IMeshBuilder {
  public:
-  Mesh mesh;
-  MArena arena;
+  IMesh imesh;
+  IMeshArena arena;
 
   /* "Edge orig" indices are an encoding of <input face#, position in face of start of edge>. */
   static constexpr int MAX_FACE_LEN = 1000; /* Used for forming "orig edge" indices only. */
@@ -47,7 +47,7 @@ class MeshBuilder {
    *  mpq_class mpq_class mpq_clas [#verts lines]
    *  int int int ... [#faces lines; indices into verts for given face]
    */
-  MeshBuilder(const char *spec)
+  IMeshBuilder(const char *spec)
   {
     std::istringstream ss(spec);
     std::string line;
@@ -59,8 +59,8 @@ class MeshBuilder {
       return;
     }
     arena.reserve(nv, nf);
-    Vector<Vertp> verts;
-    Vector<Facep> faces;
+    Vector<const Vert *> verts;
+    Vector<const Face *> faces;
     bool spec_ok = true;
     int v_index = 0;
     while (v_index < nv && spec_ok && getline(ss, line)) {
@@ -81,7 +81,7 @@ class MeshBuilder {
     int f_index = 0;
     while (f_index < nf && spec_ok && getline(ss, line)) {
       std::istringstream fss(line);
-      Vector<Vertp> face_verts;
+      Vector<const Vert *> face_verts;
       Vector<int> edge_orig;
       int fpos = 0;
       while (spec_ok && fss >> v_index) {
@@ -97,7 +97,7 @@ class MeshBuilder {
         spec_ok = false;
       }
       if (spec_ok) {
-        Facep facep = arena.add_face(face_verts, f_index, edge_orig);
+        const Face *facep = arena.add_face(face_verts, f_index, edge_orig);
         faces.append(facep);
       }
       ++f_index;
@@ -109,17 +109,20 @@ class MeshBuilder {
       std::cout << "Bad spec: " << spec;
       return;
     }
-    mesh = Mesh(faces);
+    imesh = IMesh(faces);
   }
 };
 
-/* Return a Facep in mesh with verts equal to v0, v1, and v2, in
+/* Return a const Face * in mesh with verts equal to v0, v1, and v2, in
  * some cyclic order; return nullptr if not found.
  */
-static Facep find_tri_with_verts(const Mesh &mesh, Vertp v0, Vertp v1, Vertp v2)
+static const Face *find_tri_with_verts(const IMesh &mesh,
+                                       const Vert *v0,
+                                       const Vert *v1,
+                                       const Vert *v2)
 {
   Face f_arg({v0, v1, v2}, 0, NO_INDEX);
-  for (Facep f : mesh.faces()) {
+  for (const Face *f : mesh.faces()) {
     if (f->cyclic_equal(f_arg)) {
       return f;
     }
@@ -128,11 +131,11 @@ static Facep find_tri_with_verts(const Mesh &mesh, Vertp v0, Vertp v1, Vertp v2)
 }
 
 /* How many instances of a triangle with v0, v1, v2 are in the mesh? */
-static int count_tris_with_verts(const Mesh &mesh, Vertp v0, Vertp v1, Vertp v2)
+static int count_tris_with_verts(const IMesh &mesh, const Vert *v0, const Vert *v1, const Vert *v2)
 {
   Face f_arg({v0, v1, v2}, 0, NO_INDEX);
   int ans = 0;
-  for (Facep f : mesh.faces()) {
+  for (const Face *f : mesh.faces()) {
     if (f->cyclic_equal(f_arg)) {
       ++ans;
     }
@@ -142,7 +145,7 @@ static int count_tris_with_verts(const Mesh &mesh, Vertp v0, Vertp v1, Vertp v2)
 
 /* What is the starting position, if any, of the edge (v0, v1), in either order, in f? -1 if none.
  */
-static int find_edge_pos_in_tri(Vertp v0, Vertp v1, Facep f)
+static int find_edge_pos_in_tri(const Vert *v0, const Vert *v1, const Face *f)
 {
   for (int pos : f->index_range()) {
     int nextpos = f->next_pos(pos);
@@ -156,17 +159,17 @@ static int find_edge_pos_in_tri(Vertp v0, Vertp v1, Facep f)
 #if DO_REGULAR_TESTS
 TEST(mesh_intersect, Mesh)
 {
-  Vector<Vertp> verts;
-  Vector<Facep> faces;
-  MArena arena;
+  Vector<const Vert *> verts;
+  Vector<const Face *> faces;
+  IMeshArena arena;
 
   verts.append(arena.add_or_find_vert(mpq3(0, 0, 1), 0));
   verts.append(arena.add_or_find_vert(mpq3(1, 0, 1), 1));
   verts.append(arena.add_or_find_vert(mpq3(0.5, 1, 1), 2));
   faces.append(arena.add_face(verts, 0, {10, 11, 12}));
 
-  Mesh mesh(faces);
-  Facep f = mesh.face(0);
+  IMesh mesh(faces);
+  const Face *f = mesh.face(0);
   EXPECT_TRUE(f->is_tri());
   EXPECT_EQ(f->plane.norm, double3(0.0, 0.0, 1.0));
   EXPECT_EQ(f->plane.d, -1.0);
@@ -181,12 +184,12 @@ TEST(mesh_intersect, OneTri)
   0 1 2
   )";
 
-  MeshBuilder mb(spec);
-  Mesh imesh = trimesh_self_intersect(mb.mesh, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh imesh = trimesh_self_intersect(mb.imesh, &mb.arena);
   imesh.populate_vert();
   EXPECT_EQ(imesh.vert_size(), 3);
   EXPECT_EQ(imesh.face_size(), 1);
-  const Face f_in = *mb.mesh.face(0);
+  const Face f_in = *mb.imesh.face(0);
   const Face f_out = *imesh.face(0);
   EXPECT_EQ(f_in.orig, f_out.orig);
   for (int i = 0; i < 3; ++i) {
@@ -209,29 +212,29 @@ TEST(mesh_intersect, TriTri)
   )";
 
   /* Second triangle is smaller and congruent to first, resting on same base, partway along. */
-  MeshBuilder mb(spec);
-  Mesh out = trimesh_self_intersect(mb.mesh, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = trimesh_self_intersect(mb.imesh, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 6);
   EXPECT_EQ(out.face_size(), 6);
   if (out.vert_size() == 6 && out.face_size() == 6) {
-    Vertp v0 = mb.arena.find_vert(mpq3(0, 0, 0));
-    Vertp v1 = mb.arena.find_vert(mpq3(4, 0, 0));
-    Vertp v2 = mb.arena.find_vert(mpq3(0, 4, 0));
-    Vertp v3 = mb.arena.find_vert(mpq3(1, 0, 0));
-    Vertp v4 = mb.arena.find_vert(mpq3(2, 0, 0));
-    Vertp v5 = mb.arena.find_vert(mpq3(1, 1, 0));
+    const Vert *v0 = mb.arena.find_vert(mpq3(0, 0, 0));
+    const Vert *v1 = mb.arena.find_vert(mpq3(4, 0, 0));
+    const Vert *v2 = mb.arena.find_vert(mpq3(0, 4, 0));
+    const Vert *v3 = mb.arena.find_vert(mpq3(1, 0, 0));
+    const Vert *v4 = mb.arena.find_vert(mpq3(2, 0, 0));
+    const Vert *v5 = mb.arena.find_vert(mpq3(1, 1, 0));
     EXPECT_TRUE(v0 != nullptr && v1 != nullptr && v2 != nullptr);
     EXPECT_TRUE(v3 != nullptr && v4 != nullptr && v5 != nullptr);
     if (v0 != nullptr && v1 != nullptr && v2 != nullptr && v3 != nullptr && v4 != nullptr &&
         v5 != nullptr) {
       EXPECT_EQ(v0->orig, 0);
       EXPECT_EQ(v1->orig, 1);
-      Facep f0 = find_tri_with_verts(out, v4, v1, v5);
-      Facep f1 = find_tri_with_verts(out, v3, v4, v5);
-      Facep f2 = find_tri_with_verts(out, v0, v3, v5);
-      Facep f3 = find_tri_with_verts(out, v0, v5, v2);
-      Facep f4 = find_tri_with_verts(out, v5, v1, v2);
+      const Face *f0 = find_tri_with_verts(out, v4, v1, v5);
+      const Face *f1 = find_tri_with_verts(out, v3, v4, v5);
+      const Face *f2 = find_tri_with_verts(out, v0, v3, v5);
+      const Face *f3 = find_tri_with_verts(out, v0, v5, v2);
+      const Face *f4 = find_tri_with_verts(out, v5, v1, v2);
       EXPECT_TRUE(f0 != nullptr && f1 != nullptr && f2 != nullptr && f3 != nullptr &&
                   f4 != nullptr);
       /* For boolean to work right, there need to be two copies of the smaller triangle in the
@@ -255,8 +258,8 @@ TEST(mesh_intersect, TriTri)
       if (e03 != -1 && e34 != -1 && e45 != -1 && e05 != -1 && e15 != -1) {
         EXPECT_EQ(f2->edge_orig[e03], 0);
         EXPECT_TRUE(f1->edge_orig[e34] == 0 ||
-                    f1->edge_orig[e34] == 1 * MeshBuilder::MAX_FACE_LEN);
-        EXPECT_EQ(f1->edge_orig[e45], 1 * MeshBuilder::MAX_FACE_LEN + 1);
+                    f1->edge_orig[e34] == 1 * IMeshBuilder::MAX_FACE_LEN);
+        EXPECT_EQ(f1->edge_orig[e45], 1 * IMeshBuilder::MAX_FACE_LEN + 1);
         EXPECT_EQ(f3->edge_orig[e05], NO_INDEX);
         EXPECT_EQ(f0->edge_orig[e15], NO_INDEX);
       }
@@ -283,29 +286,29 @@ TEST(mesh_intersect, TriTriReversed)
   3 5 4
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = trimesh_self_intersect(mb.mesh, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = trimesh_self_intersect(mb.imesh, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 6);
   EXPECT_EQ(out.face_size(), 6);
   if (out.vert_size() == 6 && out.face_size() == 6) {
-    Vertp v0 = mb.arena.find_vert(mpq3(0, 0, 0));
-    Vertp v1 = mb.arena.find_vert(mpq3(4, 0, 0));
-    Vertp v2 = mb.arena.find_vert(mpq3(0, 4, 0));
-    Vertp v3 = mb.arena.find_vert(mpq3(1, 0, 0));
-    Vertp v4 = mb.arena.find_vert(mpq3(2, 0, 0));
-    Vertp v5 = mb.arena.find_vert(mpq3(1, 1, 0));
+    const Vert *v0 = mb.arena.find_vert(mpq3(0, 0, 0));
+    const Vert *v1 = mb.arena.find_vert(mpq3(4, 0, 0));
+    const Vert *v2 = mb.arena.find_vert(mpq3(0, 4, 0));
+    const Vert *v3 = mb.arena.find_vert(mpq3(1, 0, 0));
+    const Vert *v4 = mb.arena.find_vert(mpq3(2, 0, 0));
+    const Vert *v5 = mb.arena.find_vert(mpq3(1, 1, 0));
     EXPECT_TRUE(v0 != nullptr && v1 != nullptr && v2 != nullptr);
     EXPECT_TRUE(v3 != nullptr && v4 != nullptr && v5 != nullptr);
     if (v0 != nullptr && v1 != nullptr && v2 != nullptr && v3 != nullptr && v4 != nullptr &&
         v5 != nullptr) {
       EXPECT_EQ(v0->orig, 0);
       EXPECT_EQ(v1->orig, 1);
-      Facep f0 = find_tri_with_verts(out, v4, v5, v1);
-      Facep f1 = find_tri_with_verts(out, v3, v5, v4);
-      Facep f2 = find_tri_with_verts(out, v0, v5, v3);
-      Facep f3 = find_tri_with_verts(out, v0, v2, v5);
-      Facep f4 = find_tri_with_verts(out, v5, v2, v1);
+      const Face *f0 = find_tri_with_verts(out, v4, v5, v1);
+      const Face *f1 = find_tri_with_verts(out, v3, v5, v4);
+      const Face *f2 = find_tri_with_verts(out, v0, v5, v3);
+      const Face *f3 = find_tri_with_verts(out, v0, v2, v5);
+      const Face *f4 = find_tri_with_verts(out, v5, v2, v1);
       EXPECT_TRUE(f0 != nullptr && f1 != nullptr && f2 != nullptr && f3 != nullptr &&
                   f4 != nullptr);
       /* For boolean to work right, there need to be two copies of the smaller triangle in the
@@ -329,8 +332,8 @@ TEST(mesh_intersect, TriTriReversed)
       if (e03 != -1 && e34 != -1 && e45 != -1 && e05 != -1 && e15 != -1) {
         EXPECT_EQ(f2->edge_orig[e03], 2);
         EXPECT_TRUE(f1->edge_orig[e34] == 2 ||
-                    f1->edge_orig[e34] == 1 * MeshBuilder::MAX_FACE_LEN + 2);
-        EXPECT_EQ(f1->edge_orig[e45], 1 * MeshBuilder::MAX_FACE_LEN + 1);
+                    f1->edge_orig[e34] == 1 * IMeshBuilder::MAX_FACE_LEN + 2);
+        EXPECT_EQ(f1->edge_orig[e45], 1 * IMeshBuilder::MAX_FACE_LEN + 1);
         EXPECT_EQ(f3->edge_orig[e05], NO_INDEX);
         EXPECT_EQ(f0->edge_orig[e15], NO_INDEX);
       }
@@ -430,20 +433,20 @@ TEST(mesh_intersect, TwoTris)
         if (do_all_perms && verbose) {
           std::cout << "\nperms " << i << " " << j << "\n";
         }
-        MArena arena;
+        IMeshArena arena;
         arena.reserve(2 * 3, 2);
-        Array<Vertp> f0_verts(3);
-        Array<Vertp> f1_verts(3);
+        Array<const Vert *> f0_verts(3);
+        Array<const Vert *> f1_verts(3);
         for (int k = 0; k < 3; ++k) {
           f0_verts[k] = arena.add_or_find_vert(verts[co1_i + perms[i][k]], k);
         }
         for (int k = 0; k < 3; ++k) {
           f1_verts[k] = arena.add_or_find_vert(verts[co2_i + perms[i][k]], k + 3);
         }
-        Facep f0 = arena.add_face(f0_verts, 0, {0, 1, 2});
-        Facep f1 = arena.add_face(f1_verts, 1, {3, 4, 5});
-        Mesh in_mesh({f0, f1});
-        Mesh out_mesh = trimesh_self_intersect(in_mesh, &arena);
+        const Face *f0 = arena.add_face(f0_verts, 0, {0, 1, 2});
+        const Face *f1 = arena.add_face(f1_verts, 1, {3, 4, 5});
+        IMesh in_mesh({f0, f1});
+        IMesh out_mesh = trimesh_self_intersect(in_mesh, &arena);
         out_mesh.populate_vert();
         EXPECT_EQ(out_mesh.vert_size(), test_tris[test].nv_out);
         EXPECT_EQ(out_mesh.face_size(), test_tris[test].nf_out);
@@ -490,8 +493,8 @@ TEST(mesh_intersect, OverlapCluster)
   6 7 8
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = trimesh_self_intersect(mb.mesh, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = trimesh_self_intersect(mb.imesh, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 16);
   EXPECT_EQ(out.face_size(), 18);
@@ -522,8 +525,8 @@ TEST(mesh_intersect, TriCornerCross1)
   9 10 11
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = trimesh_self_intersect(mb.mesh, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = trimesh_self_intersect(mb.imesh, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 10);
   EXPECT_EQ(out.face_size(), 14);
@@ -554,8 +557,8 @@ TEST(mesh_intersect, TriCornerCross2)
   9 10 11
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = trimesh_self_intersect(mb.mesh, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = trimesh_self_intersect(mb.imesh, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 7);
   EXPECT_EQ(out.face_size(), 8);
@@ -586,8 +589,8 @@ TEST(mesh_intersect, TriCornerCross3)
   9 10 11
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = trimesh_self_intersect(mb.mesh, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = trimesh_self_intersect(mb.imesh, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 10);
   EXPECT_EQ(out.face_size(), 16);
@@ -617,18 +620,18 @@ TEST(mesh_intersect, TetTet)
   6 7 4
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = trimesh_self_intersect(mb.mesh, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = trimesh_self_intersect(mb.imesh, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 11);
   EXPECT_EQ(out.face_size(), 20);
   /* Expect there to be a triangle with these three verts, oriented this way, with original face 1.
    */
-  Vertp v1 = mb.arena.find_vert(mpq3(2, 0, 0));
-  Vertp v8 = mb.arena.find_vert(mpq3(0.5, 0.5, 1));
-  Vertp v9 = mb.arena.find_vert(mpq3(1.5, 0.5, 1));
+  const Vert *v1 = mb.arena.find_vert(mpq3(2, 0, 0));
+  const Vert *v8 = mb.arena.find_vert(mpq3(0.5, 0.5, 1));
+  const Vert *v9 = mb.arena.find_vert(mpq3(1.5, 0.5, 1));
   EXPECT_TRUE(v1 != nullptr && v8 != nullptr && v9 != nullptr);
-  Facep f = mb.arena.find_face({v1, v8, v9});
+  const Face *f = mb.arena.find_face({v1, v8, v9});
   EXPECT_NE(f, nullptr);
   EXPECT_EQ(f->orig, 1);
   int v1pos = f->vert[0] == v1 ? 0 : (f->vert[1] == v1 ? 1 : 2);
@@ -688,8 +691,8 @@ TEST(mesh_intersect, CubeCubeStep)
   15 9 13
   )";
 
-  MeshBuilder mb(spec);
-  Mesh out = trimesh_self_intersect(mb.mesh, &mb.arena);
+  IMeshBuilder mb(spec);
+  IMesh out = trimesh_self_intersect(mb.imesh, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 22);
   EXPECT_EQ(out.face_size(), 56);
@@ -697,9 +700,9 @@ TEST(mesh_intersect, CubeCubeStep)
     write_obj_mesh(out, "test_cubecubestep");
   }
 
-  MeshBuilder mb2(spec);
-  Mesh out2 = trimesh_nary_intersect(
-      mb2.mesh, 2, [](int t) { return t < 12 ? 0 : 1; }, false, &mb2.arena);
+  IMeshBuilder mb2(spec);
+  IMesh out2 = trimesh_nary_intersect(
+      mb2.imesh, 2, [](int t) { return t < 12 ? 0 : 1; }, false, &mb2.arena);
   out2.populate_vert();
   EXPECT_EQ(out2.vert_size(), 22);
   EXPECT_EQ(out2.face_size(), 56);
@@ -728,16 +731,16 @@ static void fill_sphere_data(int nrings,
                              const double3 &center,
                              double radius,
                              bool triangulate,
-                             MutableSpan<Facep> face,
+                             MutableSpan<const Face *> face,
                              int vid_start,
                              int fid_start,
-                             MArena *arena)
+                             IMeshArena *arena)
 {
   int num_verts;
   int num_faces;
   get_sphere_params(nrings, nsegs, triangulate, &num_verts, &num_faces);
   BLI_assert(num_faces == face.size());
-  Array<Vertp> vert(num_verts);
+  Array<const Vert *> vert(num_verts);
   const bool nrings_even = (nrings % 2 == 0);
   int half_nrings = nrings / 2;
   const bool nsegs_even = (nsegs % 2) == 0;
@@ -820,12 +823,14 @@ static void fill_sphere_data(int nrings,
       double x = r_sin_theta * cos_phi + center[0];
       double y = r_sin_theta * sin_phi + center[1];
       double z = r_cos_theta + center[2];
-      Vertp v = arena->add_or_find_vert(mpq3(x, y, z), vid++);
+      const Vert *v = arena->add_or_find_vert(mpq3(x, y, z), vid++);
       vert[vert_index_fn(s, r)] = v;
     }
   }
-  Vertp vtop = arena->add_or_find_vert(mpq3(center[0], center[1], center[2] + radius), vid++);
-  Vertp vbot = arena->add_or_find_vert(mpq3(center[0], center[1], center[2] - radius), vid++);
+  const Vert *vtop = arena->add_or_find_vert(mpq3(center[0], center[1], center[2] + radius),
+                                             vid++);
+  const Vert *vbot = arena->add_or_find_vert(mpq3(center[0], center[1], center[2] - radius),
+                                             vid++);
   vert[vert_index_fn(0, 0)] = vtop;
   vert[vert_index_fn(0, nrings)] = vbot;
   for (int s = 0; s < nsegs; ++s) {
@@ -836,8 +841,8 @@ static void fill_sphere_data(int nrings,
       int i1 = vert_index_fn(s, rnext);
       int i2 = vert_index_fn(snext, rnext);
       int i3 = vert_index_fn(snext, r);
-      Facep f;
-      Facep f2 = nullptr;
+      const Face *f;
+      const Face *f2 = nullptr;
       if (r == 0) {
         f = arena->add_face({vert[i0], vert[i1], vert[i2]}, fid++, eid);
       }
@@ -877,12 +882,12 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
   }
   BLI_task_scheduler_init(); /* Without this, no parallelism. */
   double time_start = PIL_check_seconds_timer();
-  MArena arena;
+  IMeshArena arena;
   int nsegs = 2 * nrings;
   int num_sphere_verts;
   int num_sphere_tris;
   get_sphere_params(nrings, nsegs, true, &num_sphere_verts, &num_sphere_tris);
-  Array<Facep> tris(2 * num_sphere_tris);
+  Array<const Face *> tris(2 * num_sphere_tris);
   arena.reserve(2 * num_sphere_verts, 2 * num_sphere_tris);
   double3 center1(0.0, 0.0, 0.0);
   fill_sphere_data(nrings,
@@ -890,7 +895,7 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
                    center1,
                    1.0,
                    true,
-                   MutableSpan<Facep>(tris.begin(), num_sphere_tris),
+                   MutableSpan<const Face *>(tris.begin(), num_sphere_tris),
                    0,
                    0,
                    &arena);
@@ -900,14 +905,14 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
                    center2,
                    1.0,
                    true,
-                   MutableSpan<Facep>(tris.begin() + num_sphere_tris, num_sphere_tris),
+                   MutableSpan<const Face *>(tris.begin() + num_sphere_tris, num_sphere_tris),
                    num_sphere_verts,
                    num_sphere_verts,
                    &arena);
-  Mesh mesh(tris);
+  IMesh mesh(tris);
   double time_create = PIL_check_seconds_timer();
   write_obj_mesh(mesh, "spheresphere_in");
-  Mesh out;
+  IMesh out;
   if (use_self) {
     out = trimesh_self_intersect(mesh, &arena);
   }
@@ -941,10 +946,10 @@ static void fill_grid_data(int x_subdiv,
                            bool triangulate,
                            double size,
                            const double3 &center,
-                           MutableSpan<Facep> face,
+                           MutableSpan<const Face *> face,
                            int vid_start,
                            int fid_start,
-                           MArena *arena)
+                           IMeshArena *arena)
 {
   if (x_subdiv <= 1 || y_subdiv <= 1) {
     return;
@@ -953,7 +958,7 @@ static void fill_grid_data(int x_subdiv,
   int num_faces;
   get_grid_params(x_subdiv, y_subdiv, triangulate, &num_verts, &num_faces);
   BLI_assert(face.size() == num_faces);
-  Array<Vertp> vert(num_verts);
+  Array<const Vert *> vert(num_verts);
   auto vert_index_fn = [x_subdiv](int ix, int iy) { return iy * x_subdiv + ix; };
   auto face_index_fn = [x_subdiv](int ix, int iy) { return iy * (x_subdiv - 1) + ix; };
   auto tri_index_fn = [x_subdiv](int ix, int iy, int tri) {
@@ -969,7 +974,7 @@ static void fill_grid_data(int x_subdiv,
       double x = center[0] - r + ix * delta_x;
       double y = center[1] - r + iy * delta_y;
       double z = center[2];
-      Vertp v = arena->add_or_find_vert(mpq3(x, y, z), vid++);
+      const Vert *v = arena->add_or_find_vert(mpq3(x, y, z), vid++);
       vert[vert_index_fn(ix, iy)] = v;
     }
   }
@@ -981,13 +986,13 @@ static void fill_grid_data(int x_subdiv,
       int i2 = vert_index_fn(ix + 1, iy + 1);
       int i3 = vert_index_fn(ix + 1, iy);
       if (triangulate) {
-        Facep f = arena->add_face({vert[i0], vert[i1], vert[i2]}, fid++, eid);
-        Facep f2 = arena->add_face({vert[i2], vert[i3], vert[i0]}, fid++, eid);
+        const Face *f = arena->add_face({vert[i0], vert[i1], vert[i2]}, fid++, eid);
+        const Face *f2 = arena->add_face({vert[i2], vert[i3], vert[i0]}, fid++, eid);
         face[tri_index_fn(ix, iy, 0)] = f;
         face[tri_index_fn(ix, iy, 1)] = f2;
       }
       else {
-        Facep f = arena->add_face({vert[i0], vert[i1], vert[i2], vert[i3]}, fid++, eid);
+        const Face *f = arena->add_face({vert[i0], vert[i1], vert[i2], vert[i3]}, fid++, eid);
         face[face_index_fn(ix, iy)] = f;
       }
     }
@@ -1007,7 +1012,7 @@ static void spheregrid_test(int nrings, int grid_level, double z_offset, bool us
   }
   BLI_task_scheduler_init(); /* Without this, no parallelism. */
   double time_start = PIL_check_seconds_timer();
-  MArena arena;
+  IMeshArena arena;
   int num_sphere_verts;
   int num_sphere_tris;
   int nsegs = 2 * nrings;
@@ -1016,7 +1021,7 @@ static void spheregrid_test(int nrings, int grid_level, double z_offset, bool us
   int subdivs = 1 << grid_level;
   get_sphere_params(nrings, nsegs, true, &num_sphere_verts, &num_sphere_tris);
   get_grid_params(subdivs, subdivs, true, &num_grid_verts, &num_grid_tris);
-  Array<Facep> tris(num_sphere_tris + num_grid_tris);
+  Array<const Face *> tris(num_sphere_tris + num_grid_tris);
   arena.reserve(num_sphere_verts + num_grid_verts, num_sphere_tris + num_grid_tris);
   double3 center(0.0, 0.0, z_offset);
   fill_sphere_data(nrings,
@@ -1024,7 +1029,7 @@ static void spheregrid_test(int nrings, int grid_level, double z_offset, bool us
                    center,
                    1.0,
                    true,
-                   MutableSpan<Facep>(tris.begin(), num_sphere_tris),
+                   MutableSpan<const Face *>(tris.begin(), num_sphere_tris),
                    0,
                    0,
                    &arena);
@@ -1033,14 +1038,14 @@ static void spheregrid_test(int nrings, int grid_level, double z_offset, bool us
                  true,
                  4.0,
                  double3(0, 0, 0),
-                 MutableSpan<Facep>(tris.begin() + num_sphere_tris, num_grid_tris),
+                 MutableSpan<const Face *>(tris.begin() + num_sphere_tris, num_grid_tris),
                  num_sphere_verts,
                  num_sphere_tris,
                  &arena);
-  Mesh mesh(tris);
+  IMesh mesh(tris);
   double time_create = PIL_check_seconds_timer();
   // write_obj_mesh(mesh, "spheregrid_in");
-  Mesh out;
+  IMesh out;
   if (use_self) {
     out = trimesh_self_intersect(mesh, &arena);
   }

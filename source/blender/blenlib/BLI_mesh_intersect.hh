@@ -77,13 +77,7 @@ struct Vert {
   uint64_t hash() const;
 };
 
-/* Use Vertp for Verts everywhere: can modify the pointer
- * but not the underlying Vert, which should stay constant
- * after creation.
- */
-using Vertp = const Vert *;
-
-std::ostream &operator<<(std::ostream &os, Vertp v);
+std::ostream &operator<<(std::ostream &os, const Vert *v);
 
 /* A Plane whose equation is dot(nprm, p) + d = 0. */
 struct Plane {
@@ -121,7 +115,7 @@ std::ostream &operator<<(std::ostream &os, const Plane &plane);
  * a Face also stores the Plane of the face.
  */
 struct Face {
-  Array<Vertp> vert;
+  Array<const Vert *> vert;
   Array<int> edge_orig;
   Array<bool> is_intersect;
   Plane plane;
@@ -131,8 +125,8 @@ struct Face {
   using FacePos = int;
 
   Face() = default;
-  Face(Span<Vertp> verts, int id, int orig, Span<int> edge_origs, Span<bool> is_intersect);
-  Face(Span<Vertp> verts, int id, int orig);
+  Face(Span<const Vert *> verts, int id, int orig, Span<int> edge_origs, Span<bool> is_intersect);
+  Face(Span<const Vert *> verts, int id, int orig);
   Face(const Face &other);
   Face(Face &&other) noexcept;
 
@@ -162,7 +156,7 @@ struct Face {
     return (p + vert.size() - 1) % vert.size();
   }
 
-  const Vertp &operator[](int index) const
+  const Vert *const &operator[](int index) const
   {
     return vert[index];
   }
@@ -172,12 +166,12 @@ struct Face {
     return vert.size();
   }
 
-  const Vertp *begin() const
+  const Vert *const *begin() const
   {
     return vert.begin();
   }
 
-  const Vertp *end() const
+  const Vert *const *end() const
   {
     return vert.end();
   }
@@ -188,29 +182,27 @@ struct Face {
   }
 };
 
-using Facep = const Face *;
+std::ostream &operator<<(std::ostream &os, const Face *f);
 
-std::ostream &operator<<(std::ostream &os, Facep f);
-
-/* MArena is the owner of the Vert and Face resources used
+/* IMeshArena is the owner of the Vert and Face resources used
  * during a run of one of the meshintersect main functions.
  * It also keeps has a hash table of all Verts created so that it can
  * ensure that only one instance of a Vert with a given co_exact will
  * exist. I.e., it dedups the vertices.
  */
-class MArena {
-  class MArenaImpl;
-  std::unique_ptr<MArenaImpl> pimpl_;
+class IMeshArena {
+  class IMeshArenaImpl;
+  std::unique_ptr<IMeshArenaImpl> pimpl_;
 
  public:
-  MArena();
-  MArena(const MArena &) = delete;
-  MArena(MArena &&) = delete;
+  IMeshArena();
+  IMeshArena(const IMeshArena &) = delete;
+  IMeshArena(IMeshArena &&) = delete;
 
-  ~MArena();
+  ~IMeshArena();
 
-  MArena &operator=(const MArena &) = delete;
-  MArena &operator=(MArena &&) = delete;
+  IMeshArena &operator=(const IMeshArena &) = delete;
+  IMeshArena &operator=(IMeshArena &&) = delete;
 
   /* Provide hints to number of expected Verts and Faces expected
    * to be allocated.
@@ -225,42 +217,45 @@ class MArena {
    * or else allocates and returns a new one. The index field of a
    * newly allocated Vert will be the index in creation order.
    */
-  Vertp add_or_find_vert(const mpq3 &co, int orig);
-  Vertp add_or_find_vert(const double3 &co, int orig);
+  const Vert *add_or_find_vert(const mpq3 &co, int orig);
+  const Vert *add_or_find_vert(const double3 &co, int orig);
 
-  Facep add_face(Span<Vertp> verts, int orig, Span<int> edge_origs, Span<bool> is_intersect);
-  Facep add_face(Span<Vertp> verts, int orig, Span<int> edge_origs);
-  Facep add_face(Span<Vertp> verts, int orig);
+  const Face *add_face(Span<const Vert *> verts,
+                       int orig,
+                       Span<int> edge_origs,
+                       Span<bool> is_intersect);
+  const Face *add_face(Span<const Vert *> verts, int orig, Span<int> edge_origs);
+  const Face *add_face(Span<const Vert *> verts, int orig);
 
   /* The following return nullptr if not found. */
-  Vertp find_vert(const mpq3 &co) const;
-  Facep find_face(Span<Vertp> verts) const;
+  const Vert *find_vert(const mpq3 &co) const;
+  const Face *find_face(Span<const Vert *> verts) const;
 };
 
-/* A blender::meshintersect::Mesh is a self-contained mesh structure
+/* A blender::meshintersect::IMesh is a self-contained mesh structure
  * that can be used in Blenlib without depending on the rest of Blender.
- * The Vert and Face resources used in the Mesh should be owned by
- * some MArena.
- * The Verts used by a Mesh can be recovered from the Faces, so
- * are usually not stored, but on request, the Mesh can populate
+ * The Vert and Face resources used in the IMesh should be owned by
+ * some IMeshArena.
+ * The Verts used by a IMesh can be recovered from the Faces, so
+ * are usually not stored, but on request, the IMesh can populate
  * internal structures for indexing exactly the set of needed Verts,
  * and also going from a Vert pointer to the index in that system.
  */
 
-class Mesh {
-  Array<Facep> face_;
-  Array<Vertp> vert_;             /* Only valid if vert_populated_. */
-  Map<Vertp, int> vert_to_index_; /* Only valid if vert_populated_. */
+class IMesh {
+  Array<const Face *> face_;
+  Array<const Vert *> vert_;             /* Only valid if vert_populated_. */
+  Map<const Vert *, int> vert_to_index_; /* Only valid if vert_populated_. */
   bool vert_populated_ = false;
 
  public:
-  Mesh() = default;
-  Mesh(Span<Facep> faces) : face_(faces)
+  IMesh() = default;
+  IMesh(Span<const Face *> faces) : face_(faces)
   {
   }
 
-  void set_faces(Span<Facep> faces);
-  Facep face(int index) const
+  void set_faces(Span<const Face *> faces);
+  const Face *face(int index) const
   {
     return face_[index];
   }
@@ -284,7 +279,7 @@ class Mesh {
   {
     vert_populated_ = false;
     vert_to_index_.clear();
-    vert_ = Array<Vertp>();
+    vert_ = Array<const Vert *>();
   }
 
   /* Use the second of these if there is a good bound
@@ -293,14 +288,14 @@ class Mesh {
   void populate_vert();
   void populate_vert(int max_verts);
 
-  Vertp vert(int index) const
+  const Vert *vert(int index) const
   {
     BLI_assert(vert_populated_);
     return vert_[index];
   }
 
   /* Returns index in vert_ where v is, or NO_INDEX. */
-  int lookup_vert(Vertp v) const;
+  int lookup_vert(const Vert *v) const;
 
   IndexRange vert_index_range() const
   {
@@ -313,45 +308,45 @@ class Mesh {
     return IndexRange(face_.size());
   }
 
-  Span<Vertp> vertices() const
+  Span<const Vert *> vertices() const
   {
     BLI_assert(vert_populated_);
-    return Span<Vertp>(vert_);
+    return Span<const Vert *>(vert_);
   }
 
-  Span<Facep> faces() const
+  Span<const Face *> faces() const
   {
-    return Span<Facep>(face_);
+    return Span<const Face *>(face_);
   }
 
   /* Replace face at given index with one that elides the
    * vertices at the positions in face_pos_erase that are true.
    * Use arena to allocate the new face in.
    */
-  void erase_face_positions(int f_index, Span<bool> face_pos_erase, MArena *arena);
+  void erase_face_positions(int f_index, Span<bool> face_pos_erase, IMeshArena *arena);
 };
 
-std::ostream &operator<<(std::ostream &os, const Mesh &mesh);
+std::ostream &operator<<(std::ostream &os, const IMesh &mesh);
 
 /* The output will have dup vertices merged and degenerate triangles ignored.
  * If the input has overlapping coplanar triangles, then there will be
  * as many duplicates as there are overlaps in each overlapping triangular region.
- * The orig field of each IndexedTriangle will give the orig index in the input TriMesh
+ * The orig field of each IndexedTriangle will give the orig index in the input IMesh
  * that the output triangle was a part of (input can have -1 for that field and then
  * the index in tri[] will be used as the original index).
- * The orig structure of the output TriMesh gives the originals for vertices and edges.
+ * The orig structure of the output IMesh gives the originals for vertices and edges.
  * Note: if the input tm_in has a non-empty orig structure, then it is ignored.
  */
-Mesh trimesh_self_intersect(const Mesh &tm_in, MArena *arena);
+IMesh trimesh_self_intersect(const IMesh &tm_in, IMeshArena *arena);
 
-Mesh trimesh_nary_intersect(const Mesh &tm_in,
-                            int nshapes,
-                            std::function<int(int)> shape_fn,
-                            bool use_self,
-                            MArena *arena);
+IMesh trimesh_nary_intersect(const IMesh &tm_in,
+                             int nshapes,
+                             std::function<int(int)> shape_fn,
+                             bool use_self,
+                             IMeshArena *arena);
 
-/* This has the side effect of populating verts in the Mesh. */
-void write_obj_mesh(Mesh &m, const std::string &objname);
+/* This has the side effect of populating verts in the IMesh. */
+void write_obj_mesh(IMesh &m, const std::string &objname);
 
 } /* namespace blender::meshintersect */
 

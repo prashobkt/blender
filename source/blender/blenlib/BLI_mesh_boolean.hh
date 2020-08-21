@@ -49,27 +49,27 @@ enum bool_optype {
  * of triangles, each of whose orig_field says which face in pm that triangle belongs to.
  * pm arg isn't const because we may populate its verts (for debugging).
  * Same goes for the pm_triangulated arg.
- * The output Mesh will have faces whose orig fields map back to faces and edges in
+ * The output IMesh will have faces whose orig fields map back to faces and edges in
  * the input mesh.
  */
-Mesh boolean_mesh(Mesh &pm,
-                  bool_optype op,
-                  int nshapes,
-                  std::function<int(int)> shape_fn,
-                  bool use_self,
-                  Mesh *pm_triangulated,
-                  MArena *arena);
+IMesh boolean_mesh(IMesh &pm,
+                   bool_optype op,
+                   int nshapes,
+                   std::function<int(int)> shape_fn,
+                   bool use_self,
+                   IMesh *pm_triangulated,
+                   IMeshArena *arena);
 
-/* This is like boolean, but operates on Mesh's whose faces are all triangles.
+/* This is like boolean, but operates on IMesh's whose faces are all triangles.
  * It is exposed mainly for unit testing, at the moment: boolean_mesh() uses
  * it to do most of its work.
  */
-Mesh boolean_trimesh(Mesh &tm,
-                     bool_optype op,
-                     int nshapes,
-                     std::function<int(int)> shape_fn,
-                     bool use_self,
-                     MArena *arena);
+IMesh boolean_trimesh(IMesh &tm,
+                      bool_optype op,
+                      int nshapes,
+                      std::function<int(int)> shape_fn,
+                      bool use_self,
+                      IMeshArena *arena);
 
 }  // namespace blender::meshintersect
 

@@ -101,7 +101,7 @@ uint64_t Vert::hash() const
   return co_exact.hash();
 }
 
-std::ostream &operator<<(std::ostream &os, Vertp v)
+std::ostream &operator<<(std::ostream &os, const Vert *v)
 {
   os << "v" << v->id;
   if (v->orig != NO_INDEX) {
@@ -177,7 +177,8 @@ std::ostream &operator<<(std::ostream &os, const Plane &plane)
   return os;
 }
 
-Face::Face(Span<Vertp> verts, int id, int orig, Span<int> edge_origs, Span<bool> is_intersect)
+Face::Face(
+    Span<const Vert *> verts, int id, int orig, Span<int> edge_origs, Span<bool> is_intersect)
     : vert(verts), edge_orig(edge_origs), is_intersect(is_intersect), id(id), orig(orig)
 {
   mpq3 normal;
@@ -197,7 +198,7 @@ Face::Face(Span<Vertp> verts, int id, int orig, Span<int> edge_origs, Span<bool>
   plane = Plane(normal, d);
 }
 
-Face::Face(Span<Vertp> verts, int id, int orig) : vert(verts), id(id), orig(orig)
+Face::Face(Span<const Vert *> verts, int id, int orig) : vert(verts), id(id), orig(orig)
 {
   mpq3 normal;
   if (vert.size() > 3) {
@@ -300,10 +301,10 @@ bool Face::cyclic_equal(const Face &other) const
   return false;
 }
 
-std::ostream &operator<<(std::ostream &os, Facep f)
+std::ostream &operator<<(std::ostream &os, const Face *f)
 {
   os << "f" << f->id << "o" << f->orig << "[";
-  for (Vertp v : *f) {
+  for (const Vert *v : *f) {
     os << "v" << v->id;
     if (v->orig != NO_INDEX) {
       os << "o" << v->orig;
@@ -330,7 +331,7 @@ std::ostream &operator<<(std::ostream &os, Facep f)
   return os;
 }
 
-/* MArena is the owner of the Vert and Face resources used
+/* IMeshArena is the owner of the Vert and Face resources used
  * during a run of one of the meshintersect main functions.
  * It also keeps has a hash table of all Verts created so that it can
  * ensure that only one instance of a Vert with a given co_exact will
@@ -338,11 +339,11 @@ std::ostream &operator<<(std::ostream &os, Facep f)
  */
 
 // #define USE_SPINLOCK
-class MArena::MArenaImpl {
+class IMeshArena::IMeshArenaImpl {
 
   /* Don't use Vert itself as key since resizing may move
    * pointers to the Vert around, and we need to have those pointers
-   * stay the same throughout the lifetime of the MArena.
+   * stay the same throughout the lifetime of the IMeshArena.
    */
   struct VSetKey {
     Vert *vert;
@@ -381,7 +382,7 @@ class MArena::MArenaImpl {
 #  endif
 
  public:
-  MArenaImpl()
+  IMeshArenaImpl()
   {
     if (intersect_use_threading) {
 #  ifdef USE_SPINLOCK
@@ -391,9 +392,9 @@ class MArena::MArenaImpl {
 #  endif
     }
   }
-  MArenaImpl(const MArenaImpl &) = delete;
-  MArenaImpl(MArenaImpl &&) = delete;
-  ~MArenaImpl()
+  IMeshArenaImpl(const IMeshArenaImpl &) = delete;
+  IMeshArenaImpl(IMeshArenaImpl &&) = delete;
+  ~IMeshArenaImpl()
   {
     if (intersect_use_threading) {
 #  ifdef USE_SPINLOCK
@@ -421,19 +422,22 @@ class MArena::MArenaImpl {
     return allocated_faces_.size();
   }
 
-  Vertp add_or_find_vert(const mpq3 &co, int orig)
+  const Vert *add_or_find_vert(const mpq3 &co, int orig)
   {
     double3 dco(co[0].get_d(), co[1].get_d(), co[2].get_d());
     return add_or_find_vert(co, dco, orig);
   }
 
-  Vertp add_or_find_vert(const double3 &co, int orig)
+  const Vert *add_or_find_vert(const double3 &co, int orig)
   {
     mpq3 mco(co[0], co[1], co[2]);
     return add_or_find_vert(mco, co, orig);
   }
 
-  Facep add_face(Span<Vertp> verts, int orig, Span<int> edge_origs, Span<bool> is_intersect)
+  const Face *add_face(Span<const Vert *> verts,
+                       int orig,
+                       Span<int> edge_origs,
+                       Span<bool> is_intersect)
   {
     Face *f = new Face(verts, next_face_id_++, orig, edge_origs, is_intersect);
     if (intersect_use_threading) {
@@ -454,22 +458,22 @@ class MArena::MArenaImpl {
     return f;
   }
 
-  Facep add_face(Span<Vertp> verts, int orig, Span<int> edge_origs)
+  const Face *add_face(Span<const Vert *> verts, int orig, Span<int> edge_origs)
   {
     Array<bool> is_intersect(verts.size(), false);
     return add_face(verts, orig, edge_origs, is_intersect);
   }
 
-  Facep add_face(Span<Vertp> verts, int orig)
+  const Face *add_face(Span<const Vert *> verts, int orig)
   {
     Array<int> edge_origs(verts.size(), NO_INDEX);
     Array<bool> is_intersect(verts.size(), false);
     return add_face(verts, orig, edge_origs, is_intersect);
   }
 
-  Vertp find_vert(const mpq3 &co)
+  const Vert *find_vert(const mpq3 &co)
   {
-    Vertp ans;
+    const Vert *ans;
     Vert vtry(co, double3(), NO_INDEX, NO_INDEX);
     VSetKey vskey(&vtry);
     if (intersect_use_threading) {
@@ -500,7 +504,7 @@ class MArena::MArenaImpl {
    * Since it is only used for that purpose, access is not lock-protected.
    * The argument vs can be a cyclic shift of the actual stored Face.
    */
-  Facep find_face(Span<Vertp> vs)
+  const Face *find_face(Span<const Vert *> vs)
   {
     Array<int> eorig(vs.size(), NO_INDEX);
     Array<bool> is_intersect(vs.size(), false);
@@ -514,11 +518,11 @@ class MArena::MArenaImpl {
   }
 
  private:
-  Vertp add_or_find_vert(const mpq3 &mco, const double3 &dco, int orig)
+  const Vert *add_or_find_vert(const mpq3 &mco, const double3 &dco, int orig)
   {
     /* Don't allocate Vert yet, in case it is already there. */
     Vert vtry(mco, dco, NO_INDEX, NO_INDEX);
-    Vertp ans;
+    const Vert *ans;
     VSetKey vskey(&vtry);
     if (intersect_use_threading) {
 #  ifdef USE_SPINLOCK
@@ -555,77 +559,80 @@ class MArena::MArenaImpl {
   };
 };
 
-MArena::MArena()
+IMeshArena::IMeshArena()
 {
-  pimpl_ = std::unique_ptr<MArenaImpl>(new MArenaImpl());
+  pimpl_ = std::unique_ptr<IMeshArenaImpl>(new IMeshArenaImpl());
 }
 
-MArena::~MArena()
+IMeshArena::~IMeshArena()
 {
 }
 
-void MArena::reserve(int vert_num_hint, int face_num_hint)
+void IMeshArena::reserve(int vert_num_hint, int face_num_hint)
 {
   pimpl_->reserve(vert_num_hint, face_num_hint);
 }
 
-int MArena::tot_allocated_verts() const
+int IMeshArena::tot_allocated_verts() const
 {
   return pimpl_->tot_allocated_verts();
 }
 
-int MArena::tot_allocated_faces() const
+int IMeshArena::tot_allocated_faces() const
 {
   return pimpl_->tot_allocated_faces();
 }
 
-Vertp MArena::add_or_find_vert(const mpq3 &co, int orig)
+const Vert *IMeshArena::add_or_find_vert(const mpq3 &co, int orig)
 {
   return pimpl_->add_or_find_vert(co, orig);
 }
 
-Facep MArena::add_face(Span<Vertp> verts, int orig, Span<int> edge_origs, Span<bool> is_intersect)
+const Face *IMeshArena::add_face(Span<const Vert *> verts,
+                                 int orig,
+                                 Span<int> edge_origs,
+                                 Span<bool> is_intersect)
 {
   return pimpl_->add_face(verts, orig, edge_origs, is_intersect);
 }
 
-Facep MArena::add_face(Span<Vertp> verts, int orig, Span<int> edge_origs)
+const Face *IMeshArena::add_face(Span<const Vert *> verts, int orig, Span<int> edge_origs)
 {
   return pimpl_->add_face(verts, orig, edge_origs);
 }
 
-Facep MArena::add_face(Span<Vertp> verts, int orig)
+const Face *IMeshArena::add_face(Span<const Vert *> verts, int orig)
 {
   return pimpl_->add_face(verts, orig);
 }
 
-Vertp MArena::add_or_find_vert(const double3 &co, int orig)
+const Vert *IMeshArena::add_or_find_vert(const double3 &co, int orig)
 {
   return pimpl_->add_or_find_vert(co, orig);
 }
 
-Vertp MArena::find_vert(const mpq3 &co) const
+const Vert *IMeshArena::find_vert(const mpq3 &co) const
 {
   return pimpl_->find_vert(co);
 }
 
-Facep MArena::find_face(Span<Vertp> verts) const
+const Face *IMeshArena::find_face(Span<const Vert *> verts) const
 {
   return pimpl_->find_face(verts);
 }
 
-void Mesh::set_faces(Span<Facep> faces)
+void IMesh::set_faces(Span<const Face *> faces)
 {
   face_ = faces;
 }
 
-int Mesh::lookup_vert(Vertp v) const
+int IMesh::lookup_vert(const Vert *v) const
 {
   BLI_assert(vert_populated_);
   return vert_to_index_.lookup_default(v, NO_INDEX);
 }
 
-void Mesh::populate_vert()
+void IMesh::populate_vert()
 {
   /* This is likely an overestimate, since verts are shared between
    * faces. It is ok if estimate is over or even under.
@@ -635,15 +642,15 @@ void Mesh::populate_vert()
   populate_vert(estimate_num_verts);
 }
 
-void Mesh::populate_vert(int max_verts)
+void IMesh::populate_vert(int max_verts)
 {
   if (vert_populated_) {
     return;
   }
   vert_to_index_.reserve(max_verts);
   int next_allocate_index = 0;
-  for (Facep f : face_) {
-    for (Vertp v : *f) {
+  for (const Face *f : face_) {
+    for (const Vert *v : *f) {
       if (v->id == 1) {
       }
       int index = vert_to_index_.lookup_default(v, NO_INDEX);
@@ -654,7 +661,7 @@ void Mesh::populate_vert(int max_verts)
     }
   }
   int tot_v = next_allocate_index;
-  vert_ = Array<Vertp>(tot_v);
+  vert_ = Array<const Vert *>(tot_v);
   for (auto item : vert_to_index_.items()) {
     int index = item.value;
     BLI_assert(index < tot_v);
@@ -666,7 +673,7 @@ void Mesh::populate_vert(int max_verts)
    */
   const bool fix_order = true;
   if (fix_order) {
-    std::sort(vert_.begin(), vert_.end(), [](Vertp a, Vertp b) {
+    std::sort(vert_.begin(), vert_.end(), [](const Vert *a, const Vert *b) {
       if (a->orig != NO_INDEX && b->orig != NO_INDEX) {
         return a->orig < b->orig;
       }
@@ -679,16 +686,16 @@ void Mesh::populate_vert(int max_verts)
       return a->id < b->id;
     });
     for (int i : vert_.index_range()) {
-      Vertp v = vert_[i];
+      const Vert *v = vert_[i];
       vert_to_index_.add_overwrite(v, i);
     }
   }
   vert_populated_ = true;
 }
 
-void Mesh::erase_face_positions(int f_index, Span<bool> face_pos_erase, MArena *arena)
+void IMesh::erase_face_positions(int f_index, Span<bool> face_pos_erase, IMeshArena *arena)
 {
-  Facep cur_f = this->face(f_index);
+  const Face *cur_f = this->face(f_index);
   int cur_len = static_cast<int>(cur_f->size());
   int num_to_erase = 0;
   for (int i : cur_f->index_range()) {
@@ -704,7 +711,7 @@ void Mesh::erase_face_positions(int f_index, Span<bool> face_pos_erase, MArena *
     /* Invalid erase. Don't do anything. */
     return;
   }
-  Array<Vertp> new_vert(new_len);
+  Array<const Vert *> new_vert(new_len);
   Array<int> new_edge_orig(new_len);
   Array<bool> new_is_intersect(new_len);
   int new_index = 0;
@@ -720,19 +727,19 @@ void Mesh::erase_face_positions(int f_index, Span<bool> face_pos_erase, MArena *
   this->face_[f_index] = arena->add_face(new_vert, cur_f->orig, new_edge_orig, new_is_intersect);
 }
 
-std::ostream &operator<<(std::ostream &os, const Mesh &mesh)
+std::ostream &operator<<(std::ostream &os, const IMesh &mesh)
 {
   if (mesh.has_verts()) {
     os << "Verts:\n";
     int i = 0;
-    for (Vertp v : mesh.vertices()) {
+    for (const Vert *v : mesh.vertices()) {
       os << i << ": " << v << "\n";
       ++i;
     }
   }
   os << "\nFaces:\n";
   int i = 0;
-  for (Facep f : mesh.faces()) {
+  for (const Face *f : mesh.faces()) {
     os << i << ": " << f << "\n";
     os << "    plane=" << f->plane << " eorig=[";
     for (Face::FacePos p = 0; p < f->size(); ++p) {
@@ -828,14 +835,14 @@ static bool bbs_might_intersect(const BoundingBox &bb_a, const BoundingBox &bb_b
  * the "less than" tests in isect_aabb_aabb_v3 are sufficient to detect
  * touching or overlap.
  */
-static Array<BoundingBox> calc_face_bounding_boxes(const Mesh &m)
+static Array<BoundingBox> calc_face_bounding_boxes(const IMesh &m)
 {
   double max_abs_val = 0.0;
   Array<BoundingBox> ans(m.face_size());
   for (int f : m.face_index_range()) {
     const Face &face = *m.face(f);
     BoundingBox &bb = ans[f];
-    for (Vertp v : face) {
+    for (const Vert *v : face) {
       bb.combine(v->co);
       for (int i = 0; i < 3; ++i) {
         max_abs_val = max_dd(max_abs_val, fabs(v->co[i]));
@@ -1210,7 +1217,7 @@ static bool non_trivially_2d_intersect(const mpq2 *a[3], const mpq2 *b[3])
  * the triangles in cl, and that proj_axis is a good axis to project down
  * to solve this problem in 2d.
  */
-static bool non_trivially_coplanar_intersects(const Mesh &tm,
+static bool non_trivially_coplanar_intersects(const IMesh &tm,
                                               int t,
                                               const CoplanarCluster &cl,
                                               int proj_axis)
@@ -1251,16 +1258,16 @@ static bool non_trivially_coplanar_intersects(const Mesh &tm,
  * something other than a common vertex or a common edge?
  * The itt value is the result of calling intersect_tri_tri on tri1, tri2.
  */
-static bool non_trivial_intersect(const ITT_value &itt, Facep tri1, Facep tri2)
+static bool non_trivial_intersect(const ITT_value &itt, const Face * tri1, const Face * tri2)
 {
   if (itt.kind == INONE) {
     return false;
   }
-  Facep tris[2] = {tri1, tri2};
+  const Face * tris[2] = {tri1, tri2};
   if (itt.kind == IPOINT) {
     bool has_p_as_vert[2] {false, false};
     for (int i = 0; i < 2; ++i) {
-      for (Vertp v : *tris[i]) {
+      for (const Vert * v : *tris[i]) {
         if (itt.p1 == v->co_exact) {
           has_p_as_vert[i] = true;
           break;
@@ -1433,7 +1440,7 @@ static int filter_orient3d(const double3 &a, const double3 &b, const double3 &c,
  * mpq3 test would also have returned that value.
  * When the return value is 0, we are not sure of the sign.
  */
-static int filter_tri_plane_vert_orient3d(const Face &tri, Vertp v)
+static int filter_tri_plane_vert_orient3d(const Face &tri, const Vert *v)
 {
   return filter_orient3d(tri[0]->co, tri[1]->co, tri[2]->co, v->co);
 }
@@ -1512,7 +1519,7 @@ static int filter_plane_side(const double3 &p,
  * where triangles share an edge or a vertex, but don't
  * otherwise intersect.
  */
-static bool may_non_trivially_intersect(Facep t1, Facep t2)
+static bool may_non_trivially_intersect(const Face *t1, const Face *t2)
 {
   const Face &tri1 = *t1;
   const Face &tri2 = *t2;
@@ -1520,9 +1527,9 @@ static bool may_non_trivially_intersect(Facep t1, Facep t2)
   Face::FacePos share2_pos[3];
   int n_shared = 0;
   for (Face::FacePos p1 = 0; p1 < 3; ++p1) {
-    Vertp v1 = tri1[p1];
+    const Vert *v1 = tri1[p1];
     for (Face::FacePos p2 = 0; p2 < 3; ++p2) {
-      Vertp v2 = tri2[p2];
+      const Vert *v2 = tri2[p2];
       if (v1 == v2) {
         share1_pos[n_shared] = p1;
         share2_pos[n_shared] = p2;
@@ -1555,16 +1562,16 @@ static bool may_non_trivially_intersect(Facep t1, Facep t2)
      * they are more expensive to check).
      */
     Face::FacePos p = share2_pos[0];
-    Vertp v2a = p == 0 ? tri2[1] : tri2[0];
-    Vertp v2b = (p == 0 || p == 1) ? tri2[2] : tri2[1];
+    const Vert *v2a = p == 0 ? tri2[1] : tri2[0];
+    const Vert *v2b = (p == 0 || p == 1) ? tri2[2] : tri2[1];
     int o1 = filter_tri_plane_vert_orient3d(tri1, v2a);
     int o2 = filter_tri_plane_vert_orient3d(tri1, v2b);
     if (o1 == o2 && o1 != 0) {
       return false;
     }
     p = share1_pos[0];
-    Vertp v1a = p == 0 ? tri1[1] : tri1[0];
-    Vertp v1b = (p == 0 || p == 1) ? tri1[2] : tri1[1];
+    const Vert *v1a = p == 0 ? tri1[1] : tri1[0];
+    const Vert *v1b = (p == 0 || p == 1) ? tri1[2] : tri1[1];
     o1 = filter_tri_plane_vert_orient3d(tri2, v1a);
     o2 = filter_tri_plane_vert_orient3d(tri2, v1b);
     if (o1 == o2 && o1 != 0) {
@@ -1599,7 +1606,7 @@ static inline mpq3 tti_interp(const mpq3 &a, const mpq3 &b, const mpq3 &c, const
 
 /* Return +1, 0, -1 as a + ad is above, on, or below the oriented plane containing a, b, c in CCW
  * order. This is the same as -oriented(a, b, c, a + ad), but uses fewer arithmetic operations.
- * TODO: change arguments to Vertp and use floating filters.
+ * TODO: change arguments to const Vert * and use floating filters.
  */
 static inline int tti_above(const mpq3 &a, const mpq3 &b, const mpq3 &c, const mpq3 &ad)
 {
@@ -1783,7 +1790,7 @@ static ITT_value itt_canon1(const mpq3 &p1,
   return ITT_value(ICOPLANAR);
 }
 
-static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
+static ITT_value intersect_tri_tri(const IMesh &tm, int t1, int t2)
 {
   constexpr int dbg_level = 0;
 #  ifdef PERFDEBUG
@@ -1791,12 +1798,12 @@ static ITT_value intersect_tri_tri(const Mesh &tm, int t1, int t2)
 #  endif
   const Face &tri1 = *tm.face(t1);
   const Face &tri2 = *tm.face(t2);
-  Vertp vp1 = tri1[0];
-  Vertp vq1 = tri1[1];
-  Vertp vr1 = tri1[2];
-  Vertp vp2 = tri2[0];
-  Vertp vq2 = tri2[1];
-  Vertp vr2 = tri2[2];
+  const Vert *vp1 = tri1[0];
+  const Vert *vq1 = tri1[1];
+  const Vert *vr1 = tri1[2];
+  const Vert *vp2 = tri2[0];
+  const Vert *vq2 = tri2[1];
+  const Vert *vr2 = tri2[2];
   if (dbg_level > 0) {
     std::cout << "\nINTERSECT_TRI_TRI t1=" << t1 << ", t2=" << t2 << "\n";
     std::cout << "  p1 = " << vp1 << "\n";
@@ -1992,7 +1999,7 @@ struct CDT_data {
   Vector<mpq2> vert;
   Vector<std::pair<int, int>> edge;
   Vector<Vector<int>> face;
-  Vector<int> input_face;        /* Parallels face, gives id from input Mesh of input face. */
+  Vector<int> input_face;        /* Parallels face, gives id from input IMesh of input face. */
   Vector<bool> is_reversed;      /* Parallels face, says if input face orientation is opposite. */
   CDT_result<mpq_class> cdt_out; /* Result of running CDT on input with (vert, edge, face). */
   int proj_axis;
@@ -2053,7 +2060,7 @@ static void prepare_need_edge(CDT_data &cd, const mpq3 &p1, const mpq3 &p2)
   cd.edge.append(std::pair<int, int>(v1, v2));
 }
 
-static void prepare_need_tri(CDT_data &cd, const Mesh &tm, int t)
+static void prepare_need_tri(CDT_data &cd, const IMesh &tm, int t)
 {
   const Face &tri = *tm.face(t);
   int v0 = prepare_need_vert(cd, tri[0]->co_exact);
@@ -2087,7 +2094,7 @@ static void prepare_need_tri(CDT_data &cd, const Mesh &tm, int t)
   cd.is_reversed.append(rev);
 }
 
-static CDT_data prepare_cdt_input(const Mesh &tm, int t, const Vector<ITT_value> itts)
+static CDT_data prepare_cdt_input(const IMesh &tm, int t, const Vector<ITT_value> itts)
 {
   CDT_data ans;
   ans.t_plane = tm.face(t)->plane;
@@ -2112,7 +2119,7 @@ static CDT_data prepare_cdt_input(const Mesh &tm, int t, const Vector<ITT_value>
   return ans;
 }
 
-static CDT_data prepare_cdt_input_for_cluster(const Mesh &tm,
+static CDT_data prepare_cdt_input_for_cluster(const IMesh &tm,
                                               const CoplanarClusterInfo &clinfo,
                                               int c,
                                               const Vector<ITT_value> itts)
@@ -2205,7 +2212,7 @@ static void do_cdt(CDT_data &cd)
 }
 
 static int get_cdt_edge_orig(
-    int i0, int i1, const CDT_data &cd, const Mesh &in_tm, bool *r_is_intersect)
+    int i0, int i1, const CDT_data &cd, const IMesh &in_tm, bool *r_is_intersect)
 {
   int foff = cd.cdt_out.face_edge_offset;
   *r_is_intersect = false;
@@ -2226,7 +2233,7 @@ static int get_cdt_edge_orig(
            */
           int in_tm_face_index = cd.input_face[in_face_index];
           BLI_assert(in_tm_face_index < in_tm.face_size());
-          Facep facep = in_tm.face(in_tm_face_index);
+          const Face *facep = in_tm.face(in_tm_face_index);
           BLI_assert(pos < facep->size());
           bool is_rev = cd.is_reversed[in_face_index];
           int eorig = is_rev ? facep->edge_orig[2 - pos] : facep->edge_orig[pos];
@@ -2252,10 +2259,13 @@ static int get_cdt_edge_orig(
   return NO_INDEX;
 }
 
-/* Using the result of CDT in cd.cdt_out, extract a Mesh representing the subdivision
+/* Using the result of CDT in cd.cdt_out, extract an IMesh representing the subdivision
  * of input triangle t, which should be an element of cd.input_face.
  */
-static Mesh extract_subdivided_tri(const CDT_data &cd, const Mesh &in_tm, int t, MArena *arena)
+static IMesh extract_subdivided_tri(const CDT_data &cd,
+                                    const IMesh &in_tm,
+                                    int t,
+                                    IMeshArena *arena)
 {
   const CDT_result<mpq_class> &cdt_out = cd.cdt_out;
   int t_in_cdt = -1;
@@ -2267,11 +2277,11 @@ static Mesh extract_subdivided_tri(const CDT_data &cd, const Mesh &in_tm, int t,
   if (t_in_cdt == -1) {
     std::cout << "Could not find " << t << " in cdt input tris\n";
     BLI_assert(false);
-    return Mesh();
+    return IMesh();
   }
   int t_orig = in_tm.face(t)->orig;
   constexpr int inline_buf_size = 20;
-  Vector<Facep, inline_buf_size> faces;
+  Vector<const Face *, inline_buf_size> faces;
   for (int f : cdt_out.face.index_range()) {
     if (cdt_out.face_orig[f].contains(t_in_cdt)) {
       BLI_assert(cdt_out.face[f].size() == 3);
@@ -2285,10 +2295,10 @@ static Mesh extract_subdivided_tri(const CDT_data &cd, const Mesh &in_tm, int t,
        * an original one, then it will already be in the arena
        * with the correct orig field.
        */
-      Vertp v0 = arena->add_or_find_vert(v0co, NO_INDEX);
-      Vertp v1 = arena->add_or_find_vert(v1co, NO_INDEX);
-      Vertp v2 = arena->add_or_find_vert(v2co, NO_INDEX);
-      Facep facep;
+      const Vert *v0 = arena->add_or_find_vert(v0co, NO_INDEX);
+      const Vert *v1 = arena->add_or_find_vert(v1co, NO_INDEX);
+      const Vert *v2 = arena->add_or_find_vert(v2co, NO_INDEX);
+      const Face *facep;
       bool is_isect0;
       bool is_isect1;
       bool is_isect2;
@@ -2309,13 +2319,13 @@ static Mesh extract_subdivided_tri(const CDT_data &cd, const Mesh &in_tm, int t,
       faces.append(facep);
     }
   }
-  return Mesh(faces);
+  return IMesh(faces);
 }
 
-static Mesh extract_single_tri(const Mesh &tm, int t)
+static IMesh extract_single_tri(const IMesh &tm, int t)
 {
-  Facep f = tm.face(t);
-  return Mesh({f});
+  const Face *f = tm.face(t);
+  return IMesh({f});
 }
 
 static bool bvhtreeverlap_cmp(const BVHTreeOverlap &a, const BVHTreeOverlap &b)
@@ -2335,14 +2345,14 @@ class TriOverlaps {
   uint overlap_tot_{0};
 
   struct CBData {
-    const Mesh &tm;
+    const IMesh &tm;
     std::function<int(int)> shape_fn;
     int nshapes;
     bool use_self;
   };
 
  public:
-  TriOverlaps(const Mesh &tm,
+  TriOverlaps(const IMesh &tm,
               const Array<BoundingBox> &tri_bb,
               int nshapes,
               std::function<int(int)> shape_fn,
@@ -2464,10 +2474,10 @@ class TriOverlaps {
 struct OverlapIttsData {
   Vector<std::pair<int, int>> intersect_pairs;
   Map<std::pair<int, int>, ITT_value> &itt_map;
-  const Mesh &tm;
-  MArena *arena;
+  const IMesh &tm;
+  IMeshArena *arena;
 
-  OverlapIttsData(Map<std::pair<int, int>, ITT_value> &itt_map, const Mesh &tm, MArena *arena)
+  OverlapIttsData(Map<std::pair<int, int>, ITT_value> &itt_map, const IMesh &tm, IMeshArena *arena)
       : itt_map(itt_map), tm(tm), arena(arena)
   {
   }
@@ -2499,10 +2509,10 @@ static void calc_overlap_itts_range_func(void *__restrict userdata,
  * intersection for those will be handled by CDT, later.
  */
 static void calc_overlap_itts(Map<std::pair<int, int>, ITT_value> &itt_map,
-                              const Mesh &tm,
+                              const IMesh &tm,
                               const CoplanarClusterInfo &clinfo,
                               const TriOverlaps &ov,
-                              MArena *arena)
+                              IMeshArena *arena)
 {
   OverlapIttsData data(itt_map, tm, arena);
   /* Put dummy values in itt_map intially, so map entries will exist when doing the range function.
@@ -2541,11 +2551,11 @@ struct OverlapTriRange {
   int len;
 };
 struct SubdivideTrisData {
-  Array<Mesh> &r_tri_subdivided;
-  const Mesh &tm;
+  Array<IMesh> &r_tri_subdivided;
+  const IMesh &tm;
   const Map<std::pair<int, int>, ITT_value> &itt_map;
   Span<BVHTreeOverlap> overlap;
-  MArena *arena;
+  IMeshArena *arena;
 
   /* This vector gives, for each tri in tm that has an intersection
    * we want to calculate: what the index of that tri in tm is,
@@ -2554,11 +2564,11 @@ struct SubdivideTrisData {
    */
   Vector<OverlapTriRange> overlap_tri_range;
 
-  SubdivideTrisData(Array<Mesh> &r_tri_subdivided,
-                    const Mesh &tm,
+  SubdivideTrisData(Array<IMesh> &r_tri_subdivided,
+                    const IMesh &tm,
                     const Map<std::pair<int, int>, ITT_value> &itt_map,
                     Span<BVHTreeOverlap> overlap,
-                    MArena *arena)
+                    IMeshArena *arena)
       : r_tri_subdivided(r_tri_subdivided),
         tm(tm),
         itt_map(itt_map),
@@ -2618,12 +2628,12 @@ static void calc_subdivided_tri_range_func(void *__restrict userdata,
  * But don't do this for triangles that are part of a cluster.
  * Also, do nothing here if the answer is just the triangle itself.
  */
-static void calc_subdivided_tris(Array<Mesh> &r_tri_subdivided,
-                                 const Mesh &tm,
+static void calc_subdivided_tris(Array<IMesh> &r_tri_subdivided,
+                                 const IMesh &tm,
                                  const Map<std::pair<int, int>, ITT_value> &itt_map,
                                  const CoplanarClusterInfo &clinfo,
                                  const TriOverlaps &ov,
-                                 MArena *arena)
+                                 IMeshArena *arena)
 {
   const int dbg_level = 0;
   if (dbg_level > 0) {
@@ -2687,10 +2697,10 @@ static int find_first_overlap_index(const TriOverlaps &ov, int t)
 
 static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
                                         int c,
-                                        const Mesh &tm,
+                                        const IMesh &tm,
                                         const TriOverlaps &ov,
                                         const Map<std::pair<int, int>, ITT_value> &itt_map,
-                                        MArena *UNUSED(arena))
+                                        IMeshArena *UNUSED(arena))
 {
   constexpr int dbg_level = 0;
   BLI_assert(c < clinfo.tot_cluster());
@@ -2743,23 +2753,23 @@ static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
   return cd_data;
 }
 
-static Mesh union_tri_subdivides(const blender::Array<Mesh> &tri_subdivided)
+static IMesh union_tri_subdivides(const blender::Array<IMesh> &tri_subdivided)
 {
   int tot_tri = 0;
-  for (const Mesh &m : tri_subdivided) {
+  for (const IMesh &m : tri_subdivided) {
     tot_tri += m.face_size();
   }
-  Array<Facep> faces(tot_tri);
+  Array<const Face *> faces(tot_tri);
   int face_index = 0;
-  for (const Mesh &m : tri_subdivided) {
-    for (Facep f : m.faces()) {
+  for (const IMesh &m : tri_subdivided) {
+    for (const Face *f : m.faces()) {
       faces[face_index++] = f;
     }
   }
-  return Mesh(faces);
+  return IMesh(faces);
 }
 
-static CoplanarClusterInfo find_clusters(const Mesh &tm, const Array<BoundingBox> &tri_bb)
+static CoplanarClusterInfo find_clusters(const IMesh &tm, const Array<BoundingBox> &tri_bb)
 {
   constexpr int dbg_level = 0;
   if (dbg_level > 0) {
@@ -2849,12 +2859,12 @@ static CoplanarClusterInfo find_clusters(const Mesh &tm, const Array<BoundingBox
   return ans;
 }
 
-static bool face_is_degenerate(Facep f)
+static bool face_is_degenerate(const Face *f)
 {
   const Face &face = *f;
-  Vertp v0 = face[0];
-  Vertp v1 = face[1];
-  Vertp v2 = face[2];
+  const Vert *v0 = face[0];
+  const Vert *v1 = face[1];
+  const Vert *v2 = face[2];
   if (v0 == v1 || v0 == v2 || v1 == v2) {
     return true;
   }
@@ -2876,10 +2886,10 @@ static bool face_is_degenerate(Facep f)
   return false;
 }
 
-/* Does TriMesh tm have any triangles with zero area? */
-static bool has_degenerate_tris(const Mesh &tm)
+/* Does triangle IMesh tm have any triangles with zero area? */
+static bool has_degenerate_tris(const IMesh &tm)
 {
-  for (Facep f : tm.faces()) {
+  for (const Face *f : tm.faces()) {
     if (face_is_degenerate(f)) {
       return true;
     }
@@ -2887,12 +2897,12 @@ static bool has_degenerate_tris(const Mesh &tm)
   return false;
 }
 
-static Mesh remove_degenerate_tris(const Mesh &tm_in)
+static IMesh remove_degenerate_tris(const IMesh &tm_in)
 {
-  Mesh ans;
-  Vector<Facep> new_faces;
+  IMesh ans;
+  Vector<const Face *> new_faces;
   new_faces.reserve(tm_in.face_size());
-  for (Facep f : tm_in.faces()) {
+  for (const Face *f : tm_in.faces()) {
     if (!face_is_degenerate(f)) {
       new_faces.append(f);
     }
@@ -2902,20 +2912,23 @@ static Mesh remove_degenerate_tris(const Mesh &tm_in)
 }
 
 /* This is the main routine for calculating the self_intersection of a triangle mesh. */
-Mesh trimesh_self_intersect(const Mesh &tm_in, MArena *arena)
+IMesh trimesh_self_intersect(const IMesh &tm_in, IMeshArena *arena)
 {
   return trimesh_nary_intersect(
       tm_in, 1, [](int) { return 0; }, true, arena);
 }
 
-Mesh trimesh_nary_intersect(
-    const Mesh &tm_in, int nshapes, std::function<int(int)> shape_fn, bool use_self, MArena *arena)
+IMesh trimesh_nary_intersect(const IMesh &tm_in,
+                             int nshapes,
+                             std::function<int(int)> shape_fn,
+                             bool use_self,
+                             IMeshArena *arena)
 {
   constexpr int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "\nTRIMESH_NARY_INTERSECT nshapes=" << nshapes << " use_self=" << use_self
               << "\n";
-    for (Facep f : tm_in.faces()) {
+    for (const Face *f : tm_in.faces()) {
       BLI_assert(f->is_tri());
       UNUSED_VARS_NDEBUG(f);
     }
@@ -2929,8 +2942,8 @@ Mesh trimesh_nary_intersect(
   /* Usually can use tm_in but if it has degenerate or illegal triangles,
    * then need to work on a copy of it without those triangles.
    */
-  const Mesh *tm_clean = &tm_in;
-  Mesh tm_cleaned;
+  const IMesh *tm_clean = &tm_in;
+  IMesh tm_cleaned;
   if (has_degenerate_tris(tm_in)) {
     if (dbg_level > 0) {
       std::cout << "cleaning degenerate triangles\n";
@@ -2959,7 +2972,7 @@ Mesh trimesh_nary_intersect(
   Map<std::pair<int, int>, ITT_value> itt_map;
   itt_map.reserve(tri_ov.overlap().size());
   calc_overlap_itts(itt_map, *tm_clean, clinfo, tri_ov, arena);
-  Array<Mesh> tri_subdivided(tm_clean->face_size());
+  Array<IMesh> tri_subdivided(tm_clean->face_size());
   calc_subdivided_tris(tri_subdivided, *tm_clean, itt_map, clinfo, tri_ov, arena);
   Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
   for (int c : clinfo.index_range()) {
@@ -2975,7 +2988,7 @@ Mesh trimesh_nary_intersect(
       tri_subdivided[t] = extract_single_tri(*tm_clean, t);
     }
   }
-  Mesh combined = union_tri_subdivides(tri_subdivided);
+  IMesh combined = union_tri_subdivides(tri_subdivided);
   if (dbg_level > 1) {
     std::cout << "TRIMESH_NARY_INTERSECT answer:\n";
     std::cout << combined;
@@ -3032,7 +3045,7 @@ static std::ostream &operator<<(std::ostream &os, const ITT_value &itt)
 }
 
 /* Writing the obj_mesh has the side effect of populating verts. */
-void write_obj_mesh(Mesh &m, const std::string &objname)
+void write_obj_mesh(IMesh &m, const std::string &objname)
 {
   /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
    * This is just for developer debugging anyway, and should never be called in production Blender.
@@ -3057,15 +3070,15 @@ void write_obj_mesh(Mesh &m, const std::string &objname)
   if (!m.has_verts()) {
     m.populate_vert();
   }
-  for (Vertp v : m.vertices()) {
+  for (const Vert *v : m.vertices()) {
     const double3 dv = v->co;
     f << "v " << dv[0] << " " << dv[1] << " " << dv[2] << "\n";
   }
   int i = 0;
-  for (Facep face : m.faces()) {
+  for (const Face *face : m.faces()) {
     /* OBJ files use 1-indexing for vertices. */
     f << "f ";
-    for (Vertp v : *face) {
+    for (const Vert *v : *face) {
       int i = m.lookup_vert(v);
       BLI_assert(i != NO_INDEX);
       /* OBJ files use 1-indexing for vertices. */
