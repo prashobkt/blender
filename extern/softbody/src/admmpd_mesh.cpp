@@ -75,6 +75,8 @@ bool EmbeddedMesh::create(
 	log.start_state(SOLVERSTATE_MESHCREATE);
 
 	P_updated = true;
+	mesh_is_closed = false;
+
 	if (nv<=0 || verts == nullptr) {
 		log.stop_state(SOLVERSTATE_MESHCREATE);
 		return false;
@@ -196,13 +198,14 @@ bool EmbeddedMesh::create(
 	if (options->log_level >= LOGLEVEL_DEBUG) {
 		printf("%s\n",log.to_string().c_str());
 	}
+	
 	return true;
 }
 
 void EmbeddedMesh::compute_sdf(
 	const Eigen::MatrixXd *emb_v,
 	const Eigen::MatrixXi *emb_f,
-	SDFType *sdf) const
+	SDFType *sdf)
 {
 	Matrix<double,Dynamic,Dynamic,RowMajor> v_rm = *emb_v;
 	Matrix<unsigned int,Dynamic,Dynamic,RowMajor> f_rm = emb_f->cast<unsigned int>();
@@ -216,6 +219,8 @@ void EmbeddedMesh::compute_sdf(
 	domain.min() -= 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
 
 	Discregrid::TriangleMesh tm(v_rm.data(), f_rm.data(), v_rm.rows(), f_rm.rows());
+	mesh_is_closed = tm.is_closed();
+
 	Discregrid::MeshDistance md(tm);
 	std::array<unsigned int, 3> resolution;
 	resolution[0] = 30; resolution[1] = 30; resolution[2] = 30;
@@ -542,6 +547,7 @@ bool TetMesh::create(
 	int nt) // must be > 0
 {
 	P_updated = true;
+
 	if (nv<=0 || verts == nullptr)
 		return false;
 	if (nf<=0 || faces == nullptr)
@@ -711,6 +717,7 @@ bool TriangleMesh::create(
 {
 	(void)(options);
 	P_updated = true;
+
 	(void)(tets); (void)(nt);
 	if (nv<=0 || verts == nullptr)
 		return false;

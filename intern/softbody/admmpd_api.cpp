@@ -595,10 +595,17 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
     return 0;
   }
 
-  if (!iface->idata || !iface->idata->options || !iface->idata->data) {
+  if (!iface->idata || !iface->idata->options ||
+      !iface->idata->data || !iface->idata->mesh) {
     strcpy_error(iface, "NULL internal data");
     return 0;
   }
+
+  std::string meshname(ob->id.name);
+
+  // Set to true if certain conditions should
+  // throw a warning flag.
+  bool return_warning = false;
 
   // Change only options that do not cause a reset of the solver.
   bool skip_solver_reset = true;
@@ -609,6 +616,19 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
     iface->idata->options.get(),
     skip_solver_reset);
 
+  // Disable self collision flag if the mesh does not support it.
+  if (iface->idata->options->self_collision &&
+    !iface->idata->mesh->self_collision_allowed()) {
+    // Special message if embedded, in which the mesh is not closed.
+    std::string err = "Cannot do self collisions on object "+meshname+" for selected mesh type";
+    if (iface->idata->mesh->type() == MESHTYPE_EMBEDDED) {
+      err = "Cannot do self collisions on object "+meshname+", mesh is not closed.";
+    }
+    strcpy_error(iface, err.c_str());
+    iface->idata->options->self_collision = false;
+    return_warning = true;
+  }
+
   // Goals and self collision group can change
   // between time steps. If the goal indices/weights change,
   // it will trigger a refactorization in the solver.
@@ -617,12 +637,11 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
 
   // Obstacle collisions not yet implemented
   // for cloth or tet mesh.
-  bool had_set_obstacle_error = false;
   if ((ob->soft->admmpd_mesh_mode == MESHTYPE_TET ||
     ob->soft->admmpd_mesh_mode == MESHTYPE_TRIANGLE) &&
     iface->idata->obs_x0.size()>0)
   {
-    had_set_obstacle_error = true;
+    return_warning = true;
     strcpy_error(iface, "Obstacle collision not yet available for selected mesh mode.");
   }
 
@@ -644,7 +663,7 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
         iface->idata->obs_x0, iface->idata->obs_x1, iface->idata->obs_F,
         &set_obs_error)) {
       strcpy_error(iface, set_obs_error.c_str());
-      had_set_obstacle_error = true;
+      return_warning = true;
     }
   }
 
@@ -665,7 +684,7 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
             iface->idata->obs_x0, iface->idata->obs_x1, iface->idata->obs_F,
             &set_obs_error)) {
           strcpy_error(iface, set_obs_error.c_str());
-          had_set_obstacle_error = true;
+          return_warning = true;
         }
       }
 
@@ -684,8 +703,7 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
     return 0;
   }
 
-  if (had_set_obstacle_error) {
-    // Return warning (-1).
+  if (return_warning) {
     // We've already copied the error message.
     return -1;
   }

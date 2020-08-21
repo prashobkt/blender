@@ -3836,9 +3836,6 @@ void sbObjectStep(struct Depsgraph *depsgraph,
 
     if (init_mesh || init_solver) {
       BKE_ptcache_invalidate(cache);
-      //BKE_ptcache_id_reset(scene, &pid, PTCACHE_RESET_OUTDATED);
-      //return;
-      //admmpd_copy_from_object(admmpd, ob);
     }
   }
   else if (sb->solver_mode == SOLVER_MODE_LEGACY) {
