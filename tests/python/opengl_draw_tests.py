@@ -39,6 +39,8 @@ def get_arguments(filepath, output_filepath):
         "-noaudio",
         "--factory-startup",
         "--enable-autoexec",
+        "--debug-memory",
+        "--fail-on-memleak",
         filepath,
         "-P",
         os.path.realpath(__file__),

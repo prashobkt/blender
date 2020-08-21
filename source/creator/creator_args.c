@@ -751,6 +751,18 @@ static int arg_handle_abort_handler_disable(int UNUSED(argc),
   return 0;
 }
 
+static const char arg_handle_fail_on_memleak_doc[] =
+    "\n\t"
+    "Exit with an exit code that indicates failure when memory leaks are detected.\n"
+    "This can be used to make automated tests fail.";
+static int arg_handle_fail_on_memleak(int UNUSED(argc),
+                                      const char **UNUSED(argv),
+                                      void *UNUSED(data))
+{
+  MEM_enable_fail_on_memleak();
+  return 0;
+}
+
 static const char arg_handle_background_mode_set_doc[] =
     "\n\t"
     "Run in background (often used for UI-less rendering).";
@@ -2266,6 +2278,8 @@ void main_args_setup(bContext *C, bArgs *ba)
   BLI_argsAdd(ba, 4, "-F", "--render-format", CB(arg_handle_image_type_set), C);
   BLI_argsAdd(ba, 1, "-t", "--threads", CB(arg_handle_threads_set), NULL);
   BLI_argsAdd(ba, 4, "-x", "--use-extension", CB(arg_handle_extension_set), C);
+
+  BLI_argsAdd(ba, 1, NULL, "--fail-on-memleak", CB(arg_handle_fail_on_memleak), NULL);
 
 #  undef CB
 #  undef CB_EX
