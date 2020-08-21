@@ -253,7 +253,7 @@ static void edbm_intersect_ui(bContext *UNUSED(C), wmOperator *op)
 #else
   bool use_exact = false;
 #endif
-  
+
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   row = uiLayoutRow(layout, false);
@@ -262,11 +262,11 @@ static void edbm_intersect_ui(bContext *UNUSED(C), wmOperator *op)
   row = uiLayoutRow(layout, false);
   uiItemR(row, &ptr, "separate_mode", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
   uiItemS(layout);
-  #ifdef WITH_GMP
+#ifdef WITH_GMP
   row = uiLayoutRow(layout, false);
   uiItemR(row, &ptr, "solver", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
   uiItemS(layout);
-  #endif
+#endif
   if (!use_exact) {
     uiItemR(layout, &ptr, "threshold", 0, NULL, ICON_NONE);
   }
@@ -296,9 +296,9 @@ void MESH_OT_intersect(struct wmOperatorType *ot)
   };
 
   static const EnumPropertyItem isect_intersect_solver_items[] = {
-    {ISECT_SOLVER_FAST, "FAST", 0, "Fast", "Faster Solver, some limitations"},
-    {ISECT_SOLVER_EXACT, "EXACT", 0, "Exact", "Exact Solver, slower, handles more cases"},
-    {0, NULL, 0, NULL, NULL},
+      {ISECT_SOLVER_FAST, "FAST", 0, "Fast", "Faster Solver, some limitations"},
+      {ISECT_SOLVER_EXACT, "EXACT", 0, "Exact", "Exact Solver, slower, handles more cases"},
+      {0, NULL, 0, NULL, NULL},
   };
 
   /* identifiers */
@@ -418,7 +418,7 @@ static void edbm_intersect_boolean_ui(bContext *UNUSED(C), wmOperator *op)
 #else
   bool use_exact = false;
 #endif
-  
+
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
@@ -446,9 +446,9 @@ void MESH_OT_intersect_boolean(struct wmOperatorType *ot)
       {0, NULL, 0, NULL, NULL},
   };
   static const EnumPropertyItem isect_boolean_solver_items[] = {
-    {ISECT_SOLVER_FAST, "FAST", 0, "Fast", "Faster Solver, some limitations"},
-    {ISECT_SOLVER_EXACT, "EXACT", 0, "Exact", "Exact Solver, slower, handles more cases"},
-    {0, NULL, 0, NULL, NULL},
+      {ISECT_SOLVER_FAST, "FAST", 0, "Fast", "Faster Solver, some limitations"},
+      {ISECT_SOLVER_EXACT, "EXACT", 0, "Exact", "Exact Solver, slower, handles more cases"},
+      {0, NULL, 0, NULL, NULL},
   };
 
   /* identifiers */

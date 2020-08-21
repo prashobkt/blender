@@ -77,7 +77,9 @@ static void initData(ModifierData *md)
   bmd->double_threshold = 1e-6f;
   bmd->operation = eBooleanModifierOp_Difference;
 #ifdef WITH_GMP
-  bmd->bm_flag = eBooleanModifierBMeshFlag_BMesh_Exact;
+  bmd->solver = eBooleanModifierSolver_Exact;
+#else
+  bmd->solver = eBooleanModifierSolver_Fast;
 #endif
 }
 
@@ -320,7 +322,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
         }
 
 #ifdef WITH_GMP
-        bool use_exact = bmd->bm_flag & eBooleanModifierBMeshFlag_BMesh_Exact;
+        bool use_exact = bmd->solver == eBooleanModifierSolver_Exact;
 #else
         bool use_exact = false;
 #endif
@@ -389,9 +391,17 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   uiItemR(layout, &ptr, "object", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "double_threshold", 0, NULL, ICON_NONE);
+
 #ifdef WITH_GMP
-  uiItemR(layout, &ptr, "use_exact", 0, NULL, ICON_NONE);
+  bool use_exact = RNA_enum_get(&ptr, "solver") == eBooleanModifierSolver_Exact;
+#else
+  bool use_exact = false;
+#endif
+  if (!use_exact) {
+    uiItemR(layout, &ptr, "double_threshold", 0, NULL, ICON_NONE);
+  }
+#ifdef WITH_GMP
+  uiItemR(layout, &ptr, "solver", UI_ITEM_R_EXPAND, NULL, ICON_NONE);
 #endif
 
   if (G.debug) {

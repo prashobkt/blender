@@ -2819,6 +2819,16 @@ static void rna_def_modifier_boolean(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem prop_solver_items[] = {
+      {eBooleanModifierSolver_Fast, "FAST", 0, "Fast", "Faster Solver, some limitations"},
+      {eBooleanModifierSolver_Exact,
+       "EXACT",
+       0,
+       "Exact",
+       "Exact Solver, slower, handles more cases"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "BooleanModifier", "Modifier");
   RNA_def_struct_ui_text(srna, "Boolean Modifier", "Boolean operations modifier");
   RNA_def_struct_sdna(srna, "BooleanModifierData");
@@ -2847,12 +2857,10 @@ static void rna_def_modifier_boolean(BlenderRNA *brna)
       prop, "Overlap Threshold", "Threshold for checking overlapping geometry");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  prop = RNA_def_boolean(srna,
-                         "use_exact",
-                         true,
-                         "Exact",
-                         "Use the Exact-arithmetic boolean (slower, handles more cases");
-  RNA_def_property_boolean_sdna(prop, NULL, "bm_flag", eBooleanModifierBMeshFlag_BMesh_Exact);
+  prop = RNA_def_property(srna, "solver", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, prop_solver_items);
+  RNA_def_property_enum_default(prop, eBooleanModifierSolver_Exact);
+  RNA_def_property_ui_text(prop, "Solver", "Which boolean solver to use.");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   /* BMesh debugging options, only used when G_DEBUG is set */
