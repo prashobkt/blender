@@ -133,13 +133,13 @@ Vector<Vector<int>> ngon_tessellate(Span<float3> vertex_coords, Span<int> face_v
   Vector<vert_treplet> verts;
   verts.reserve(face_vertex_indices.size());
 
-  for (int i = 0; i < verts.size(); i++) {
-    verts.append_unchecked({vertex_coords[i], i});
+  for (int i = 0; i < face_vertex_indices.size(); i++) {
+    verts.append({vertex_coords[face_vertex_indices[i]], i});
   }
 
   Vector<Array<int, 2>> edges;
   for (int i = 0; i < face_vertex_indices.size(); i++) {
-    edges[i] = {i, i - 1};
+    edges.append({i, i - 1});
   }
   edges[0] = {0, static_cast<int>(face_vertex_indices.size() - 1)};
 
@@ -250,7 +250,7 @@ Vector<Vector<int>> ngon_tessellate(Span<float3> vertex_coords, Span<int> face_v
 
   if (fill_indices.is_empty()) {
     std::cerr << "Warning: could not scanfill, fallback on triangle fan" << std::endl;
-    for (int i = 0; i < face_vertex_indices.size(); i++) {
+    for (int i = 2; i < face_vertex_indices.size(); i++) {
       fill_indices.append({0, i - 1, i});
     }
   }
