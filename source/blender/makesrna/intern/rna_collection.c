@@ -486,6 +486,11 @@ void RNA_def_collections(BlenderRNA *brna)
        "Occlusion Only",
        "Only use the collection to produce occlusion"},
       {COLLECTION_LRT_EXCLUDE, "EXCLUDE", 0, "Exclude", "Don't use this collection in LRT"},
+      {COLLECTION_LRT_INTERSECTION_ONLY,
+       "INTERSECTION_ONLY",
+       0,
+       "Intersection Only",
+       "Only generate intersection lines with this collection"},
       {0, NULL, 0, NULL, NULL}};
 
   prop = RNA_def_property(srna, "lineart_usage", PROP_ENUM, PROP_NONE);

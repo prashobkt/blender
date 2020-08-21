@@ -369,7 +369,8 @@ static void lineart_occlusion_single_line(LineartRenderBuffer *rb,
     LISTBASE_FOREACH (LinkData *, lip, &nba->linked_triangles) {
       rt = lip->data;
       if (rt->testing[thread_id] == rl || rl->l->intersecting_with == (void *)rt ||
-          rl->r->intersecting_with == (void *)rt) {
+          rl->r->intersecting_with == (void *)rt ||
+          (rt->base.flags & LRT_TRIANGLE_INTERSECTION_ONLY)) {
         continue;
       }
       rt->testing[thread_id] = rl;
@@ -675,7 +676,14 @@ static void lineart_render_line_assign_with_triangle(LineartRenderTriangle *rt)
 static void lineart_triangle_post(LineartRenderTriangle *rt, LineartRenderTriangle *orig)
 {
   copy_v3_v3_db(rt->gn, orig->gn);
-  rt->cull_status = LRT_CULL_GENERATED;
+  rt->flags = LRT_CULL_GENERATED;
+}
+
+static void lineart_triangle_set_cull_flag(LineartRenderTriangle *rt, unsigned char flag)
+{
+  unsigned char intersection_only = (rt->flags & LRT_TRIANGLE_INTERSECTION_ONLY);
+  rt->flags = flag;
+  rt->flags |= intersection_only;
 }
 
 /** This function cuts triangles that are (partially or fully) behind near clipping plane.
@@ -765,7 +773,7 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
           /** triangle completely behind near plane, throw it away
            * also remove render lines form being computed.
            */
-          rt->cull_status = LRT_CULL_DISCARD;
+          lineart_triangle_set_cull_flag(rt, LRT_CULL_DISCARD);
           BLI_remlink(&rb->all_render_lines, (void *)rt->rl[0]);
           rt->rl[0]->next = rt->rl[0]->prev = 0;
           BLI_remlink(&rb->all_render_lines, (void *)rt->rl[1]);
@@ -776,7 +784,7 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
         case 2:
           /** Two points behind near plane, cut those and
            * generate 2 new points, 3 lines and 1 triangle */
-          rt->cull_status = LRT_CULL_USED;
+          lineart_triangle_set_cull_flag(rt, LRT_CULL_USED);
 
           /** (!in0) means "when point 0 is visible".
            * conditons for point 1, 2 are the same idea.
@@ -1014,7 +1022,7 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
         case 1:
           /** Two points behind near plane, cut those and
            * generate 2 new points, 4 lines and 2 triangles */
-          rt->cull_status = LRT_CULL_USED;
+          lineart_triangle_set_cull_flag(rt, LRT_CULL_USED);
 
           /** (in0) means "when point 0 is invisible".
            * conditons for point 1, 2 are the same idea.
@@ -1371,7 +1379,7 @@ static void lineart_geometry_object_load(Object *ob,
 
   int usage = override_usage ? override_usage : ob->lineart.usage;
 
-  if (usage == OBJECT_FEATURE_LINE_EXCLUDE) {
+  if (usage == OBJECT_LRT_EXCLUDE) {
     return;
   }
 
@@ -1478,7 +1486,7 @@ static void lineart_geometry_object_load(Object *ob,
       LineartRenderLineSegment *rls = lineart_mem_aquire(&rb->render_data_pool,
                                                          sizeof(LineartRenderLineSegment));
       BLI_addtail(&rl->segments, rls);
-      if (usage == OBJECT_FEATURE_LINE_INHERENT) {
+      if (usage == OBJECT_LRT_INHERENT) {
         BLI_addtail(&rb->all_render_lines, rl);
       }
       rl++;
@@ -1510,6 +1518,10 @@ static void lineart_geometry_object_load(Object *ob,
       normalize_v3_d(rt->gn);
       lineart_render_line_assign_with_triangle(rt);
 
+      if (usage == OBJECT_LRT_INTERSECTION_ONLY) {
+        rt->flags |= LRT_TRIANGLE_INTERSECTION_ONLY;
+      }
+
       rt = (LineartRenderTriangle *)(((unsigned char *)rt) + rb->triangle_size);
     }
 
@@ -1526,34 +1538,41 @@ int ED_lineart_object_collection_usage_check(Collection *c, Object *ob)
 {
 
   if (!c) {
-    return OBJECT_FEATURE_LINE_INHERENT;
+    return OBJECT_LRT_INHERENT;
   }
 
-  int object_is_used = (ob->lineart.usage == OBJECT_FEATURE_LINE_INCLUDE ||
-                        ob->lineart.usage == OBJECT_FEATURE_LINE_INHERENT);
+  int object_is_used = (ob->lineart.usage == OBJECT_LRT_INCLUDE ||
+                        ob->lineart.usage == OBJECT_LRT_INHERENT ||
+                        ob->lineart.usage == OBJECT_LRT_INTERSECTION_ONLY);
 
   if (object_is_used && (c->lineart_usage != COLLECTION_LRT_INCLUDE)) {
     if (BKE_collection_has_object_recursive(c, (Object *)(ob->id.orig_id))) {
       if (c->lineart_usage == COLLECTION_LRT_EXCLUDE) {
-        return OBJECT_FEATURE_LINE_EXCLUDE;
+        return OBJECT_LRT_EXCLUDE;
       }
       else if (c->lineart_usage == COLLECTION_LRT_OCCLUSION_ONLY) {
-        return OBJECT_FEATURE_LINE_OCCLUSION_ONLY;
+        return OBJECT_LRT_OCCLUSION_ONLY;
+      }
+      else if (c->lineart_usage == COLLECTION_LRT_INTERSECTION_ONLY) {
+        return OBJECT_LRT_INTERSECTION_ONLY;
       }
     }
   }
 
   if (c->children.first == NULL) {
     if (BKE_collection_has_object(c, ob)) {
-      if (ob->lineart.usage == OBJECT_FEATURE_LINE_INHERENT) {
-        if ((c->lineart_usage == COLLECTION_LRT_OCCLUSION_ONLY)) {
-          return OBJECT_FEATURE_LINE_OCCLUSION_ONLY;
+      if (ob->lineart.usage == OBJECT_LRT_INHERENT) {
+        if (c->lineart_usage == COLLECTION_LRT_OCCLUSION_ONLY) {
+          return OBJECT_LRT_OCCLUSION_ONLY;
         }
-        else if ((c->lineart_usage == COLLECTION_LRT_EXCLUDE)) {
-          return OBJECT_FEATURE_LINE_EXCLUDE;
+        else if (c->lineart_usage == COLLECTION_LRT_EXCLUDE) {
+          return OBJECT_LRT_EXCLUDE;
+        }
+        else if (c->lineart_usage == COLLECTION_LRT_INTERSECTION_ONLY) {
+          return OBJECT_LRT_INTERSECTION_ONLY;
         }
         else {
-          return OBJECT_FEATURE_LINE_INHERENT;
+          return OBJECT_LRT_INHERENT;
         }
       }
       else {
@@ -1561,18 +1580,18 @@ int ED_lineart_object_collection_usage_check(Collection *c, Object *ob)
       }
     }
     else {
-      return OBJECT_FEATURE_LINE_INHERENT;
+      return OBJECT_LRT_INHERENT;
     }
   }
 
   LISTBASE_FOREACH (CollectionChild *, cc, &c->children) {
     int result = ED_lineart_object_collection_usage_check(cc->collection, ob);
-    if (result > OBJECT_FEATURE_LINE_INHERENT) {
+    if (result > OBJECT_LRT_INHERENT) {
       return result;
     }
   }
 
-  return OBJECT_FEATURE_LINE_INHERENT;
+  return OBJECT_LRT_INHERENT;
 }
 
 static void lineart_main_load_geometries(Depsgraph *depsgraph,
@@ -2205,8 +2224,7 @@ static void lineart_triangle_intersections_in_bounding_area(LineartRenderBuffer 
     testing_triangle = lip->data;
     rtt = (LineartRenderTriangleThread *)testing_triangle;
     if (testing_triangle == rt || rtt->testing[0] == (LineartRenderLine *)rt ||
-        (rt->cull_status == LRT_CULL_GENERATED &&
-         testing_triangle->cull_status == LRT_CULL_GENERATED) ||
+        ((rt->flags & LRT_CULL_GENERATED) && (testing_triangle->flags & LRT_CULL_GENERATED)) ||
         lineart_triangle_share_edge(rt, testing_triangle)) {
       continue;
     }
@@ -3164,7 +3182,7 @@ static void lineart_add_triangles(LineartRenderBuffer *rb)
     rt = reln->pointer;
     lim = reln->element_count;
     for (i = 0; i < lim; i++) {
-      if (rt->cull_status == LRT_CULL_USED || rt->cull_status == LRT_CULL_DISCARD) {
+      if ((rt->flags & LRT_CULL_USED) || (rt->flags & LRT_CULL_DISCARD)) {
         rt = (void *)(((unsigned char *)rt) + rb->triangle_size);
         continue;
       }

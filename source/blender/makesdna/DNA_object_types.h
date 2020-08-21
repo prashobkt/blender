@@ -201,10 +201,11 @@ typedef struct ObjectLineart {
 } ObjectLineart;
 
 enum ObjectFeatureLine_Usage {
-  OBJECT_FEATURE_LINE_INHERENT = 0,
-  OBJECT_FEATURE_LINE_INCLUDE = (1 << 0),
-  OBJECT_FEATURE_LINE_OCCLUSION_ONLY = (1 << 1),
-  OBJECT_FEATURE_LINE_EXCLUDE = (1 << 2),
+  OBJECT_LRT_INHERENT = 0,
+  OBJECT_LRT_INCLUDE = (1 << 0),
+  OBJECT_LRT_OCCLUSION_ONLY = (1 << 1),
+  OBJECT_LRT_EXCLUDE = (1 << 2),
+  OBJECT_LRT_INTERSECTION_ONLY = (1 << 3),
 };
 
 typedef struct Object {

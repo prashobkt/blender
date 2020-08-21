@@ -60,7 +60,7 @@ typedef struct LineartRenderTriangle {
   short material_id;
   ListBase intersecting_verts;
   unsigned char transparency_mask;
-  char cull_status;
+  unsigned char flags; /* eLineartTriangleFlags */
 } LineartRenderTriangle;
 
 typedef struct LineartRenderTriangleThread {
@@ -338,12 +338,13 @@ typedef struct LineartSharedResource {
 #define LRT_MEMORY_POOL_1MB 1048576
 #define LRT_MEMORY_POOL_64MB 67108864
 
-typedef enum eLineartCullState {
+typedef enum eLineartTriangleFlags {
   LRT_CULL_DONT_CARE = 0,
-  LRT_CULL_USED = 1,
-  LRT_CULL_DISCARD = 2,
-  LRT_CULL_GENERATED = 3,
-} eLineartCullState;
+  LRT_CULL_USED = (1 << 0),
+  LRT_CULL_DISCARD = (1 << 1),
+  LRT_CULL_GENERATED = (1 << 2),
+  LRT_TRIANGLE_INTERSECTION_ONLY = (1 << 3),
+} eLineartTriangleFlags;
 
 /** Controls how many lines a worker thread is processing at one request.
  * There's no significant performance impact on choosing different values.
