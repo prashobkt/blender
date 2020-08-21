@@ -78,7 +78,7 @@ class TextureMapOptions {
     return tex_map_options.keys();
   }
 
-  int number_of_args(std::string_view option) const
+  int number_of_args(StringRef option) const
   {
     return tex_map_options.lookup_as(std::string(option));
   }

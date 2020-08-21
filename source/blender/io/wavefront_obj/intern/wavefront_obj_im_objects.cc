@@ -48,12 +48,12 @@ void Geometry::set_geom_type(const eGeometryType new_type)
   geom_type_ = new_type;
 }
 
-std::string_view Geometry::get_geometry_name() const
+StringRef Geometry::get_geometry_name() const
 {
   return geometry_name_;
 }
 
-void Geometry::set_geometry_name(std::string_view new_name)
+void Geometry::set_geometry_name(StringRef new_name)
 {
   geometry_name_ = std::string(new_name);
 }

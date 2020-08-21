@@ -128,13 +128,13 @@ class Geometry {
   int tot_loops_ = 0;
 
  public:
-  Geometry(eGeometryType type, std::string_view ob_name)
+  Geometry(eGeometryType type, StringRef ob_name)
       : geom_type_(type), geometry_name_(std::string(ob_name)){};
 
   eGeometryType get_geom_type() const;
   void set_geom_type(const eGeometryType new_type);
-  std::string_view get_geometry_name() const;
-  void set_geometry_name(std::string_view new_name);
+  StringRef get_geometry_name() const;
+  void set_geometry_name(StringRef new_name);
 
   int64_t vertex_index(const int64_t index) const;
   int64_t tot_verts() const;
