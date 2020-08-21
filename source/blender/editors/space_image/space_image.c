@@ -640,7 +640,6 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View2D *v2d = &region->v2d;
-  // View2DScrollers *scrollers;
 
   GPUViewport *viewport = WM_draw_region_get_viewport(region);
   GPUFrameBuffer *framebuffer_default, *framebuffer_overlay;
@@ -656,8 +655,6 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
 
   /* XXX not supported yet, disabling for now */
   scene->r.scemode &= ~R_COMP_CROP;
-
-  /* clear and setup matrix */
 
   image_user_refresh_scene(C, sima);
 
@@ -687,11 +684,12 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
   }
   else {
     float col[3];
+    /* clear and setup matrix */
     UI_GetThemeColor3fv(TH_BACK, col);
     srgb_to_linearrgb_v3_v3(col, col);
-    GPU_clear_color(col[0], col[1], col[2], 0.0f);
+    GPU_clear_color(col[0], col[1], col[2], 1.0f);
     GPU_clear(GPU_COLOR_BIT);
-    GPU_depth_test(false);
+    GPU_depth_test(GPU_DEPTH_NONE);
     draw_image_main(C, region);
 
     /* and uvs in 0.0-1.0 space */

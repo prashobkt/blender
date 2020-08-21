@@ -20,9 +20,6 @@
  * \ingroup draw_editors
  */
 
-#ifndef __IMAGE_UV_EDITOR_H__
-#define __IMAGE_UV_EDITOR_H__
+#pragma once
 
 extern DrawEngineType draw_engine_image_type;
-
-#endif /* __IMAGE_UV_EDITOR_H__ */

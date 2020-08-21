@@ -53,14 +53,15 @@ static void image_batch_instances_update(IMAGE_Data *id, Image *image)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
   const bool is_tiled_texture = image && image->source == IMA_SRC_TILED;
-  rcti instances;
 
   if (is_tiled_texture) {
     pd->draw_batch = IMAGE_batches_image_tiled_create(image);
   }
   else {
-    /* repeat */
+    rcti instances;
     BLI_rcti_init(&instances, 0, 0, 0, 0);
+
+    /* repeat */
     if ((sima->flag & SI_DRAW_TILE) != 0) {
       float view_inv_m4[4][4];
       DRW_view_viewmat_get(NULL, view_inv_m4, true);
@@ -79,7 +80,52 @@ static void image_batch_instances_update(IMAGE_Data *id, Image *image)
   }
 }
 
-static void image_cache_image(IMAGE_Data *id, Image *ima, ImageUser *iuser, ImBuf *ibuf)
+static void image_gpu_texture_update(
+    IMAGE_Data *id, Image *image, ImageUser *iuser, ImBuf *ibuf, GPUTexture **tex_tile_data)
+{
+  IMAGE_StorageList *stl = id->stl;
+  IMAGE_PrivateData *pd = stl->pd;
+
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
+
+  if (image) {
+    if (BKE_image_is_multilayer(image)) {
+      /* update multiindex and pass for the current eye */
+      BKE_image_multilayer_index(image->rr, &sima->iuser);
+    }
+    else {
+      BKE_image_multiview_index(image, &sima->iuser);
+    }
+
+    if (ibuf) {
+      if (sima->flag & SI_SHOW_ZBUF && (ibuf->zbuf || ibuf->zbuf_float || (ibuf->channels == 1))) {
+        if (ibuf->zbuf) {
+          BLI_assert(!"Integer based depth buffers not supported");
+        }
+        else if (ibuf->zbuf_float) {
+          pd->texture = GPU_texture_create_2d(ibuf->x, ibuf->y, GPU_R16F, ibuf->zbuf_float, NULL);
+          pd->owns_texture = true;
+        }
+        else if (ibuf->rect_float && ibuf->channels == 1) {
+          pd->texture = GPU_texture_create_2d(ibuf->x, ibuf->y, GPU_R16F, ibuf->rect_float, NULL);
+          pd->owns_texture = true;
+        }
+      }
+      else if (image->source == IMA_SRC_TILED) {
+        pd->texture = BKE_image_get_gpu_tiles(image, iuser, ibuf);
+        *tex_tile_data = BKE_image_get_gpu_tilemap(image, iuser, NULL);
+        pd->owns_texture = false;
+      }
+      else {
+        pd->texture = BKE_image_get_gpu_texture(image, iuser, ibuf);
+        pd->owns_texture = false;
+      }
+    }
+  }
+}
+
+static void image_cache_image(IMAGE_Data *id, Image *image, ImageUser *iuser, ImBuf *ibuf)
 {
   IMAGE_PassList *psl = id->psl;
   IMAGE_StorageList *stl = id->stl;
@@ -91,32 +137,8 @@ static void image_cache_image(IMAGE_Data *id, Image *ima, ImageUser *iuser, ImBu
 
   GPUTexture *tex_tile_data = NULL;
 
-  if (ima && ibuf) {
-    if (sima->flag & SI_SHOW_ZBUF && (ibuf->zbuf || ibuf->zbuf_float || (ibuf->channels == 1))) {
-      if (ibuf->zbuf) {
-        // TODO: zbuf integer based
-        // sima_draw_zbuf_pixels(x, y, ibuf->x, ibuf->y, ibuf->zbuf, zoomx, zoomy);
-        BLI_assert(!"Integer based depth buffers not supported");
-      }
-      else if (ibuf->zbuf_float) {
-        pd->texture = GPU_texture_create_2d(ibuf->x, ibuf->y, GPU_R16F, ibuf->zbuf_float, NULL);
-        pd->owns_texture = true;
-      }
-      else if (ibuf->rect_float && ibuf->channels == 1) {
-        pd->texture = GPU_texture_create_2d(ibuf->x, ibuf->y, GPU_R16F, ibuf->rect_float, NULL);
-        pd->owns_texture = true;
-      }
-    }
-    else if (ima->source == IMA_SRC_TILED) {
-      pd->texture = BKE_image_get_gpu_tiles(ima, iuser, ibuf);
-      tex_tile_data = BKE_image_get_gpu_tilemap(ima, iuser, NULL);
-      pd->owns_texture = false;
-    }
-    else {
-      pd->texture = BKE_image_get_gpu_texture(ima, iuser, ibuf);
-      pd->owns_texture = false;
-    }
-  }
+  image_batch_instances_update(id, image);
+  image_gpu_texture_update(id, image, iuser, ibuf, &tex_tile_data);
 
   if (pd->texture) {
     eGPUSamplerState state = 0;
@@ -126,7 +148,7 @@ static void image_cache_image(IMAGE_Data *id, Image *ima, ImageUser *iuser, ImBu
     static float shuffle[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     int draw_flags = 0;
     static float far_near[2] = {100.0f, 0.0f};
-    const bool use_premul_alpha = ima->alpha_mode == IMA_ALPHA_PREMUL;
+    const bool use_premul_alpha = image->alpha_mode == IMA_ALPHA_PREMUL;
 
     if (scene->camera && scene->camera->type == OB_CAMERA) {
       far_near[1] = ((Camera *)scene->camera->data)->clip_start;
@@ -182,7 +204,7 @@ static void image_cache_image(IMAGE_Data *id, Image *ima, ImageUser *iuser, ImBu
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
 
     int image_size[2];
-    if (ima && ima->type == IMA_TYPE_R_RESULT) {
+    if (image && image->type == IMA_TYPE_R_RESULT) {
       image_size[0] = (scene->r.xsch * scene->r.size) * 0.01f;
       image_size[1] = (scene->r.ysch * scene->r.size) * 0.01f;
     }
@@ -230,24 +252,6 @@ static void IMAGE_cache_init(void *vedata)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
 
-  /* e_data.image needs to be set as first other calls may access it to determine
-   * if we are looking at a texture, viewer or render result */
-  Image *image = ED_space_image(sima);
-  const bool has_image = image != NULL;
-  const bool show_multilayer = has_image && BKE_image_is_multilayer(image);
-
-  if (has_image) {
-    if (show_multilayer) {
-      /* update multiindex and pass for the current eye */
-      BKE_image_multilayer_index(image->rr, &sima->iuser);
-    }
-    else {
-      BKE_image_multiview_index(image, &sima->iuser);
-    }
-  }
-
-  image_batch_instances_update(id, image);
-
   {
     /* Write depth is needed for background rendering. Near depth is used for transparency
      * checker and Far depth is used for indicating the image size. */
@@ -262,6 +266,7 @@ static void IMAGE_cache_init(void *vedata)
   GPU_framebuffer_clear_color_depth(dfbl->default_fb, clear_col, 1.0);
 
   {
+    Image *image = ED_space_image(sima);
     ImBuf *ibuf = ED_space_image_acquire_buffer(sima, &pd->lock, 0);
     image_cache_image(id, image, &sima->iuser, ibuf);
     pd->ibuf = ibuf;
@@ -282,7 +287,7 @@ static void image_draw_finish(IMAGE_Data *vedata)
 
   ED_space_image_release_buffer(sima, pd->ibuf, pd->lock);
 
-  if (pd->owns_texture) {
+  if (pd->texture && pd->owns_texture) {
     GPU_texture_free(pd->texture);
     pd->owns_texture = false;
   }
