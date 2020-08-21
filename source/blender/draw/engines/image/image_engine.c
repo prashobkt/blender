@@ -142,8 +142,6 @@ static void image_cache_image(IMAGE_Data *id, Image *image, ImageUser *iuser, Im
 
   if (pd->texture) {
     eGPUSamplerState state = 0;
-    GPUShader *shader = IMAGE_shaders_image_get();
-    DRWShadingGroup *shgrp = DRW_shgroup_create(shader, psl->image_pass);
     static float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     static float shuffle[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     int draw_flags = 0;
@@ -153,15 +151,6 @@ static void image_cache_image(IMAGE_Data *id, Image *image, ImageUser *iuser, Im
     if (scene->camera && scene->camera->type == OB_CAMERA) {
       far_near[1] = ((Camera *)scene->camera->data)->clip_start;
       far_near[0] = ((Camera *)scene->camera->data)->clip_end;
-    }
-
-    if (tex_tile_data != NULL) {
-      draw_flags |= SIMA_DRAW_FLAG_TILED;
-      DRW_shgroup_uniform_texture_ex(shgrp, "imageTileArray", pd->texture, state);
-      DRW_shgroup_uniform_texture(shgrp, "imageTileData", tex_tile_data);
-    }
-    else {
-      DRW_shgroup_uniform_texture_ex(shgrp, "imageTexture", pd->texture, state);
     }
 
     if ((sima->flag & SI_USE_ALPHA) != 0) {
@@ -189,20 +178,25 @@ static void image_cache_image(IMAGE_Data *id, Image *image, ImageUser *iuser, Im
       copy_v4_fl4(shuffle, 0.0f, 0.0f, 1.0f, 0.0f);
     }
 
+    GPUShader *shader = IMAGE_shaders_image_get();
+    DRWShadingGroup *shgrp = DRW_shgroup_create(shader, psl->image_pass);
+    if (tex_tile_data != NULL) {
+      draw_flags |= SIMA_DRAW_FLAG_TILED;
+      DRW_shgroup_uniform_texture_ex(shgrp, "imageTileArray", pd->texture, state);
+      DRW_shgroup_uniform_texture(shgrp, "imageTileData", tex_tile_data);
+    }
+    else {
+      DRW_shgroup_uniform_texture_ex(shgrp, "imageTexture", pd->texture, state);
+    }
     DRW_shgroup_uniform_vec2_copy(shgrp, "farNearDistances", far_near);
     DRW_shgroup_uniform_vec4_copy(shgrp, "color", color);
     DRW_shgroup_uniform_vec4_copy(shgrp, "shuffle", shuffle);
     DRW_shgroup_uniform_int_copy(shgrp, "drawFlags", draw_flags);
     DRW_shgroup_uniform_bool_copy(shgrp, "imgPremultiplied", use_premul_alpha);
-
     DRW_shgroup_call(shgrp, pd->draw_batch, NULL);
   }
   else {
     /* No image available. use the image unavailable shader. */
-    GPUShader *shader = IMAGE_shaders_image_unavailable_get();
-    DRWShadingGroup *grp = DRW_shgroup_create(shader, psl->image_pass);
-    DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
-
     int image_size[2];
     if (image && image->type == IMA_TYPE_R_RESULT) {
       image_size[0] = (scene->r.xsch * scene->r.size) * 0.01f;
@@ -212,11 +206,14 @@ static void image_cache_image(IMAGE_Data *id, Image *image, ImageUser *iuser, Im
       image_size[0] = image_size[1] = 256;
     }
 
-    /* sima->zoom = 1 texel covers (sima->zoom * sima->zoom) screen pixels.
+    /* sima->zoom texels covers (sima->zoom * sima->zoom) screen pixels.
      * Creates a curve function for better visual result. */
     float zoom_level = powf(MAX2(sima->zoom - 1.0, 0.1), 0.33f);
     zoom_level = clamp_f(zoom_level, 1.25, 4.75);
 
+    GPUShader *shader = IMAGE_shaders_image_unavailable_get();
+    DRWShadingGroup *grp = DRW_shgroup_create(shader, psl->image_pass);
+    DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_uniform_float_copy(grp, "zoomScale", sima->zoom);
     DRW_shgroup_uniform_float_copy(grp, "zoomLevel", zoom_level);
     DRW_shgroup_uniform_ivec2_copy(grp, "imageSize", image_size);
@@ -275,6 +272,7 @@ static void IMAGE_cache_init(void *vedata)
 
 static void IMAGE_cache_populate(void *UNUSED(vedata), Object *UNUSED(ob))
 {
+  /* Function intentional left empty. `cache_populate` is required to be implemented. */
 }
 
 static void image_draw_finish(IMAGE_Data *vedata)
