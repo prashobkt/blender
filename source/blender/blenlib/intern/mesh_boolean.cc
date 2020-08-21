@@ -2015,7 +2015,7 @@ static bool apply_bool_op(int bool_optype, const Array<int> &winding)
         }
       }
       return true;
-    } break;
+    }
     case BOOLEAN_UNION: {
       for (int i = 0; i < nw; ++i) {
         if (winding[i] != 0) {
@@ -2023,7 +2023,7 @@ static bool apply_bool_op(int bool_optype, const Array<int> &winding)
         }
       }
       return false;
-    } break;
+    }
     case BOOLEAN_DIFFERENCE: {
       /* if nw > 2, make it shape 0 minus the union of the rest. */
       if (winding[0] == 0) {
@@ -2038,7 +2038,7 @@ static bool apply_bool_op(int bool_optype, const Array<int> &winding)
         }
       }
       return false;
-    } break;
+    }
     default:
       return false;
   }
@@ -2229,13 +2229,10 @@ static const char *bool_optype_name(bool_optype op)
   switch (op) {
     case BOOLEAN_NONE:
       return "none";
-      break;
     case BOOLEAN_ISECT:
       return "intersect";
-      break;
     case BOOLEAN_UNION:
       return "union";
-      break;
     case BOOLEAN_DIFFERENCE:
       return "difference";
     default:
@@ -2395,6 +2392,8 @@ static IMesh gwn_boolean(const IMesh &tm,
         do_flip = (shape == 1);
         break;
       default:
+        do_remove = false;
+        do_flip = false;
         BLI_assert(false);
     }
     if (dbg_level > 0) {

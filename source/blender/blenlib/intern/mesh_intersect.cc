@@ -1068,15 +1068,18 @@ static mpq2 project_3d_to_2d(const mpq3 &p3d, int proj_axis)
     case (0): {
       p2d[0] = p3d[1];
       p2d[1] = p3d[2];
-    } break;
+      break;
+    }
     case (1): {
       p2d[0] = p3d[0];
       p2d[1] = p3d[2];
-    } break;
+      break;
+    }
     case (2): {
       p2d[0] = p3d[0];
       p2d[1] = p3d[1];
-    } break;
+      break;
+    }
     default:
       BLI_assert(false);
   }
@@ -2032,21 +2035,24 @@ static mpq3 unproject_cdt_vert(const CDT_data &cd, const mpq2 &p2d)
       p3d[0] = num / n[0];
       p3d[1] = p2d[0];
       p3d[2] = p2d[1];
-    } break;
+      break;
+    }
     case (1): {
       p3d[0] = p2d[0];
       mpq_class num = n[0] * p2d[0] + n[2] * p2d[1] + d;
       num = -num;
       p3d[1] = num / n[1];
       p3d[2] = p2d[1];
-    } break;
+      break;
+    }
     case (2): {
       p3d[0] = p2d[0];
       p3d[1] = p2d[1];
       mpq_class num = n[0] * p2d[0] + n[1] * p2d[1] + d;
       num = -num;
       p3d[2] = num / n[2];
-    } break;
+      break;
+    }
     default:
       BLI_assert(false);
   }
@@ -2107,13 +2113,16 @@ static CDT_data prepare_cdt_input(const IMesh &tm, int t, const Vector<ITT_value
         break;
       case IPOINT: {
         prepare_need_vert(ans, itt.p1);
-      } break;
+        break;
+      }
       case ISEGMENT: {
         prepare_need_edge(ans, itt.p1, itt.p2);
-      } break;
+        break;
+      }
       case ICOPLANAR: {
         prepare_need_tri(ans, tm, itt.t_source);
-      } break;
+        break;
+      }
     }
   }
   return ans;
@@ -2139,10 +2148,12 @@ static CDT_data prepare_cdt_input_for_cluster(const IMesh &tm,
     switch (itt.kind) {
       case IPOINT: {
         prepare_need_vert(ans, itt.p1);
-      } break;
+        break;
+      }
       case ISEGMENT: {
         prepare_need_edge(ans, itt.p1, itt.p2);
-      } break;
+        break;
+      }
       default:
         break;
     }
