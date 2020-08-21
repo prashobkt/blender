@@ -125,6 +125,12 @@ static void tessellate_polygon(Vector<Vector<const float3 *>> &polyLineSeq,
   }
 }
 
+/**
+ * Tessellate an ngon with holes to triangles.
+ *
+ * \param face_vertex_indices A polygon's indices that index into the given vertex coordinate list.
+ * \return List of polygons with each element containing indices of one polygon.
+ */
 Vector<Vector<int>> ngon_tessellate(Span<float3> vertex_coords, Span<int> face_vertex_indices)
 {
   if (face_vertex_indices.is_empty()) {

@@ -30,8 +30,8 @@
 #include "BLI_array.hh"
 #include "BLI_float3.hh"
 #include "BLI_map.hh"
-#include "BLI_vector.hh"
 #include "BLI_string_ref.hh"
+#include "BLI_vector.hh"
 
 namespace blender::io::obj {
 /**

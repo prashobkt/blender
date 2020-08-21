@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "BLI_vector.hh"
-#include "BLI_span.hh"
 #include "BLI_float3.hh"
+#include "BLI_span.hh"
+#include "BLI_vector.hh"
 
 namespace blender::io::obj {
 

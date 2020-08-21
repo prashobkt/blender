@@ -34,8 +34,8 @@
 #include "BLI_vector_set.hh"
 
 #include "bmesh.h"
-#include "bmesh_tools.h"
 #include "bmesh_operator_api.h"
+#include "bmesh_tools.h"
 
 #include "DNA_customdata_types.h"
 #include "DNA_mesh_types.h"
@@ -65,6 +65,7 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
   const auto [removed_faces, removed_loops]{tessellate_polygons(new_faces, fgon_edges)};
 
   const int64_t tot_verts_object{mesh_geometry_.tot_verts()};
+  /* Total explicitly imported edges, not the ones belonging the polygons to be created. */
   const int64_t tot_edges{mesh_geometry_.tot_edges()};
   const int64_t tot_face_elems{mesh_geometry_.tot_face_elems() - removed_faces + new_faces.size()};
   const int64_t tot_loops{mesh_geometry_.tot_loops() - removed_loops + 3 * new_faces.size()};
@@ -87,9 +88,12 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
 #endif
   BKE_mesh_validate(blender_mesh_.get(), verbose_validate, false);
 #if 0
+  /* TODO ankitm Check if it should be executed or not. */
   add_custom_normals();
 #endif
+  /* Un-tessellate unnecesarily triangulated n-gons. */
   dissolve_edges(fgon_edges);
+
   BKE_mesh_nomain_to_mesh(blender_mesh_.release(),
                           static_cast<Mesh *>(blender_object_->data),
                           blender_object_.get(),
@@ -97,6 +101,9 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
                           true);
 }
 
+/**
+ * Tessellate potentially invalid polygons and fill the
+ */
 std::pair<int64_t, int64_t> MeshFromGeometry::tessellate_polygons(
     Vector<FaceElement> &r_new_faces, Set<std::pair<int, int>> &fgon_edges)
 {
@@ -205,9 +212,16 @@ void MeshFromGeometry::create_vertices()
   }
 }
 
+/**
+ * Create polygons for the Mesh, set smooth shading flag, deform group name, assigned material
+ * also.
+ *
+ * It must recieve all polygons to be added to the mesh. Remove holes from polygons before
+ * calling this.
+ */
 void MeshFromGeometry::create_polys_loops(Span<FaceElement> all_faces)
 {
-  /* May not be used conditionally. */
+  /* Will not be used if vertex groups are not imported. */
   blender_mesh_->dvert = nullptr;
   float weight = 0.0f;
   if (mesh_geometry_.tot_verts() && mesh_geometry_.use_vertex_groups()) {
@@ -283,6 +297,9 @@ void MeshFromGeometry::create_polys_loops(Span<FaceElement> all_faces)
   }
 }
 
+/**
+ * Add explicitly imported OBJ edges to the mesh.
+ */
 void MeshFromGeometry::create_edges()
 {
   const int64_t tot_edges{mesh_geometry_.tot_edges()};
@@ -302,9 +319,12 @@ void MeshFromGeometry::create_edges()
   BKE_mesh_calc_edges_loose(blender_mesh_.get());
 }
 
+/**
+ * Add UV layer and vertices to the Mesh.
+ */
 void MeshFromGeometry::create_uv_verts()
 {
-  if (global_vertices_.uv_vertices.size() <= 0 ) {
+  if (global_vertices_.uv_vertices.size() <= 0) {
     return;
   }
   MLoopUV *mluv_dst = static_cast<MLoopUV *>(CustomData_add_layer(
@@ -323,6 +343,9 @@ void MeshFromGeometry::create_uv_verts()
   }
 }
 
+/**
+ * Add materials and the nodetree to the Mesh Object.
+ */
 void MeshFromGeometry::create_materials(Main *bmain,
                                         const Map<std::string, MTLMaterial> &materials)
 {
@@ -345,7 +368,7 @@ void MeshFromGeometry::create_materials(Main *bmain,
 }
 
 /**
- * Needs more clarity upon what is expected here?
+ * Needs more clarity about what is expected in the viewport if the function works.
  */
 void MeshFromGeometry::add_custom_normals()
 {

@@ -38,7 +38,7 @@ using std::string_view;
 
 /**
  * Split a line string into the first word (key) and the rest of the line.
- * Also remove leading & trailing space as well as `\r` carriage return
+ * Also remove leading & trailing spaces as well as `\r` carriage return
  * character if present.
  */
 static void split_line_key_rest(string_view line,
@@ -68,6 +68,8 @@ static void split_line_key_rest(string_view line,
     r_rest_line = r_rest_line.substr(leading_space, string_view::npos);
   }
 
+  /* Another way is to do a test run before the actual parsing to find the new-line
+   * character and use it in the main getline. */
   const string_view::size_type carriage_return{r_rest_line.find_first_of('\r')};
   if (carriage_return != string_view::npos) {
     r_rest_line = r_rest_line.substr(0, carriage_return);
@@ -84,7 +86,7 @@ static void split_line_key_rest(string_view line,
  * Split the given string by the delimiter and fill the given vector.
  * If an intermediate string is empty, or space or null character, it is not appended to the
  * vector.
- * Ensure that the given string has no leading spaces.
+ * Caller should ensure that the given string has no leading spaces.
  */
 static void split_by_char(string_view in_string, char delimiter, Vector<string_view> &r_out_list)
 {

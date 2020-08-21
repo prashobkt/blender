@@ -184,7 +184,7 @@ void MaterialWrap::init_bsdf_node(StringRefNull object_name)
 }
 
 /**
- * Store properties found either in p-BSDF node or `Material` of the object. 
+ * Store properties found either in p-BSDF node or `Material` of the object.
  */
 void MaterialWrap::store_bsdf_properties(MTLMaterial &r_mtl_mat) const
 {
