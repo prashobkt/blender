@@ -24,7 +24,6 @@ class Collision {
 public:
     struct ObstacleData {
         int num_obs() const { return sdf.size(); }
-        bool has_obs() const;
         bool compute_sdf(int idx);
         std::vector<SDFType> sdf;
         // Obstacle data stored in custom matrix type to interop with DiscreGrid

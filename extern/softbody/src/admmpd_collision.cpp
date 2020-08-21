@@ -26,20 +26,6 @@ VFCollisionPair::VFCollisionPair() :
 	q_bary(0,0,0)
 	{}
 
-bool Collision::ObstacleData::has_obs() const
-{
-	// The obstacle list may include non-closed obstacles,
-	// in which an SDF cannot be computed. This function
-	// instead returns true only if an SDF can be generated.
-	int n_box = box.size();
-	for (int i=0; i<n_box; ++i) {
-		if (!box[i].isEmpty()) {
-			return true;
-		}
-	}
-	return false;
-}
-
 bool Collision::ObstacleData::compute_sdf(int idx)
 {
 	if (idx < 0 || idx >x1.size()) {
@@ -196,11 +182,13 @@ int EmbeddedMeshCollision::detect(
 	const Eigen::MatrixXd *x0,
 	const Eigen::MatrixXd *x1)
 {
-	if (!mesh)
+	if (!mesh) {
 		return 0;
+	}
 
-	if (mesh->type() != MESHTYPE_EMBEDDED)
+	if (mesh->type() != MESHTYPE_EMBEDDED) {
 		return 0;
+	}
 
 	// Compute SDFs if the mesh is intersecting
 	// the associated obstacle. The sdf generation is internally threaded,
@@ -221,10 +209,8 @@ int EmbeddedMeshCollision::detect(
 
 	// Do we even need to process collisions and launch
 	// the per-vertex threads?
-	if (!has_obs_intersection && !options->self_collision)
-	{
-		if (x1->col(2).minCoeff() > options->floor)
-		{
+	if (!has_obs_intersection && !options->self_collision) {
+		if (x1->col(2).minCoeff() > options->floor) {
 			return 0;
 		}
 	}
@@ -396,8 +382,12 @@ int EmbeddedMeshCollision::detect(
 	// Launch threads
 	std::vector<std::thread> pool;
 	per_thread_results.resize(max_threads, std::vector<Vector2i>());
-	for (int i=0; i<max_threads; ++i)
+	for (int i=0; i<max_threads; ++i) {
+		per_thread_results[i].reserve(std::max(1,nev/max_threads));
+	}
+	for (int i=0; i<max_threads; ++i) {
 		pool.emplace_back(per_thread_function,&thread_data,i);
+	}
 
 	// Combine parallel results
 	vf_pairs.clear();

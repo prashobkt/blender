@@ -278,6 +278,7 @@ int admmpd_mesh_needs_update(ADMMPDInterfaceData *iface, Object *ob)
   // Mode or topology change?
   int mode = ob->soft->admmpd_mesh_mode;
   int mesh_type = iface->idata->mesh->type();
+
   if (mode != mesh_type) { return 1; }
   if (!iface->idata->mesh->rest_facet_verts()) { return 1; }
   int nx = iface->idata->mesh->rest_facet_verts()->rows();
@@ -461,11 +462,18 @@ void admmpd_copy_to_object(ADMMPDInterfaceData *iface, Object *ob, float (*verte
 
   if (ob && ob->soft) {
     SoftBody *sb = ob->soft;
+
     if (!sb->bpoint) {
       if (!ob->soft->bpoint) {
         sb->bpoint = (BodyPoint*)MEM_callocN(nx*sizeof(BodyPoint), "ADMMPD_bpoint");
       }
+      sb->totpoint = nx;
+      sb->totspring = 0;
+    }
 
+    if (sb->totpoint != nx && sb->totpoint>0) {
+      MEM_freeN(sb->bpoint);
+      sb->bpoint = (BodyPoint*)MEM_callocN(nx*sizeof(BodyPoint), "ADMMPD_bpoint");
       sb->totpoint = nx;
       sb->totspring = 0;
     }
@@ -497,67 +505,7 @@ void admmpd_copy_to_object(ADMMPDInterfaceData *iface, Object *ob, float (*verte
     }
   }
 }
-/*
-void admmpd_update_obstacles(
-    ADMMPDInterfaceData *iface,
-    float *in_verts_0,
-    float *in_verts_1,
-    int nv,
-    unsigned int *in_faces,
-    int nf)
-{
-  if (iface==NULL || in_verts_0==NULL || in_verts_1==NULL || in_faces==NULL) {
-    return;
-  }
-  if (!iface->idata) { return; }
 
-  if (nf==0 || nv==0) { return; }
-  int nv3 = nv*3;
-  int nf3 = nf*3;
-  iface->idata->obs.needs_sdf_recompute = false;
-
-  if (iface->idata->obs.x0.size()!=nv3) {
-    iface->idata->obs.x0.resize(nv3);
-    iface->idata->obs.needs_sdf_recompute = true;
-  }
-
-  if (iface->idata->obs.x1.size()!=nv3) {
-    iface->idata->obs.x1.resize(nv3);
-    iface->idata->obs.needs_sdf_recompute = true;
-  }
-
-  if (iface->idata->obs.F.size()!=nf3) {
-    iface->idata->obs.F.resize(nf3);
-    iface->idata->obs.needs_sdf_recompute = true;
-  }
-
-  for (int i=0; i<nv3; ++i) {
-
-    // Change in x?
-    if (!iface->idata->obs.needs_sdf_recompute) {
-      if (std::abs(iface->idata->obs.x0[i]-in_verts_0[i])>1e-8 ||
-          std::abs(iface->idata->obs.x1[i]-in_verts_1[i])>1e-8 ) {
-        iface->idata->obs.needs_sdf_recompute = true;
-      }
-    }
-
-    iface->idata->obs.x0[i] = in_verts_0[i];
-    iface->idata->obs.x1[i] = in_verts_1[i];
-  }
-  for (int i=0; i<nf3; ++i) {
-
-    // Change in f?
-    if (!iface->idata->obs.needs_sdf_recompute) {
-      if (iface->idata->obs.F[i] != in_faces[i]) {
-        iface->idata->obs.needs_sdf_recompute = true;
-      }
-    }
-
-    iface->idata->obs.F[i] = in_faces[i];
-  }
-
-}
-*/
 static inline void admmpd_update_goals(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
 {
   if (!iface) { return; }
@@ -690,7 +638,7 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
 
   int substeps = std::max(1,iface->idata->options->substeps);
   int n_obs = iface->idata->obs_x0.size();
-  if (substeps == 1) { // no lerp necessary
+  if (has_obstacles && substeps == 1) { // no lerp necessary
     std::string set_obs_error = "";
     if (!iface->idata->collision->set_obstacles(
         iface->idata->obs_x0, iface->idata->obs_x1, iface->idata->obs_F,
