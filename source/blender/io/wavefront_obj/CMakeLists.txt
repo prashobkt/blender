@@ -23,11 +23,13 @@ set(INC
   ../../blenkernel
   ../../blenlib
   ../../bmesh
+  ../../bmesh/intern
   ../../depsgraph
   ../../editors/include
   ../../makesdna
   ../../makesrna
   ../../nodes
+  ../../windowmanager
   ../../../../intern/guardedalloc
 )
 

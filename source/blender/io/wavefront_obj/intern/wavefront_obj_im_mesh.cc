@@ -33,9 +33,14 @@
 #include "BLI_set.hh"
 #include "BLI_vector_set.hh"
 
+#include "bmesh.h"
+#include "bmesh_tools.h"
+#include "bmesh_operator_api.h"
+
 #include "DNA_customdata_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_modifier_types.h"
 
 #include "mesh_utils.hh"
 #include "wavefront_obj_im_mesh.hh"
@@ -56,12 +61,12 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
     ob_name = "Untitled";
   }
   Vector<FaceElement> new_faces;
-  const auto [removed_faces, removed_loops]{tessellate_polygons(new_faces)};
+  Set<std::pair<int, int>> fgon_edges;
+  const auto [removed_faces, removed_loops]{tessellate_polygons(new_faces, fgon_edges)};
 
   const int64_t tot_verts_object{mesh_geometry_.tot_verts()};
   const int64_t tot_edges{mesh_geometry_.tot_edges()};
-  const int64_t tot_face_elems{mesh_geometry_.tot_face_elems() - removed_faces +
-                               3 * new_faces.size()};
+  const int64_t tot_face_elems{mesh_geometry_.tot_face_elems() - removed_faces + new_faces.size()};
   const int64_t tot_loops{mesh_geometry_.tot_loops() - removed_loops + 3 * new_faces.size()};
 
   blender_mesh_.reset(
@@ -70,7 +75,7 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
   blender_object_->data = BKE_object_obdata_add_from_type(bmain, OB_MESH, ob_name.c_str());
 
   create_vertices();
-  create_polys_loops();
+  create_polys_loops(new_faces);
   create_edges();
   create_uv_verts();
   create_materials(bmain, materials);
@@ -83,6 +88,7 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
 #if 0
   add_custom_normals();
 #endif
+  dissolve_edges(fgon_edges);
   BKE_mesh_nomain_to_mesh(blender_mesh_.release(),
                           static_cast<Mesh *>(blender_object_->data),
                           blender_object_.get(),
@@ -90,14 +96,13 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
                           true);
 }
 
-std::pair<int64_t, int64_t> MeshFromGeometry::tessellate_polygons(Vector<FaceElement> &r_new_faces)
+std::pair<int64_t, int64_t> MeshFromGeometry::tessellate_polygons(
+    Vector<FaceElement> &r_new_faces, Set<std::pair<int, int>> &fgon_edges)
 {
   int64_t removed_faces = 0;
   int64_t removed_loops = 0;
-
-  Set<std::pair<int, int>> fgon_edges;
   for (const FaceElement &curr_face : mesh_geometry_.face_elements()) {
-    if (curr_face.shaded_smooth) {  // should be valid/invalid
+    if (curr_face.shaded_smooth || true) {  // should be valid/invalid
       Vector<int> face_vert_indices;
       Vector<int> face_uv_indices;
       Vector<int> face_normal_indices;
@@ -140,18 +145,47 @@ std::pair<int64_t, int64_t> MeshFromGeometry::tessellate_polygons(Vector<FaceEle
             if (edge_users.contains(edge_key)) {
               fgon_edges.add(edge_key);
             }
-            else{
+            else {
               edge_users.add(edge_key);
             }
           }
         }
       }
     }
-
     removed_faces++;
   }
 
   return std::make_pair(removed_faces, removed_loops);
+}
+
+void MeshFromGeometry::dissolve_edges(const Set<std::pair<int, int>> fgon_edges)
+{
+  if (fgon_edges.is_empty()) {
+    return;
+  }
+  struct BMeshCreateParams bm_create_params = {true};
+  /* If calc_face_normal is false, it triggers BLI_assert(BM_face_is_normal_valid(f)). */
+  struct BMeshFromMeshParams bm_convert_params = {true, 0, 0, 0};
+
+  BMesh *bmesh = BKE_mesh_to_bmesh_ex(blender_mesh_.get(), &bm_create_params, &bm_convert_params);
+
+  Vector<Array<BMVert *, 2>> edges;
+  edges.reserve(fgon_edges.size());
+  BM_mesh_elem_table_ensure(bmesh, BM_VERT);
+  for (const std::pair<int, int> &edge : fgon_edges) {
+    edges.append({BM_vert_at_index(bmesh, edge.first), BM_vert_at_index(bmesh, edge.second)});
+  }
+
+  BMO_op_callf(bmesh,
+               BMO_FLAG_DEFAULTS,
+               "dissolve_edges edges=%eb use_verts=%b use_face_split=%b",
+               edges.data(),
+               false,
+               false);
+  unique_mesh_ptr to_free = std::move(blender_mesh_);
+  blender_mesh_.reset(BKE_mesh_from_bmesh_for_eval_nomain(bmesh, NULL, to_free.get()));
+  to_free.reset();
+  BM_mesh_free(bmesh);
 }
 
 void MeshFromGeometry::create_vertices()
@@ -170,7 +204,7 @@ void MeshFromGeometry::create_vertices()
   }
 }
 
-void MeshFromGeometry::create_polys_loops()
+void MeshFromGeometry::create_polys_loops(Vector<FaceElement> new_faces)
 {
   /* May not be used conditionally. */
   blender_mesh_->dvert = nullptr;
@@ -187,11 +221,12 @@ void MeshFromGeometry::create_polys_loops()
   /* Do not remove elements from the VectorSet since order of insertion is required.
    * StringRef is fine since per-face deform group name outlives the VectorSet. */
   VectorSet<StringRef> group_names;
-  const int64_t tot_face_elems{mesh_geometry_.tot_face_elems()};
+  const int64_t tot_face_elems{blender_mesh_->totpoly};
   int tot_loop_idx = 0;
+  new_faces.extend(mesh_geometry_.face_elements());
 
   for (int poly_idx = 0; poly_idx < tot_face_elems; ++poly_idx) {
-    const FaceElement &curr_face = mesh_geometry_.ith_face_element(poly_idx);
+    const FaceElement &curr_face = new_faces[poly_idx];
     if (curr_face.face_corners.size() < 3) {
       /* Don't add single vertex face, or edges. */
       std::cerr << "Face with less than 3 vertices found, skipping." << std::endl;
@@ -269,6 +304,9 @@ void MeshFromGeometry::create_edges()
 
 void MeshFromGeometry::create_uv_verts()
 {
+  if (global_vertices_.uv_vertices.size() <= 0 ) {
+    return;
+  }
   MLoopUV *mluv_dst = static_cast<MLoopUV *>(CustomData_add_layer(
       &blender_mesh_->ldata, CD_MLOOPUV, CD_CALLOC, nullptr, mesh_geometry_.tot_loops()));
   int tot_loop_idx = 0;

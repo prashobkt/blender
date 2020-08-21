@@ -71,13 +71,15 @@ class MeshFromGeometry : NonMovable, NonCopyable {
   }
 
  private:
-  std::pair<int64_t, int64_t> tessellate_polygons(Vector<FaceElement> &new_faces);
+  std::pair<int64_t, int64_t> tessellate_polygons(Vector<FaceElement> &new_faces,
+                                                  Set<std::pair<int, int>> &fgon_edges);
   void create_vertices();
-  void create_polys_loops();
+  void create_polys_loops(Vector<FaceElement> new_faces);
   void create_edges();
   void create_uv_verts();
   void create_materials(Main *bmain, const Map<std::string, MTLMaterial> &materials);
   void add_custom_normals();
+  void dissolve_edges(const Set<std::pair<int, int>> fgon_edges);
 };
 
 }  // namespace blender::io::obj
