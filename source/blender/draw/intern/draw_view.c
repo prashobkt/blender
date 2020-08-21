@@ -227,7 +227,6 @@ void DRW_draw_cursor_2d(void)
   glDisable(GL_DEPTH_TEST);
 
   if (is_cursor_visible_2d(draw_ctx)) {
-    /* TODO: this can fail big time! */
     SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
     int co[2];
     UI_view2d_view_to_region(&region->v2d, sima->cursor[0], sima->cursor[1], &co[0], &co[1]);

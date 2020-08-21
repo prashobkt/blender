@@ -753,7 +753,7 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
                         C);
   }
 
-  if (show_uvedit || mask || show_curve) {
+  if ((show_uvedit || mask || show_curve) && !U.experimental.use_drw_image_editor) {
     UI_view2d_view_ortho(v2d);
     ED_image_draw_cursor(region, sima->cursor);
     UI_view2d_view_restore(C);
