@@ -75,6 +75,7 @@ MeshFromGeometry::MeshFromGeometry(Main *bmain,
   blender_object_->data = BKE_object_obdata_add_from_type(bmain, OB_MESH, ob_name.c_str());
 
   create_vertices();
+  new_faces.extend(mesh_geometry_.face_elements());
   create_polys_loops(new_faces);
   create_edges();
   create_uv_verts();
@@ -204,7 +205,7 @@ void MeshFromGeometry::create_vertices()
   }
 }
 
-void MeshFromGeometry::create_polys_loops(Vector<FaceElement> new_faces)
+void MeshFromGeometry::create_polys_loops(Span<FaceElement> all_faces)
 {
   /* May not be used conditionally. */
   blender_mesh_->dvert = nullptr;
@@ -223,10 +224,9 @@ void MeshFromGeometry::create_polys_loops(Vector<FaceElement> new_faces)
   VectorSet<StringRef> group_names;
   const int64_t tot_face_elems{blender_mesh_->totpoly};
   int tot_loop_idx = 0;
-  new_faces.extend(mesh_geometry_.face_elements());
 
   for (int poly_idx = 0; poly_idx < tot_face_elems; ++poly_idx) {
-    const FaceElement &curr_face = new_faces[poly_idx];
+    const FaceElement &curr_face = all_faces[poly_idx];
     if (curr_face.face_corners.size() < 3) {
       /* Don't add single vertex face, or edges. */
       std::cerr << "Face with less than 3 vertices found, skipping." << std::endl;
