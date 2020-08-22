@@ -74,9 +74,6 @@ OBJMesh::OBJMesh(Depsgraph *depsgraph, const OBJExportParams &export_params, Obj
       }
       break;
     }
-    case OB_CURVE: {
-      break;
-    }
     default: {
       break;
     }

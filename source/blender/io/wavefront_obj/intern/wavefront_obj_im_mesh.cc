@@ -49,8 +49,10 @@ namespace blender::io::obj {
 
 MeshFromGeometry::~MeshFromGeometry()
 {
-  if (mesh_object_) {
+  if (mesh_object_ || blender_mesh_) {
     /* Move the object to own it. */
+    mesh_object_.reset();
+    blender_mesh_.reset();
     BLI_assert(0);
   }
 }
@@ -167,7 +169,7 @@ std::pair<int64_t, int64_t> MeshFromGeometry::tessellate_polygons(
   return std::make_pair(removed_faces, removed_loops);
 }
 
-void MeshFromGeometry::dissolve_edges(const Set<std::pair<int, int>> fgon_edges)
+void MeshFromGeometry::dissolve_edges(const Set<std::pair<int, int>> &fgon_edges)
 {
   if (fgon_edges.is_empty()) {
     return;

@@ -486,7 +486,7 @@ void MTLWriter::append_materials(const OBJMesh &mesh_to_export)
       if (texture_map.value.image_path.empty()) {
         continue;
       }
-      std::string map_bump_strength{"", 12};
+      std::string map_bump_strength{"", 13};
       if (texture_map.key == "map_Bump" && mtl_material.map_Bump_strength > -0.9f) {
         map_bump_strength = " -bm " + std::to_string(mtl_material.map_Bump_strength);
       }

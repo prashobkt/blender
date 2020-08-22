@@ -32,8 +32,10 @@ namespace blender::io::obj {
 
 CurveFromGeometry::~CurveFromGeometry()
 {
-  if (curve_object_) {
+  if (curve_object_ || blender_curve_) {
     /* Move the object to own it. */
+    curve_object_.reset();
+    blender_curve_.reset();
     BLI_assert(0);
   }
 }
