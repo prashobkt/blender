@@ -2486,9 +2486,7 @@ static void calc_overlap_itts(Map<std::pair<int, int>, ITT_value> &itt_map,
   int tot_intersect_pairs = data.intersect_pairs.size();
   TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
-  constexpr int intersect_threading_threshold = 100;
-  settings.use_threading = (intersect_use_threading &&
-                            tot_intersect_pairs > intersect_threading_threshold);
+  settings.min_iter_per_thread = 1000;
   BLI_task_parallel_range(0, tot_intersect_pairs, &data, calc_overlap_itts_range_func, &settings);
 }
 
@@ -2614,9 +2612,7 @@ static void calc_subdivided_tris(Array<IMesh> &r_tri_subdivided,
   int overlap_tri_range_tot = data.overlap_tri_range.size();
   TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
-  constexpr int trisubdiv_threading_threshold = 100;
-  settings.use_threading = (intersect_use_threading &&
-                            overlap_tri_range_tot > trisubdiv_threading_threshold);
+  settings.min_iter_per_thread = 50;
   BLI_task_parallel_range(
       0, overlap_tri_range_tot, &data, calc_subdivided_tri_range_func, &settings);
 }

@@ -925,7 +925,7 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
   std::cout << "Create time: " << time_create - time_start << "\n";
   std::cout << "Intersect time: " << time_intersect - time_create << "\n";
   std::cout << "Total time: " << time_intersect - time_start << "\n";
-  write_obj_mesh(out, "spheresphere");
+  // write_obj_mesh(out, "spheresphere");
   BLI_task_scheduler_exit();
 }
 
@@ -1064,12 +1064,12 @@ static void spheregrid_test(int nrings, int grid_level, double z_offset, bool us
 
 TEST(mesh_intersect_perf, SphereSphere)
 {
-  spheresphere_test(64, 0.5, false);
+  spheresphere_test(512, 0.5, false);
 }
 
 TEST(mesh_intersect_perf, SphereGrid)
 {
-  spheregrid_test(64, 4, 0.1, false);
+  spheregrid_test(512, 4, 0.1, false);
 }
 
 #endif
