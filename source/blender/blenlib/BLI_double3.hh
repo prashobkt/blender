@@ -176,6 +176,11 @@ struct double3 {
     return a.x == b.x && a.y == b.y && a.z == b.z;
   }
 
+  friend bool operator!=(const double3 &a, const double3 &b)
+  {
+    return a.x != b.x || a.y != b.y || a.z != b.z;
+  }
+
   friend std::ostream &operator<<(std::ostream &stream, const double3 &v)
   {
     stream << "(" << v.x << ", " << v.y << ", " << v.z << ")";

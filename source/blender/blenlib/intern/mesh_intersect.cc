@@ -61,36 +61,6 @@ Vert::Vert(const mpq3 &mco, const double3 &dco, int id, int orig)
 {
 }
 
-Vert::Vert(const Vert &other)
-    : co_exact(other.co_exact), co(other.co), id(other.id), orig(other.orig)
-{
-}
-
-Vert::Vert(Vert &&other) noexcept
-    : co_exact(std::move(other.co_exact)), co(std::move(other.co)), id(other.id), orig(other.orig)
-{
-}
-
-Vert &Vert::operator=(const Vert &other)
-{
-  if (this != &other) {
-    this->co_exact = other.co_exact;
-    this->co = other.co;
-    this->id = other.id;
-    this->orig = other.orig;
-  }
-  return *this;
-}
-
-Vert &Vert::operator=(Vert &&other) noexcept
-{
-  this->co_exact = std::move(other.co_exact);
-  this->co = std::move(other.co);
-  this->id = other.id;
-  this->orig = other.orig;
-  return *this;
-}
-
 bool Vert::operator==(const Vert &other) const
 {
   return this->co_exact == other.co_exact;
@@ -217,50 +187,6 @@ Face::Face(Span<const Vert *> verts, int id, int orig) : vert(verts), id(id), or
   plane = Plane(normal, d);
 }
 
-Face::Face(const Face &other)
-    : vert(other.vert),
-      edge_orig(other.edge_orig),
-      is_intersect(other.is_intersect),
-      plane(other.plane),
-      id(other.id),
-      orig(other.orig)
-{
-}
-
-Face::Face(Face &&other) noexcept
-    : vert(std::move(other.vert)),
-      edge_orig(std::move(other.edge_orig)),
-      is_intersect(std::move(other.is_intersect)),
-      plane(std::move(other.plane)),
-      id(other.id),
-      orig(other.orig)
-{
-}
-
-Face &Face::operator=(const Face &other)
-{
-  if (this != &other) {
-    this->vert = other.vert;
-    this->edge_orig = other.edge_orig;
-    this->is_intersect = other.is_intersect;
-    this->plane = other.plane;
-    this->id = other.id;
-    this->orig = other.orig;
-  }
-  return *this;
-}
-
-Face &Face::operator=(Face &&other) noexcept
-{
-  this->vert = std::move(other.vert);
-  this->edge_orig = std::move(other.edge_orig);
-  this->is_intersect = std::move(other.is_intersect);
-  this->plane = std::move(other.plane);
-  this->id = other.id;
-  this->orig = other.orig;
-  return *this;
-}
-
 bool Face::operator==(const Face &other) const
 {
   if (this->size() != other.size()) {
@@ -338,7 +264,13 @@ std::ostream &operator<<(std::ostream &os, const Face *f)
  * exist. I.e., it dedups the vertices.
  */
 
+/* Uncomment the following to try using a spinlock instead of
+ * a mutex in the arena allocation routines.
+ * Initial tests showed that it doesn't seem to help very much,
+ * if at all, to use a spinlock.
+ */
 // #define USE_SPINLOCK
+
 class IMeshArena::IMeshArenaImpl {
 
   /* Don't use Vert itself as key since resizing may move
@@ -696,7 +628,7 @@ void IMesh::populate_vert(int max_verts)
 void IMesh::erase_face_positions(int f_index, Span<bool> face_pos_erase, IMeshArena *arena)
 {
   const Face *cur_f = this->face(f_index);
-  int cur_len = static_cast<int>(cur_f->size());
+  int cur_len = cur_f->size();
   int num_to_erase = 0;
   for (int i : cur_f->index_range()) {
     if (face_pos_erase[i]) {
@@ -2280,7 +2212,7 @@ static IMesh extract_subdivided_tri(const CDT_data &cd,
 {
   const CDT_result<mpq_class> &cdt_out = cd.cdt_out;
   int t_in_cdt = -1;
-  for (int i = 0; i < static_cast<int>(cd.input_face.size()); ++i) {
+  for (int i = 0; i < cd.input_face.size(); ++i) {
     if (cd.input_face[i] == t) {
       t_in_cdt = i;
     }
@@ -2374,13 +2306,13 @@ class TriOverlaps {
       std::cout << "TriOverlaps construction\n";
     }
     /* Tree type is 8 => octtree; axis = 6 => using XYZ axes only. */
-    tree_ = BLI_bvhtree_new(static_cast<int>(tm.face_size()), FLT_EPSILON, 8, 6);
+    tree_ = BLI_bvhtree_new(tm.face_size(), FLT_EPSILON, 8, 6);
     /* In the common case of a binary boolean and no self intersection in
      * each shape, we will use two trees and simple bounding box overlap.
      */
     bool two_trees_no_self = nshapes == 2 && !use_self;
     if (two_trees_no_self) {
-      tree_b_ = BLI_bvhtree_new(static_cast<int>(tm.face_size()), FLT_EPSILON, 8, 6);
+      tree_b_ = BLI_bvhtree_new(tm.face_size(), FLT_EPSILON, 8, 6);
     }
     float bbpts[6];
     for (int t : tm.face_index_range()) {
@@ -2390,15 +2322,15 @@ class TriOverlaps {
       int shape = shape_fn(tm.face(t)->orig);
       if (two_trees_no_self) {
         if (shape == 0) {
-          BLI_bvhtree_insert(tree_, static_cast<int>(t), bbpts, 2);
+          BLI_bvhtree_insert(tree_, t, bbpts, 2);
         }
         else if (shape == 1) {
-          BLI_bvhtree_insert(tree_b_, static_cast<int>(t), bbpts, 2);
+          BLI_bvhtree_insert(tree_b_, t, bbpts, 2);
         }
       }
       else {
         if (shape != -1) {
-          BLI_bvhtree_insert(tree_, static_cast<int>(t), bbpts, 2);
+          BLI_bvhtree_insert(tree_, t, bbpts, 2);
         }
       }
     }
@@ -2494,6 +2426,17 @@ struct OverlapIttsData {
   }
 };
 
+/* Return a std::pair containing a and b in canonical order:
+ * With a <= b.
+ */
+static std::pair<int, int> canon_int_pair(int a, int b)
+{
+  if (a > b) {
+    std::swap(a, b);
+  }
+  return std::pair<int, int>(a, b);
+}
+
 static void calc_overlap_itts_range_func(void *__restrict userdata,
                                          const int iter,
                                          const TaskParallelTLS *__restrict UNUSED(tls))
@@ -2530,15 +2473,10 @@ static void calc_overlap_itts(Map<std::pair<int, int>, ITT_value> &itt_map,
    * This means we won't have to protect the itt_map.add_overwrite function with a lock.
    */
   for (const BVHTreeOverlap &olap : ov.overlap()) {
-    int a = olap.indexA;
-    int b = olap.indexB;
-    if (a >= b) {
-      std::swap(a, b);
-    }
-    std::pair<int, int> key(a, b);
+    std::pair<int, int> key = canon_int_pair(olap.indexA, olap.indexB);
     if (!itt_map.contains(key)) {
-      int ca = clinfo.tri_cluster(a);
-      int cb = clinfo.tri_cluster(b);
+      int ca = clinfo.tri_cluster(key.first);
+      int cb = clinfo.tri_cluster(key.second);
       if (ca == NO_INDEX || ca != cb) {
         itt_map.add_new(key, ITT_value());
         data.intersect_pairs.append(key);
@@ -2606,12 +2544,7 @@ static void calc_subdivided_tri_range_func(void *__restrict userdata,
   Vector<ITT_value, inline_capacity> itts(otr.len);
   for (int j = otr.overlap_start; j < otr.overlap_start + otr.len; ++j) {
     int t_other = data->overlap[j].indexB;
-    int a = t;
-    int b = t_other;
-    if (a >= b) {
-      std::swap(a, b);
-    }
-    std::pair<int, int> key(a, b);
+    std::pair<int, int> key = canon_int_pair(t, t_other);
     ITT_value itt;
     if (data->itt_map.contains(key)) {
       itt = data->itt_map.lookup(key);
@@ -2740,12 +2673,7 @@ static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
         if (dbg_level > 0) {
           std::cout << "use intersect(" << t << "," << t_other << "\n";
         }
-        int a = t;
-        int b = t_other;
-        if (a >= b) {
-          std::swap(a, b);
-        }
-        std::pair<int, int> key(a, b);
+        std::pair<int, int> key = canon_int_pair(t, t_other);
         if (itt_map.contains(key)) {
           ITT_value itt = itt_map.lookup(key);
           if (itt.kind != INONE && itt.kind != ICOPLANAR) {
@@ -2926,7 +2854,7 @@ static IMesh remove_degenerate_tris(const IMesh &tm_in)
 IMesh trimesh_self_intersect(const IMesh &tm_in, IMeshArena *arena)
 {
   return trimesh_nary_intersect(
-      tm_in, 1, [](int) { return 0; }, true, arena);
+      tm_in, 1, [](int UNUSED(t)) { return 0; }, true, arena);
 }
 
 IMesh trimesh_nary_intersect(const IMesh &tm_in,
@@ -2973,9 +2901,9 @@ IMesh trimesh_nary_intersect(const IMesh &tm_in,
   }
 #  ifdef PERFDEBUG
   perfdata_init();
-  doperfmax(0, static_cast<int>(tm_in.face_size()));
-  doperfmax(1, static_cast<int>(clinfo.tot_cluster()));
-  doperfmax(2, static_cast<int>(tri_ov.overlap().size()));
+  doperfmax(0, tm_in.face_size());
+  doperfmax(1, clinfo.tot_cluster());
+  doperfmax(2, tri_ov.overlap().size());
 #  endif
   /* itt_map((a,b)) will hold the intersection value resulting from intersecting
    * triangles with indices a and b, where a < b.

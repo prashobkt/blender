@@ -30,12 +30,12 @@ namespace blender::meshintersect {
 
 /* Enum values after BOOLEAN_NONE need to match BMESH_ISECT_BOOLEAN_... values in
  * editmesh_intersect.c. */
-enum bool_optype {
-  BOOLEAN_NONE = -1,
+enum class BoolOpType {
+  None = -1,
   /* Aligned with BooleanModifierOp. */
-  BOOLEAN_ISECT = 0,
-  BOOLEAN_UNION = 1,
-  BOOLEAN_DIFFERENCE = 2,
+  Intersect = 0,
+  Union = 1,
+  Difference = 2,
 };
 
 /* Do the boolean operation op on the mesh pm_in.
@@ -52,8 +52,8 @@ enum bool_optype {
  * The output IMesh will have faces whose orig fields map back to faces and edges in
  * the input mesh.
  */
-IMesh boolean_mesh(IMesh &pm,
-                   bool_optype op,
+IMesh boolean_mesh(IMesh &imesh,
+                   BoolOpType op,
                    int nshapes,
                    std::function<int(int)> shape_fn,
                    bool use_self,
@@ -64,8 +64,8 @@ IMesh boolean_mesh(IMesh &pm,
  * It is exposed mainly for unit testing, at the moment: boolean_mesh() uses
  * it to do most of its work.
  */
-IMesh boolean_trimesh(IMesh &tm,
-                      bool_optype op,
+IMesh boolean_trimesh(IMesh &trimesh,
+                      BoolOpType op,
                       int nshapes,
                       std::function<int(int)> shape_fn,
                       bool use_self,

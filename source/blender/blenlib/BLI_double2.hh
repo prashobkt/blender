@@ -83,6 +83,11 @@ struct double2 {
     return a.x == b.x && a.y == b.y;
   }
 
+  friend bool operator!=(const double2 &a, const double2 &b)
+  {
+    return a.x != b.x || a.y != b.y;
+  }
+
   friend std::ostream &operator<<(std::ostream &stream, const double2 &v)
   {
     stream << "(" << v.x << ", " << v.y << ")";
@@ -101,7 +106,7 @@ struct double2 {
 
   static double2 abs(const double2 &a)
   {
-    return double2(fabsf(a.x), fabsf(a.y));
+    return double2(fabs(a.x), fabs(a.y));
   }
 
   static double distance(const double2 &a, const double2 &b)

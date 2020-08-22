@@ -15,7 +15,7 @@
 #include "BLI_mpq3.hh"
 #include "BLI_vector.hh"
 
-namespace blender::meshintersect {
+namespace blender::meshintersect::tests {
 
 constexpr bool DO_OBJ = false;
 
@@ -103,12 +103,16 @@ class IMeshBuilder {
   }
 };
 
+static int all_shape_zero(int UNUSED(t))
+{
+  return 0;
+}
+
 TEST(boolean_trimesh, Empty)
 {
   IMeshArena arena;
   IMesh in;
-  IMesh out = boolean_trimesh(
-      in, BOOLEAN_NONE, 1, [](int) { return 0; }, true, &arena);
+  IMesh out = boolean_trimesh(in, BoolOpType::None, 1, all_shape_zero, true, &arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 0);
   EXPECT_EQ(out.face_size(), 0);
@@ -136,8 +140,7 @@ TEST(boolean_trimesh, TetTetTrimesh)
   )";
 
   IMeshBuilder mb(spec);
-  IMesh out = boolean_trimesh(
-      mb.imesh, BOOLEAN_NONE, 1, [](int) { return 0; }, true, &mb.arena);
+  IMesh out = boolean_trimesh(mb.imesh, BoolOpType::None, 1, all_shape_zero, true, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 11);
   EXPECT_EQ(out.face_size(), 20);
@@ -146,8 +149,7 @@ TEST(boolean_trimesh, TetTetTrimesh)
   }
 
   IMeshBuilder mb2(spec);
-  IMesh out2 = boolean_trimesh(
-      mb2.imesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb2.arena);
+  IMesh out2 = boolean_trimesh(mb2.imesh, BoolOpType::Union, 1, all_shape_zero, true, &mb2.arena);
   out2.populate_vert();
   EXPECT_EQ(out2.vert_size(), 10);
   EXPECT_EQ(out2.face_size(), 16);
@@ -157,7 +159,7 @@ TEST(boolean_trimesh, TetTetTrimesh)
 
   IMeshBuilder mb3(spec);
   IMesh out3 = boolean_trimesh(
-      mb3.imesh, BOOLEAN_UNION, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb3.arena);
+      mb3.imesh, BoolOpType::Union, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb3.arena);
   out3.populate_vert();
   EXPECT_EQ(out3.vert_size(), 10);
   EXPECT_EQ(out3.face_size(), 16);
@@ -167,7 +169,7 @@ TEST(boolean_trimesh, TetTetTrimesh)
 
   IMeshBuilder mb4(spec);
   IMesh out4 = boolean_trimesh(
-      mb4.imesh, BOOLEAN_UNION, 2, [](int t) { return t < 4 ? 0 : 1; }, true, &mb4.arena);
+      mb4.imesh, BoolOpType::Union, 2, [](int t) { return t < 4 ? 0 : 1; }, true, &mb4.arena);
   out4.populate_vert();
   EXPECT_EQ(out4.vert_size(), 10);
   EXPECT_EQ(out4.face_size(), 16);
@@ -177,7 +179,7 @@ TEST(boolean_trimesh, TetTetTrimesh)
 
   IMeshBuilder mb5(spec);
   IMesh out5 = boolean_trimesh(
-      mb5.imesh, BOOLEAN_ISECT, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb5.arena);
+      mb5.imesh, BoolOpType::Intersect, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb5.arena);
   out5.populate_vert();
   EXPECT_EQ(out5.vert_size(), 4);
   EXPECT_EQ(out5.face_size(), 4);
@@ -187,7 +189,12 @@ TEST(boolean_trimesh, TetTetTrimesh)
 
   IMeshBuilder mb6(spec);
   IMesh out6 = boolean_trimesh(
-      mb6.imesh, BOOLEAN_DIFFERENCE, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb6.arena);
+      mb6.imesh,
+      BoolOpType::Difference,
+      2,
+      [](int t) { return t < 4 ? 0 : 1; },
+      false,
+      &mb6.arena);
   out6.populate_vert();
   EXPECT_EQ(out6.vert_size(), 6);
   EXPECT_EQ(out6.face_size(), 8);
@@ -197,7 +204,12 @@ TEST(boolean_trimesh, TetTetTrimesh)
 
   IMeshBuilder mb7(spec);
   IMesh out7 = boolean_trimesh(
-      mb7.imesh, BOOLEAN_DIFFERENCE, 2, [](int t) { return t < 4 ? 1 : 0; }, false, &mb7.arena);
+      mb7.imesh,
+      BoolOpType::Difference,
+      2,
+      [](int t) { return t < 4 ? 1 : 0; },
+      false,
+      &mb7.arena);
   out7.populate_vert();
   EXPECT_EQ(out7.vert_size(), 8);
   EXPECT_EQ(out7.face_size(), 12);
@@ -228,8 +240,7 @@ TEST(boolean_trimesh, TetTet2Trimesh)
   )";
 
   IMeshBuilder mb(spec);
-  IMesh out = boolean_trimesh(
-      mb.imesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
+  IMesh out = boolean_trimesh(mb.imesh, BoolOpType::Union, 1, all_shape_zero, true, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 10);
   EXPECT_EQ(out.face_size(), 16);
@@ -272,8 +283,7 @@ TEST(boolean_trimesh, CubeTetTrimesh)
   )";
 
   IMeshBuilder mb(spec);
-  IMesh out = boolean_trimesh(
-      mb.imesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
+  IMesh out = boolean_trimesh(mb.imesh, BoolOpType::Union, 1, all_shape_zero, true, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 14);
   EXPECT_EQ(out.face_size(), 24);
@@ -305,7 +315,7 @@ TEST(boolean_trimesh, BinaryTetTetTrimesh)
 
   IMeshBuilder mb(spec);
   IMesh out = boolean_trimesh(
-      mb.imesh, BOOLEAN_ISECT, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb.arena);
+      mb.imesh, BoolOpType::Intersect, 2, [](int t) { return t < 4 ? 0 : 1; }, false, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 4);
   EXPECT_EQ(out.face_size(), 4);
@@ -336,8 +346,7 @@ TEST(boolean_trimesh, TetTetCoplanarTrimesh)
   )";
 
   IMeshBuilder mb(spec);
-  IMesh out = boolean_trimesh(
-      mb.imesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
+  IMesh out = boolean_trimesh(mb.imesh, BoolOpType::Union, 1, all_shape_zero, true, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 5);
   EXPECT_EQ(out.face_size(), 6);
@@ -368,8 +377,7 @@ TEST(boolean_trimesh, TetInsideTetTrimesh)
   )";
 
   IMeshBuilder mb(spec);
-  IMesh out = boolean_trimesh(
-      mb.imesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
+  IMesh out = boolean_trimesh(mb.imesh, BoolOpType::Union, 1, all_shape_zero, true, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 4);
   EXPECT_EQ(out.face_size(), 4);
@@ -400,8 +408,7 @@ TEST(boolean_trimesh, TetBesideTetTrimesh)
   )";
 
   IMeshBuilder mb(spec);
-  IMesh out = boolean_trimesh(
-      mb.imesh, BOOLEAN_UNION, 1, [](int) { return 0; }, true, &mb.arena);
+  IMesh out = boolean_trimesh(mb.imesh, BoolOpType::Union, 1, all_shape_zero, true, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 8);
   EXPECT_EQ(out.face_size(), 8);
@@ -437,7 +444,7 @@ TEST(boolean_trimesh, DegenerateTris)
 
   IMeshBuilder mb(spec);
   IMesh out = boolean_trimesh(
-      mb.imesh, BOOLEAN_ISECT, 2, [](int t) { return t < 5 ? 0 : 1; }, false, &mb.arena);
+      mb.imesh, BoolOpType::Intersect, 2, [](int t) { return t < 5 ? 0 : 1; }, false, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 4);
   EXPECT_EQ(out.face_size(), 4);
@@ -469,7 +476,7 @@ TEST(boolean_polymesh, TetTet)
 
   IMeshBuilder mb(spec);
   IMesh out = boolean_mesh(
-      mb.imesh, BOOLEAN_NONE, 1, [](int) { return 0; }, true, nullptr, &mb.arena);
+      mb.imesh, BoolOpType::None, 1, all_shape_zero, true, nullptr, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 11);
   EXPECT_EQ(out.face_size(), 13);
@@ -479,7 +486,13 @@ TEST(boolean_polymesh, TetTet)
 
   IMeshBuilder mb2(spec);
   IMesh out2 = boolean_mesh(
-      mb2.imesh, BOOLEAN_NONE, 2, [](int t) { return t < 4 ? 0 : 1; }, false, nullptr, &mb2.arena);
+      mb2.imesh,
+      BoolOpType::None,
+      2,
+      [](int t) { return t < 4 ? 0 : 1; },
+      false,
+      nullptr,
+      &mb2.arena);
   out2.populate_vert();
   EXPECT_EQ(out2.vert_size(), 11);
   EXPECT_EQ(out2.face_size(), 13);
@@ -526,7 +539,7 @@ TEST(boolean_polymesh, CubeCube)
     write_obj_mesh(mb.imesh, "cube_cube_in");
   }
   IMesh out = boolean_mesh(
-      mb.imesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; }, true, nullptr, &mb.arena);
+      mb.imesh, BoolOpType::Union, 1, all_shape_zero, true, nullptr, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 20);
   EXPECT_EQ(out.face_size(), 12);
@@ -536,7 +549,13 @@ TEST(boolean_polymesh, CubeCube)
 
   IMeshBuilder mb2(spec);
   IMesh out2 = boolean_mesh(
-      mb2.imesh, BOOLEAN_NONE, 2, [](int t) { return t < 6 ? 0 : 1; }, false, nullptr, &mb2.arena);
+      mb2.imesh,
+      BoolOpType::None,
+      2,
+      [](int t) { return t < 6 ? 0 : 1; },
+      false,
+      nullptr,
+      &mb2.arena);
   out2.populate_vert();
   EXPECT_EQ(out2.vert_size(), 22);
   EXPECT_EQ(out2.face_size(), 18);
@@ -577,7 +596,7 @@ TEST(boolean_polymesh, CubeCone)
 
   IMeshBuilder mb(spec);
   IMesh out = boolean_mesh(
-      mb.imesh, BOOLEAN_UNION, 1, [](int UNUSED(t)) { return 0; }, true, nullptr, &mb.arena);
+      mb.imesh, BoolOpType::Union, 1, all_shape_zero, true, nullptr, &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 14);
   EXPECT_EQ(out.face_size(), 12);
@@ -621,7 +640,13 @@ TEST(boolean_polymesh, CubeCubeCoplanar)
 
   IMeshBuilder mb(spec);
   IMesh out = boolean_mesh(
-      mb.imesh, BOOLEAN_UNION, 2, [](int t) { return t < 6 ? 0 : 1; }, false, nullptr, &mb.arena);
+      mb.imesh,
+      BoolOpType::Union,
+      2,
+      [](int t) { return t < 6 ? 0 : 1; },
+      false,
+      nullptr,
+      &mb.arena);
   out.populate_vert();
   EXPECT_EQ(out.vert_size(), 16);
   EXPECT_EQ(out.face_size(), 12);
@@ -654,7 +679,7 @@ TEST(boolean_polymesh, TetTeTCoplanarDiff)
   IMeshBuilder mb(spec);
   IMesh out = boolean_mesh(
       mb.imesh,
-      BOOLEAN_DIFFERENCE,
+      BoolOpType::Difference,
       2,
       [](int t) { return t < 4 ? 0 : 1; },
       false,
@@ -704,7 +729,7 @@ TEST(boolean_polymesh, CubeCubeStep)
   IMeshBuilder mb(spec);
   IMesh out = boolean_mesh(
       mb.imesh,
-      BOOLEAN_DIFFERENCE,
+      BoolOpType::Difference,
       2,
       [](int t) { return t < 6 ? 0 : 1; },
       false,
@@ -754,7 +779,7 @@ TEST(boolean_polymesh, CubeCyl4)
   IMeshBuilder mb(spec);
   IMesh out = boolean_mesh(
       mb.imesh,
-      BOOLEAN_DIFFERENCE,
+      BoolOpType::Difference,
       2,
       [](int t) { return t < 6 ? 1 : 0; },
       false,
@@ -825,7 +850,7 @@ TEST(boolean_polymesh, CubeCubesubdivDiff)
   IMeshBuilder mb(spec);
   IMesh out = boolean_mesh(
       mb.imesh,
-      BOOLEAN_DIFFERENCE,
+      BoolOpType::Difference,
       2,
       [](int t) { return t < 16 ? 1 : 0; },
       false,
@@ -866,7 +891,7 @@ TEST(boolean_polymesh, CubePlane)
   IMeshBuilder mb(spec);
   IMesh out = boolean_mesh(
       mb.imesh,
-      BOOLEAN_DIFFERENCE,
+      BoolOpType::Difference,
       2,
       [](int t) { return t >= 1 ? 0 : 1; },
       false,
@@ -880,4 +905,4 @@ TEST(boolean_polymesh, CubePlane)
   }
 }
 
-}  // namespace blender::meshintersect
+}  // namespace blender::meshintersect::tests

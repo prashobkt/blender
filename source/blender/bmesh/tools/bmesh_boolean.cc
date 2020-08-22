@@ -218,13 +218,13 @@ static bool apply_mesh_output_to_bmesh(BMesh *bm, IMesh &m_out)
    */
   int maxflen = 0;
   for (const Face *f : m_out.faces()) {
-    maxflen = max_ii(maxflen, static_cast<int>(f->size()));
+    maxflen = max_ii(maxflen, f->size());
   }
   Array<BMVert *> face_bmverts(maxflen);
   Array<BMEdge *> face_bmedges(maxflen);
   for (const Face *f : m_out.faces()) {
     const Face &face = *f;
-    int flen = static_cast<int>(face.size());
+    int flen = face.size();
     for (int i = 0; i < flen; ++i) {
       const Vert *v = face[i];
       int v_index = m_out.lookup_vert(v);
@@ -337,7 +337,7 @@ static bool bmesh_boolean(BMesh *bm,
                           void *user_data,
                           const bool use_self,
                           const bool use_separate_all,
-                          const int boolean_mode)
+                          const BoolOpType boolean_mode)
 {
   IMeshArena arena;
   IMesh m_triangulated;
@@ -369,8 +369,8 @@ static bool bmesh_boolean(BMesh *bm,
       return -1;
     };
   }
-  bool_optype op = static_cast<bool_optype>(boolean_mode);
-  IMesh m_out = boolean_mesh(m_in, op, nshapes, shape_fn, use_self, &m_triangulated, &arena);
+  IMesh m_out = boolean_mesh(
+      m_in, boolean_mode, nshapes, shape_fn, use_self, &m_triangulated, &arena);
   bool any_change = apply_mesh_output_to_bmesh(bm, m_out);
   if (use_separate_all) {
     /* We are supposed to separate all faces that are incident on intersection edges. */
@@ -411,7 +411,14 @@ bool BM_mesh_boolean(BMesh *bm,
                      const int boolean_mode)
 {
   return blender::meshintersect::bmesh_boolean(
-      bm, looptris, looptris_tot, test_fn, user_data, use_self, false, boolean_mode);
+      bm,
+      looptris,
+      looptris_tot,
+      test_fn,
+      user_data,
+      use_self,
+      false,
+      static_cast<blender::meshintersect::BoolOpType>(boolean_mode));
 }
 
 /*
@@ -437,7 +444,7 @@ bool BM_mesh_boolean_knife(BMesh *bm,
                                                user_data,
                                                use_self,
                                                use_separate_all,
-                                               blender::meshintersect::BOOLEAN_NONE);
+                                               blender::meshintersect::BoolOpType::None);
 }
 #else
 bool BM_mesh_boolean(BMesh *UNUSED(bm),

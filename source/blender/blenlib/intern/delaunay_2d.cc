@@ -529,7 +529,7 @@ template<typename T> CDTVert<T>::CDTVert(const vec2<T> &pt)
 template<typename T> CDTVert<T> *CDTArrangement<T>::add_vert(const vec2<T> &pt)
 {
   CDTVert<T> *v = new CDTVert<T>(pt);
-  int index = static_cast<int>(this->verts.append_and_get_index(v));
+  int index = this->verts.append_and_get_index(v);
   v->index = index;
   return v;
 }
@@ -912,7 +912,7 @@ template<typename T> bool site_lexicographic_sort(const SiteInfo<T> &a, const Si
  */
 template<typename T> void find_site_merges(Array<SiteInfo<T>> &sites)
 {
-  int n = static_cast<int>(sites.size());
+  int n = sites.size();
   for (int i = 0; i < n - 1; ++i) {
     int j = i + 1;
     while (j < n && sites[j].v->co == sites[i].v->co) {
@@ -1154,7 +1154,7 @@ template<typename T> void dc_triangulate(CDTArrangement<T> *cdt, Array<SiteInfo<
   /* Compress sites in place to eliminted verts that merge to others. */
   int i = 0;
   int j = 0;
-  int nsites = static_cast<int>(sites.size());
+  int nsites = sites.size();
   while (j < nsites) {
     /* Invariante: sites[0..i-1] have non-merged verts from 0..(j-1) in them. */
     sites[i] = sites[j++];
@@ -1191,7 +1191,7 @@ template<typename T> void dc_triangulate(CDTArrangement<T> *cdt, Array<SiteInfo<
  */
 template<typename T> void initial_triangulation(CDTArrangement<T> *cdt)
 {
-  int n = static_cast<int>(cdt->verts.size());
+  int n = cdt->verts.size();
   if (n <= 1) {
     return;
   }
@@ -1433,7 +1433,8 @@ void fill_crossdata_for_intersect(const vec2<T> &curco,
           cd->out = se_vcva;
         }
       }
-    } break;
+      break;
+    }
     case vec2<T>::isect_result::LINE_LINE_EXACT: {
       if (lambda == 0) {
         fill_crossdata_for_through_vert(va, se_vcva, cd, cd_next);
@@ -1447,7 +1448,8 @@ void fill_crossdata_for_intersect(const vec2<T> &curco,
           cd->out = se_vcva;
         }
       }
-    } break;
+      break;
+    }
     case vec2<T>::isect_result::LINE_LINE_NONE: {
 #ifdef WITH_GMP
       if (std::is_same<T, mpq_class>::value) {
@@ -1462,7 +1464,8 @@ void fill_crossdata_for_intersect(const vec2<T> &curco,
       else {
         fill_crossdata_for_through_vert(vb, se_vcvb, cd, cd_next);
       }
-    } break;
+      break;
+    }
     case vec2<T>::isect_result::LINE_LINE_COLINEAR: {
       if (vec2<T>::distance_squared(va->co, v2->co) <= vec2<T>::distance_squared(vb->co, v2->co)) {
         fill_crossdata_for_through_vert(va, se_vcva, cd, cd_next);
@@ -1470,7 +1473,8 @@ void fill_crossdata_for_intersect(const vec2<T> &curco,
       else {
         fill_crossdata_for_through_vert(vb, se_vcvb, cd, cd_next);
       }
-    } break;
+      break;
+    }
   }
 }  // namespace blender::meshintersect
 
@@ -1562,7 +1566,7 @@ template<typename T>
 void dump_crossings(const Vector<CrossData<T>, inline_crossings_size> &crossings)
 {
   std::cout << "CROSSINGS\n";
-  for (int i = 0; i < static_cast<int>(crossings.size()); ++i) {
+  for (int i = 0; i < crossings.size(); ++i) {
     std::cout << i << ": ";
     const CrossData<T> &cd = crossings[i];
     if (cd.lambda == 0) {
@@ -1641,7 +1645,7 @@ void add_edge_constraint(
   Vector<CrossData<T>, inline_crossings_size> crossings;
   crossings.append(CrossData<T>(T(0), v1, nullptr, nullptr));
   int n;
-  while (!((n = static_cast<int>(crossings.size())) > 0 && crossings[n - 1].vert == v2)) {
+  while (!((n = crossings.size()) > 0 && crossings[n - 1].vert == v2)) {
     crossings.append(CrossData<T>());
     CrossData<T> *cd = &crossings[n - 1];
     CrossData<T> *cd_next = &crossings[n];
@@ -1683,7 +1687,7 @@ void add_edge_constraint(
    * This loop marks certain crossings as "deleted", by setting
    * their lambdas to -1.0.
    */
-  int ncrossings = static_cast<int>(crossings.size());
+  int ncrossings = crossings.size();
   for (int i = 2; i < ncrossings; ++i) {
     CrossData<T> *cd = &crossings[i];
     if (cd->lambda == 0.0) {
@@ -1816,8 +1820,8 @@ void add_edge_constraint(
  */
 template<typename T> void add_edge_constraints(CDT_state<T> *cdt_state, const CDT_input<T> &input)
 {
-  int ne = static_cast<int>(input.edge.size());
-  int nv = static_cast<int>(input.vert.size());
+  int ne = input.edge.size();
+  int nv = input.vert.size();
   for (int i = 0; i < ne; i++) {
     int iv1 = input.edge[i].first;
     int iv2 = input.edge[i].second;
@@ -1903,14 +1907,14 @@ static int power_of_10_greater_equal_to(int x)
  */
 template<typename T> void add_face_constraints(CDT_state<T> *cdt_state, const CDT_input<T> &input)
 {
-  int nv = static_cast<int>(input.vert.size());
-  int nf = static_cast<int>(input.face.size());
+  int nv = input.vert.size();
+  int nf = input.face.size();
   int fstart = 0;
   SymEdge<T> *face_symedge0 = nullptr;
   CDTArrangement<T> *cdt = &cdt_state->cdt;
   int maxflen = 0;
   for (int f = 0; f < nf; f++) {
-    maxflen = max_ii(maxflen, static_cast<int>(input.face[f].size()));
+    maxflen = max_ii(maxflen, input.face[f].size());
   }
   /* For convenience in debugging, make face_edge_offset be a power of 10. */
   cdt_state->face_edge_offset = power_of_10_greater_equal_to(
@@ -1921,7 +1925,7 @@ template<typename T> void add_face_constraints(CDT_state<T> *cdt_state, const CD
    */
   BLI_assert(INT_MAX / cdt_state->face_edge_offset > nf);
   for (int f = 0; f < nf; f++) {
-    int flen = static_cast<int>(input.face[f].size());
+    int flen = input.face[f].size();
     if (flen <= 2) {
       /* Ignore faces with fewer than 3 vertices. */
       fstart += flen;
@@ -2199,7 +2203,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
    * corresponding to the vert in position i in cdt->verts.
    * This first loop sets vert_to_output_map for unmerged verts.
    */
-  int verts_size = static_cast<int>(cdt->verts.size());
+  int verts_size = cdt->verts.size();
   Array<int> vert_to_output_map(verts_size);
   int nv = 0;
   for (int i = 0; i < verts_size; ++i) {
@@ -2300,9 +2304,9 @@ template<typename T> void add_input_verts(CDT_state<T> *cdt_state, const CDT_inp
 template<typename T>
 CDT_result<T> delaunay_calc(const CDT_input<T> &input, CDT_output_type output_type)
 {
-  int nv = static_cast<int>(input.vert.size());
-  int ne = static_cast<int>(input.edge.size());
-  int nf = static_cast<int>(input.face.size());
+  int nv = input.vert.size();
+  int ne = input.edge.size();
+  int nf = input.face.size();
   CDT_state<T> cdt_state(nv, ne, nf, input.epsilon);
   add_input_verts(&cdt_state, input);
   initial_triangulation(&cdt_state.cdt);
@@ -2363,22 +2367,22 @@ extern "C" ::CDT_result *BLI_delaunay_2d_cdt_calc(const ::CDT_input *input,
       in, output_type);
 
   ::CDT_result *output = static_cast<::CDT_result *>(MEM_mallocN(sizeof(*output), __func__));
-  int nv = output->verts_len = static_cast<int>(res.vert.size());
-  int ne = output->edges_len = static_cast<int>(res.edge.size());
-  int nf = output->faces_len = static_cast<int>(res.face.size());
+  int nv = output->verts_len = res.vert.size();
+  int ne = output->edges_len = res.edge.size();
+  int nf = output->faces_len = res.face.size();
   int tot_v_orig = 0;
   int tot_e_orig = 0;
   int tot_f_orig = 0;
   int tot_f_lens = 0;
   for (int v = 0; v < nv; ++v) {
-    tot_v_orig += static_cast<int>(res.vert_orig[v].size());
+    tot_v_orig += res.vert_orig[v].size();
   }
   for (int e = 0; e < ne; ++e) {
-    tot_e_orig += static_cast<int>(res.edge_orig[e].size());
+    tot_e_orig += res.edge_orig[e].size();
   }
   for (int f = 0; f < nf; ++f) {
-    tot_f_orig += static_cast<int>(res.face_orig[f].size());
-    tot_f_lens += static_cast<int>(res.face[f].size());
+    tot_f_orig += res.face_orig[f].size();
+    tot_f_lens += res.face[f].size();
   }
 
   output->vert_coords = static_cast<decltype(output->vert_coords)>(
@@ -2427,7 +2431,7 @@ extern "C" ::CDT_result *BLI_delaunay_2d_cdt_calc(const ::CDT_input *input,
   int f_index = 0;
   for (int f = 0; f < nf; ++f) {
     output->faces_start_table[f] = f_index;
-    int flen = static_cast<int>(res.face[f].size());
+    int flen = res.face[f].size();
     output->faces_len_table[f] = flen;
     for (int j = 0; j < flen; ++j) {
       output->faces[f_index++] = res.face[f][j];

@@ -34,6 +34,7 @@
 #  include "BLI_math_mpq.hh"
 #  include "BLI_mpq3.hh"
 #  include "BLI_span.hh"
+#  include "BLI_utility_mixins.hh"
 #  include "BLI_vector.hh"
 
 namespace blender::meshintersect {
@@ -62,13 +63,7 @@ struct Vert {
 
   Vert() = default;
   Vert(const mpq3 &mco, const double3 &dco, int id, int orig);
-  Vert(const Vert &other);
-  Vert(Vert &&other) noexcept;
-
   ~Vert() = default;
-
-  Vert &operator=(const Vert &other);
-  Vert &operator=(Vert &&other) noexcept;
 
   /* Test equality on the co_exact field. */
   bool operator==(const Vert &other) const;
@@ -127,13 +122,7 @@ struct Face {
   Face() = default;
   Face(Span<const Vert *> verts, int id, int orig, Span<int> edge_origs, Span<bool> is_intersect);
   Face(Span<const Vert *> verts, int id, int orig);
-  Face(const Face &other);
-  Face(Face &&other) noexcept;
-
   ~Face() = default;
-
-  Face &operator=(const Face &other);
-  Face &operator=(Face &&other) noexcept;
 
   bool is_tri() const
   {
@@ -190,19 +179,13 @@ std::ostream &operator<<(std::ostream &os, const Face *f);
  * ensure that only one instance of a Vert with a given co_exact will
  * exist. I.e., it dedups the vertices.
  */
-class IMeshArena {
+class IMeshArena : NonCopyable, NonMovable {
   class IMeshArenaImpl;
   std::unique_ptr<IMeshArenaImpl> pimpl_;
 
  public:
   IMeshArena();
-  IMeshArena(const IMeshArena &) = delete;
-  IMeshArena(IMeshArena &&) = delete;
-
   ~IMeshArena();
-
-  IMeshArena &operator=(const IMeshArena &) = delete;
-  IMeshArena &operator=(IMeshArena &&) = delete;
 
   /* Provide hints to number of expected Verts and Faces expected
    * to be allocated.

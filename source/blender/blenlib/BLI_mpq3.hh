@@ -198,6 +198,11 @@ struct mpq3 {
     return a.x == b.x && a.y == b.y && a.z == b.z;
   }
 
+  friend bool operator!=(const mpq3 &a, const mpq3 &b)
+  {
+    return a.x != b.x || a.y != b.y || a.z != b.z;
+  }
+
   friend std::ostream &operator<<(std::ostream &stream, const mpq3 &v)
   {
     stream << "(" << v.x << ", " << v.y << ", " << v.z << ")";

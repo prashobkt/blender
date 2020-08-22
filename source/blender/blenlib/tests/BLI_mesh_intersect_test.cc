@@ -18,7 +18,7 @@
 #define DO_REGULAR_TESTS 1
 #define DO_PERF_TESTS 1
 
-namespace blender::meshintersect {
+namespace blender::meshintersect::tests {
 
 constexpr bool DO_OBJ = false;
 
@@ -1074,4 +1074,4 @@ TEST(mesh_intersect_perf, SphereGrid)
 
 #endif
 
-}  // namespace blender::meshintersect
+}  // namespace blender::meshintersect::tests

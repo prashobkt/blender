@@ -116,6 +116,11 @@ struct mpq2 {
     return a.x == b.x && a.y == b.y;
   }
 
+  friend bool operator!=(const mpq2 &a, const mpq2 &b)
+  {
+    return a.x != b.x || a.y != b.y;
+  }
+
   friend std::ostream &operator<<(std::ostream &stream, const mpq2 &v)
   {
     stream << "(" << v.x << ", " << v.y << ")";
