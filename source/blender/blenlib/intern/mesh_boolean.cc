@@ -119,7 +119,7 @@ static std::ostream &operator<<(std::ostream &os, const Array<int> &iarr)
 }
 
 /* Holds information about topology of an IMesh that is all triangles. */
-class TriMeshTopology {
+class TriMeshTopology : NonCopyable {
   /* Triangles that contain a given Edge (either order). */
   Map<Edge, Vector<int> *> edge_tri_;
   /* Edges incident on each vertex. */
@@ -127,8 +127,6 @@ class TriMeshTopology {
 
  public:
   TriMeshTopology(const IMesh &tm);
-  TriMeshTopology(const TriMeshTopology &other) = delete;
-  TriMeshTopology(const TriMeshTopology &&other) = delete;
   ~TriMeshTopology();
 
   /* If e is manifold, return index of the other triangle (not t) that has it. Else return
@@ -2167,9 +2165,10 @@ static void extract_zero_volume_cell_tris(Vector<const Face *> &r_tris,
         const Face *f = tm_subdivided.face(pinfo.patch(p).tri(0));
         const Face &tri = *f;
         /* We need flipped version or else we would have found it above. */
-        Array<const Vert *> flipped_vs = {tri[0], tri[2], tri[1]};
-        Array<int> flipped_e_origs = {tri.edge_orig[2], tri.edge_orig[1], tri.edge_orig[0]};
-        Array<bool> flipped_is_intersect = {
+        std::array<const Vert *, 3> flipped_vs = {tri[0], tri[2], tri[1]};
+        std::array<int, 3> flipped_e_origs = {
+            tri.edge_orig[2], tri.edge_orig[1], tri.edge_orig[0]};
+        std::array<bool, 3> flipped_is_intersect = {
             tri.is_intersect[2], tri.is_intersect[1], tri.is_intersect[0]};
         const Face *flipped_f = arena->add_face(
             flipped_vs, f->orig, flipped_e_origs, flipped_is_intersect);
@@ -2345,6 +2344,8 @@ static bool point_is_inside_shape(const IMesh &tm,
   double gwn = generalized_winding_number(tm, shape_fn, testp, shape);
   /* Due to floating point error, an outside point should get a value
    * of zero for gwn, but may have a very slightly positive value instead.
+   * It is not important to get this epsilon very small, because practical
+   * cases of interest will have gwn at least 0.2 if it is not zero.
    */
   return (gwn > 0.01);
 }
