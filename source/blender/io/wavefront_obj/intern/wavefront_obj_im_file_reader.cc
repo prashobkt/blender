@@ -104,7 +104,8 @@ static void split_by_char(StringRef in_string, const char delimiter, Vector<Stri
     /* Skip the word already stored. */
     in_string = in_string.drop_prefix(word_len);
     /* Skip all delimiters. */
-    in_string = in_string.drop_prefix(MIN2(in_string.find_first_not_of(delimiter), in_string.size()));
+    in_string = in_string.drop_prefix(
+        MIN2(in_string.find_first_not_of(delimiter), in_string.size()));
   }
 }
 
@@ -197,7 +198,7 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
                                  StringRef name,
                                  const GlobalVertices &global_vertices,
                                  Vector<std::unique_ptr<Geometry>> &r_all_geometries,
-                                 VertexIndexOffset &r_offsets)
+                                 VertexIndexOffset &r_offset)
 {
   auto new_geometry = [&]() {
     if (name.is_empty()) {
@@ -206,7 +207,7 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
     else {
       r_all_geometries.append(std::make_unique<Geometry>(new_type, name));
     }
-    r_offsets.set_index_offset(global_vertices.vertices.size());
+    r_offset.set_index_offset(global_vertices.vertices.size());
     return r_all_geometries.last().get();
   };
 
@@ -253,8 +254,8 @@ OBJParser::OBJParser(const OBJImportParams &import_params) : import_params_(impo
  * Read the OBJ file line by line and create OBJ Geometry instances. Also store all the vertex
  * and UV vertex coordinates in a struct accessible by all objects.
  */
-void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometries,
-                                GlobalVertices &global_vertices)
+void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &r_all_geometries,
+                                GlobalVertices &r_global_vertices)
 {
   if (!obj_file_.good()) {
     return;
@@ -266,7 +267,7 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
   /* Non owning raw pointer to a Geometry.
    * Needed to update object data in the same while loop. */
   Geometry *current_geometry = create_geometry(
-      nullptr, GEOM_MESH, "", global_vertices, all_geometries, offset);
+      nullptr, GEOM_MESH, "", r_global_vertices, r_all_geometries, offset);
 
   /* State-setting variables: if set, they remain the same for the remaining
    * elements in the object. */
@@ -287,7 +288,7 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
       shaded_smooth = false;
       object_group = {};
       current_geometry = create_geometry(
-          current_geometry, GEOM_MESH, rest_line, global_vertices, all_geometries, offset);
+          current_geometry, GEOM_MESH, rest_line, r_global_vertices, r_all_geometries, offset);
     }
     else if (line_key == "v") {
       BLI_assert(current_geometry);
@@ -295,23 +296,23 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
       Vector<StringRef> str_vert_split;
       split_by_char(rest_line, ' ', str_vert_split);
       copy_string_to_float(str_vert_split, FLT_MAX, {curr_vert, 3});
-      global_vertices.vertices.append(curr_vert);
-      current_geometry->vertex_indices_.append(global_vertices.vertices.size() - 1);
+      r_global_vertices.vertices.append(curr_vert);
+      current_geometry->vertex_indices_.append(r_global_vertices.vertices.size() - 1);
     }
     else if (line_key == "vn") {
       float3 curr_vert_normal{};
       Vector<StringRef> str_vert_normal_split;
       split_by_char(rest_line, ' ', str_vert_normal_split);
       copy_string_to_float(str_vert_normal_split, FLT_MAX, {curr_vert_normal, 2});
-      global_vertices.vertex_normals.append(curr_vert_normal);
-      current_geometry->vertex_normal_indices_.append(global_vertices.vertex_normals.size() - 1);
+      r_global_vertices.vertex_normals.append(curr_vert_normal);
+      current_geometry->vertex_normal_indices_.append(r_global_vertices.vertex_normals.size() - 1);
     }
     else if (line_key == "vt") {
       float2 curr_uv_vert{};
       Vector<StringRef> str_uv_vert_split;
       split_by_char(rest_line, ' ', str_uv_vert_split);
       copy_string_to_float(str_uv_vert_split, FLT_MAX, {curr_uv_vert, 2});
-      global_vertices.uv_vertices.append(curr_uv_vert);
+      r_global_vertices.uv_vertices.append(curr_uv_vert);
     }
     else if (line_key == "l") {
       BLI_assert(current_geometry);
@@ -321,8 +322,8 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
       copy_string_to_int(str_edge_split[0], -1, edge_v1);
       copy_string_to_int(str_edge_split[1], -1, edge_v2);
       /* Always keep stored indices non-negative and zero-based. */
-      edge_v1 += edge_v1 < 0 ? global_vertices.vertices.size() : -offset.get_index_offset() - 1;
-      edge_v2 += edge_v2 < 0 ? global_vertices.vertices.size() : -offset.get_index_offset() - 1;
+      edge_v1 += edge_v1 < 0 ? r_global_vertices.vertices.size() : -offset.get_index_offset() - 1;
+      edge_v2 += edge_v2 < 0 ? r_global_vertices.vertices.size() : -offset.get_index_offset() - 1;
       BLI_assert(edge_v1 >= 0 && edge_v2 >= 0);
       current_geometry->edges_.append({static_cast<uint>(edge_v1), static_cast<uint>(edge_v2)});
     }
@@ -387,11 +388,12 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
           copy_string_to_int(vert_uv_normal_split[2], INT32_MAX, corner.vertex_normal_index);
         }
         /* Always keep stored indices non-negative and zero-based. */
-        corner.vert_index += corner.vert_index < 0 ? global_vertices.vertices.size() :
+        corner.vert_index += corner.vert_index < 0 ? r_global_vertices.vertices.size() :
                                                      -offset.get_index_offset() - 1;
-        corner.uv_vert_index += corner.uv_vert_index < 0 ? global_vertices.uv_vertices.size() : -1;
+        corner.uv_vert_index += corner.uv_vert_index < 0 ? r_global_vertices.uv_vertices.size() :
+                                                           -1;
         corner.vertex_normal_index += corner.vertex_normal_index < 0 ?
-                                          global_vertices.vertex_normals.size() :
+                                          r_global_vertices.vertex_normals.size() :
                                           -1;
         curr_face.face_corners.append(corner);
       }
@@ -401,8 +403,12 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
     }
     else if (line_key == "cstype") {
       if (rest_line.find("bspline") != StringRef::not_found) {
-        current_geometry = create_geometry(
-            current_geometry, GEOM_CURVE, object_group, global_vertices, all_geometries, offset);
+        current_geometry = create_geometry(current_geometry,
+                                           GEOM_CURVE,
+                                           object_group,
+                                           r_global_vertices,
+                                           r_all_geometries,
+                                           offset);
         current_geometry->nurbs_element_.group_ = object_group;
       }
       else {
@@ -422,7 +428,7 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometrie
       copy_string_to_int(str_curv_split, INT32_MAX, current_geometry->nurbs_element_.curv_indices);
       for (int &curv_index : current_geometry->nurbs_element_.curv_indices) {
         /* Always keep stored indices non-negative and zero-based. */
-        curv_index += curv_index < 0 ? global_vertices.vertices.size() : -1;
+        curv_index += curv_index < 0 ? r_global_vertices.vertices.size() : -1;
       }
     }
     else if (line_key == "parm") {
@@ -510,7 +516,7 @@ MTLParser::MTLParser(StringRef mtl_library, StringRefNull obj_filepath)
 /**
  * Read MTL file(s) and add MTLMaterial instances to the given Map reference.
  */
-void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
+void MTLParser::parse_and_store(Map<string, MTLMaterial> &r_mtl_materials)
 {
   if (!mtl_file_.good()) {
     return;
@@ -527,10 +533,10 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &mtl_materials)
     }
 
     if (line_key == "newmtl") {
-      if (mtl_materials.remove_as(rest_line)) {
+      if (r_mtl_materials.remove_as(rest_line)) {
         std::cerr << "Duplicate material found:'" << rest_line << "'." << std::endl;
       }
-      current_mtlmaterial = &mtl_materials.lookup_or_add_default_as(string(rest_line));
+      current_mtlmaterial = &r_mtl_materials.lookup_or_add_default_as(string(rest_line));
     }
     else if (line_key == "Ns") {
       copy_string_to_float(rest_line, 324.0f, current_mtlmaterial->Ns);

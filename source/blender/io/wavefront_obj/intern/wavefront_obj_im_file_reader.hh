@@ -40,8 +40,8 @@ class OBJParser {
  public:
   OBJParser(const OBJImportParams &import_params);
 
-  void parse_and_store(Vector<std::unique_ptr<Geometry>> &all_geometries,
-                       GlobalVertices &global_vertices);
+  void parse_and_store(Vector<std::unique_ptr<Geometry>> &r_all_geometries,
+                       GlobalVertices &r_global_vertices);
   Span<std::string> mtl_libraries() const;
   void print_obj_data(Span<std::unique_ptr<Geometry>> all_geometries,
                       const GlobalVertices &global_vertices);
@@ -96,6 +96,6 @@ class MTLParser {
  public:
   MTLParser(StringRef mtl_library_, StringRefNull obj_filepath);
 
-  void parse_and_store(Map<std::string, MTLMaterial> &mtl_materials);
+  void parse_and_store(Map<std::string, MTLMaterial> &r_mtl_materials);
 };
 }  // namespace blender::io::obj
