@@ -16,7 +16,7 @@
 #include "BLI_vector.hh"
 
 #define DO_REGULAR_TESTS 1
-#define DO_PERF_TESTS 1
+#define DO_PERF_TESTS 0
 
 namespace blender::meshintersect::tests {
 

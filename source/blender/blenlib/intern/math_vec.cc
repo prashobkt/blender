@@ -875,17 +875,13 @@ double orient2d(const double *pa, const double *pb, const double *pc)
     if (detright <= 0.0) {
       return det;
     }
-    else {
-      detsum = detleft + detright;
-    }
+    detsum = detleft + detright;
   }
   else if (detleft < 0.0) {
     if (detright >= 0.0) {
       return det;
     }
-    else {
-      detsum = -detleft - detright;
-    }
+    detsum = -detleft - detright;
   }
   else {
     return det;
@@ -940,6 +936,9 @@ double orient3dfast(const double *pa, const double *pb, const double *pc, const 
          cdx * (ady * bdz - adz * bdy);
 }
 
+/* Note: since this code comes from an external source, prefer not to break it
+ * up to fix this clang-tidy warning.
+ * NOLINTNEXTLINE: readability-function-size */
 static double orient3dadapt(
     const double *pa, const double *pb, const double *pc, const double *pd, double permanent)
 {
@@ -1448,6 +1447,9 @@ double incirclefast(const double *pa, const double *pb, const double *pc, const 
   return alift * bcdet + blift * cadet + clift * abdet;
 }
 
+/* Note: since this code comes from an external source, prefer not to break it
+ * up to fix this clang-tidy warning.
+ * NOLINTNEXTLINE: readability-function-size */
 static double incircleadapt(
     const double *pa, const double *pb, const double *pc, const double *pd, double permanent)
 {
