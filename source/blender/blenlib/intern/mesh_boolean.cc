@@ -1511,7 +1511,7 @@ static Edge find_good_sorting_edge(const Vert *testp,
   Edge esort;
   const Vector<Edge> &edges = tmtopo.vert_edges(closestp);
   for (Edge e : edges) {
-    const const Vert *v_other = (e.v0() == closestp) ? e.v1() : e.v0();
+    const Vert *v_other = (e.v0() == closestp) ? e.v1() : e.v0();
     const mpq3 &co_other = v_other->co_exact;
     mpq3 evec = co_other - co_closest;
     /* Get projection of evec onto plane of abscissa and ordinate. */
