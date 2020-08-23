@@ -30,10 +30,10 @@ from modules.mesh_test import ModifierTest, ModifierSpec
 def main():
     test = [
 
-        ["DynamicPaint2", "test", "exp",
+        ["DynamicPaintSimple", "testObjDynamicPaintPlane", "expObjDynamicPaintPlane",
          [ModifierSpec('dynamic_paint', 'DYNAMIC_PAINT',
                        {'ui_type': 'CANVAS',
-                        'canvas_settings': {'canvas_surfaces': {'surface_type': 'WAVE', 'frame_end': 50}}}, 50)]],
+                        'canvas_settings': {'canvas_surfaces': {'surface_type': 'WAVE', 'frame_end': 15}}}, 15)]],
 
     ]
     dynamic_paint_test = ModifierTest(test)

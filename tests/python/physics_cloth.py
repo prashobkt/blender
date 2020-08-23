@@ -31,8 +31,8 @@ def main():
     test = [
 
         # Make sure no modifier is added on the test object.
-        ["ClothSimple", "testCloth", "expectedCloth",
-         [ModifierSpec('Cloth', 'CLOTH', {'settings': {'quality': 5}}, 35)]],
+        ["ClothSimple", "testClothPlane", "expectedClothPlane",
+         [ModifierSpec('Cloth', 'CLOTH', {'settings': {'quality': 5}}, 10)]],
 
         # Not reproducible
         # ["ClothPressure", "testObjClothPressure", "expObjClothPressure",
@@ -43,7 +43,7 @@ def main():
         #  [ModifierSpec('Cloth', 'CLOTH', {'collision_settings': {'use_self_collision': True}}, 67)]],
 
         ["ClothSpring", "testTorusClothSpring", "expTorusClothSpring",
-         [ModifierSpec('Cloth2', 'CLOTH', {'settings': {'use_internal_springs': True}}, 30)]],
+         [ModifierSpec('Cloth2', 'CLOTH', {'settings': {'use_internal_springs': True}}, 10)]],
 
 
     ]
