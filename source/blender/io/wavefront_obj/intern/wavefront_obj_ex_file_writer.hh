@@ -84,22 +84,22 @@ class OBJWriter {
   void update_index_offsets(const OBJMesh &obj_mesh_data);
 
  private:
-  void write_vert_indices(Span<uint> vert_indices,
-                          Span<uint> uv_indices,
-                          Span<uint> normal_indices,
-                          const MPoly &poly_to_write) const;
-  void write_vert_normal_indices(Span<uint> vert_indices,
-                                 Span<uint> uv_indices,
-                                 Span<uint> normal_indices,
-                                 const MPoly &poly_to_write) const;
-  void write_vert_uv_indices(Span<uint> vert_indices,
-                             Span<uint> uv_indices,
-                             Span<uint> normal_indices,
-                             const MPoly &poly_to_write) const;
   void write_vert_uv_normal_indices(Span<uint> vert_indices,
                                     Span<uint> uv_indices,
                                     Span<uint> normal_indices,
                                     const MPoly &poly_to_write) const;
+  void write_vert_normal_indices(Span<uint> vert_indices,
+                                 Span<uint> UNUSED(uv_indices),
+                                 Span<uint> normal_indices,
+                                 const MPoly &poly_to_write) const;
+  void write_vert_uv_indices(Span<uint> vert_indices,
+                             Span<uint> uv_indices,
+                             Span<uint> UNUSED(normal_indices),
+                             const MPoly &poly_to_write) const;
+  void write_vert_indices(Span<uint> vert_indices,
+                          Span<uint> UNUSED(uv_indices),
+                          Span<uint> UNUSED(normal_indices),
+                          const MPoly &poly_to_write) const;
 };
 
 class MTLWriter {
