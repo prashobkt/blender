@@ -39,6 +39,8 @@
 #  include "BLI_vector.hh"
 #  include "BLI_vector_set.hh"
 
+#  include "PIL_time.h"
+
 #  include "BLI_mesh_intersect.hh"
 
 // #  define PERFDEBUG
@@ -763,36 +765,90 @@ static bool bbs_might_intersect(const BoundingBox &bb_a, const BoundingBox &bb_b
   return isect_aabb_aabb_v3(bb_a.min, bb_a.max, bb_b.min, bb_b.max);
 }
 
+/* Data and functions to calculate bounding boxes and pad them, in parallel.
+ * The bounding box calculation has the additional task of calculating the maximum
+ * absolute value of any coordinate in the mesh, which will be used to calculate
+ * the pad value.
+ */
+struct BBChunkData {
+  double max_abs_val = 0.0;
+};
+
+struct BBCalcData {
+  const IMesh &im;
+  Array<BoundingBox> *face_bounding_box;
+
+  BBCalcData(const IMesh &im, Array<BoundingBox> *fbb) : im(im), face_bounding_box(fbb){};
+};
+
+static void calc_face_bb_range_func(void *__restrict userdata,
+                                    const int iter,
+                                    const TaskParallelTLS *__restrict tls)
+{
+  BBCalcData *bbdata = static_cast<BBCalcData *>(userdata);
+  double max_abs = 0.0;
+  const Face &face = *bbdata->im.face(iter);
+  BoundingBox &bb = (*bbdata->face_bounding_box)[iter];
+  for (const Vert *v : face) {
+    bb.combine(v->co);
+    for (int i = 0; i < 3; ++i) {
+      max_abs = max_dd(max_abs, fabs(v->co[i]));
+    }
+  }
+  BBChunkData *chunk = static_cast<BBChunkData *>(tls->userdata_chunk);
+  chunk->max_abs_val = max_dd(max_abs, chunk->max_abs_val);
+}
+
+struct BBPadData {
+  Array<BoundingBox> *face_bounding_box;
+  double pad;
+
+  BBPadData(Array<BoundingBox> *fbb, double pad) : face_bounding_box(fbb), pad(pad){};
+};
+
+static void pad_face_bb_range_func(void *__restrict userdata,
+                                   const int iter,
+                                   const TaskParallelTLS *__restrict UNUSED(tls))
+{
+  BBPadData *pad_data = static_cast<BBPadData *>(userdata);
+  (*pad_data->face_bounding_box)[iter].expand(pad_data->pad);
+}
+
+static void calc_face_bb_reduce(const void *__restrict UNUSED(userdata),
+                                void *__restrict chunk_join,
+                                void *__restrict chunk)
+{
+  BBChunkData *bbchunk_join = static_cast<BBChunkData *>(chunk_join);
+  BBChunkData *bbchunk = static_cast<BBChunkData *>(chunk);
+  bbchunk_join->max_abs_val = max_dd(bbchunk_join->max_abs_val, bbchunk->max_abs_val);
+}
+
 /* We will expand the bounding boxes by an epsilon on all sides so that
  * the "less than" tests in isect_aabb_aabb_v3 are sufficient to detect
  * touching or overlap.
  */
 static Array<BoundingBox> calc_face_bounding_boxes(const IMesh &m)
 {
-  double max_abs_val = 0.0;
-  Array<BoundingBox> ans(m.face_size());
-  for (int f : m.face_index_range()) {
-    const Face &face = *m.face(f);
-    BoundingBox &bb = ans[f];
-    for (const Vert *v : face) {
-      bb.combine(v->co);
-      for (int i = 0; i < 3; ++i) {
-        max_abs_val = max_dd(max_abs_val, fabs(v->co[i]));
-      }
-    }
-  }
-  float pad;
+  int n = m.face_size();
+  Array<BoundingBox> ans(n);
+  TaskParallelSettings settings;
+  BBCalcData data(m, &ans);
+  BBChunkData chunk_data;
+  BLI_parallel_range_settings_defaults(&settings);
+  settings.userdata_chunk = &chunk_data;
+  settings.userdata_chunk_size = sizeof(chunk_data);
+  settings.func_reduce = calc_face_bb_reduce;
+  settings.min_iter_per_thread = 1000;
+  BLI_task_parallel_range(0, n, &data, calc_face_bb_range_func, &settings);
+  double max_abs_val = chunk_data.max_abs_val;
   constexpr float pad_factor = 10.0f;
-  if (max_abs_val == 0.0f) {
-    pad = FLT_EPSILON;
-  }
-  else {
-    pad = 2 * FLT_EPSILON * max_abs_val;
-  }
+  float pad = max_abs_val == 0.0f ? FLT_EPSILON : 2 * FLT_EPSILON * max_abs_val;
   pad *= pad_factor; /* For extra safety. */
-  for (int f : m.face_index_range()) {
-    ans[f].expand(pad);
-  }
+  TaskParallelSettings pad_settings;
+  BLI_parallel_range_settings_defaults(&pad_settings);
+  settings.min_iter_per_thread = 1000;
+  BBPadData pad_data(&ans, pad);
+  BLI_task_parallel_range(0, n, &pad_data, pad_face_bb_range_func, &pad_settings);
   return ans;
 }
 
@@ -2821,15 +2877,48 @@ static bool face_is_degenerate(const Face *f)
   return false;
 }
 
+/* Data and functions to test triangle degeneracy in parallel. */
+struct DegenData {
+  const IMesh &tm;
+};
+
+struct DegenChunkData {
+  bool has_degenerate_tri = false;
+};
+
+static void degenerate_range_func(void *__restrict userdata,
+                                  const int iter,
+                                  const TaskParallelTLS *__restrict tls)
+{
+  DegenData *data = static_cast<DegenData *>(userdata);
+  DegenChunkData *chunk_data = static_cast<DegenChunkData *>(tls->userdata_chunk);
+  const Face *f = data->tm.face(iter);
+  bool is_degenerate = face_is_degenerate(f);
+  chunk_data->has_degenerate_tri |= is_degenerate;
+}
+
+static void degenerate_reduce(const void *__restrict UNUSED(userdata),
+                              void *__restrict chunk_join,
+                              void *__restrict chunk)
+{
+  DegenChunkData *degen_chunk_join = static_cast<DegenChunkData *>(chunk_join);
+  DegenChunkData *degen_chunk = static_cast<DegenChunkData *>(chunk);
+  degen_chunk_join->has_degenerate_tri |= degen_chunk->has_degenerate_tri;
+}
+
 /* Does triangle IMesh tm have any triangles with zero area? */
 static bool has_degenerate_tris(const IMesh &tm)
 {
-  for (const Face *f : tm.faces()) {
-    if (face_is_degenerate(f)) {
-      return true;
-    }
-  }
-  return false;
+  DegenData degen_data = {tm};
+  DegenChunkData degen_chunk_data;
+  TaskParallelSettings settings;
+  BLI_parallel_range_settings_defaults(&settings);
+  settings.userdata_chunk = &degen_chunk_data;
+  settings.userdata_chunk_size = sizeof(degen_chunk_data);
+  settings.func_reduce = degenerate_reduce;
+  settings.min_iter_per_thread = 1000;
+  BLI_task_parallel_range(0, tm.face_size(), &degen_data, degenerate_range_func, &settings);
+  return degen_chunk_data.has_degenerate_tri;
 }
 
 static IMesh remove_degenerate_tris(const IMesh &tm_in)
@@ -2874,6 +2963,11 @@ IMesh trimesh_nary_intersect(const IMesh &tm_in,
       }
     }
   }
+#  ifdef PERFDEBUG
+  perfdata_init();
+  double start_time = PIL_check_seconds_timer();
+  std::cout << "trimesh_nary_intersect start\n";
+#  endif
   /* Usually can use tm_in but if it has degenerate or illegal triangles,
    * then need to work on a copy of it without those triangles.
    */
@@ -2889,14 +2983,28 @@ IMesh trimesh_nary_intersect(const IMesh &tm_in,
       std::cout << "cleaned input mesh:\n" << tm_cleaned;
     }
   }
+#  ifdef PERFDEBUG
+  double clean_time = PIL_check_seconds_timer();
+  std::cout << "cleaned, time = " << clean_time - start_time << "\n";
+#  endif
   Array<BoundingBox> tri_bb = calc_face_bounding_boxes(*tm_clean);
+#  ifdef PERFDEBUG
+  double bb_calc_time = PIL_check_seconds_timer();
+  std::cout << "bbs calculated, time = " << bb_calc_time - clean_time << "\n";
+#  endif
   TriOverlaps tri_ov(*tm_clean, tri_bb, nshapes, shape_fn, use_self);
+#  ifdef PERFDEBUG
+  double overlap_time = PIL_check_seconds_timer();
+  std::cout << "intersect overlaps calculated, time = " << overlap_time - bb_calc_time << "\n";
+
+#  endif
   CoplanarClusterInfo clinfo = find_clusters(*tm_clean, tri_bb);
   if (dbg_level > 1) {
     std::cout << clinfo;
   }
 #  ifdef PERFDEBUG
-  perfdata_init();
+  double find_cluster_time = PIL_check_seconds_timer();
+  std::cout << "clusters found, time = " << find_cluster_time - overlap_time << "\n";
   doperfmax(0, tm_in.face_size());
   doperfmax(1, clinfo.tot_cluster());
   doperfmax(2, tri_ov.overlap().size());
@@ -2907,12 +3015,25 @@ IMesh trimesh_nary_intersect(const IMesh &tm_in,
   Map<std::pair<int, int>, ITT_value> itt_map;
   itt_map.reserve(tri_ov.overlap().size());
   calc_overlap_itts(itt_map, *tm_clean, clinfo, tri_ov, arena);
+#  ifdef PERFDEBUG
+  double itt_time = PIL_check_seconds_timer();
+  std::cout << "itts found, time = " << itt_time - find_cluster_time << "\n";
+#  endif
   Array<IMesh> tri_subdivided(tm_clean->face_size());
   calc_subdivided_tris(tri_subdivided, *tm_clean, itt_map, clinfo, tri_ov, arena);
+#  ifdef PERFDEBUG
+  double subdivided_tris_time = PIL_check_seconds_timer();
+  std::cout << "subdivided tris found, time = " << subdivided_tris_time - itt_time << "\n";
+#  endif
   Array<CDT_data> cluster_subdivided(clinfo.tot_cluster());
   for (int c : clinfo.index_range()) {
     cluster_subdivided[c] = calc_cluster_subdivided(clinfo, c, *tm_clean, tri_ov, itt_map, arena);
   }
+#  ifdef PERFDEBUG
+  double cluster_subdivide_time = PIL_check_seconds_timer();
+  std::cout << "subdivided clusters found, time = "
+            << cluster_subdivide_time - subdivided_tris_time << "\n";
+#  endif
   for (int t : tm_clean->face_index_range()) {
     int c = clinfo.tri_cluster(t);
     if (c != NO_INDEX) {
@@ -2923,12 +3044,19 @@ IMesh trimesh_nary_intersect(const IMesh &tm_in,
       tri_subdivided[t] = extract_single_tri(*tm_clean, t);
     }
   }
+#  ifdef PERFDEBUG
+  double extract_time = PIL_check_seconds_timer();
+  std::cout << "triangles extracted, time = " << extract_time - cluster_subdivide_time << "\n";
+#  endif
   IMesh combined = union_tri_subdivides(tri_subdivided);
   if (dbg_level > 1) {
     std::cout << "TRIMESH_NARY_INTERSECT answer:\n";
     std::cout << combined;
   }
 #  ifdef PERFDEBUG
+  double end_time = PIL_check_seconds_timer();
+  std::cout << "triangles combined, time = " << end_time - extract_time << "\n";
+  std::cout << "trimesh_nary_intersect done, total time = " << end_time - start_time << "\n";
   dump_perfdata();
 #  endif
   return combined;
@@ -3031,67 +3159,72 @@ struct PerfCounts {
   Vector<const char *> count_name;
   Vector<int> max;
   Vector<const char *> max_name;
-} perfdata;
+};
+
+static PerfCounts *perfdata = nullptr;
 
 static void perfdata_init(void)
 {
+  perfdata = new PerfCounts;
+
   /* count 0. */
-  perfdata.count.append(0);
-  perfdata.count_name.append("Non-cluster overlaps");
+  perfdata->count.append(0);
+  perfdata->count_name.append("Non-cluster overlaps");
 
   /* count 1. */
-  perfdata.count.append(0);
-  perfdata.count_name.append("intersect_tri_tri calls");
+  perfdata->count.append(0);
+  perfdata->count_name.append("intersect_tri_tri calls");
 
   /* count 2. */
-  perfdata.count.append(0);
-  perfdata.count_name.append("tri tri intersects decided by filter plane tests");
+  perfdata->count.append(0);
+  perfdata->count_name.append("tri tri intersects decided by filter plane tests");
 
   /* count 3. */
-  perfdata.count.append(0);
-  perfdata.count_name.append("tri tri intersects decided by exact plane tests");
+  perfdata->count.append(0);
+  perfdata->count_name.append("tri tri intersects decided by exact plane tests");
 
   /* count 4. */
-  perfdata.count.append(0);
-  perfdata.count_name.append("final non-NONE intersects");
+  perfdata->count.append(0);
+  perfdata->count_name.append("final non-NONE intersects");
 
   /* max 0. */
-  perfdata.max.append(0);
-  perfdata.max_name.append("total faces");
+  perfdata->max.append(0);
+  perfdata->max_name.append("total faces");
 
   /* max 1. */
-  perfdata.max.append(0);
-  perfdata.max_name.append("total clusters");
+  perfdata->max.append(0);
+  perfdata->max_name.append("total clusters");
 
   /* max 2. */
-  perfdata.max.append(0);
-  perfdata.max_name.append("total overlaps");
+  perfdata->max.append(0);
+  perfdata->max_name.append("total overlaps");
 }
 
 static void incperfcount(int countnum)
 {
-  perfdata.count[countnum]++;
+  perfdata->count[countnum]++;
 }
 
 static void bumpperfcount(int countnum, int amt)
 {
-  perfdata.count[countnum] += amt;
+  perfdata->count[countnum] += amt;
 }
 
 static void doperfmax(int maxnum, int val)
 {
-  perfdata.max[maxnum] = max_ii(perfdata.max[maxnum], val);
+  perfdata->max[maxnum] = max_ii(perfdata->max[maxnum], val);
 }
 
 static void dump_perfdata(void)
 {
   std::cout << "\nPERFDATA\n";
-  for (int i : perfdata.count.index_range()) {
-    std::cout << perfdata.count_name[i] << " = " << perfdata.count[i] << "\n";
+  for (int i : perfdata->count.index_range()) {
+    std::cout << perfdata->count_name[i] << " = " << perfdata->count[i] << "\n";
   }
-  for (int i : perfdata.max.index_range()) {
-    std::cout << perfdata.max_name[i] << " = " << perfdata.max[i] << "\n";
+  for (int i : perfdata->max.index_range()) {
+    std::cout << perfdata->max_name[i] << " = " << perfdata->max[i] << "\n";
   }
+  delete perfdata;
 }
 #  endif
 
