@@ -36,6 +36,24 @@ namespace blender::io::obj {
 using std::string;
 
 /**
+ * Store multiple lines separated by an escaped newline character: `\\n`.
+ */
+static void read_next_line(std::ifstream &file, string &r_line)
+{
+  std::string new_line;
+  while (file.good() && r_line.back() == '\\') {
+    new_line.clear();
+    bool ok = static_cast<bool>(std::getline(file, new_line));
+    /* Remove the last backslash character. */
+    r_line.pop_back();
+    r_line.append(new_line);
+    if (!ok || new_line.empty()) {
+      return;
+    }
+  }
+}
+
+/**
  * Split a line string into the first word (key) and the rest of the line.
  * Also remove leading & trailing spaces as well as `\r` carriage return
  * character if present.
@@ -275,6 +293,10 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &r_all_geometr
   string object_group{};
 
   while (std::getline(obj_file_, line)) {
+    /* Keep reading new lines if the last character is `\`. */
+    /* Another way is to make a getline wrapper and use it in the while condition. */
+    read_next_line(obj_file_, line);
+
     StringRef line_key, rest_line;
     split_line_key_rest(line, line_key, rest_line);
     if (line.empty() || rest_line.is_empty()) {
