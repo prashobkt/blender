@@ -232,7 +232,7 @@ static void userdef_free_keyconfig_prefs(UserDef *userdef)
 
 static void userdef_free_user_menus(UserDef *userdef)
 {
-  for (bUserMenusGroup *umg = userdef->user_menus.first, *umg_next; umg; umg = umg_next) {
+  for (bUserMenusGroup *umg = userdef->user_menus_group.first, *umg_next; umg; umg = umg_next) {
     umg_next = umg->next;
     for (bUserMenu *um = umg->menus.first, *um_next; um; um = um_next) {
       um_next = um->next;

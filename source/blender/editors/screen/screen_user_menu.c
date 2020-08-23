@@ -73,7 +73,7 @@ static const char *screen_menu_context_string(const bContext *C, const SpaceLink
 bUserMenusGroup *ED_screen_user_menus_group_find(int id)
 {
   int index = 0;
-  LISTBASE_FOREACH (bUserMenusGroup *, umg, &U.user_menus) {
+  LISTBASE_FOREACH (bUserMenusGroup *, umg, &U.user_menus_group) {
     if (index == id)
       return umg;
     index++;

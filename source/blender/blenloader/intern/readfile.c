@@ -9795,6 +9795,7 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   BLO_read_list(reader, &user->user_menus);
   BLO_read_list(reader, &user->addons);
   BLO_read_list(reader, &user->autoexec_paths);
+  BLO_read_list(reader, &user->user_menus_group);
 
   for (keymap = user->user_keymaps.first; keymap; keymap = keymap->next) {
     keymap->modal_items = NULL;
@@ -9826,7 +9827,17 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
     IDP_DirectLinkGroup_OrFree(&kpt->prop, reader);
   }
 
-  LISTBASE_FOREACH (bUserMenusGroup *, umg, &user->user_menus) {
+  LISTBASE_FOREACH (bUserMenu *, um, &user->user_menus) {
+    BLO_read_list(reader, &um->items);
+    read_usermenuitems(reader, &um->items, NULL);
+  }
+
+  for (addon = user->addons.first; addon; addon = addon->next) {
+    BLO_read_data_address(reader, &addon->prop);
+    IDP_DirectLinkGroup_OrFree(&addon->prop, reader);
+  }
+
+  LISTBASE_FOREACH (bUserMenusGroup *, umg, &user->user_menus_group) {
     BLO_read_list(reader, &umg->menus);
     BKE_blender_user_menus_group_idname_update(umg);
     LISTBASE_FOREACH (bUserMenu *, um, &umg->menus) {
@@ -9835,9 +9846,17 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
     }
   }
 
-  for (addon = user->addons.first; addon; addon = addon->next) {
-    BLO_read_data_address(reader, &addon->prop);
-    IDP_DirectLinkGroup_OrFree(&addon->prop, reader);
+  if (user->user_menus.first != NULL && user->user_menus_group.first == NULL) {
+    bUserMenusGroup *umg = MEM_mallocN(sizeof(*umg), __func__);
+    STRNCPY(umg->name, "Quick Favorites");
+    STRNCPY(umg->idname, "QUICK_FAVORITES");
+    umg->type = 0;
+    umg->prev = NULL;
+    umg->next = NULL;
+    BLI_addtail(&user->user_menus_group, umg);
+    user->runtime.umg_select = umg;
+    umg->menus = user->user_menus;
+    BLI_listbase_clear(&user->user_menus);
   }
 
   // XXX
@@ -9854,7 +9873,7 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   user->runtime.um_space_select = 1;
   user->runtime.um_context_select = 1;
   user->runtime.um_item_select = NULL;
-  user->runtime.umg_select = user->user_menus.first;
+  user->runtime.umg_select = user->user_menus_group.first;
 
   /* free fd->datamap again */
   oldnewmap_clear(fd->datamap);

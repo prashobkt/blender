@@ -1296,14 +1296,6 @@ static void write_userdef(BlendWriter *writer, const UserDef *userdef)
     }
   }
 
-  LISTBASE_FOREACH (const bUserMenusGroup *, umg, &userdef->user_menus) {
-    BLO_write_struct(writer, bUserMenusGroup, umg);
-    LISTBASE_FOREACH (const bUserMenu *, um, &umg->menus) {
-      BLO_write_struct(writer, bUserMenu, um);
-      write_usermenuitems(writer, &um->items);
-    }
-  }
-
   LISTBASE_FOREACH (const bAddon *, bext, &userdef->addons) {
     BLO_write_struct(writer, bAddon, bext);
     if (bext->prop) {
@@ -1313,6 +1305,14 @@ static void write_userdef(BlendWriter *writer, const UserDef *userdef)
 
   LISTBASE_FOREACH (const bPathCompare *, path_cmp, &userdef->autoexec_paths) {
     BLO_write_struct(writer, bPathCompare, path_cmp);
+  }
+
+  LISTBASE_FOREACH (const bUserMenusGroup *, umg, &userdef->user_menus_group) {
+    BLO_write_struct(writer, bUserMenusGroup, umg);
+    LISTBASE_FOREACH (const bUserMenu *, um, &umg->menus) {
+      BLO_write_struct(writer, bUserMenu, um);
+      write_usermenuitems(writer, &um->items);
+    }
   }
 
   LISTBASE_FOREACH (const uiStyle *, style, &userdef->uistyles) {

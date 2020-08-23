@@ -1083,7 +1083,7 @@ static bUserMenu *rna_UserDef_usermenus_get_current(UserDef *userdef, bool ensur
 {
   const char **contexts_list = CTX_data_list_mode_string();
 #  if 0 /* UNUSED */
-  ListBase *umg_list = &userdef->user_menus;
+  ListBase *umg_list = &userdef->user_menus_group;
 #  endif
 
   bUserMenusGroup *umg = userdef->runtime.umg_select;
@@ -1142,7 +1142,7 @@ static bUserMenu *rna_UserDef_usermenus_get_current(UserDef *userdef, bool ensur
 
 static bUserMenusGroup *rna_UserDef_usermenus_get_group(UserDef *userdef, const char *idname)
 {
-  return BKE_blender_user_menus_group_find(&userdef->user_menus, idname);
+  return BKE_blender_user_menus_group_find(&userdef->user_menus_group, idname);
 }
 
 static void rna_UserDef_usermenus_set_group(UserDef *userdef, bUserMenusGroup *umg)
@@ -1157,7 +1157,7 @@ static void rna_UserDef_usermenus_add_group(UserDef *userdef)
   BKE_blender_user_menus_group_idname_update(umg);
   umg->type = false;
   BLI_listbase_clear(&umg->menus);
-  BLI_addtail(&userdef->user_menus, umg);
+  BLI_addtail(&userdef->user_menus_group, umg);
   userdef->runtime.umg_select = umg;
 }
 
@@ -1173,7 +1173,7 @@ static void rna_UserDef_usermenus_remove_group(UserDef *userdef)
     }
   }
 
-  BLI_remlink(&userdef->user_menus, umg);
+  BLI_remlink(&userdef->user_menus_group, umg);
   BKE_blender_user_menu_free_list(&umg->menus);
   MEM_freeN(umg);
 }
@@ -1652,7 +1652,7 @@ static bUserMenuItem_SubMenu *rna_UserDef_usermenus_item_submenu_get(bUserMenuIt
 static void rna_UserDef_usermenu_menus_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   UserDef *userdef = (UserDef *)ptr->data;
-  rna_iterator_listbase_begin(iter, &userdef->user_menus, NULL);
+  rna_iterator_listbase_begin(iter, &userdef->user_menus_group, NULL);
 }
 
 int rna_show_statusbar_vram_editable(struct PointerRNA *UNUSED(ptr), const char **UNUSED(r_info))

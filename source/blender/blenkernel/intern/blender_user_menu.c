@@ -72,7 +72,7 @@ void BKE_blender_user_menus_group_idname_update(bUserMenusGroup *umg)
       name[i] += 'A' - 'a';
   }
   STRNCPY(umg->idname, name);
-  BLI_uniquename(&U.user_menus,
+  BLI_uniquename(&U.user_menus_group,
                  umg,
                  umg->idname,
                  '_',

@@ -623,7 +623,7 @@ UserDef *BKE_blendfile_userdef_from_defaults(void)
     umg->prev = NULL;
     umg->next = NULL;
     BLI_listbase_clear(&umg->menus);
-    BLI_addtail(&userdef->user_menus, umg);
+    BLI_addtail(&userdef->user_menus_group, umg);
     userdef->runtime.umg_select = umg;
   }
 

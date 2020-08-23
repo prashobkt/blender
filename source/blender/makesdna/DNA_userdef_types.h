@@ -752,8 +752,10 @@ typedef struct UserDef {
   struct ListBase user_keyconfig_prefs;
   struct ListBase addons;
   struct ListBase autoexec_paths;
-  /** #bUserMenusGroups. */
+  /** #bUserMenu : deprecated, keep for compatibility. */
   struct ListBase user_menus;
+  /** #bUserMenuGroups. */
+  struct ListBase user_menus_group;
 
   char keyconfigstr[64];
 

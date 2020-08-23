@@ -105,6 +105,7 @@ const UserDef U_default = {
 
     .autoexec_paths = {NULL},
     .user_menus = {NULL},
+    .user_menus_group = {NULL},
 
     .keyconfigstr = "blender",
     .undosteps = 32,
