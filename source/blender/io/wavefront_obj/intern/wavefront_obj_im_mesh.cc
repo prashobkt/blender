@@ -206,6 +206,10 @@ void MeshFromGeometry::create_vertices()
     if (mesh_geometry_.vertex_index(i) < global_vertices_.vertices.size()) {
       copy_v3_v3(blender_mesh_->mvert[i].co,
                  global_vertices_.vertices[mesh_geometry_.vertex_index(i)]);
+      if (i > mesh_geometry_.tot_normals()) {
+        /* Silence debug warning in mesh validate. */
+        normal_float_to_short_v3(blender_mesh_->mvert[i].no, (float[3]){1.0f, 1.0f, 1.0f});
+      }
     }
     else {
       std::cerr << "Vertex index:" << mesh_geometry_.vertex_index(i)
@@ -331,7 +335,7 @@ void MeshFromGeometry::create_uv_verts()
     return;
   }
   MLoopUV *mluv_dst = static_cast<MLoopUV *>(CustomData_add_layer(
-      &blender_mesh_->ldata, CD_MLOOPUV, CD_CALLOC, nullptr, mesh_geometry_.tot_loops()));
+      &blender_mesh_->ldata, CD_MLOOPUV, CD_DEFAULT, nullptr, mesh_geometry_.tot_loops()));
   int tot_loop_idx = 0;
 
   for (const FaceElement &curr_face : mesh_geometry_.face_elements()) {
