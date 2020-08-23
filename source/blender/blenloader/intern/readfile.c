@@ -9847,12 +9847,7 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   }
 
   if (user->user_menus.first != NULL && user->user_menus_group.first == NULL) {
-    bUserMenusGroup *umg = MEM_mallocN(sizeof(*umg), __func__);
-    STRNCPY(umg->name, "Quick Favorites");
-    STRNCPY(umg->idname, "QUICK_FAVORITES");
-    umg->type = 0;
-    umg->prev = NULL;
-    umg->next = NULL;
+    bUserMenusGroup *umg = BKU_blender_user_menu_default();
     BLI_addtail(&user->user_menus_group, umg);
     user->runtime.umg_select = umg;
     umg->menus = user->user_menus;

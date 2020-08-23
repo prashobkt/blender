@@ -57,6 +57,7 @@
 #include "BKE_screen.h"
 #include "BKE_studiolight.h"
 #include "BKE_workspace.h"
+#include "BKE_blender_user_menu.h"
 
 #include "BLO_readfile.h"
 #include "BLO_writefile.h"
@@ -616,13 +617,7 @@ UserDef *BKE_blendfile_userdef_from_defaults(void)
 
   /* default user menus. */
   {
-    bUserMenusGroup *umg = MEM_mallocN(sizeof(*umg), __func__);
-    STRNCPY(umg->name, "Quick Favorites");
-    STRNCPY(umg->idname, "QUICK_FAVORITES");
-    umg->type = 0;
-    umg->prev = NULL;
-    umg->next = NULL;
-    BLI_listbase_clear(&umg->menus);
+    bUserMenusGroup *umg = BKU_blender_user_menu_default();
     BLI_addtail(&userdef->user_menus_group, umg);
     userdef->runtime.umg_select = umg;
   }

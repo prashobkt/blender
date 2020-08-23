@@ -27,12 +27,14 @@ extern "C" {
 struct ListBase;
 struct bUserMenu;
 struct bUserMenuItem;
+struct wmWindowManager;
 
 void BKE_blender_user_menu_free_list(struct ListBase *lb);
 void BKE_blender_user_menus_group_idname_update(struct bUserMenusGroup *umg);
 void BKE_blender_user_menus_group_idname_update_keymap(struct wmWindowManager *wm,
                                                        const char *old,
                                                        const char *new);
+struct bUserMenusGroup *BKE_blender_user_menus_group_new(const char *name);
 struct bUserMenusGroup *BKE_blender_user_menus_group_find(struct ListBase *lb, const char *idname);
 struct bUserMenu *BKE_blender_user_menu_find(struct ListBase *lb,
                                              char space_type,
@@ -44,6 +46,7 @@ struct bUserMenu *BKE_blender_user_menu_ensure(struct ListBase *lb,
 struct bUserMenuItem *BKE_blender_user_menu_item_add(struct ListBase *lb, int type);
 void BKE_blender_user_menu_item_free(struct bUserMenuItem *umi);
 void BKE_blender_user_menu_item_free_list(struct ListBase *lb);
+struct bUserMenusGroup *BKU_blender_user_menu_default(void);
 
 #ifdef __cplusplus
 }

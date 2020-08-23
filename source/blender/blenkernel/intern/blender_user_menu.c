@@ -81,8 +81,8 @@ void BKE_blender_user_menus_group_idname_update(bUserMenusGroup *umg)
 }
 
 void BKE_blender_user_menus_group_idname_update_keymap(wmWindowManager *wm,
-                                                       const char *UNUSED(old),
-                                                       const char *UNUSED(new))
+                                                       const char *old,
+                                                       const char *new)
 {
   wmKeyConfig *kc;
   wmKeyMap *km;
@@ -94,10 +94,25 @@ void BKE_blender_user_menus_group_idname_update_keymap(wmWindowManager *wm,
         if (STREQ(kmi->idname, "WM_OT_call_user_menu")) {
           IDProperty *idp = IDP_GetPropertyFromGroup(kmi->properties, "name");
           char *index = IDP_String(idp);
+          if (STREQ(kmi->idname, old)) {
+            IDP_AssignString(idp, new, 64);
+          }
         }
       }
     }
   }
+}
+
+bUserMenusGroup *BKE_blender_user_menus_group_new(const char *name)
+{
+  bUserMenusGroup *umg = MEM_mallocN(sizeof(*umg), __func__);
+  STRNCPY(umg->name, name);
+  umg->type = 0;
+  umg->prev = NULL;
+  umg->next = NULL;
+  BLI_listbase_clear(&umg->menus);
+  BKE_blender_user_menus_group_idname_update(umg);
+  return umg;
 }
 
 /** \} */
@@ -190,4 +205,20 @@ void BKE_blender_user_menu_item_free_list(ListBase *lb)
     BKE_blender_user_menu_item_free(umi);
   }
   BLI_listbase_clear(lb);
+}
+
+/* -------------------------------------------------------------------- */
+/** \name Default Menu
+ * \{ */
+
+bUserMenusGroup *BKU_blender_user_menu_default(void)
+{
+  bUserMenusGroup *umg = MEM_mallocN(sizeof(*umg), __func__);
+  STRNCPY(umg->name, "Quick Favorites");
+  STRNCPY(umg->idname, "QUICK_FAVORITES");
+  umg->type = 0;
+  umg->prev = NULL;
+  umg->next = NULL;
+  BLI_listbase_clear(&umg->menus);
+  return umg;
 }

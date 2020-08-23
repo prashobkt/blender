@@ -1152,11 +1152,7 @@ static void rna_UserDef_usermenus_set_group(UserDef *userdef, bUserMenusGroup *u
 
 static void rna_UserDef_usermenus_add_group(UserDef *userdef)
 {
-  bUserMenusGroup *umg = MEM_mallocN(sizeof(*umg), __func__);
-  STRNCPY(umg->name, "new menu");
-  BKE_blender_user_menus_group_idname_update(umg);
-  umg->type = false;
-  BLI_listbase_clear(&umg->menus);
+  bUserMenusGroup *umg = BKE_blender_user_menus_group_new("new menu");
   BLI_addtail(&userdef->user_menus_group, umg);
   userdef->runtime.umg_select = umg;
 }
