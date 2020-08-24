@@ -65,62 +65,6 @@ static OVERLAY_UVLineStyle edit_uv_line_style_from_space_image(const SpaceImage 
   }
 }
 
-static GPUBatch *edit_uv_tiled_border_gpu_batch_create(Image *image)
-{
-  BLI_assert(image);
-  BLI_assert(image->source == IMA_SRC_TILED);
-
-  static GPUVertFormat format = {0};
-  if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-  }
-
-  GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-
-  const int32_t num_tiles = BLI_listbase_count(&image->tiles);
-  const int32_t num_verts = num_tiles * 4;
-  const int32_t num_lines = num_tiles * 4;
-  const int32_t num_indexes = num_lines * 2;
-
-  GPU_vertbuf_data_alloc(vbo, num_verts);
-
-  float local_pos[3] = {0.0f, 0.0f, 0.0f};
-  int vbo_index = 0;
-
-  GPUIndexBufBuilder elb;
-  GPU_indexbuf_init(&elb, GPU_PRIM_LINES, num_indexes, num_verts);
-
-  LISTBASE_FOREACH (ImageTile *, tile, &image->tiles) {
-    const int min_x = ((tile->tile_number - 1001) % 10);
-    const int min_y = ((tile->tile_number - 1001) / 10);
-    const int max_x = min_x + 1;
-    const int max_y = min_y + 1;
-    local_pos[0] = min_x;
-    local_pos[1] = min_y;
-    GPU_vertbuf_vert_set(vbo, vbo_index, &local_pos);
-    local_pos[0] = max_x;
-    local_pos[1] = min_y;
-    GPU_vertbuf_vert_set(vbo, vbo_index + 1, &local_pos);
-    local_pos[0] = max_x;
-    local_pos[1] = max_y;
-    GPU_vertbuf_vert_set(vbo, vbo_index + 2, &local_pos);
-    local_pos[0] = min_x;
-    local_pos[1] = max_y;
-    GPU_vertbuf_vert_set(vbo, vbo_index + 3, &local_pos);
-
-    GPU_indexbuf_add_line_verts(&elb, vbo_index, vbo_index + 1);
-    GPU_indexbuf_add_line_verts(&elb, vbo_index + 1, vbo_index + 2);
-    GPU_indexbuf_add_line_verts(&elb, vbo_index + 2, vbo_index + 3);
-    GPU_indexbuf_add_line_verts(&elb, vbo_index + 3, vbo_index);
-
-    vbo_index += 4;
-  }
-
-  GPUBatch *batch = GPU_batch_create_ex(
-      GPU_PRIM_LINES, vbo, GPU_indexbuf_build(&elb), GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
-  return batch;
-}
-
 /* -------------------------------------------------------------------- */
 /** \name Internal API
  * \{ */
@@ -276,6 +220,9 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
     const DRWContextState *draw_ctx = DRW_context_state_get();
     SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
     Image *image = sima->image;
+    GPUBatch *geom = DRW_cache_quad_wires_get();
+    float obmat[4][4];
+    unit_m4(obmat);
 
     DRW_PASS_CREATE(psl->edit_uv_tiled_image_borders_ps,
                     DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS);
@@ -291,17 +238,21 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
     DRW_shgroup_uniform_vec4_copy(grp, "color", theme_color);
     DRW_shgroup_uniform_vec3_copy(grp, "offset", (float[3]){0.0f, 0.0f, 0.0f});
 
-    pd->edit_uv.draw_batch = edit_uv_tiled_border_gpu_batch_create(image);
-    DRW_shgroup_call(grp, pd->edit_uv.draw_batch, NULL);
+    LISTBASE_FOREACH (ImageTile *, tile, &image->tiles) {
+      const int tile_x = ((tile->tile_number - 1001) % 10);
+      const int tile_y = ((tile->tile_number - 1001) / 10);
+      obmat[3][1] = (float)tile_y;
+      obmat[3][0] = (float)tile_x;
+      DRW_shgroup_call_obmat(grp, geom, obmat);
+    }
 
     /* Active tile border */
     ImageTile *active_tile = BLI_findlink(&image->tiles, image->active_tile_index);
-    float offset[3] = {
-        ((active_tile->tile_number - 1001) % 10), ((active_tile->tile_number - 1001) / 10), 0.0f};
+    obmat[3][0] = (float)((active_tile->tile_number - 1001) % 10);
+    obmat[3][1] = (float)((active_tile->tile_number - 1001) / 10);
     grp = DRW_shgroup_create(sh, psl->edit_uv_tiled_image_borders_ps);
     DRW_shgroup_uniform_vec4_copy(grp, "color", selected_color);
-    DRW_shgroup_uniform_vec3_copy(grp, "offset", offset);
-    DRW_shgroup_call(grp, DRW_cache_quad_image_wires_get(), NULL);
+    DRW_shgroup_call_obmat(grp, geom, obmat);
 
     struct DRWTextStore *dt = DRW_text_cache_ensure();
     uchar color[4];
@@ -405,14 +356,6 @@ static void edit_uv_stretching_update_ratios(OVERLAY_Data *vedata)
   BLI_freelistN(&pd->edit_uv.totals);
 }
 
-static void edit_uv_draw_finish(OVERLAY_Data *vedata)
-{
-  OVERLAY_StorageList *stl = vedata->stl;
-  OVERLAY_PrivateData *pd = stl->pd;
-
-  GPU_BATCH_DISCARD_SAFE(pd->edit_uv.draw_batch);
-}
-
 void OVERLAY_edit_uv_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
@@ -438,7 +381,6 @@ void OVERLAY_edit_uv_draw(OVERLAY_Data *vedata)
   else if (pd->edit_uv.do_uv_shadow_overlay) {
     DRW_draw_pass(psl->edit_uv_edges_ps);
   }
-  edit_uv_draw_finish(vedata);
 }
 
 /* \{ */

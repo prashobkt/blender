@@ -1,10 +1,12 @@
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
-uniform vec3 offset;
 
 in vec3 pos;
 
 void main()
 {
-  vec4 position = point_object_to_ndc(pos + offset);
+  /* `pos` contains the coordinates of a quad (-1..1). but we need the coordinates of an image
+   * plane (0..1) */
+  vec3 image_pos = pos / 2.0 + 0.5;
+  vec4 position = point_object_to_ndc(image_pos);
   gl_Position = position;
 }

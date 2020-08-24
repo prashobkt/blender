@@ -351,7 +351,6 @@ typedef struct OVERLAY_PrivateData {
     bool do_face_dots;
 
     float uv_opacity;
-    struct GPUBatch *draw_batch;
     /* edge drawing */
     OVERLAY_UVLineStyle line_style;
     float dash_length;
