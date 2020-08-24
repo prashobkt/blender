@@ -147,7 +147,6 @@ static int report_textview_begin(TextViewContext *tvc)
   tvc->iter = reports->list.last;
 
   UI_ThemeClearColor(TH_BACK);
-  GPU_clear(GPU_COLOR_BIT);
 
   tvc->iter_tmp = 0;
   if (tvc->iter && report_textview_skip__internal(tvc)) {
@@ -270,12 +269,12 @@ void *info_text_pick(const SpaceInfo *sinfo,
 
 int info_textview_height(const SpaceInfo *sinfo, const ARegion *region, const ReportList *reports)
 {
-  int mval[2] = {INT_MAX, INT_MAX};
+  const int mval[2] = {INT_MAX, INT_MAX};
   return info_textview_main__internal(sinfo, region, reports, false, mval, NULL, NULL);
 }
 
 void info_textview_main(const SpaceInfo *sinfo, const ARegion *region, const ReportList *reports)
 {
-  int mval[2] = {INT_MAX, INT_MAX};
+  const int mval[2] = {INT_MAX, INT_MAX};
   info_textview_main__internal(sinfo, region, reports, true, mval, NULL, NULL);
 }

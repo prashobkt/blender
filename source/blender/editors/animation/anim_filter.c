@@ -419,6 +419,7 @@ bool ANIM_animdata_get_context(const bContext *C, bAnimContext *ac)
     ac->markers = ED_context_get_markers(C);
   }
   ac->view_layer = CTX_data_view_layer(C);
+  ac->depsgraph = CTX_data_depsgraph_pointer(C);
   ac->obact = (ac->view_layer->basact) ? ac->view_layer->basact->object : NULL;
   ac->area = area;
   ac->region = region;
@@ -426,7 +427,7 @@ bool ANIM_animdata_get_context(const bContext *C, bAnimContext *ac)
   ac->spacetype = (area) ? area->spacetype : 0;
   ac->regiontype = (region) ? region->regiontype : 0;
 
-  /* initialise default y-scale factor */
+  /* Initialize default y-scale factor. */
   animedit_get_yscale_factor(ac);
 
   /* get data context info */
@@ -1554,7 +1555,7 @@ static size_t animfilter_nla(bAnimContext *UNUSED(ac),
       next = nlt->next;
     }
 
-    /* if we're in NLA-tweakmode, don't show this track if it was disabled
+    /* If we're in NLA-tweak-mode, don't show this track if it was disabled
      * (due to tweaking) for now:
      * - active track should still get shown though (even though it has disabled flag set)
      */

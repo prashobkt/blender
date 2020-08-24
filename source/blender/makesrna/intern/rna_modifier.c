@@ -302,7 +302,7 @@ const EnumPropertyItem rna_enum_modifier_triangulate_quad_method_items[] = {
     {MOD_TRIANGULATE_QUAD_BEAUTY,
      "BEAUTY",
      0,
-     "Beauty ",
+     "Beauty",
      "Split the quads in nice triangles, slower method"},
     {MOD_TRIANGULATE_QUAD_FIXED,
      "FIXED",
@@ -723,7 +723,9 @@ static StructRNA *rna_Modifier_refine(struct PointerRNA *ptr)
     case eModifierType_WeightedNormal:
       return &RNA_WeightedNormalModifier;
     case eModifierType_Simulation:
+#  ifdef WITH_PARTICLE_NODES
       return &RNA_SimulationModifier;
+#  endif
     /* Default */
     case eModifierType_Fluidsim: /* deprecated */
     case eModifierType_None:
@@ -1163,7 +1165,7 @@ static void rna_BevelModifier_update_segments(Main *bmain, Scene *scene, Pointer
   BevelModifierData *bmd = (BevelModifierData *)ptr->data;
   if (RNA_enum_get(ptr, "profile_type") == MOD_BEVEL_PROFILE_CUSTOM) {
     short segments = (short)RNA_int_get(ptr, "segments");
-    BKE_curveprofile_initialize(bmd->custom_profile, segments);
+    BKE_curveprofile_init(bmd->custom_profile, segments);
   }
   rna_Modifier_update(bmain, scene, ptr);
 }
@@ -1630,6 +1632,7 @@ static void rna_ParticleInstanceModifier_particle_system_set(PointerRNA *ptr,
   CLAMP_MIN(psmd->psys, 1);
 }
 
+#  ifdef WITH_PARTICLE_NODES
 static void rna_SimulationModifier_simulation_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   SimulationModifierData *smd = ptr->data;
@@ -1672,6 +1675,7 @@ static void rna_SimulationModifier_data_path_set(PointerRNA *ptr, const char *va
     smd->data_path = NULL;
   }
 }
+#  endif
 
 /**
  * Special set callback that just changes the first bit of the expansion flag.
@@ -1697,6 +1701,51 @@ static bool rna_Modifier_show_expanded_get(PointerRNA *ptr)
 {
   ModifierData *md = ptr->data;
   return md->ui_expand_flag & (1 << 0);
+}
+
+static int rna_MeshSequenceCacheModifier_has_velocity_get(PointerRNA *ptr)
+{
+#  ifdef WITH_ALEMBIC
+  MeshSeqCacheModifierData *mcmd = (MeshSeqCacheModifierData *)ptr->data;
+  return ABC_has_vec3_array_property_named(mcmd->reader, mcmd->cache_file->velocity_name);
+#  else
+  return false;
+  UNUSED_VARS(ptr);
+#  endif
+}
+
+static int rna_MeshSequenceCacheModifier_read_velocity_get(PointerRNA *ptr)
+{
+#  ifdef WITH_ALEMBIC
+  MeshSeqCacheModifierData *mcmd = (MeshSeqCacheModifierData *)ptr->data;
+
+  if (mcmd->num_vertices == 0) {
+    return 0;
+  }
+
+  if (mcmd->vertex_velocities) {
+    MEM_freeN(mcmd->vertex_velocities);
+  }
+
+  mcmd->vertex_velocities = MEM_mallocN(sizeof(MeshCacheVertexVelocity) * mcmd->num_vertices,
+                                        "Mesh Cache Velocities");
+
+  int num_read = ABC_read_velocity_cache(mcmd->reader,
+                                         mcmd->cache_file->velocity_name,
+                                         mcmd->last_lookup_time,
+                                         mcmd->velocity_scale * mcmd->velocity_delta,
+                                         mcmd->num_vertices,
+                                         (float *)mcmd->vertex_velocities);
+
+  if (num_read == -1 || num_read != mcmd->num_vertices) {
+    return false;
+  }
+
+  return true;
+#  else
+  return false;
+  UNUSED_VARS(ptr);
+#  endif
 }
 
 #else
@@ -1816,6 +1865,12 @@ static void rna_def_modifier_subsurf(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flags", eSubsurfModifierFlag_UseCrease);
   RNA_def_property_ui_text(
       prop, "Use Creases", "Use mesh edge crease information to sharpen edges");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "use_custom_normals", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", eSubsurfModifierFlag_UseCustomNormals);
+  RNA_def_property_ui_text(
+      prop, "Use Custom Normals", "Interpolates existing custom normals to resulting mesh");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   RNA_define_lib_overridable(false);
@@ -2017,6 +2072,20 @@ static void rna_def_modifier_multires(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flags", eMultiresModifierFlag_UseCrease);
   RNA_def_property_ui_text(
       prop, "Use Creases", "Use mesh edge crease information to sharpen edges");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "use_custom_normals", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", eMultiresModifierFlag_UseCustomNormals);
+  RNA_def_property_ui_text(
+      prop, "Use Custom Normals", "Interpolates existing custom normals to resulting mesh");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "use_sculpt_base_mesh", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", eMultiresModifierFlag_UseSculptBaseMesh);
+  RNA_def_property_ui_text(prop,
+                           "Sculpt Base Mesh",
+                           "Make Sculpt Mode tools deform the base mesh while previewing the "
+                           "displacement of higher subdivision levels");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   RNA_define_lib_overridable(false);
@@ -3245,12 +3314,12 @@ static void rna_def_modifier_correctivesmooth(BlenderRNA *brna)
        "ORCO",
        0,
        "Original Coords",
-       "Use base mesh vert coords as the rest position"},
+       "Use base mesh vertex coords as the rest position"},
       {MOD_CORRECTIVESMOOTH_RESTSOURCE_BIND,
        "BIND",
        0,
        "Bind Coords",
-       "Use bind vert coords for rest position"},
+       "Use bind vertex coords for rest position"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -4047,8 +4116,8 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem prop_affect_items[] = {
-      {0, "EDGES", 0, "Edges", "Affect only edges"},
-      {MOD_BEVEL_VERT, "VERTICES", 0, "Vertices", "Affect only vertices"},
+      {MOD_BEVEL_AFFECT_VERTICES, "VERTICES", 0, "Vertices", "Affect only vertices"},
+      {MOD_BEVEL_AFFECT_EDGES, "EDGES", 0, "Edges", "Affect only edges"},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -4081,7 +4150,7 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_BevelModifier_update_segments");
 
   prop = RNA_def_property(srna, "affect", PROP_ENUM, PROP_NONE); /* as an enum */
-  RNA_def_property_enum_bitflag_sdna(prop, NULL, "flags");
+  RNA_def_property_enum_sdna(prop, NULL, "affect_type");
   RNA_def_property_enum_items(prop, prop_affect_items);
   RNA_def_property_ui_text(prop, "Affect", "Affect edges or vertices");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
@@ -5482,7 +5551,8 @@ static void rna_def_modifier_remesh(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "octree_depth", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "depth");
-  RNA_def_property_range(prop, 1, 12);
+  RNA_def_property_range(prop, 1, 24);
+  RNA_def_property_ui_range(prop, 1, 12, 1, 3);
   RNA_def_property_ui_text(
       prop, "Octree Depth", "Resolution of the octree; higher values give finer details");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
@@ -5655,7 +5725,17 @@ static void rna_def_modifier_ocean(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_range(prop, 1, 1024);
   RNA_def_property_ui_range(prop, 1, 32, 1, -1);
-  RNA_def_property_ui_text(prop, "Resolution", "Resolution of the generated surface");
+  RNA_def_property_ui_text(
+      prop, "Render Resolution", "Resolution of the generated surface for rendering and baking");
+  RNA_def_property_update(prop, 0, "rna_OceanModifier_init_update");
+
+  prop = RNA_def_property(srna, "viewport_resolution", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, NULL, "viewport_resolution");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_range(prop, 1, 1024);
+  RNA_def_property_ui_range(prop, 1, 32, 1, -1);
+  RNA_def_property_ui_text(
+      prop, "Viewport Resolution", "Viewport resolution of the generated surface");
   RNA_def_property_update(prop, 0, "rna_OceanModifier_init_update");
 
   prop = RNA_def_property(srna, "spatial_size", PROP_INT, PROP_NONE);
@@ -5893,7 +5973,7 @@ static void rna_def_modifier_triangulate(BlenderRNA *brna)
 static void rna_def_modifier_meshcache(BlenderRNA *brna)
 {
   static const EnumPropertyItem prop_format_type_items[] = {
-      {MOD_MESHCACHE_TYPE_MDD, "MDD", 0, "MDD ", ""},
+      {MOD_MESHCACHE_TYPE_MDD, "MDD", 0, "MDD", ""},
       {MOD_MESHCACHE_TYPE_PC2, "PC2", 0, "PC2", ""},
       {0, NULL, 0, NULL, NULL},
   };
@@ -5914,7 +5994,7 @@ static void rna_def_modifier_meshcache(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem prop_interpolation_type_items[] = {
-      {MOD_MESHCACHE_INTERP_NONE, "NONE", 0, "None ", ""},
+      {MOD_MESHCACHE_INTERP_NONE, "NONE", 0, "None", ""},
       {MOD_MESHCACHE_INTERP_LINEAR, "LINEAR", 0, "Linear", ""},
       /* for cardinal we'd need to read 4x cache's */
       // {MOD_MESHCACHE_INTERP_CARDINAL, "CARDINAL", 0, "Cardinal", ""},
@@ -6054,6 +6134,22 @@ static void rna_def_modifier_meshcache(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
+static void rna_def_mesh_cache_velocities(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "MeshCacheVertexVelocity", NULL);
+  RNA_def_struct_ui_text(srna, "Mesh Cache Velocity", "Velocity attribute of an Alembic mesh");
+  RNA_def_struct_ui_icon(srna, ICON_VERTEXSEL);
+
+  prop = RNA_def_property(srna, "velocity", PROP_FLOAT, PROP_VELOCITY);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_float_sdna(prop, NULL, "vel");
+  RNA_def_property_ui_text(prop, "Velocity", "");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+}
+
 static void rna_def_modifier_meshseqcache(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -6095,6 +6191,35 @@ static void rna_def_modifier_meshseqcache(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Read Data", "Data to read from the cache");
 
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "velocity_scale", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, NULL, "velocity_scale");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_text(
+      prop,
+      "Velocity Scale",
+      "Multiplier used to control the magnitude of the velocity vectors for time effects");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  /* -------------------------- Velocity Vectors -------------------------- */
+
+  prop = RNA_def_property(srna, "vertex_velocities", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, NULL, "vertex_velocities", "num_vertices");
+  RNA_def_property_struct_type(prop, "MeshCacheVertexVelocity");
+  RNA_def_property_ui_text(
+      prop, "Fluid Mesh Vertices", "Vertices of the fluid mesh generated by simulation");
+
+  rna_def_mesh_cache_velocities(brna);
+
+  prop = RNA_def_property(srna, "has_velocity", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Has Velocity Cache", "");
+  RNA_def_property_boolean_funcs(prop, "rna_MeshSequenceCacheModifier_has_velocity_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "read_velocity", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Read Velocity Cache", "");
+  RNA_def_property_boolean_funcs(prop, "rna_MeshSequenceCacheModifier_read_velocity_get", NULL);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   RNA_define_lib_overridable(false);
 }
@@ -6886,6 +7011,7 @@ static void rna_def_modifier_weightednormal(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
+#  ifdef WITH_PARTICLE_NODES
 static void rna_def_modifier_simulation(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -6914,6 +7040,7 @@ static void rna_def_modifier_simulation(BlenderRNA *brna)
 
   RNA_define_lib_overridable(false);
 }
+#  endif
 
 void RNA_def_modifier(BlenderRNA *brna)
 {
@@ -7043,7 +7170,9 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_meshseqcache(brna);
   rna_def_modifier_surfacedeform(brna);
   rna_def_modifier_weightednormal(brna);
+#  ifdef WITH_PARTICLE_NODES
   rna_def_modifier_simulation(brna);
+#  endif
 }
 
 #endif

@@ -50,7 +50,6 @@
 
 #include "UI_resources.h"
 
-#include "GPU_glew.h"
 #include "GPU_matrix.h"
 #include "GPU_select.h"
 #include "GPU_state.h"
@@ -1079,11 +1078,7 @@ int view3d_opengl_select(ViewContext *vc,
       wm, vc->win, depsgraph, scene, region, v3d, vc->rv3d->viewmat, NULL, &rect);
 
   if (!XRAY_ACTIVE(v3d)) {
-    GPU_depth_test(true);
-  }
-
-  if (RV3D_CLIPPING_ENABLED(vc->v3d, vc->rv3d)) {
-    ED_view3d_clipping_set(vc->rv3d);
+    GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
   }
 
   /* If in xray mode, we select the wires in priority. */
@@ -1148,11 +1143,7 @@ int view3d_opengl_select(ViewContext *vc,
       wm, vc->win, depsgraph, scene, region, v3d, vc->rv3d->viewmat, NULL, NULL);
 
   if (!XRAY_ACTIVE(v3d)) {
-    GPU_depth_test(false);
-  }
-
-  if (RV3D_CLIPPING_ENABLED(v3d, vc->rv3d)) {
-    ED_view3d_clipping_disable();
+    GPU_depth_test(GPU_DEPTH_NONE);
   }
 
   DRW_opengl_context_disable();
@@ -1719,6 +1710,8 @@ void ED_view3d_xr_shading_update(wmWindowManager *wm, const View3D *v3d, const S
 {
   if (v3d->runtime.flag & V3D_RUNTIME_XR_SESSION_ROOT) {
     View3DShading *xr_shading = &wm->xr.session_settings.shading;
+    /* Flags that shouldn't be overridden by the 3D View shading. */
+    const int flag_copy = V3D_SHADING_WORLD_ORIENTATION;
 
     BLI_assert(WM_xr_session_exists(&wm->xr));
 
@@ -1736,7 +1729,9 @@ void ED_view3d_xr_shading_update(wmWindowManager *wm, const View3D *v3d, const S
     }
 
     /* Copy shading from View3D to VR view. */
+    const int old_xr_shading_flag = xr_shading->flag;
     *xr_shading = v3d->shading;
+    xr_shading->flag = (xr_shading->flag & ~flag_copy) | (old_xr_shading_flag & flag_copy);
     if (v3d->shading.prop) {
       xr_shading->prop = IDP_CopyProperty(xr_shading->prop);
     }

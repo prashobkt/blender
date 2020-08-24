@@ -20,8 +20,7 @@
  * \ingroup draw
  */
 
-#ifndef __DRAW_CACHE_EXTRACT_H__
-#define __DRAW_CACHE_EXTRACT_H__
+#pragma once
 
 struct TaskGraph;
 
@@ -170,8 +169,7 @@ typedef enum DRWBatchFlag {
   MBC_WIRE_EDGES = (1 << 23),
   MBC_WIRE_LOOPS = (1 << 24),
   MBC_WIRE_LOOPS_UVS = (1 << 25),
-  MBC_SURF_PER_MAT = (1 << 26),
-  MBC_SKIN_ROOTS = (1 << 27),
+  MBC_SKIN_ROOTS = (1 << 26),
 } DRWBatchFlag;
 
 #define MBC_EDITUV \
@@ -270,5 +268,3 @@ void mesh_buffer_cache_create_requested(struct TaskGraph *task_graph,
                                         const Scene *scene,
                                         const ToolSettings *ts,
                                         const bool use_hide);
-
-#endif /* __DRAW_CACHE_EXTRACT_H__ */

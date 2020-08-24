@@ -45,7 +45,6 @@
 #include "ED_gizmo_library.h"
 #include "ED_gpencil.h"
 #include "ED_lattice.h"
-#include "ED_logic.h"
 #include "ED_markers.h"
 #include "ED_mask.h"
 #include "ED_mball.h"
@@ -283,7 +282,7 @@ void ED_region_draw_cb_draw(const bContext *C, ARegion *region, int type)
 void ED_spacetype_xxx(void);
 
 /* allocate and init some vars */
-static SpaceLink *xxx_new(const ScrArea *UNUSED(area), const Scene *UNUSED(scene))
+static SpaceLink *xxx_create(const ScrArea *UNUSED(area), const Scene *UNUSED(scene))
 {
   return NULL;
 }
@@ -327,7 +326,7 @@ void ED_spacetype_xxx(void)
 
   st.spaceid = SPACE_VIEW3D;
 
-  st.new = xxx_new;
+  st.create = xxx_create;
   st.free = xxx_free;
   st.init = xxx_init;
   st.duplicate = xxx_duplicate;

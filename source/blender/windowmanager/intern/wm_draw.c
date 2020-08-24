@@ -51,7 +51,7 @@
 #include "ED_screen.h"
 #include "ED_view3d.h"
 
-#include "GPU_draw.h"
+#include "GPU_context.h"
 #include "GPU_framebuffer.h"
 #include "GPU_immediate.h"
 #include "GPU_state.h"
@@ -106,11 +106,11 @@ static void wm_paintcursor_draw(bContext *C, ScrArea *area, ARegion *region)
 
       if (pc->poll == NULL || pc->poll(C)) {
         /* Prevent drawing outside region. */
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(region->winrct.xmin,
-                  region->winrct.ymin,
-                  BLI_rcti_size_x(&region->winrct) + 1,
-                  BLI_rcti_size_y(&region->winrct) + 1);
+        GPU_scissor_test(true);
+        GPU_scissor(region->winrct.xmin,
+                    region->winrct.ymin,
+                    BLI_rcti_size_x(&region->winrct) + 1,
+                    BLI_rcti_size_y(&region->winrct) + 1);
 
         if (ELEM(win->grabcursor, GHOST_kGrabWrap, GHOST_kGrabHide)) {
           int x = 0, y = 0;
@@ -121,7 +121,7 @@ static void wm_paintcursor_draw(bContext *C, ScrArea *area, ARegion *region)
           pc->draw(C, win->eventstate->x, win->eventstate->y, pc->customdata);
         }
 
-        glDisable(GL_SCISSOR_TEST);
+        GPU_scissor_test(false);
       }
     }
   }
@@ -135,14 +135,7 @@ static void wm_paintcursor_draw(bContext *C, ScrArea *area, ARegion *region)
 
 static void wm_region_draw_overlay(bContext *C, ScrArea *area, ARegion *region)
 {
-  wmWindowManager *wm = CTX_wm_manager(C);
   wmWindow *win = CTX_wm_window(C);
-
-  /* Don't draw overlay with locked interface. Drawing could access scene data that another thread
-   * may be modifying. */
-  if (wm->is_interface_locked) {
-    return;
-  }
 
   wmViewport(&region->winrct);
   UI_SetTheme(area->spacetype, region->regiontype);
@@ -214,7 +207,7 @@ static bool wm_draw_region_stereo_set(Main *bmain,
       if (region->regiontype == RGN_TYPE_PREVIEW) {
         return true;
       }
-      else if (region->regiontype == RGN_TYPE_WINDOW) {
+      if (region->regiontype == RGN_TYPE_WINDOW) {
         return (sseq->draw_flag & SEQ_DRAW_BACKDROP) != 0;
       }
     }
@@ -314,7 +307,9 @@ static void wm_region_test_xr_do_draw(const wmWindowManager *wm,
 
 static bool wm_region_use_viewport_by_type(short space_type, short region_type)
 {
-  return (ELEM(space_type, SPACE_VIEW3D, SPACE_IMAGE) && region_type == RGN_TYPE_WINDOW);
+  return (ELEM(space_type, SPACE_VIEW3D, SPACE_IMAGE, SPACE_NODE) &&
+          region_type == RGN_TYPE_WINDOW) ||
+         ((space_type == SPACE_SEQ) && region_type == RGN_TYPE_PREVIEW);
 }
 
 bool WM_region_use_viewport(ScrArea *area, ARegion *region)
@@ -467,8 +462,8 @@ static void wm_draw_region_bind(ARegion *region, int view)
 
     /* For now scissor is expected by region drawing, we could disable it
      * and do the enable/disable in the specific cases that setup scissor. */
-    glEnable(GL_SCISSOR_TEST);
-    glScissor(0, 0, region->winx, region->winy);
+    GPU_scissor_test(true);
+    GPU_scissor(0, 0, region->winx, region->winy);
   }
 
   region->draw_buffer->bound_view = view;
@@ -486,7 +481,7 @@ static void wm_draw_region_unbind(ARegion *region)
     GPU_viewport_unbind(region->draw_buffer->viewport);
   }
   else {
-    glDisable(GL_SCISSOR_TEST);
+    GPU_scissor_test(false);
     GPU_offscreen_unbind(region->draw_buffer->offscreen, false);
   }
 }
@@ -527,9 +522,7 @@ GPUTexture *wm_draw_region_texture(ARegion *region, int view)
   if (viewport) {
     return GPU_viewport_color_texture(viewport, view);
   }
-  else {
-    return GPU_offscreen_color_texture(region->draw_buffer->offscreen);
-  }
+  return GPU_offscreen_color_texture(region->draw_buffer->offscreen);
 }
 
 void wm_draw_region_blend(ARegion *region, int view, bool blend)
@@ -579,13 +572,12 @@ void wm_draw_region_blend(ARegion *region, int view, bool blend)
   }
 
   /* Not the same layout as rectf/recti. */
-  float rectt[4] = {rect_tex.xmin, rect_tex.ymin, rect_tex.xmax, rect_tex.ymax};
-  float rectg[4] = {rect_geo.xmin, rect_geo.ymin, rect_geo.xmax, rect_geo.ymax};
+  const float rectt[4] = {rect_tex.xmin, rect_tex.ymin, rect_tex.xmax, rect_tex.ymax};
+  const float rectg[4] = {rect_geo.xmin, rect_geo.ymin, rect_geo.xmax, rect_geo.ymax};
 
   if (blend) {
-    /* GL_ONE because regions drawn offscreen have premultiplied alpha. */
-    GPU_blend_set_func(GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
-    GPU_blend(true);
+    /* Regions drawn offscreen have premultiplied alpha. */
+    GPU_blend(GPU_BLEND_ALPHA_PREMULT);
   }
 
   /* setup actual texture */
@@ -610,8 +602,7 @@ void wm_draw_region_blend(ARegion *region, int view, bool blend)
   GPU_texture_unbind(texture);
 
   if (blend) {
-    GPU_blend_set_func(GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-    GPU_blend(false);
+    GPU_blend(GPU_BLEND_NONE);
   }
 }
 
@@ -729,8 +720,7 @@ static void wm_draw_window_offscreen(bContext *C, wmWindow *win, bool stereo)
 
       wm_draw_region_buffer_create(region, false, false);
       wm_draw_region_bind(region, 0);
-      GPU_clear_color(0, 0, 0, 0);
-      GPU_clear(GPU_COLOR_BIT);
+      GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
       ED_region_do_draw(C, region);
       wm_draw_region_unbind(region);
 
@@ -753,7 +743,6 @@ static void wm_draw_window_onscreen(bContext *C, wmWindow *win, int view)
    * If it becomes a problem we should clear only when window size changes. */
 #if 0
   GPU_clear_color(0, 0, 0, 0);
-  GPU_clear(GPU_COLOR_BIT);
 #endif
 
   /* Blit non-overlapping area regions. */
@@ -837,11 +826,13 @@ static void wm_draw_window(bContext *C, wmWindow *win)
   }
   else if (win->stereo3d_format->display_mode == S3D_DISPLAY_PAGEFLIP) {
     /* For pageflip we simply draw to both back buffers. */
-    glDrawBuffer(GL_BACK_LEFT);
+    GPU_backbuffer_bind(GPU_BACKBUFFER_LEFT);
     wm_draw_window_onscreen(C, win, 0);
-    glDrawBuffer(GL_BACK_RIGHT);
+
+    GPU_backbuffer_bind(GPU_BACKBUFFER_RIGHT);
     wm_draw_window_onscreen(C, win, 1);
-    glDrawBuffer(GL_BACK);
+
+    GPU_backbuffer_bind(GPU_BACKBUFFER);
   }
   else if (ELEM(win->stereo3d_format->display_mode, S3D_DISPLAY_ANAGLYPH, S3D_DISPLAY_INTERLACE)) {
     /* For anaglyph and interlace, we draw individual regions with
@@ -917,7 +908,7 @@ static bool wm_draw_update_test_window(Main *bmain, bContext *C, wmWindow *win)
   const wmWindowManager *wm = CTX_wm_manager(C);
   Scene *scene = WM_window_get_active_scene(win);
   ViewLayer *view_layer = WM_window_get_active_view_layer(win);
-  struct Depsgraph *depsgraph = BKE_scene_get_depsgraph(bmain, scene, view_layer, true);
+  struct Depsgraph *depsgraph = BKE_scene_ensure_depsgraph(bmain, scene, view_layer);
   bScreen *screen = WM_window_get_active_screen(win);
   ARegion *region;
   bool do_draw = false;
@@ -1004,7 +995,8 @@ void wm_draw_update(bContext *C)
   wmWindowManager *wm = CTX_wm_manager(C);
   wmWindow *win;
 
-  GPU_free_unused_buffers();
+  GPU_context_main_lock();
+  BKE_image_free_unused_gpu_textures();
 
   for (win = wm->windows.first; win; win = win->next) {
 #ifdef WIN32
@@ -1041,6 +1033,8 @@ void wm_draw_update(bContext *C)
 
   /* Draw non-windows (surfaces) */
   wm_surfaces_iter(C, wm_draw_surface);
+
+  GPU_context_main_unlock();
 }
 
 void wm_draw_region_clear(wmWindow *win, ARegion *UNUSED(region))

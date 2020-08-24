@@ -2223,7 +2223,7 @@ static bool file_is_blend_backup(const char *str)
     }
   }
 
-  return (retval);
+  return retval;
 }
 
 /* TODO: Maybe we should move this to BLI?

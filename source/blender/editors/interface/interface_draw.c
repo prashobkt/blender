@@ -161,13 +161,13 @@ void UI_draw_roundbox_aa(
 
   GPUBatch *batch = ui_batch_roundbox_widget_get();
   GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_WIDGET_BASE);
-  GPU_batch_uniform_4fv_array(batch, "parameters", 11, (float *)&widget_params);
+  GPU_batch_uniform_4fv_array(batch, "parameters", 11, (float(*)[4]) & widget_params);
 
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   GPU_batch_draw(batch);
 
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 void UI_draw_roundbox_4fv(
@@ -290,13 +290,13 @@ void UI_draw_roundbox_4fv(
 
   GPUBatch *batch = ui_batch_roundbox_widget_get();
   GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_WIDGET_BASE);
-  GPU_batch_uniform_4fv_array(batch, "parameters", 11, (float *)&widget_params);
+  GPU_batch_uniform_4fv_array(batch, "parameters", 11, (float(*)[4]) & widget_params);
 
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   GPU_batch_draw(batch);
 
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 #if 0
@@ -479,14 +479,14 @@ void UI_draw_roundbox_shade_x(bool filled,
       .alpha_discard = 1.0f,
   };
 
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   GPUBatch *batch = ui_batch_roundbox_widget_get();
   GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_WIDGET_BASE);
-  GPU_batch_uniform_4fv_array(batch, "parameters", 11, (float *)&widget_params);
+  GPU_batch_uniform_4fv_array(batch, "parameters", 11, (float(*)[4]) & widget_params);
   GPU_batch_draw(batch);
 
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 #if 0  /* unused */
@@ -748,13 +748,12 @@ void ui_draw_but_IMAGE(ARegion *UNUSED(region),
 #  if 0
   /* prevent drawing outside widget area */
   int scissor[4];
-  GPU_scissor_get_i(scissor);
+  GPU_scissor_get(scissor);
   GPU_scissor(rect->xmin, rect->ymin, w, h);
 #  endif
 
-  GPU_blend(true);
   /* Combine with premultiplied alpha. */
-  GPU_blend_set_func_separate(GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend(GPU_BLEND_ALPHA_PREMULT);
 
   if (w != ibuf->x || h != ibuf->y) {
     /* We scale the bitmap, rather than have OGL do a worse job. */
@@ -773,18 +772,14 @@ void ui_draw_but_IMAGE(ARegion *UNUSED(region),
                    (float)rect->ymin,
                    ibuf->x,
                    ibuf->y,
-                   GL_RGBA,
-                   GL_UNSIGNED_BYTE,
-                   GL_NEAREST,
+                   GPU_RGBA8,
+                   false,
                    ibuf->rect,
                    1.0f,
                    1.0f,
                    col);
 
-  GPU_blend(false);
-  /* Reset default. */
-  GPU_blend_set_func_separate(
-      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend(GPU_BLEND_NONE);
 
 #  if 0
   // restore scissortest
@@ -831,17 +826,13 @@ void UI_draw_safe_areas(uint pos,
   }
 }
 
-static void draw_scope_end(const rctf *rect, GLint *scissor)
+static void draw_scope_end(const rctf *rect)
 {
-  /* Restore scissor test. */
-  GPU_scissor(scissor[0], scissor[1], scissor[2], scissor[3]);
-
-  GPU_blend_set_func_separate(
-      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   /* outline */
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  float color[4] = {0.0f, 0.0f, 0.0f, 0.5f};
+  const float color[4] = {0.0f, 0.0f, 0.0f, 0.5f};
   UI_draw_roundbox_4fv(
       false, rect->xmin - 1, rect->ymin, rect->xmax + 1, rect->ymax + 1, 3.0f, color);
 }
@@ -859,7 +850,7 @@ static void histogram_draw_one(float r,
                                const bool is_line,
                                uint pos_attr)
 {
-  float color[4] = {r, g, b, alpha};
+  const float color[4] = {r, g, b, alpha};
 
   /* that can happen */
   if (res == 0) {
@@ -867,7 +858,7 @@ static void histogram_draw_one(float r,
   }
 
   GPU_line_smooth(true);
-  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
+  GPU_blend(GPU_BLEND_ADDITIVE);
 
   immUniformColor4fv(color);
 
@@ -897,8 +888,7 @@ static void histogram_draw_one(float r,
     /* curve outline */
     immUniformColor4f(0.0f, 0.0f, 0.0f, 0.25f);
 
-    GPU_blend_set_func_separate(
-        GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+    GPU_blend(GPU_BLEND_ALPHA);
     immBegin(GPU_PRIM_LINE_STRIP, res);
     for (int i = 0; i < res; i++) {
       float x2 = x + i * (w / (float)res);
@@ -931,9 +921,7 @@ void ui_draw_but_HISTOGRAM(ARegion *UNUSED(region),
   float w = BLI_rctf_size_x(&rect);
   float h = BLI_rctf_size_y(&rect) * hist->ymax;
 
-  GPU_blend(true);
-  GPU_blend_set_func_separate(
-      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   float color[4];
   UI_GetThemeColor4fv(TH_PREVIEW_BACK, color);
@@ -943,7 +931,7 @@ void ui_draw_but_HISTOGRAM(ARegion *UNUSED(region),
 
   /* need scissor test, histogram can draw outside of boundary */
   int scissor[4];
-  GPU_scissor_get_i(scissor);
+  GPU_scissor_get(scissor);
   GPU_scissor((rect.xmin - 1),
               (rect.ymin - 1),
               (rect.xmax + 1) - (rect.xmin - 1),
@@ -1000,8 +988,11 @@ void ui_draw_but_HISTOGRAM(ARegion *UNUSED(region),
 
   immUnbindProgram();
 
+  /* Restore scissor test. */
+  GPU_scissor(UNPACK4(scissor));
+
   /* outline */
-  draw_scope_end(&rect, scissor);
+  draw_scope_end(&rect);
 }
 
 #undef HISTOGRAM_TOT_GRID_LINES
@@ -1033,7 +1024,7 @@ void ui_draw_but_WAVEFORM(ARegion *UNUSED(region),
   Scopes *scopes = (Scopes *)but->poin;
   int scissor[4];
   float colors[3][3];
-  float colorsycc[3][3] = {{1, 0, 1}, {1, 1, 0}, {0, 1, 1}};
+  const float colorsycc[3][3] = {{1, 0, 1}, {1, 1, 0}, {0, 1, 1}};
   /* colors  pre multiplied by alpha for speed up */
   float colors_alpha[3][3], colorsycc_alpha[3][3];
   float min, max;
@@ -1072,9 +1063,7 @@ void ui_draw_but_WAVEFORM(ARegion *UNUSED(region),
   /* Flush text cache before changing scissors. */
   BLF_batch_draw_flush();
 
-  GPU_blend(true);
-  GPU_blend_set_func_separate(
-      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   float color[4];
   UI_GetThemeColor4fv(TH_PREVIEW_BACK, color);
@@ -1083,7 +1072,7 @@ void ui_draw_but_WAVEFORM(ARegion *UNUSED(region),
       true, rect.xmin - 1, rect.ymin - 1, rect.xmax + 1, rect.ymax + 1, 3.0f, color);
 
   /* need scissor test, waveform can draw outside of boundary */
-  GPU_scissor_get_i(scissor);
+  GPU_scissor_get(scissor);
   GPU_scissor((rect.xmin - 1),
               (rect.ymin - 1),
               (rect.xmax + 1) - (rect.xmin - 1),
@@ -1101,9 +1090,7 @@ void ui_draw_but_WAVEFORM(ARegion *UNUSED(region),
   /* Flush text cache before drawing things on top. */
   BLF_batch_draw_flush();
 
-  GPU_blend(true);
-  GPU_blend_set_func_separate(
-      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -1168,12 +1155,12 @@ void ui_draw_but_WAVEFORM(ARegion *UNUSED(region),
   }
 
   if (scopes->ok && scopes->waveform_1 != NULL) {
-    glBlendFunc(GL_ONE, GL_ONE);
+    GPU_blend(GPU_BLEND_ADDITIVE);
     GPU_point_size(1.0);
 
     /* LUMA (1 channel) */
     if (scopes->wavefrm_mode == SCOPES_WAVEFRM_LUMA) {
-      float col[3] = {alpha, alpha, alpha};
+      const float col[3] = {alpha, alpha, alpha};
 
       GPU_matrix_push();
       GPU_matrix_translate_2f(rect.xmin, yofs);
@@ -1258,10 +1245,13 @@ void ui_draw_but_WAVEFORM(ARegion *UNUSED(region),
 
   immUnbindProgram();
 
-  /* outline */
-  draw_scope_end(&rect, scissor);
+  /* Restore scissor test. */
+  GPU_scissor(UNPACK4(scissor));
 
-  GPU_blend(false);
+  /* outline */
+  draw_scope_end(&rect);
+
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 static float polar_to_x(float center, float diam, float ampli, float angle)
@@ -1402,9 +1392,7 @@ void ui_draw_but_VECTORSCOPE(ARegion *UNUSED(region),
 
   float alpha = scopes->vecscope_alpha * scopes->vecscope_alpha * scopes->vecscope_alpha;
 
-  GPU_blend(true);
-  GPU_blend_set_func_separate(
-      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   float color[4];
   UI_GetThemeColor4fv(TH_PREVIEW_BACK, color);
@@ -1414,7 +1402,7 @@ void ui_draw_but_VECTORSCOPE(ARegion *UNUSED(region),
 
   /* need scissor test, hvectorscope can draw outside of boundary */
   int scissor[4];
-  GPU_scissor_get_i(scissor);
+  GPU_scissor_get(scissor);
   GPU_scissor((rect.xmin - 1),
               (rect.ymin - 1),
               (rect.xmax + 1) - (rect.xmin - 1),
@@ -1466,9 +1454,9 @@ void ui_draw_but_VECTORSCOPE(ARegion *UNUSED(region),
 
   if (scopes->ok && scopes->vecscope != NULL) {
     /* pixel point cloud */
-    float col[3] = {alpha, alpha, alpha};
+    const float col[3] = {alpha, alpha, alpha};
 
-    glBlendFunc(GL_ONE, GL_ONE);
+    GPU_blend(GPU_BLEND_ADDITIVE);
     GPU_point_size(1.0);
 
     GPU_matrix_push();
@@ -1482,10 +1470,12 @@ void ui_draw_but_VECTORSCOPE(ARegion *UNUSED(region),
 
   immUnbindProgram();
 
+  /* Restore scissor test. */
+  GPU_scissor(UNPACK4(scissor));
   /* outline */
-  draw_scope_end(&rect, scissor);
+  draw_scope_end(&rect);
 
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 static void ui_draw_colorband_handle_tri_hlight(
@@ -1596,7 +1586,7 @@ static void ui_draw_colorband_handle(uint shdr_pos,
       shdr_pos, x - half_width, y1 - 1, x + half_width, y1 + height, false);
 
   /* draw all triangles blended */
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   ui_draw_colorband_handle_tri(shdr_pos, x, y1 + height, half_width, half_width, true);
 
@@ -1620,7 +1610,7 @@ static void ui_draw_colorband_handle(uint shdr_pos,
   immUniformColor3ub(0, 0, 0);
   ui_draw_colorband_handle_tri_hlight(shdr_pos, x, y1 + height, half_width, half_width);
 
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 
   immUniformColor3ub(128, 128, 128);
   ui_draw_colorband_handle_box(
@@ -1640,7 +1630,9 @@ void ui_draw_but_COLORBAND(uiBut *but, const uiWidgetColors *UNUSED(wcol), const
   struct ColorManagedDisplay *display = ui_block_cm_display_get(but->block);
   uint pos_id, col_id;
 
-  ColorBand *coba = (ColorBand *)(but->editcoba ? but->editcoba : but->poin);
+  uiButColorBand *but_coba = (uiButColorBand *)but;
+  ColorBand *coba = (but_coba->edit_coba == NULL) ? (ColorBand *)but->poin : but_coba->edit_coba;
+
   if (coba == NULL) {
     return;
   }
@@ -1676,7 +1668,7 @@ void ui_draw_but_COLORBAND(uiBut *but, const uiWidgetColors *UNUSED(wcol), const
   immBindBuiltinProgram(GPU_SHADER_2D_SMOOTH_COLOR);
 
   /* layer: color ramp */
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   CBData *cbd = coba->data;
 
@@ -1724,7 +1716,7 @@ void ui_draw_but_COLORBAND(uiBut *but, const uiWidgetColors *UNUSED(wcol), const
 
   immUnbindProgram();
 
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 
   /* New format */
   format = immVertexFormat();
@@ -1736,7 +1728,7 @@ void ui_draw_but_COLORBAND(uiBut *but, const uiWidgetColors *UNUSED(wcol), const
   imm_draw_box_wire_2d(pos_id, x1, y1, x1 + sizex, rect->ymax);
 
   /* layer: box outline */
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
   immUniformColor4f(0.0f, 0.0f, 0.0f, 0.5f);
 
   immBegin(GPU_PRIM_LINES, 2);
@@ -1751,7 +1743,7 @@ void ui_draw_but_COLORBAND(uiBut *but, const uiWidgetColors *UNUSED(wcol), const
   immVertex2f(pos_id, x1 + sizex, y1 - 1);
   immEnd();
 
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 
   /* layer: draw handles */
   for (int a = 0; a < coba->tot; a++, cbd++) {
@@ -1774,7 +1766,7 @@ void ui_draw_but_COLORBAND(uiBut *but, const uiWidgetColors *UNUSED(wcol), const
 void ui_draw_but_UNITVEC(uiBut *but, const uiWidgetColors *wcol, const rcti *rect)
 {
   /* sphere color */
-  float diffuse[3] = {1.0f, 1.0f, 1.0f};
+  const float diffuse[3] = {1.0f, 1.0f, 1.0f};
   float light[3];
   const float size = 0.5f * min_ff(BLI_rcti_size_x(rect), BLI_rcti_size_y(rect));
 
@@ -1783,8 +1775,7 @@ void ui_draw_but_UNITVEC(uiBut *but, const uiWidgetColors *wcol, const rcti *rec
   UI_draw_roundbox_3ub_alpha(
       true, rect->xmin, rect->ymin, rect->xmax, rect->ymax, 5.0f, wcol->inner, 255);
 
-  glCullFace(GL_BACK);
-  glEnable(GL_CULL_FACE);
+  GPU_face_culling(GPU_CULL_BACK);
 
   /* setup lights */
   ui_but_v3_get(but, light);
@@ -1809,7 +1800,7 @@ void ui_draw_but_UNITVEC(uiBut *but, const uiWidgetColors *wcol, const rcti *rec
   GPU_batch_draw(sphere);
 
   /* restore */
-  glDisable(GL_CULL_FACE);
+  GPU_face_culling(GPU_CULL_NONE);
 
   /* AA circle */
   GPUVertFormat *format = immVertexFormat();
@@ -1817,10 +1808,10 @@ void ui_draw_but_UNITVEC(uiBut *but, const uiWidgetColors *wcol, const rcti *rec
   immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
   immUniformColor3ubv(wcol->inner);
 
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
   GPU_line_smooth(true);
   imm_draw_circle_wire_2d(pos, 0.0f, 0.0f, 1.0f, 32);
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
   GPU_line_smooth(false);
 
   if (use_project_matrix) {
@@ -1890,14 +1881,9 @@ static void gl_shaded_color(const uchar *color, int shade)
 
 void ui_draw_but_CURVE(ARegion *region, uiBut *but, const uiWidgetColors *wcol, const rcti *rect)
 {
-  CurveMapping *cumap;
-
-  if (but->editcumap) {
-    cumap = but->editcumap;
-  }
-  else {
-    cumap = (CurveMapping *)but->poin;
-  }
+  uiButCurveMapping *but_cumap = (uiButCurveMapping *)but;
+  CurveMapping *cumap = (but_cumap->edit_cumap == NULL) ? (CurveMapping *)but->poin :
+                                                          but_cumap->edit_cumap;
 
   float clip_size_x = BLI_rctf_size_x(&cumap->curr);
   float clip_size_y = BLI_rctf_size_y(&cumap->curr);
@@ -1922,7 +1908,7 @@ void ui_draw_but_CURVE(ARegion *region, uiBut *but, const uiWidgetColors *wcol, 
 
   /* need scissor test, curve can draw outside of boundary */
   int scissor[4];
-  GPU_scissor_get_i(scissor);
+  GPU_scissor_get(scissor);
   rcti scissor_new = {
       .xmin = rect->xmin,
       .ymin = rect->ymin,
@@ -1939,7 +1925,7 @@ void ui_draw_but_CURVE(ARegion *region, uiBut *but, const uiWidgetColors *wcol, 
   /* Do this first to not mess imm context */
   if (but->a1 == UI_GRAD_H) {
     /* magic trigger for curve backgrounds */
-    float col[3] = {0.0f, 0.0f, 0.0f}; /* dummy arg */
+    const float col[3] = {0.0f, 0.0f, 0.0f}; /* dummy arg */
 
     rcti grid = {
         .xmin = rect->xmin + zoomx * (-offsx),
@@ -1962,13 +1948,11 @@ void ui_draw_but_CURVE(ARegion *region, uiBut *but, const uiWidgetColors *wcol, 
 
   if (but->a1 == UI_GRAD_H) {
     /* grid, hsv uses different grid */
-    GPU_blend(true);
-    GPU_blend_set_func_separate(
-        GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+    GPU_blend(GPU_BLEND_ALPHA);
     ARRAY_SET_ITEMS(color_backdrop, 0, 0, 0, 48.0 / 255.0);
     immUniformColor4fv(color_backdrop);
     ui_draw_but_curve_grid(pos, rect, zoomx, zoomy, offsx, offsy, 0.1666666f);
-    GPU_blend(false);
+    GPU_blend(GPU_BLEND_NONE);
   }
   else {
     if (cumap->flag & CUMA_DO_CLIP) {
@@ -2081,11 +2065,10 @@ void ui_draw_but_CURVE(ARegion *region, uiBut *but, const uiWidgetColors *wcol, 
   }
 
   immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   /* Curve filled. */
   immUniformColor3ubvAlpha(wcol->item, 128);
-  GPU_polygon_smooth(true);
   immBegin(GPU_PRIM_TRI_STRIP, (CM_TABLE * 2 + 2) + 4);
   immVertex2f(pos, line_range.xmin, rect->ymin);
   immVertex2f(pos, line_range.xmin, line_range.ymin);
@@ -2098,7 +2081,6 @@ void ui_draw_but_CURVE(ARegion *region, uiBut *but, const uiWidgetColors *wcol, 
   immVertex2f(pos, line_range.xmax, rect->ymin);
   immVertex2f(pos, line_range.xmax, line_range.ymax);
   immEnd();
-  GPU_polygon_smooth(false);
 
   /* Curve line. */
   GPU_line_width(1.0f);
@@ -2116,7 +2098,7 @@ void ui_draw_but_CURVE(ARegion *region, uiBut *but, const uiWidgetColors *wcol, 
 
   /* Reset state for fill & line. */
   GPU_line_smooth(false);
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
   immUnbindProgram();
 
   /* The points, use aspect to make them visible on edges. */
@@ -2183,13 +2165,10 @@ void ui_draw_but_CURVEPROFILE(ARegion *region,
 {
   uint i;
   float fx, fy;
-  CurveProfile *profile;
-  if (but->editprofile) {
-    profile = but->editprofile;
-  }
-  else {
-    profile = (CurveProfile *)but->poin;
-  }
+
+  uiButCurveProfile *but_profile = (uiButCurveProfile *)but;
+  CurveProfile *profile = (but_profile->edit_profile == NULL) ? (CurveProfile *)but->poin :
+                                                                but_profile->edit_profile;
 
   /* Calculate offset and zoom. */
   float zoomx = (BLI_rcti_size_x(rect) - 2.0f) / BLI_rctf_size_x(&profile->view_rect);
@@ -2204,7 +2183,7 @@ void ui_draw_but_CURVEPROFILE(ARegion *region,
 
   /* Test needed because path can draw outside of boundary. */
   int scissor[4];
-  GPU_scissor_get_i(scissor);
+  GPU_scissor_get(scissor);
   rcti scissor_new = {
       .xmin = rect->xmin,
       .ymin = rect->ymin,
@@ -2258,12 +2237,12 @@ void ui_draw_but_CURVEPROFILE(ARegion *region,
   /* Also add the last points on the right and bottom edges to close off the fill polygon. */
   bool add_left_tri = profile->view_rect.xmin < 0.0f;
   bool add_bottom_tri = profile->view_rect.ymin < 0.0f;
-  uint tot_points = (uint)PROF_N_TABLE(profile->path_len) + 1 + add_left_tri + add_bottom_tri;
+  uint tot_points = (uint)PROF_TABLE_LEN(profile->path_len) + 1 + add_left_tri + add_bottom_tri;
   uint tot_triangles = tot_points - 2;
 
   /* Create array of the positions of the table's points. */
   float(*table_coords)[2] = MEM_mallocN(sizeof(*table_coords) * tot_points, "table x coords");
-  for (i = 0; i < (uint)PROF_N_TABLE(profile->path_len);
+  for (i = 0; i < (uint)PROF_TABLE_LEN(profile->path_len);
        i++) { /* Only add the points from the table here. */
     table_coords[i][0] = pts[i].x;
     table_coords[i][1] = pts[i].y;
@@ -2303,7 +2282,7 @@ void ui_draw_but_CURVEPROFILE(ARegion *region,
 
   /* Draw the triangles for the profile fill. */
   immUniformColor3ubvAlpha((const uchar *)wcol->item, 128);
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
   GPU_polygon_smooth(false);
   immBegin(GPU_PRIM_TRIS, 3 * tot_triangles);
   for (i = 0; i < tot_triangles; i++) {
@@ -2391,7 +2370,7 @@ void ui_draw_but_CURVEPROFILE(ARegion *region,
 
   /* Draw the control points. */
   GPU_line_smooth(false);
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
   GPU_point_size(max_ff(3.0f, min_ff(UI_DPI_FAC / but->block->aspect * 5.0f, 5.0f)));
   immBegin(GPU_PRIM_POINTS, tot_points);
   for (i = 0; i < tot_points; i++) {
@@ -2405,7 +2384,7 @@ void ui_draw_but_CURVEPROFILE(ARegion *region,
   /* Draw the handle points. */
   if (selected_free_points > 0) {
     GPU_line_smooth(false);
-    GPU_blend(false);
+    GPU_blend(GPU_BLEND_NONE);
     GPU_point_size(max_ff(2.0f, min_ff(UI_DPI_FAC / but->block->aspect * 4.0f, 4.0f)));
     immBegin(GPU_PRIM_POINTS, selected_free_points * 2);
     for (i = 0; i < tot_points; i++) {
@@ -2472,20 +2451,18 @@ void ui_draw_but_TRACKPREVIEW(ARegion *UNUSED(region),
   int width = BLI_rctf_size_x(&rect) + 1;
   int height = BLI_rctf_size_y(&rect);
 
-  GPU_blend(true);
-  GPU_blend_set_func_separate(
-      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   /* need scissor test, preview image can draw outside of boundary */
   int scissor[4];
-  GPU_scissor_get_i(scissor);
+  GPU_scissor_get(scissor);
   GPU_scissor((rect.xmin - 1),
               (rect.ymin - 1),
               (rect.xmax + 1) - (rect.xmin - 1),
               (rect.ymax + 1) - (rect.ymin - 1));
 
   if (scopes->track_disabled) {
-    float color[4] = {0.7f, 0.3f, 0.3f, 0.3f};
+    const float color[4] = {0.7f, 0.3f, 0.3f, 0.3f};
     UI_draw_roundbox_corner_set(UI_CNR_ALL);
     UI_draw_roundbox_4fv(
         true, rect.xmin - 1, rect.ymin, rect.xmax + 1, rect.ymax + 1, 3.0f, color);
@@ -2534,7 +2511,7 @@ void ui_draw_but_TRACKPREVIEW(ARegion *UNUSED(region),
       float col_sel[4], col_outline[4];
 
       if (scopes->use_track_mask) {
-        float color[4] = {0.0f, 0.0f, 0.0f, 0.3f};
+        const float color[4] = {0.0f, 0.0f, 0.0f, 0.3f};
         UI_draw_roundbox_corner_set(UI_CNR_ALL);
         UI_draw_roundbox_4fv(
             true, rect.xmin - 1, rect.ymin, rect.xmax + 1, rect.ymax + 1, 3.0f, color);
@@ -2546,9 +2523,8 @@ void ui_draw_but_TRACKPREVIEW(ARegion *UNUSED(region),
                        rect.ymin + 1,
                        drawibuf->x,
                        drawibuf->y,
-                       GL_RGBA,
-                       GL_UNSIGNED_BYTE,
-                       GL_LINEAR,
+                       GPU_RGBA8,
+                       true,
                        drawibuf->rect,
                        1.0f,
                        1.0f,
@@ -2568,7 +2544,7 @@ void ui_draw_but_TRACKPREVIEW(ARegion *UNUSED(region),
 
       /* Do stipple cross with geometry */
       immBegin(GPU_PRIM_LINES, 7 * 2 * 2);
-      float pos_sel[8] = {-10.0f, -7.0f, -4.0f, -1.0f, 2.0f, 5.0f, 8.0f, 11.0f};
+      const float pos_sel[8] = {-10.0f, -7.0f, -4.0f, -1.0f, 2.0f, 5.0f, 8.0f, 11.0f};
       for (int axe = 0; axe < 2; axe++) {
         for (int i = 0; i < 7; i++) {
           float x1 = pos_sel[i] * (1 - axe);
@@ -2598,16 +2574,18 @@ void ui_draw_but_TRACKPREVIEW(ARegion *UNUSED(region),
   }
 
   if (!ok) {
-    float color[4] = {0.0f, 0.0f, 0.0f, 0.3f};
+    const float color[4] = {0.0f, 0.0f, 0.0f, 0.3f};
     UI_draw_roundbox_corner_set(UI_CNR_ALL);
     UI_draw_roundbox_4fv(
         true, rect.xmin - 1, rect.ymin, rect.xmax + 1, rect.ymax + 1, 3.0f, color);
   }
 
+  /* Restore scissor test. */
+  GPU_scissor(UNPACK4(scissor));
   /* outline */
-  draw_scope_end(&rect, scissor);
+  draw_scope_end(&rect);
 
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 /* ****************************************************** */
@@ -2688,7 +2666,7 @@ static void ui_shadowbox(uint pos,
 
 void UI_draw_box_shadow(uchar alpha, float minx, float miny, float maxx, float maxy)
 {
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -2708,7 +2686,7 @@ void UI_draw_box_shadow(uchar alpha, float minx, float miny, float maxx, float m
 
   immUnbindProgram();
 
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 void ui_draw_dropshadow(
@@ -2734,7 +2712,7 @@ void ui_draw_dropshadow(
     a = i * aspect;
   }
 
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
   const float dalpha = alpha * 2.0f / 255.0f;
   float calpha = dalpha;
   float visibility = 1.0f;
@@ -2771,12 +2749,12 @@ void ui_draw_dropshadow(
 
   GPUBatch *batch = ui_batch_roundbox_shadow_get();
   GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_WIDGET_SHADOW);
-  GPU_batch_uniform_4fv_array(batch, "parameters", 4, (float *)&widget_params);
+  GPU_batch_uniform_4fv_array(batch, "parameters", 4, (float(*)[4]) & widget_params);
   GPU_batch_uniform_1f(batch, "alpha", 1.0f - visibility);
   GPU_batch_draw(batch);
 
   /* outline emphasis */
-  float color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
+  const float color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
   UI_draw_roundbox_4fv(false,
                        rct->xmin - 0.5f,
                        rct->ymin - 0.5f,
@@ -2785,5 +2763,5 @@ void ui_draw_dropshadow(
                        radius + 0.5f,
                        color);
 
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 }

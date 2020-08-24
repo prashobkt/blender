@@ -61,7 +61,7 @@ bool RNA_property_overridable_get(PointerRNA *ptr, PropertyRNA *prop)
     /* Special handling for insertions of constraints or modifiers... */
     /* TODO Note We may want to add a more generic system to RNA
      * (like a special property in struct of items)
-     * if we get more override-able collections,
+     * if we get more overrideable collections,
      * for now we can live with those special-cases handling I think. */
     if (RNA_struct_is_a(ptr->type, &RNA_Constraint)) {
       bConstraint *con = ptr->data;
@@ -484,13 +484,13 @@ static bool rna_property_override_operation_apply(Main *bmain,
   /* Special case for IDProps, we use default callback then. */
   if (prop_dst->magic != RNA_MAGIC) {
     override_apply = rna_property_override_apply_default;
-    if (prop_src->magic == RNA_MAGIC && prop_src->override_apply != override_apply) {
+    if (prop_src->magic == RNA_MAGIC && !ELEM(prop_src->override_apply, NULL, override_apply)) {
       override_apply = NULL;
     }
   }
   else if (prop_src->magic != RNA_MAGIC) {
     override_apply = rna_property_override_apply_default;
-    if (prop_dst->override_apply != override_apply) {
+    if (!ELEM(prop_dst->override_apply, NULL, override_apply)) {
       override_apply = NULL;
     }
   }

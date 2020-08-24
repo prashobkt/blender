@@ -148,7 +148,7 @@ uiBut *uiDefAutoButR(uiBlock *block,
       if (RNA_property_array_check(prop) && index == -1) {
         if (ELEM(RNA_property_subtype(prop), PROP_COLOR, PROP_COLOR_GAMMA)) {
           but = uiDefButR_prop(
-              block, UI_BTYPE_COLOR, 0, name, x1, y1, x2, y2, ptr, prop, -1, 0, 0, -1, -1, NULL);
+              block, UI_BTYPE_COLOR, 0, name, x1, y1, x2, y2, ptr, prop, -1, 0, 0, 0, 0, NULL);
         }
         else {
           return NULL;
@@ -382,6 +382,7 @@ typedef struct CollItemSearch {
   int index;
   int iconid;
   bool is_id;
+  int name_prefix_offset;
   uint has_sep_char : 1;
 } CollItemSearch;
 
@@ -432,6 +433,7 @@ void ui_rna_collection_search_update_fn(const struct bContext *C,
       }
     }
 
+    int name_prefix_offset = 0;
     int iconid = ICON_NONE;
     bool has_sep_char = false;
     bool is_id = itemptr.type && RNA_struct_is_ID(itemptr.type);
@@ -447,7 +449,8 @@ void ui_rna_collection_search_update_fn(const struct bContext *C,
       }
       else {
         const ID *id = itemptr.data;
-        BKE_id_full_name_ui_prefix_get(name_buf, itemptr.data, true, UI_SEP_CHAR);
+        BKE_id_full_name_ui_prefix_get(
+            name_buf, itemptr.data, true, UI_SEP_CHAR, &name_prefix_offset);
         BLI_STATIC_ASSERT(sizeof(name_buf) >= MAX_ID_FULL_NAME_UI,
                           "Name string buffer should be big enough to hold full UI ID name");
         name = name_buf;
@@ -459,13 +462,14 @@ void ui_rna_collection_search_update_fn(const struct bContext *C,
     }
 
     if (name) {
-      if (skip_filter || BLI_strcasestr(name, str)) {
+      if (skip_filter || BLI_strcasestr(name + name_prefix_offset, str)) {
         cis = MEM_callocN(sizeof(CollItemSearch), "CollectionItemSearch");
         cis->data = itemptr.data;
         cis->name = BLI_strdup(name);
         cis->index = i;
         cis->iconid = iconid;
         cis->is_id = is_id;
+        cis->name_prefix_offset = name_prefix_offset;
         cis->has_sep_char = has_sep_char;
         BLI_addtail(items_list, cis);
       }
@@ -484,11 +488,12 @@ void ui_rna_collection_search_update_fn(const struct bContext *C,
   for (cis = items_list->first; cis; cis = cis->next) {
     /* If no item has an own icon to display, libraries can use the library icons rather than the
      * name prefix for showing the library status. */
+    int name_prefix_offset = cis->name_prefix_offset;
     if (!has_id_icon && cis->is_id) {
       cis->iconid = UI_library_icon_get(cis->data);
       /* No need to re-allocate, string should be shorter than before (lib status prefix is
        * removed). */
-      BKE_id_full_name_ui_prefix_get(name_buf, cis->data, false, UI_SEP_CHAR);
+      BKE_id_full_name_ui_prefix_get(name_buf, cis->data, false, UI_SEP_CHAR, &name_prefix_offset);
       BLI_assert(strlen(name_buf) <= MEM_allocN_len(cis->name));
       strcpy(cis->name, name_buf);
     }
@@ -497,7 +502,8 @@ void ui_rna_collection_search_update_fn(const struct bContext *C,
                             cis->name,
                             cis->data,
                             cis->iconid,
-                            cis->has_sep_char ? UI_BUT_HAS_SEP_CHAR : 0)) {
+                            cis->has_sep_char ? UI_BUT_HAS_SEP_CHAR : 0,
+                            name_prefix_offset)) {
       break;
     }
   }
@@ -708,12 +714,8 @@ bool UI_butstore_is_valid(uiButStore *bs)
 
 bool UI_butstore_is_registered(uiBlock *block, uiBut *but)
 {
-  uiButStore *bs_handle;
-
-  for (bs_handle = block->butstore.first; bs_handle; bs_handle = bs_handle->next) {
-    uiButStoreElem *bs_elem;
-
-    for (bs_elem = bs_handle->items.first; bs_elem; bs_elem = bs_elem->next) {
+  LISTBASE_FOREACH (uiButStore *, bs_handle, &block->butstore) {
+    LISTBASE_FOREACH (uiButStoreElem *, bs_elem, &bs_handle->items) {
       if (*bs_elem->but_p == but) {
         return true;
       }
@@ -734,10 +736,7 @@ void UI_butstore_register(uiButStore *bs_handle, uiBut **but_p)
 
 void UI_butstore_unregister(uiButStore *bs_handle, uiBut **but_p)
 {
-  uiButStoreElem *bs_elem, *bs_elem_next;
-
-  for (bs_elem = bs_handle->items.first; bs_elem; bs_elem = bs_elem_next) {
-    bs_elem_next = bs_elem->next;
+  LISTBASE_FOREACH_MUTABLE (uiButStoreElem *, bs_elem, &bs_handle->items) {
     if (bs_elem->but_p == but_p) {
       BLI_remlink(&bs_handle->items, bs_elem);
       MEM_freeN(bs_elem);
@@ -752,12 +751,10 @@ void UI_butstore_unregister(uiButStore *bs_handle, uiBut **but_p)
  */
 bool UI_butstore_register_update(uiBlock *block, uiBut *but_dst, const uiBut *but_src)
 {
-  uiButStore *bs_handle;
   bool found = false;
 
-  for (bs_handle = block->butstore.first; bs_handle; bs_handle = bs_handle->next) {
-    uiButStoreElem *bs_elem;
-    for (bs_elem = bs_handle->items.first; bs_elem; bs_elem = bs_elem->next) {
+  LISTBASE_FOREACH (uiButStore *, bs_handle, &block->butstore) {
+    LISTBASE_FOREACH (uiButStoreElem *, bs_elem, &bs_handle->items) {
       if (*bs_elem->but_p == but_src) {
         *bs_elem->but_p = but_dst;
         found = true;
@@ -773,14 +770,9 @@ bool UI_butstore_register_update(uiBlock *block, uiBut *but_dst, const uiBut *bu
  */
 void UI_butstore_clear(uiBlock *block)
 {
-  uiButStore *bs_handle;
-
-  for (bs_handle = block->butstore.first; bs_handle; bs_handle = bs_handle->next) {
-    uiButStoreElem *bs_elem;
-
+  LISTBASE_FOREACH (uiButStore *, bs_handle, &block->butstore) {
     bs_handle->block = NULL;
-
-    for (bs_elem = bs_handle->items.first; bs_elem; bs_elem = bs_elem->next) {
+    LISTBASE_FOREACH (uiButStoreElem *, bs_elem, &bs_handle->items) {
       *bs_elem->but_p = NULL;
     }
   }
@@ -791,8 +783,6 @@ void UI_butstore_clear(uiBlock *block)
  */
 void UI_butstore_update(uiBlock *block)
 {
-  uiButStore *bs_handle;
-
   /* move this list to the new block */
   if (block->oldblock) {
     if (block->oldblock->butstore.first) {
@@ -806,17 +796,14 @@ void UI_butstore_update(uiBlock *block)
 
   /* warning, loop-in-loop, in practice we only store <10 buttons at a time,
    * so this isn't going to be a problem, if that changes old-new mapping can be cached first */
-  for (bs_handle = block->butstore.first; bs_handle; bs_handle = bs_handle->next) {
-
+  LISTBASE_FOREACH (uiButStore *, bs_handle, &block->butstore) {
     BLI_assert((bs_handle->block == NULL) || (bs_handle->block == block) ||
                (block->oldblock && block->oldblock == bs_handle->block));
 
     if (bs_handle->block == block->oldblock) {
-      uiButStoreElem *bs_elem;
-
       bs_handle->block = block;
 
-      for (bs_elem = bs_handle->items.first; bs_elem; bs_elem = bs_elem->next) {
+      LISTBASE_FOREACH (uiButStoreElem *, bs_elem, &bs_handle->items) {
         if (*bs_elem->but_p) {
           uiBut *but_new = ui_but_find_new(block, *bs_elem->but_p);
 

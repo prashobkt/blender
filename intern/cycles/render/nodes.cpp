@@ -776,7 +776,7 @@ static void sky_texture_precompute_nishita(SunSky *sunsky,
   sunsky->nishita_data[5] = pixel_top[2];
   sunsky->nishita_data[6] = sun_elevation;
   sunsky->nishita_data[7] = sun_rotation;
-  sunsky->nishita_data[8] = sun_disc ? sun_size : 0.0f;
+  sunsky->nishita_data[8] = sun_disc ? sun_size : -1.0f;
   sunsky->nishita_data[9] = sun_intensity;
 }
 
@@ -798,7 +798,7 @@ NODE_DEFINE(SkyTextureNode)
   SOCKET_BOOLEAN(sun_disc, "Sun Disc", true);
   SOCKET_FLOAT(sun_size, "Sun Size", 0.009512f);
   SOCKET_FLOAT(sun_intensity, "Sun Intensity", 1.0f);
-  SOCKET_FLOAT(sun_elevation, "Sun Elevation", M_PI_2_F);
+  SOCKET_FLOAT(sun_elevation, "Sun Elevation", 15.0f * M_PI_F / 180.0f);
   SOCKET_FLOAT(sun_rotation, "Sun Rotation", 0.0f);
   SOCKET_FLOAT(altitude, "Altitude", 1.0f);
   SOCKET_FLOAT(air_density, "Air", 1.0f);
@@ -834,7 +834,7 @@ void SkyTextureNode::compile(SVMCompiler &compiler)
 
     sky_texture_precompute_nishita(&sunsky,
                                    sun_disc,
-                                   sun_size,
+                                   get_sun_size(),
                                    sun_intensity,
                                    sun_elevation,
                                    sun_rotation,
@@ -930,7 +930,7 @@ void SkyTextureNode::compile(OSLCompiler &compiler)
 
     sky_texture_precompute_nishita(&sunsky,
                                    sun_disc,
-                                   sun_size,
+                                   get_sun_size(),
                                    sun_intensity,
                                    sun_elevation,
                                    sun_rotation,
@@ -5910,9 +5910,9 @@ OutputAOVNode::OutputAOVNode() : ShaderNode(node_type)
 
 void OutputAOVNode::simplify_settings(Scene *scene)
 {
-  slot = scene->film->get_aov_offset(name.string(), is_color);
+  slot = scene->film->get_aov_offset(scene, name.string(), is_color);
   if (slot == -1) {
-    slot = scene->film->get_aov_offset(name.string(), is_color);
+    slot = scene->film->get_aov_offset(scene, name.string(), is_color);
   }
 
   if (slot == -1 || is_color) {

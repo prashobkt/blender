@@ -23,8 +23,7 @@
  * and arbitrary text data to store in blend files.
  */
 
-#ifndef __DNA_TEXT_TYPES_H__
-#define __DNA_TEXT_TYPES_H__
+#pragma once
 
 #include "DNA_ID.h"
 #include "DNA_listBase.h"
@@ -86,5 +85,3 @@ enum {
   /** Use space instead of tabs. */
   TXT_TABSTOSPACES = 1 << 10,
 };
-
-#endif /* __DNA_TEXT_TYPES_H__ */

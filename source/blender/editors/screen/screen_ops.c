@@ -89,6 +89,8 @@
 #include "UI_resources.h"
 #include "UI_view2d.h"
 
+#include "GPU_extensions.h"
+
 #include "screen_intern.h" /* own module include */
 
 #define KM_MODAL_CANCEL 1
@@ -690,10 +692,9 @@ static bool actionzone_area_poll(bContext *C)
 
   if (screen && win && win->eventstate) {
     const int *xy = &win->eventstate->x;
-    AZone *az;
 
     LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-      for (az = area->actionzones.first; az; az = az->next) {
+      LISTBASE_FOREACH (AZone *, az, &area->actionzones) {
         if (BLI_rcti_isect_pt_v(&az->rect, xy)) {
           return 1;
         }
@@ -3066,13 +3067,12 @@ static void SCREEN_OT_keyframe_jump(wmOperatorType *ot)
 static int marker_jump_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  TimeMarker *marker;
   int closest = CFRA;
   const bool next = RNA_boolean_get(op->ptr, "next");
   bool found = false;
 
   /* find matching marker in the right direction */
-  for (marker = scene->markers.first; marker; marker = marker->next) {
+  LISTBASE_FOREACH (TimeMarker *, marker, &scene->markers) {
     if (next) {
       if ((marker->frame > CFRA) && (!found || closest > marker->frame)) {
         closest = marker->frame;
@@ -3168,8 +3168,9 @@ static int screen_maximize_area_exec(bContext *C, wmOperator *op)
 
   /* search current screen for 'fullscreen' areas */
   /* prevents restoring info header, when mouse is over it */
-  for (area = screen->areabase.first; area; area = area->next) {
-    if (area->full) {
+  LISTBASE_FOREACH (ScrArea *, area_iter, &screen->areabase) {
+    if (area_iter->full) {
+      area = area_iter;
       break;
     }
   }
@@ -3617,12 +3618,10 @@ static void SCREEN_OT_area_options(wmOperatorType *ot)
 static int spacedata_cleanup_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  bScreen *screen;
-  ScrArea *area;
   int tot = 0;
 
-  for (screen = bmain->screens.first; screen; screen = screen->id.next) {
-    for (area = screen->areabase.first; area; area = area->next) {
+  LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
       if (area->spacedata.first != area->spacedata.last) {
         SpaceLink *sl = area->spacedata.first;
 
@@ -3852,7 +3851,6 @@ static int region_quadview_exec(bContext *C, wmOperator *op)
     region->alignment = 0;
 
     if (area->spacetype == SPACE_VIEW3D) {
-      ARegion *region_iter;
       RegionView3D *rv3d = region->regiondata;
 
       /* if this is a locked view, use settings from 'User' view */
@@ -3876,7 +3874,7 @@ static int region_quadview_exec(bContext *C, wmOperator *op)
       rv3d->rflag |= RV3D_GPULIGHT_UPDATE;
 
       /* Accumulate locks, in case they're mixed. */
-      for (region_iter = area->regionbase.first; region_iter; region_iter = region_iter->next) {
+      LISTBASE_FOREACH (ARegion *, region_iter, &area->regionbase) {
         if (region_iter->regiontype == RGN_TYPE_WINDOW) {
           RegionView3D *rv3d_iter = region_iter->regiondata;
           rv3d->viewlock_quad |= rv3d_iter->viewlock;
@@ -4127,12 +4125,6 @@ static void SCREEN_OT_header_toggle_menus(wmOperatorType *ot)
 /** \name Region Context Menu Operator (Header/Footer/Navbar)
  * \{ */
 
-static bool screen_region_context_menu_poll(bContext *C)
-{
-  ScrArea *area = CTX_wm_area(C);
-  return (area && area->spacetype != SPACE_STATUSBAR);
-}
-
 void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void *UNUSED(arg))
 {
   ScrArea *area = CTX_wm_area(C);
@@ -4221,15 +4213,35 @@ void ED_screens_navigation_bar_tools_menu_create(bContext *C, uiLayout *layout, 
   uiItemO(layout, but_flip_str, ICON_NONE, "SCREEN_OT_region_flip");
 }
 
+static void ed_screens_statusbar_menu_create(uiLayout *layout, void *UNUSED(arg))
+{
+  PointerRNA ptr;
+
+  RNA_pointer_create(NULL, &RNA_PreferencesView, &U, &ptr);
+  uiItemR(layout, &ptr, "show_statusbar_stats", 0, IFACE_("Scene Statistics"), ICON_NONE);
+  uiItemR(layout, &ptr, "show_statusbar_memory", 0, IFACE_("System Memory"), ICON_NONE);
+  if (GPU_mem_stats_supported()) {
+    uiItemR(layout, &ptr, "show_statusbar_vram", 0, IFACE_("Video Memory"), ICON_NONE);
+  }
+  uiItemR(layout, &ptr, "show_statusbar_version", 0, IFACE_("Blender Version"), ICON_NONE);
+}
+
 static int screen_context_menu_invoke(bContext *C,
                                       wmOperator *UNUSED(op),
                                       const wmEvent *UNUSED(event))
 {
   uiPopupMenu *pup;
   uiLayout *layout;
+  const ScrArea *area = CTX_wm_area(C);
   const ARegion *region = CTX_wm_region(C);
 
-  if (ELEM(region->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER)) {
+  if (area && area->spacetype == SPACE_STATUSBAR) {
+    pup = UI_popup_menu_begin(C, IFACE_("Status Bar"), ICON_NONE);
+    layout = UI_popup_menu_layout(pup);
+    ed_screens_statusbar_menu_create(layout, NULL);
+    UI_popup_menu_end(C, pup);
+  }
+  else if (ELEM(region->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER)) {
     pup = UI_popup_menu_begin(C, IFACE_("Header"), ICON_NONE);
     layout = UI_popup_menu_layout(pup);
     ED_screens_header_tools_menu_create(C, layout, NULL);
@@ -4259,7 +4271,6 @@ static void SCREEN_OT_region_context_menu(wmOperatorType *ot)
   ot->idname = "SCREEN_OT_region_context_menu";
 
   /* api callbacks */
-  ot->poll = screen_region_context_menu_poll;
   ot->invoke = screen_context_menu_invoke;
 }
 
@@ -4399,7 +4410,7 @@ static void screen_animation_region_tag_redraw(ScrArea *area,
    * We do need to redraw when this area is in full screen as no other areas
    * will be tagged for redrawing. */
   if ((region->regiontype == RGN_TYPE_WINDOW) &&
-      (ELEM(area->spacetype, SPACE_GRAPH, SPACE_NLA, SPACE_ACTION, SPACE_SEQ)) && !area->full) {
+      (ELEM(area->spacetype, SPACE_GRAPH, SPACE_NLA, SPACE_ACTION)) && !area->full) {
     return;
   }
   ED_region_tag_redraw(region);
@@ -4421,13 +4432,11 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
     Main *bmain = CTX_data_main(C);
     Scene *scene = CTX_data_scene(C);
     ViewLayer *view_layer = WM_window_get_active_view_layer(win);
-    Depsgraph *depsgraph = BKE_scene_get_depsgraph(bmain, scene, view_layer, false);
+    Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer);
     Scene *scene_eval = (depsgraph != NULL) ? DEG_get_evaluated_scene(depsgraph) : NULL;
     wmTimer *wt = screen->animtimer;
     ScreenAnimData *sad = wt->customdata;
     wmWindowManager *wm = CTX_wm_manager(C);
-    wmWindow *window;
-    ScrArea *area;
     int sync;
     double time;
 
@@ -4573,12 +4582,11 @@ static int screen_animation_step(bContext *C, wmOperator *UNUSED(op), const wmEv
       ED_update_for_newframe(bmain, depsgraph);
     }
 
-    for (window = wm->windows.first; window; window = window->next) {
+    LISTBASE_FOREACH (wmWindow *, window, &wm->windows) {
       const bScreen *win_screen = WM_window_get_active_screen(window);
 
-      for (area = win_screen->areabase.first; area; area = area->next) {
-        ARegion *region;
-        for (region = area->regionbase.first; region; region = region->next) {
+      LISTBASE_FOREACH (ScrArea *, area, &win_screen->areabase) {
+        LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
           bool redraw = false;
           if (region == sad->region) {
             redraw = true;
@@ -4852,8 +4860,9 @@ static int fullscreen_back_exec(bContext *C, wmOperator *op)
   ScrArea *area = NULL;
 
   /* search current screen for 'fullscreen' areas */
-  for (area = screen->areabase.first; area; area = area->next) {
-    if (area->full) {
+  LISTBASE_FOREACH (ScrArea *, area_iter, &screen->areabase) {
+    if (area_iter->full) {
+      area = area_iter;
       break;
     }
   }
@@ -5169,7 +5178,7 @@ static void region_blend_end(bContext *C, ARegion *region, const bool is_running
   else {
     if (rgi->hidden) {
       rgi->region->flag |= rgi->hidden;
-      ED_area_initialize(CTX_wm_manager(C), CTX_wm_window(C), rgi->area);
+      ED_area_init(CTX_wm_manager(C), CTX_wm_window(C), rgi->area);
     }
     /* area decoration needs redraw in end */
     ED_area_tag_redraw(rgi->area);
@@ -5200,7 +5209,7 @@ void ED_region_visibility_change_update_animated(bContext *C, ScrArea *area, ARe
 
   /* blend in, reinitialize regions because it got unhidden */
   if (rgi->hidden == 0) {
-    ED_area_initialize(wm, win, area);
+    ED_area_init(wm, win, area);
   }
   else {
     WM_event_remove_handlers(C, &region->handlers);

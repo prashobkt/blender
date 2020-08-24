@@ -21,8 +21,7 @@
  * \ingroup spfile
  */
 
-#ifndef __FILELIST_H__
-#define __FILELIST_H__
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -139,6 +138,4 @@ bool filelist_cache_previews_running(struct FileList *filelist);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif
