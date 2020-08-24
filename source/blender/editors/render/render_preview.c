@@ -772,8 +772,8 @@ static Scene *object_preview_scene_create(const struct ObjectPreviewData *previe
   /* For 'view selected' below. */
   preview_base->flag |= BASE_SELECTED;
 
-  DEG_graph_build_from_view_layer(depsgraph, preview_data->main, scene, view_layer);
-  DEG_evaluate_on_refresh(preview_data->main, depsgraph);
+  DEG_graph_build_from_view_layer(depsgraph);
+  DEG_evaluate_on_refresh(depsgraph);
 
   ED_view3d_camera_to_view_selected(preview_data->main, depsgraph, scene, camera_object);
 

@@ -1917,7 +1917,7 @@ static int outliner_id_operation_exec(bContext *C, wmOperator *op)
     }
     case OUTLINER_IDOP_CREATE_ASSET: {
       outliner_do_libdata_operation(
-          C, op->reports, scene, soops, &soops->tree, id_make_asset_cb, NULL);
+          C, op->reports, scene, space_outliner, &space_outliner->tree, id_make_asset_cb, NULL);
       ED_undo_push(C, "Made Asset");
       /* TODO how to handle undo here? id_make_asset_cb() calls an OP. Esp. in case of multiple
        * data-blocks we only want a single push. */
