@@ -725,7 +725,9 @@ typedef struct SpaceFile {
   char _pad0[6];
   /* End 'SpaceLink' header. */
 
-  char _pad1[4];
+  char mode; /* eFileBrowse_Mode */
+
+  char _pad1[3];
   int scroll_offset;
 
   /** Config and input for file select. */
@@ -754,6 +756,14 @@ typedef struct SpaceFile {
   short recentnr, bookmarknr;
   short systemnr, system_bookmarknr;
 } SpaceFile;
+
+/* SpaceFile.mode (File Space Browsing Mode) */
+typedef enum eFileBrowse_Mode {
+  /* Regular Blender File Browser */
+  FILE_BROWSE_MODE_REGULAR = 0,
+  /* Asset Browser */
+  FILE_BROWSE_MODE_ASSETS = 0,
+} eFileBrowse_Mode;
 
 /* FileSelectParams.display */
 enum eFileDisplayType {

@@ -35,6 +35,8 @@
 #include "BKE_screen.h"
 
 #include "RNA_access.h"
+#include "RNA_define.h"
+#include "RNA_enum_types.h"
 
 #include "WM_api.h"
 #include "WM_message.h"
@@ -682,6 +684,25 @@ static void file_dropboxes(void)
   WM_dropbox_add(lb, "FILE_OT_filepath_drop", filepath_drop_poll, filepath_drop_copy);
 }
 
+static int file_space_subtype_get(ScrArea *area)
+{
+  SpaceFile *sfile = area->spacedata.first;
+  return sfile->mode;
+}
+
+static void file_space_subtype_set(ScrArea *area, int value)
+{
+  SpaceFile *sfile = area->spacedata.first;
+  sfile->mode = value;
+}
+
+static void file_space_subtype_item_extend(bContext *UNUSED(C),
+                                           EnumPropertyItem **item,
+                                           int *totitem)
+{
+  RNA_enum_items_add(item, totitem, rna_enum_space_file_mode_items);
+}
+
 /* only called once, from space/spacetypes.c */
 void ED_spacetype_file(void)
 {
@@ -701,6 +722,9 @@ void ED_spacetype_file(void)
   st->operatortypes = file_operatortypes;
   st->keymap = file_keymap;
   st->dropboxes = file_dropboxes;
+  st->space_subtype_item_extend = file_space_subtype_item_extend;
+  st->space_subtype_get = file_space_subtype_get;
+  st->space_subtype_set = file_space_subtype_set;
 
   /* regions: main window */
   art = MEM_callocN(sizeof(ARegionType), "spacetype file region");
