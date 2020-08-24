@@ -167,7 +167,7 @@ static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser
 
     if ((sima->flag & SI_USE_ALPHA) != 0) {
       /* Show RGBA */
-      draw_flags |= SIMA_DRAW_FLAG_SHOW_ALPHA;
+      draw_flags |= SIMA_DRAW_FLAG_SHOW_ALPHA | SIMA_DRAW_FLAG_APPLY_ALPHA;
     }
     else if ((sima->flag & SI_SHOW_ALPHA) != 0) {
       draw_flags |= SIMA_DRAW_FLAG_SHUFFLING;
@@ -188,6 +188,9 @@ static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser
     else if ((sima->flag & SI_SHOW_B) != 0) {
       draw_flags |= SIMA_DRAW_FLAG_APPLY_ALPHA | SIMA_DRAW_FLAG_SHUFFLING;
       copy_v4_fl4(shuffle, 0.0f, 0.0f, 1.0f, 0.0f);
+    }
+    else /* RGB */ {
+      draw_flags |= SIMA_DRAW_FLAG_APPLY_ALPHA;
     }
 
     GPUShader *shader = IMAGE_shader_image_get();
