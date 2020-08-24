@@ -59,9 +59,6 @@ void IMAGE_shader_library_ensure(void)
   }
 }
 
-/* -------------------------------------------------------------------- */
-/** \name Image Shaders
- * \{ */
 GPUShader *IMAGE_shader_image_get(void)
 {
   IMAGE_Shaders *sh_data = &e_data.shaders;
@@ -85,7 +82,7 @@ GPUShader *IMAGE_shader_image_unavailable_get(void)
   }
   return sh_data->image_unavailable_sh;
 }
-/* \} */
+
 void IMAGE_shader_free(void)
 {
   GPUShader **sh_data_as_array = (GPUShader **)&e_data.shaders;
