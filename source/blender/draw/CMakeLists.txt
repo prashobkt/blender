@@ -79,7 +79,7 @@ set(SRC
   engines/basic/basic_engine.c
   engines/image/image_batches.c
   engines/image/image_engine.c
-  engines/image/image_shaders.c
+  engines/image/image_shader.c
   engines/eevee/eevee_bloom.c
   engines/eevee/eevee_data.c
   engines/eevee/eevee_depth_of_field.c

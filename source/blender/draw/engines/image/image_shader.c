@@ -62,7 +62,7 @@ void IMAGE_shader_library_ensure(void)
 /* -------------------------------------------------------------------- */
 /** \name Image Shaders
  * \{ */
-GPUShader *IMAGE_shaders_image_get(void)
+GPUShader *IMAGE_shader_image_get(void)
 {
   IMAGE_Shaders *sh_data = &e_data.shaders;
   if (!sh_data->image_sh) {
@@ -72,7 +72,7 @@ GPUShader *IMAGE_shaders_image_get(void)
   return sh_data->image_sh;
 }
 
-GPUShader *IMAGE_shaders_image_unavailable_get(void)
+GPUShader *IMAGE_shader_image_unavailable_get(void)
 {
   IMAGE_Shaders *sh_data = &e_data.shaders;
   if (!sh_data->image_unavailable_sh) {
@@ -86,7 +86,7 @@ GPUShader *IMAGE_shaders_image_unavailable_get(void)
   return sh_data->image_unavailable_sh;
 }
 /* \} */
-void IMAGE_shaders_free(void)
+void IMAGE_shader_free(void)
 {
   GPUShader **sh_data_as_array = (GPUShader **)&e_data.shaders;
   for (int i = 0; i < (sizeof(IMAGE_Shaders) / sizeof(GPUShader *)); i++) {

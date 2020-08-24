@@ -178,7 +178,7 @@ static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser
       copy_v4_fl4(shuffle, 0.0f, 0.0f, 1.0f, 0.0f);
     }
 
-    GPUShader *shader = IMAGE_shaders_image_get();
+    GPUShader *shader = IMAGE_shader_image_get();
     DRWShadingGroup *shgrp = DRW_shgroup_create(shader, psl->image_pass);
     if (tex_tile_data != NULL) {
       draw_flags |= SIMA_DRAW_FLAG_TILED;
@@ -211,7 +211,7 @@ static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser
     float zoom_level = powf(MAX2(sima->zoom - 1.0, 0.1), 0.33f);
     zoom_level = clamp_f(zoom_level, 1.25, 4.75);
 
-    GPUShader *shader = IMAGE_shaders_image_unavailable_get();
+    GPUShader *shader = IMAGE_shader_image_unavailable_get();
     DRWShadingGroup *grp = DRW_shgroup_create(shader, psl->image_pass);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_uniform_float_copy(grp, "zoomScale", sima->zoom);
@@ -306,7 +306,7 @@ static void IMAGE_draw_scene(void *ved)
 
 static void IMAGE_engine_free(void)
 {
-  IMAGE_shaders_free();
+  IMAGE_shader_free();
 }
 
 /* \} */
