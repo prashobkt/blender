@@ -283,6 +283,7 @@ int EmbeddedMeshCollision::detect(
 		}
 
 		// Detect against obstacles
+		bool had_obstacle_collision = false;
 		if (td->obsdata->num_obs()>0)
 		{
 			std::pair<bool,VFCollisionPair> pt_hit_obs =
@@ -299,13 +300,14 @@ int EmbeddedMeshCollision::detect(
 				pt_hit_obs.second.p_is_obs = false;
 				pt_res.emplace_back(vi,vi_pairs.size());
 				vi_pairs.emplace_back(pt_hit_obs.second);
+				had_obstacle_collision = true;
 			}
 		}
 
-		// We perform self collision if the self_collision flag is true and either:
-		// a) the set of vertices (vertex group) to do self collision is empty
-		// b) the vertex is in the set of self collision vertices
-		bool do_self_collision = td->options->self_collision;
+		// We perform self collision if the self_collision flag is true and:
+		// a) there was no obstacle collision
+		// b) the vertex is in the set of self collision vertices (or its empty)
+		bool do_self_collision = !had_obstacle_collision && td->options->self_collision;
 		if (do_self_collision) {
 			if (td->data->col.selfcollision_verts.size()>0) {
 				do_self_collision = td->data->col.selfcollision_verts.count(vi)>0;
@@ -504,8 +506,9 @@ EmbeddedMeshCollision::detect_against_self(
 		x1->row(tet[1]),
 		x1->row(tet[2]),
 		x1->row(tet[3]));
-	if (barys.minCoeff()<-1e-8 || barys.sum() > 1+1e-8)
+	if (barys.minCoeff()<-1e-8 || barys.sum() > 1+1e-8) {
 		throw std::runtime_error("EmbeddedMeshCollision: Bad tet barys");
+	}
 
 	const MatrixXd *rest_V0 = mesh->rest_prim_verts();
 	Vector3d rest_pt =
@@ -519,8 +522,9 @@ EmbeddedMeshCollision::detect_against_self(
 	if (rest_emb_sdf)
 	{
 		double dist = rest_emb_sdf->interpolate(0, rest_pt);
-		if (dist > 0)
+		if (dist > 0) {
 			return ret; // nope
+		}
 	}
 
 	// Find triangle surface projection that doesn't
@@ -534,23 +538,28 @@ EmbeddedMeshCollision::detect_against_self(
 		skip_tri_inds);
 	mesh->emb_rest_tree()->traverse(nearest_tri);
 
-	if (nearest_tri.output.prim<0)
+	if (nearest_tri.output.prim<0) {
 		throw std::runtime_error("EmbeddedMeshCollision: Failed to find triangle");
+	}
 
 	ret.first = true;
 	ret.second.p_idx = pt_idx;
 	ret.second.p_is_obs = false;
 	ret.second.q_idx = nearest_tri.output.prim;
 	ret.second.q_is_obs = false;
-	ret.second.q_pt = nearest_tri.output.pt_on_tri;
 
 	// Compute barycoords of projection
 	RowVector3i f = mesh->facets()->row(nearest_tri.output.prim);
 	Vector3d v3[3] = { emb_V0->row(f[0]), emb_V0->row(f[1]), emb_V0->row(f[2]) };
 	ret.second.q_bary = geom::point_triangle_barys<double>(
 		nearest_tri.output.pt_on_tri, v3[0], v3[1], v3[2]);
-	if (ret.second.q_bary.minCoeff()<-1e-8 || ret.second.q_bary.sum() > 1+1e-8)
+	if (ret.second.q_bary.minCoeff()<-1e-8 || ret.second.q_bary.sum() > 1+1e-8) {
 		throw std::runtime_error("EmbeddedMeshCollision: Bad triangle barys");
+	}
+
+	// q_pt is not used for self collisions, but we'll use it
+	// to define the tet constraint stencil.
+	ret.second.q_pt = pt_t1;
 
 	return ret;
 }
