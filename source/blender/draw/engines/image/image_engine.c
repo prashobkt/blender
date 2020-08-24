@@ -46,9 +46,9 @@
 #define SIMA_DRAW_FLAG_DEPTH (1 << 3)
 #define SIMA_DRAW_FLAG_TILED (1 << 4)
 
-static void image_batch_instances_update(IMAGE_Data *id, Image *image)
+static void image_batch_instances_update(IMAGE_Data *vedata, Image *image)
 {
-  IMAGE_StorageList *stl = id->stl;
+  IMAGE_StorageList *stl = vedata->stl;
   IMAGE_PrivateData *pd = stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
@@ -81,9 +81,9 @@ static void image_batch_instances_update(IMAGE_Data *id, Image *image)
 }
 
 static void image_gpu_texture_update(
-    IMAGE_Data *id, Image *image, ImageUser *iuser, ImBuf *ibuf, GPUTexture **tex_tile_data)
+    IMAGE_Data *vedata, Image *image, ImageUser *iuser, ImBuf *ibuf, GPUTexture **tex_tile_data)
 {
-  IMAGE_StorageList *stl = id->stl;
+  IMAGE_StorageList *stl = vedata->stl;
   IMAGE_PrivateData *pd = stl->pd;
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -125,10 +125,10 @@ static void image_gpu_texture_update(
   }
 }
 
-static void image_cache_image(IMAGE_Data *id, Image *image, ImageUser *iuser, ImBuf *ibuf)
+static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser, ImBuf *ibuf)
 {
-  IMAGE_PassList *psl = id->psl;
-  IMAGE_StorageList *stl = id->stl;
+  IMAGE_PassList *psl = vedata->psl;
+  IMAGE_StorageList *stl = vedata->stl;
   IMAGE_PrivateData *pd = stl->pd;
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -137,8 +137,8 @@ static void image_cache_image(IMAGE_Data *id, Image *image, ImageUser *iuser, Im
 
   GPUTexture *tex_tile_data = NULL;
 
-  image_batch_instances_update(id, image);
-  image_gpu_texture_update(id, image, iuser, ibuf, &tex_tile_data);
+  image_batch_instances_update(vedata, image);
+  image_gpu_texture_update(vedata, image, iuser, ibuf, &tex_tile_data);
 
   if (pd->texture) {
     eGPUSamplerState state = 0;
@@ -224,11 +224,11 @@ static void image_cache_image(IMAGE_Data *id, Image *image, ImageUser *iuser, Im
 /* -------------------------------------------------------------------- */
 /** \name Engine Callbacks
  * \{ */
-static void IMAGE_engine_init(void *vedata)
+static void IMAGE_engine_init(void *ved)
 {
   IMAGE_shader_library_ensure();
-  IMAGE_Data *id = (IMAGE_Data *)vedata;
-  IMAGE_StorageList *stl = id->stl;
+  IMAGE_Data *vedata = (IMAGE_Data *)ved;
+  IMAGE_StorageList *stl = vedata->stl;
   if (!stl->pd) {
     stl->pd = MEM_callocN(sizeof(IMAGE_PrivateData), __func__);
   }
@@ -239,12 +239,12 @@ static void IMAGE_engine_init(void *vedata)
   pd->texture = NULL;
 }
 
-static void IMAGE_cache_init(void *vedata)
+static void IMAGE_cache_init(void *ved)
 {
-  IMAGE_Data *id = (IMAGE_Data *)vedata;
-  IMAGE_StorageList *stl = id->stl;
+  IMAGE_Data *vedata = (IMAGE_Data *)ved;
+  IMAGE_StorageList *stl = vedata->stl;
   IMAGE_PrivateData *pd = stl->pd;
-  IMAGE_PassList *psl = id->psl;
+  IMAGE_PassList *psl = vedata->psl;
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
@@ -265,7 +265,7 @@ static void IMAGE_cache_init(void *vedata)
   {
     Image *image = ED_space_image(sima);
     ImBuf *ibuf = ED_space_image_acquire_buffer(sima, &pd->lock, 0);
-    image_cache_image(id, image, &sima->iuser, ibuf);
+    image_cache_image(vedata, image, &sima->iuser, ibuf);
     pd->ibuf = ibuf;
   }
 }
@@ -275,10 +275,10 @@ static void IMAGE_cache_populate(void *UNUSED(vedata), Object *UNUSED(ob))
   /* Function intentional left empty. `cache_populate` is required to be implemented. */
 }
 
-static void image_draw_finish(IMAGE_Data *vedata)
+static void image_draw_finish(IMAGE_Data *ved)
 {
-  IMAGE_Data *id = (IMAGE_Data *)vedata;
-  IMAGE_StorageList *stl = id->stl;
+  IMAGE_Data *vedata = (IMAGE_Data *)ved;
+  IMAGE_StorageList *stl = vedata->stl;
   IMAGE_PrivateData *pd = stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
@@ -294,10 +294,10 @@ static void image_draw_finish(IMAGE_Data *vedata)
   GPU_BATCH_DISCARD_SAFE(pd->draw_batch);
 }
 
-static void IMAGE_draw_scene(void *vedata)
+static void IMAGE_draw_scene(void *ved)
 {
-  IMAGE_Data *id = (IMAGE_Data *)vedata;
-  IMAGE_PassList *psl = id->psl;
+  IMAGE_Data *vedata = (IMAGE_Data *)ved;
+  IMAGE_PassList *psl = vedata->psl;
 
   DRW_draw_pass(psl->image_pass);
 
