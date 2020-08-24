@@ -256,7 +256,7 @@ static void file_ensure_valid_region_state(bContext *C,
 
   BLI_assert(region_tools);
 
-  if (sfile->mode == FILE_BROWSE_MODE_ASSETS) {
+  if (sfile->browse_mode == FILE_BROWSE_MODE_ASSETS) {
     ARegion *region_execute = file_execute_region_ensure(area, region_tools);
     ARegion *region_props = file_tool_props_region_ensure(area, region_execute);
 
@@ -725,20 +725,20 @@ static void file_dropboxes(void)
 static int file_space_subtype_get(ScrArea *area)
 {
   SpaceFile *sfile = area->spacedata.first;
-  return sfile->mode;
+  return sfile->browse_mode;
 }
 
 static void file_space_subtype_set(ScrArea *area, int value)
 {
   SpaceFile *sfile = area->spacedata.first;
-  sfile->mode = value;
+  sfile->browse_mode = value;
 }
 
 static void file_space_subtype_item_extend(bContext *UNUSED(C),
                                            EnumPropertyItem **item,
                                            int *totitem)
 {
-  RNA_enum_items_add(item, totitem, rna_enum_space_file_mode_items);
+  RNA_enum_items_add(item, totitem, rna_enum_space_file_browse_mode_items);
 }
 
 /* only called once, from space/spacetypes.c */

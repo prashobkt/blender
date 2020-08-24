@@ -728,7 +728,8 @@ typedef struct SpaceFile {
   char _pad0[6];
   /* End 'SpaceLink' header. */
 
-  char mode; /* eFileBrowse_Mode */
+  /* Is this a File Browser or an Asset Browser? */
+  char browse_mode; /* eFileBrowse_Mode */
 
   char _pad1[3];
   int scroll_offset;
@@ -760,10 +761,10 @@ typedef struct SpaceFile {
   short systemnr, system_bookmarknr;
 } SpaceFile;
 
-/* SpaceFile.mode (File Space Browsing Mode) */
+/* SpaceFile.browse_mode (File Space Browsing Mode) */
 typedef enum eFileBrowse_Mode {
   /* Regular Blender File Browser */
-  FILE_BROWSE_MODE_REGULAR = 0,
+  FILE_BROWSE_MODE_FILES = 0,
   /* Asset Browser */
   FILE_BROWSE_MODE_ASSETS = 1,
 } eFileBrowse_Mode;

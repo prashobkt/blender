@@ -78,7 +78,7 @@
 
 static bool fileselect_needs_refresh(const SpaceFile *sfile)
 {
-  return sfile->params && (sfile->params->browse_mode != sfile->mode);
+  return sfile->params && (sfile->params->browse_mode != sfile->browse_mode);
 }
 
 FileSelectParams *ED_fileselect_get_params(struct SpaceFile *sfile)
@@ -118,7 +118,7 @@ short ED_fileselect_set_params(SpaceFile *sfile)
 
   params = sfile->params;
   /* Store which mode these params were created for. */
-  params->browse_mode = sfile->mode;
+  params->browse_mode = sfile->browse_mode;
 
   /* set the parameters from the operator, if it exists */
   if (op) {

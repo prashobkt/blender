@@ -173,7 +173,7 @@ def panel_poll_is_upper_region(region):
 
 
 def panel_poll_is_asset_browsing(context):
-    return context.space_data.mode == 'ASSETS'
+    return context.space_data.browse_mode == 'ASSETS'
 
 
 class FILEBROWSER_UL_dir(UIList):

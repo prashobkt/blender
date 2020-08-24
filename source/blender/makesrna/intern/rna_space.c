@@ -170,8 +170,8 @@ const EnumPropertyItem rna_enum_space_sequencer_view_type_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-const EnumPropertyItem rna_enum_space_file_mode_items[] = {
-    {FILE_BROWSE_MODE_REGULAR, "REGULAR", ICON_FILEBROWSER, "File Browser", ""},
+const EnumPropertyItem rna_enum_space_file_browse_mode_items[] = {
+    {FILE_BROWSE_MODE_FILES, "FILES", ICON_FILEBROWSER, "File Browser", ""},
     {FILE_BROWSE_MODE_ASSETS, "ASSETS", ICON_BLANK1, "Asset Browser", ""},
     {0, NULL, 0, NULL, NULL},
 };
@@ -2677,9 +2677,9 @@ static void rna_FileBrowser_FSMenuRecent_active_range(
   rna_FileBrowser_FSMenu_active_range(ptr, min, max, softmin, softmax, FS_CATEGORY_RECENT);
 }
 
-static void rna_SpaceFileBrowser_mode_update(Main *UNUSED(bmain),
-                                             Scene *UNUSED(scene),
-                                             PointerRNA *ptr)
+static void rna_SpaceFileBrowser_browse_mode_update(Main *UNUSED(bmain),
+                                                    Scene *UNUSED(scene),
+                                                    PointerRNA *ptr)
 {
   ScrArea *area = rna_area_from_space(ptr);
   ED_area_tag_refresh(area);
@@ -5870,13 +5870,13 @@ static void rna_def_space_filebrowser(BlenderRNA *brna)
 
   rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_TOOLS) | (1 << RGN_TYPE_UI));
 
-  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_space_file_mode_items);
+  prop = RNA_def_property(srna, "browse_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_space_file_browse_mode_items);
   RNA_def_property_ui_text(
       prop,
       "Browsing Mode",
       "Type of the File Editor view (regular file browsing or asset browsing)");
-  RNA_def_property_update(prop, 0, "rna_SpaceFileBrowser_mode_update");
+  RNA_def_property_update(prop, 0, "rna_SpaceFileBrowser_browse_mode_update");
 
   prop = RNA_def_property(srna, "params", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "params");
