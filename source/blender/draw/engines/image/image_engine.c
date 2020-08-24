@@ -250,7 +250,7 @@ static void IMAGE_cache_init(void *ved)
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
 
   {
-    /* Write depth is needed for background rendering. Near depth is used for transparency
+    /* Write depth is needed for background overlay rendering. Near depth is used for transparency
      * checker and Far depth is used for indicating the image size. */
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS |
                      DRW_STATE_BLEND_ALPHA_PREMUL;
@@ -316,7 +316,7 @@ DrawEngineType draw_engine_image_type = {
     NULL,                  /* next */
     NULL,                  /* prev */
     N_("UV/Image"),        /* idname */
-    &IMAGE_data_size,      /*vedata_size */
+    &IMAGE_data_size,      /* vedata_size */
     &IMAGE_engine_init,    /* engine_init */
     &IMAGE_engine_free,    /* engine_free */
     &IMAGE_cache_init,     /* cache_init */
