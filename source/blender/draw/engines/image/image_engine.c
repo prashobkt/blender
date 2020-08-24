@@ -46,16 +46,24 @@
 #define SIMA_DRAW_FLAG_DEPTH (1 << 3)
 #define SIMA_DRAW_FLAG_TILED (1 << 4)
 
-static void image_batch_instances_update(IMAGE_Data *vedata, Image *image)
+static void image_cache_image_add(DRWShadingGroup *grp, Image *image)
 {
-  IMAGE_StorageList *stl = vedata->stl;
-  IMAGE_PrivateData *pd = stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
   const bool is_tiled_texture = image && image->source == IMA_SRC_TILED;
+  float obmat[4][4];
+  unit_m4(obmat);
+
+  GPUBatch *geom = DRW_cache_quad_get();
 
   if (is_tiled_texture) {
-    pd->draw_batch = IMAGE_batches_image_tiled_create(image);
+    LISTBASE_FOREACH (ImageTile *, tile, &image->tiles) {
+      const int tile_x = ((tile->tile_number - 1001) % 10);
+      const int tile_y = ((tile->tile_number - 1001) / 10);
+      obmat[3][1] = (float)tile_y;
+      obmat[3][0] = (float)tile_x;
+      DRW_shgroup_call_obmat(grp, geom, obmat);
+    }
   }
   else {
     rcti instances;
@@ -76,7 +84,13 @@ static void image_batch_instances_update(IMAGE_Data *vedata, Image *image)
       instances.ymax = (int)floorf(v3max[1]);
     }
 
-    pd->draw_batch = IMAGE_batches_image_create(&instances);
+    for (int tile_y = instances.ymin; tile_y <= instances.ymax; tile_y++) {
+      obmat[3][1] = (float)tile_y;
+      for (int tile_x = instances.xmin; tile_x <= instances.xmax; tile_x++) {
+        obmat[3][0] = (float)tile_x;
+        DRW_shgroup_call_obmat(grp, geom, obmat);
+      }
+    }
   }
 }
 
@@ -136,8 +150,6 @@ static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
 
   GPUTexture *tex_tile_data = NULL;
-
-  image_batch_instances_update(vedata, image);
   image_gpu_texture_update(vedata, image, iuser, ibuf, &tex_tile_data);
 
   if (pd->texture) {
@@ -193,7 +205,7 @@ static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser
     DRW_shgroup_uniform_vec4_copy(shgrp, "shuffle", shuffle);
     DRW_shgroup_uniform_int_copy(shgrp, "drawFlags", draw_flags);
     DRW_shgroup_uniform_bool_copy(shgrp, "imgPremultiplied", use_premul_alpha);
-    DRW_shgroup_call(shgrp, pd->draw_batch, NULL);
+    image_cache_image_add(shgrp, image);
   }
   else {
     /* No image available. use the image unavailable shader. */
@@ -217,7 +229,7 @@ static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser
     DRW_shgroup_uniform_float_copy(grp, "zoomScale", sima->zoom);
     DRW_shgroup_uniform_float_copy(grp, "zoomLevel", zoom_level);
     DRW_shgroup_uniform_ivec2_copy(grp, "imageSize", image_size);
-    DRW_shgroup_call(grp, pd->draw_batch, NULL);
+    DRW_shgroup_call(grp, DRW_cache_quad_get(), NULL);
   }
 }
 
@@ -290,8 +302,6 @@ static void image_draw_finish(IMAGE_Data *ved)
     pd->owns_texture = false;
   }
   pd->texture = NULL;
-
-  GPU_BATCH_DISCARD_SAFE(pd->draw_batch);
 }
 
 static void IMAGE_draw_scene(void *ved)

@@ -2155,6 +2155,7 @@ void DRW_draw_render_loop_2d_ex(struct Depsgraph *depsgraph,
   drw_state_ensure_not_reused(&DST);
 #endif
 }
+
 static struct DRWSelectBuffer {
   struct GPUFrameBuffer *framebuffer_depth_only;
   struct GPUTexture *texture_depth;

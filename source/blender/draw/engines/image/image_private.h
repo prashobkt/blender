@@ -41,8 +41,6 @@ typedef struct IMAGE_PrivateData {
 
   struct GPUTexture *texture;
   bool owns_texture;
-
-  struct GPUBatch *draw_batch;
 } IMAGE_PrivateData;
 
 typedef struct IMAGE_StorageList {
@@ -62,7 +60,3 @@ GPUShader *IMAGE_shader_image_get(void);
 GPUShader *IMAGE_shader_image_unavailable_get(void);
 void IMAGE_shader_library_ensure(void);
 void IMAGE_shader_free(void);
-
-/* image_batches.c */
-struct GPUBatch *IMAGE_batches_image_create(struct rcti *rect);
-struct GPUBatch *IMAGE_batches_image_tiled_create(Image *image);

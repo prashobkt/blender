@@ -77,7 +77,6 @@ set(SRC
   intern/draw_select_buffer.c
   intern/draw_view.c
   engines/basic/basic_engine.c
-  engines/image/image_batches.c
   engines/image/image_engine.c
   engines/image/image_shader.c
   engines/eevee/eevee_bloom.c
@@ -417,7 +416,6 @@ data_to_c_simple(engines/overlay/shaders/xray_fade_frag.glsl SRC)
 
 data_to_c_simple(engines/image/shaders/engine_image_frag.glsl SRC)
 data_to_c_simple(engines/image/shaders/engine_image_unavailable_frag.glsl SRC)
-data_to_c_simple(engines/image/shaders/engine_image_unavailable_vert.glsl SRC)
 data_to_c_simple(engines/image/shaders/engine_image_vert.glsl SRC)
 
 list(APPEND INC

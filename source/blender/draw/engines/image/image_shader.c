@@ -35,7 +35,6 @@ extern char datatoc_common_view_lib_glsl[];
 
 extern char datatoc_engine_image_frag_glsl[];
 extern char datatoc_engine_image_unavailable_frag_glsl[];
-extern char datatoc_engine_image_unavailable_vert_glsl[];
 extern char datatoc_engine_image_vert_glsl[];
 
 typedef struct IMAGE_Shaders {
@@ -74,7 +73,7 @@ GPUShader *IMAGE_shader_image_unavailable_get(void)
   IMAGE_Shaders *sh_data = &e_data.shaders;
   if (!sh_data->image_unavailable_sh) {
     sh_data->image_unavailable_sh = DRW_shader_create_with_shaderlib(
-        datatoc_engine_image_unavailable_vert_glsl,
+        datatoc_engine_image_vert_glsl,
         NULL,
         datatoc_engine_image_unavailable_frag_glsl,
         e_data.lib,
