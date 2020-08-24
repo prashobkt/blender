@@ -141,6 +141,8 @@ void ED_fileselect_exit(struct wmWindowManager *wm,
                         struct Scene *owner_scene,
                         struct SpaceFile *sfile);
 
+bool ED_fileselect_is_asset_browser(const struct FileSelectParams *params);
+
 void ED_fileselect_window_params_get(const struct wmWindow *win,
                                      int win_size[2],
                                      bool *is_maximized);

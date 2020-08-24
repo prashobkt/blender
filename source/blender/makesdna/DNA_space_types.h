@@ -686,7 +686,10 @@ typedef struct FileSelectParams {
   int sel_first;
   int sel_last;
   unsigned short thumbnail_size;
-  char _pad1[2];
+  char _pad1[1];
+
+  /* The browse mode these params were created for (e.g. asset vs file browsing). */
+  char browse_mode; /* eFileBrowse_Mode */
 
   /* short */
   /** XXXXX for now store type here, should be moved to the operator. */
@@ -762,7 +765,7 @@ typedef enum eFileBrowse_Mode {
   /* Regular Blender File Browser */
   FILE_BROWSE_MODE_REGULAR = 0,
   /* Asset Browser */
-  FILE_BROWSE_MODE_ASSETS = 0,
+  FILE_BROWSE_MODE_ASSETS = 1,
 } eFileBrowse_Mode;
 
 /* FileSelectParams.display */

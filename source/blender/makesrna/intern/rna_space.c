@@ -2677,6 +2677,14 @@ static void rna_FileBrowser_FSMenuRecent_active_range(
   rna_FileBrowser_FSMenu_active_range(ptr, min, max, softmin, softmax, FS_CATEGORY_RECENT);
 }
 
+static void rna_SpaceFileBrowser_mode_update(Main *UNUSED(bmain),
+                                             Scene *UNUSED(scene),
+                                             PointerRNA *ptr)
+{
+  ScrArea *area = rna_area_from_space(ptr);
+  ED_area_tag_refresh(area);
+}
+
 #else
 
 static const EnumPropertyItem dt_uv_items[] = {
@@ -5868,7 +5876,7 @@ static void rna_def_space_filebrowser(BlenderRNA *brna)
       prop,
       "Browsing Mode",
       "Type of the File Editor view (regular file browsing or asset browsing)");
-  // RNA_def_property_update(prop, 0, "rna_SpaceFileBrowser_mode_update");
+  RNA_def_property_update(prop, 0, "rna_SpaceFileBrowser_mode_update");
 
   prop = RNA_def_property(srna, "params", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "params");

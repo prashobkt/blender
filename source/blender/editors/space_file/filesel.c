@@ -76,9 +76,16 @@
 
 #define VERTLIST_MAJORCOLUMN_WIDTH (25 * UI_UNIT_X)
 
+static bool fileselect_needs_refresh(const SpaceFile *sfile)
+{
+  return sfile->params && (sfile->params->browse_mode != sfile->mode);
+}
+
 FileSelectParams *ED_fileselect_get_params(struct SpaceFile *sfile)
 {
-  if (!sfile->params) {
+  /* TODO maybe we should two params, one for file one for asset browsing? That way data is kept
+   * when changing between the two. */
+  if (!sfile->params || fileselect_needs_refresh(sfile)) {
     ED_fileselect_set_params(sfile);
   }
   return sfile->params;
@@ -110,6 +117,8 @@ short ED_fileselect_set_params(SpaceFile *sfile)
   }
 
   params = sfile->params;
+  /* Store which mode these params were created for. */
+  params->browse_mode = sfile->mode;
 
   /* set the parameters from the operator, if it exists */
   if (op) {
@@ -290,7 +299,8 @@ short ED_fileselect_set_params(SpaceFile *sfile)
     params->type = FILE_UNIX;
     params->flag |= U_default.file_space_data.flag;
     params->flag &= ~FILE_DIRSEL_ONLY;
-    params->display = FILE_VERTICALDISPLAY;
+    params->display = ED_fileselect_is_asset_browser(params) ? FILE_IMGDISPLAY :
+                                                               FILE_VERTICALDISPLAY;
     params->sort = FILE_SORT_ALPHA;
     params->filter = 0;
     params->filter_glob[0] = '\0';
@@ -324,6 +334,11 @@ short ED_fileselect_set_params(SpaceFile *sfile)
   }
 
   return 1;
+}
+
+bool ED_fileselect_is_asset_browser(const FileSelectParams *params)
+{
+  return (params->browse_mode == FILE_BROWSE_MODE_ASSETS);
 }
 
 /* The subset of FileSelectParams.flag items we store into preferences. */
