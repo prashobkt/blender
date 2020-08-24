@@ -222,9 +222,9 @@ void DRW_draw_cursor_2d(void)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   ARegion *region = draw_ctx->region;
 
-  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-  glDepthMask(GL_FALSE);
-  glDisable(GL_DEPTH_TEST);
+  GPU_color_mask(true, true, true, true);
+  GPU_depth_mask(false);
+  GPU_depth_test(GPU_DEPTH_NONE);
 
   if (is_cursor_visible_2d(draw_ctx)) {
     SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
