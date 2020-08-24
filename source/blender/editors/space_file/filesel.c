@@ -56,6 +56,7 @@
 
 #include "BKE_appdir.h"
 #include "BKE_context.h"
+#include "BKE_idtype.h"
 #include "BKE_main.h"
 
 #include "BLF_api.h"
@@ -299,11 +300,29 @@ short ED_fileselect_set_params(SpaceFile *sfile)
     params->type = FILE_UNIX;
     params->flag |= U_default.file_space_data.flag;
     params->flag &= ~FILE_DIRSEL_ONLY;
-    params->display = ED_fileselect_is_asset_browser(params) ? FILE_IMGDISPLAY :
-                                                               FILE_VERTICALDISPLAY;
+    params->display = FILE_VERTICALDISPLAY;
     params->sort = FILE_SORT_ALPHA;
     params->filter = 0;
     params->filter_glob[0] = '\0';
+
+    if (ED_fileselect_is_asset_browser(params)) {
+      /* TODO Fixed file path. */
+      const char *doc_path = BKE_appdir_folder_default();
+
+      if (doc_path) {
+        const char *asset_blend_name = "assets.blend";
+        const char *id_group_name = BKE_idtype_idcode_to_name(ID_OB);
+
+        BLI_join_dirfile(params->dir, sizeof(params->dir), doc_path, asset_blend_name);
+        BLI_path_join(
+            params->dir, sizeof(params->dir), doc_path, asset_blend_name, id_group_name, NULL);
+        params->file[0] = '\0';
+      }
+
+      params->type = FILE_LOADLIB;
+      params->flag |= FILE_ASSETS_ONLY;
+      params->display = FILE_IMGDISPLAY;
+    }
   }
 
   /* operator has no setting for this */
