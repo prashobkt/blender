@@ -51,6 +51,7 @@ void OVERLAY_background_cache_init(OVERLAY_Data *vedata)
 
     if (DRW_state_is_opengl_render() && !DRW_state_draw_background()) {
       background_type = BG_SOLID;
+      color_override[3] = 1.0f;
     }
     else if (pd->is_image_editor) {
       background_type = BG_SOLID_CHECKER;
