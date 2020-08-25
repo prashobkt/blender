@@ -94,11 +94,13 @@ static void image_cache_image_add(DRWShadingGroup *grp, Image *image)
   }
 }
 
-static void image_gpu_texture_update(
-    IMAGE_Data *vedata, Image *image, ImageUser *iuser, ImBuf *ibuf, GPUTexture **tex_tile_data)
+static void image_gpu_texture_get(Image *image,
+                                  ImageUser *iuser,
+                                  ImBuf *ibuf,
+                                  GPUTexture **r_gpu_texture,
+                                  bool *r_owns_texture,
+                                  GPUTexture **r_tex_tile_data)
 {
-  IMAGE_StorageList *stl = vedata->stl;
-  IMAGE_PrivateData *pd = stl->pd;
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
@@ -118,22 +120,24 @@ static void image_gpu_texture_update(
           BLI_assert(!"Integer based depth buffers not supported");
         }
         else if (ibuf->zbuf_float) {
-          pd->texture = GPU_texture_create_2d(ibuf->x, ibuf->y, GPU_R16F, ibuf->zbuf_float, NULL);
-          pd->owns_texture = true;
+          *r_gpu_texture = GPU_texture_create_2d(
+              ibuf->x, ibuf->y, GPU_R16F, ibuf->zbuf_float, NULL);
+          *r_owns_texture = true;
         }
         else if (ibuf->rect_float && ibuf->channels == 1) {
-          pd->texture = GPU_texture_create_2d(ibuf->x, ibuf->y, GPU_R16F, ibuf->rect_float, NULL);
-          pd->owns_texture = true;
+          *r_gpu_texture = GPU_texture_create_2d(
+              ibuf->x, ibuf->y, GPU_R16F, ibuf->rect_float, NULL);
+          *r_owns_texture = true;
         }
       }
       else if (image->source == IMA_SRC_TILED) {
-        pd->texture = BKE_image_get_gpu_tiles(image, iuser, ibuf);
-        *tex_tile_data = BKE_image_get_gpu_tilemap(image, iuser, NULL);
-        pd->owns_texture = false;
+        *r_gpu_texture = BKE_image_get_gpu_tiles(image, iuser, ibuf);
+        *r_tex_tile_data = BKE_image_get_gpu_tilemap(image, iuser, NULL);
+        *r_owns_texture = false;
       }
       else {
-        pd->texture = BKE_image_get_gpu_texture(image, iuser, ibuf);
-        pd->owns_texture = false;
+        *r_gpu_texture = BKE_image_get_gpu_texture(image, iuser, ibuf);
+        *r_owns_texture = false;
       }
     }
   }
@@ -150,7 +154,7 @@ static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
 
   GPUTexture *tex_tile_data = NULL;
-  image_gpu_texture_update(vedata, image, iuser, ibuf, &tex_tile_data);
+  image_gpu_texture_get(image, iuser, ibuf, &pd->texture, &pd->owns_texture, &tex_tile_data);
 
   if (pd->texture) {
     eGPUSamplerState state = 0;
