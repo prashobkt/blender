@@ -2580,7 +2580,7 @@ static int filelist_readjob_list_dir(const char *root,
 static int filelist_readjob_list_lib(const char *root, ListBase *entries, const bool skip_currpar)
 {
   FileListInternEntry *entry;
-  LinkNode *ln, *names, *datablock_infos = NULL;
+  LinkNode *ln, *names = NULL, *datablock_infos = NULL;
   int i, nitems, idcode = 0, nbr_entries = 0;
   char dir[FILE_MAX_LIBEXTRA], *group;
   bool ok;

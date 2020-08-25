@@ -176,6 +176,28 @@ def panel_poll_is_asset_browsing(context):
     return context.space_data.browse_mode == 'ASSETS'
 
 
+class FILEBROWSER_PT_asset_navigation_bar(Panel):
+    bl_label = "Asset Navigation"
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOLS'
+    bl_options = {'HIDE_HEADER'}
+
+    @classmethod
+    def poll(cls, context):
+        return panel_poll_is_asset_browsing(context)
+
+    def draw(self, context):
+        layout = self.layout
+
+        space_file = context.space_data
+
+        col = layout.column()
+
+        col.scale_x = 1.3
+        col.scale_y = 1.3
+        col.prop(space_file.params, "asset_category", expand=True)
+
+
 class FILEBROWSER_UL_dir(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         direntry = item
@@ -514,6 +536,7 @@ classes = (
     FILEBROWSER_HT_header,
     FILEBROWSER_PT_display,
     FILEBROWSER_PT_filter,
+    FILEBROWSER_PT_asset_navigation_bar,
     FILEBROWSER_UL_dir,
     FILEBROWSER_PT_bookmarks_volumes,
     FILEBROWSER_PT_bookmarks_system,

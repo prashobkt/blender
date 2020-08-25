@@ -311,17 +311,27 @@ short ED_fileselect_set_params(SpaceFile *sfile)
 
       if (doc_path) {
         const char *asset_blend_name = "assets.blend";
-        const char *id_group_name = BKE_idtype_idcode_to_name(ID_OB);
+        // const char *id_group_name = BKE_idtype_idcode_to_name(ID_OB);
 
         BLI_join_dirfile(params->dir, sizeof(params->dir), doc_path, asset_blend_name);
-        BLI_path_join(
-            params->dir, sizeof(params->dir), doc_path, asset_blend_name, id_group_name, NULL);
+        // BLI_path_join(
+        //     params->dir, sizeof(params->dir), doc_path, asset_blend_name, id_group_name,
+        //     NULL);
         params->file[0] = '\0';
       }
 
       params->type = FILE_LOADLIB;
-      params->flag |= FILE_ASSETS_ONLY;
+      /* TODO this way of using filters to realize categories is noticably slower than
+       * specifying a "group" to read. That's because all types are read and filtering is applied
+       * after the fact. */
+      params->flag |= FILE_ASSETS_ONLY | FILE_FILTER;
+      params->filter |= FILE_TYPE_BLENDERLIB;
+      params->filter_id = FILTER_ID_OB | FILTER_ID_GR;
       params->display = FILE_IMGDISPLAY;
+      params->recursion_level = 1;
+      /* 'SMALL' size by default. More reasonable since this is typically used as regular editor,
+       * space is more of an issue here. */
+      params->thumbnail_size = 96;
     }
   }
 
