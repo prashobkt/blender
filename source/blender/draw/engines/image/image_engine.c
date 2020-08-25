@@ -45,6 +45,7 @@
 #define SIMA_DRAW_FLAG_SHUFFLING (1 << 2)
 #define SIMA_DRAW_FLAG_DEPTH (1 << 3)
 #define SIMA_DRAW_FLAG_TILED (1 << 4)
+#define SIMA_DRAW_FLAG_CLAMP_UV (1 << 5)
 
 static void image_cache_image_add(DRWShadingGroup *grp, Image *image)
 {
@@ -160,7 +161,6 @@ static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser
     eGPUSamplerState state = 0;
     static float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     static float shuffle[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-    int draw_flags = 0;
     static float far_near[2] = {100.0f, 0.0f};
     const bool use_premul_alpha = image->alpha_mode == IMA_ALPHA_PREMUL;
 
@@ -168,6 +168,9 @@ static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser
       far_near[1] = ((Camera *)scene->camera->data)->clip_start;
       far_near[0] = ((Camera *)scene->camera->data)->clip_end;
     }
+
+    int draw_flags = 0;
+    SET_FLAG_FROM_TEST(draw_flags, (sima->flag & SI_DRAW_TILE) != 0, SIMA_DRAW_FLAG_CLAMP_UV);
 
     if ((sima->flag & SI_USE_ALPHA) != 0) {
       /* Show RGBA */
