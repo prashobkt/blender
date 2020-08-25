@@ -172,7 +172,7 @@ const EnumPropertyItem rna_enum_space_sequencer_view_type_items[] = {
 
 const EnumPropertyItem rna_enum_space_file_browse_mode_items[] = {
     {FILE_BROWSE_MODE_FILES, "FILES", ICON_FILEBROWSER, "File Browser", ""},
-    {FILE_BROWSE_MODE_ASSETS, "ASSETS", ICON_BLANK1, "Asset Browser", ""},
+    {FILE_BROWSE_MODE_ASSETS, "ASSETS", ICON_FUND, "Asset Browser", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -5690,6 +5690,11 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem asset_repository_dummy_items[] = {
+      {0, "BUNDLED", 0, "Bundled", "Show the default user assets"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "FileSelectParams", NULL);
   RNA_def_struct_path_func(srna, "rna_FileSelectParams_path");
   RNA_def_struct_ui_text(srna, "File Select Parameters", "File Select Parameters");
@@ -5860,6 +5865,12 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Name Filter", "Filter by name, supports '*' wildcard");
   RNA_def_property_flag(prop, PROP_TEXTEDIT_UPDATE);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_LIST, NULL);
+
+  /* XXX dummy */
+  prop = RNA_def_property(srna, "asset_repository", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, asset_repository_dummy_items);
+  RNA_def_property_ui_text(prop, "Asset Repository", "");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
 
   prop = RNA_def_property(srna, "asset_category", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, asset_category_items);

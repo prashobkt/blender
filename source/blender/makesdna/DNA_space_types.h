@@ -702,7 +702,8 @@ typedef struct FileSelectParams {
   short display;
   /** Details toggles (file size, creation date, etc.) */
   char details_flags;
-  char _pad2[3];
+  char _pad2[1];
+  short asset_repository;
   /** Filter when (flags & FILE_FILTER) is true. */
   int filter;
 

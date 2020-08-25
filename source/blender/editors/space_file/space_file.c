@@ -260,8 +260,9 @@ static void file_ensure_valid_region_state(bContext *C,
     ARegion *region_execute = file_execute_region_ensure(area, region_tools);
     ARegion *region_props = file_tool_props_region_ensure(area, region_execute);
 
-    /* Properties are hidden by default. */
+    /* Hide specific regions by default. */
     region_props->flag |= RGN_FLAG_HIDDEN;
+    region_execute->flag |= RGN_FLAG_HIDDEN;
 
     ARegion *region_ui = BKE_area_find_region_type(area, RGN_TYPE_UI);
     if (region_ui) {

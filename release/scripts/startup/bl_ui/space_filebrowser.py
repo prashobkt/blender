@@ -28,15 +28,46 @@ class FILEBROWSER_HT_header(Header):
         layout = self.layout
 
         st = context.space_data
+        params = st.params
 
         if st.active_operator is None:
             layout.template_header()
 
         FILEBROWSER_MT_editor_menus.draw_collapsible(context, layout)
 
+        if panel_poll_is_asset_browsing(context):
+            layout.prop(params, "asset_repository", text="")
+
         # can be None when save/reload with a file selector open
 
         layout.separator_spacer()
+
+        if panel_poll_is_asset_browsing(context):
+            # Uses prop_with_popover() as popover() only adds the triangle icon in headers.
+            layout.prop_with_popover(
+                params,
+                "display_type",
+                panel="FILEBROWSER_PT_display",
+                text="",
+                icon_only=True,
+            )
+            layout.prop_with_popover(
+                params,
+                "display_type",
+                panel="FILEBROWSER_PT_filter",
+                text="",
+                icon='FILTER',
+                icon_only=True,
+            )
+
+            layout.prop(params, "filter_search", text="", icon='VIEWZOOM')
+
+            layout.operator(
+                "screen.region_toggle",
+                text="",
+                icon='PREFERENCES',
+                depress=is_option_region_visible(context, st)
+            ).region_type = 'TOOL_PROPS'
 
         if not context.screen.show_statusbar:
             layout.template_running_jobs()
@@ -361,6 +392,17 @@ class FILEBROWSER_PT_advanced_filter(Panel):
                         col.prop(filter_id, identifier, toggle=True)
 
 
+def is_option_region_visible(context, space):
+    if not space.active_operator:
+        return False
+
+    for region in context.area.regions:
+        if region.type == 'TOOL_PROPS' and region.width <= 1:
+            return False
+
+    return True
+
+
 class FILEBROWSER_PT_directory_path(Panel):
     bl_space_type = 'FILE_BROWSER'
     bl_region_type = 'UI'
@@ -371,16 +413,6 @@ class FILEBROWSER_PT_directory_path(Panel):
     def is_header_visible(self, context):
         for region in context.area.regions:
             if region.type == 'HEADER' and region.height <= 1:
-                return False
-
-        return True
-
-    def is_option_region_visible(self, context, space):
-        if not space.active_operator:
-            return False
-
-        for region in context.area.regions:
-            if region.type == 'TOOL_PROPS' and region.width <= 1:
                 return False
 
         return True
@@ -438,7 +470,7 @@ class FILEBROWSER_PT_directory_path(Panel):
                 "screen.region_toggle",
                 text="",
                 icon='PREFERENCES',
-                depress=self.is_option_region_visible(context, space)
+                depress=is_option_region_visible(context, space)
             ).region_type = 'TOOL_PROPS'
 
 
