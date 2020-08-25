@@ -1840,6 +1840,8 @@ static void rna_struct_update_when_changed(bContext *C,
                                            PointerRNA *ptr_b)
 {
   CollectionPropertyIterator iter;
+  if (!ptr_a->data || !ptr_b->data)
+    return;
   PropertyRNA *iterprop = RNA_struct_iterator_property(ptr_a->type);
   BLI_assert(ptr_a->type == ptr_b->type);
   RNA_property_collection_begin(ptr_a, iterprop, &iter);
