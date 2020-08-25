@@ -230,8 +230,8 @@ static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser
 
     /* sima->zoom texels covers (sima->zoom * sima->zoom) screen pixels.
      * Creates a curve function for better visual result. */
-    float zoom_level = powf(MAX2(sima->zoom - 1.0, 0.1), 0.33f);
-    zoom_level = clamp_f(zoom_level, 1.25, 4.75);
+    float zoom_level = powf(MAX2(sima->zoom - 1.0f, 0.1f), 0.25f);
+    zoom_level = clamp_f(zoom_level, 1.25f, 4.75f);
 
     GPUShader *shader = IMAGE_shader_image_unavailable_get();
     DRWShadingGroup *grp = DRW_shgroup_create(shader, psl->image_pass);
