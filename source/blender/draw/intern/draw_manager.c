@@ -2021,6 +2021,8 @@ void DRW_draw_render_loop_2d_ex(struct Depsgraph *depsgraph,
   drw_viewport_var_init();
   drw_viewport_colormanagement_set();
 
+  /* TODO(jbakker): Only populate when editor needs to draw object.
+   * for the image editor this is when showing UV's.*/
   const bool do_populate_loop = true;
   const bool do_annotations = drw_draw_show_annotation();
 
@@ -2047,7 +2049,7 @@ void DRW_draw_render_loop_2d_ex(struct Depsgraph *depsgraph,
     PROFILE_START(stime);
     drw_engines_cache_init();
 
-    /* Only iterate over objects for internal engines or when overlays are enabled */
+    /* Only iterate over objects when overlay uses object data. */
     if (do_populate_loop) {
       DEG_OBJECT_ITER_FOR_RENDER_ENGINE_BEGIN (depsgraph, ob) {
         drw_engines_cache_populate(ob);
