@@ -207,6 +207,10 @@ void EmbeddedMesh::compute_sdf(
 	const Eigen::MatrixXi *emb_f,
 	SDFType *sdf)
 {
+	if (emb_f->rows()==0) {
+		return;
+	}
+
 	Matrix<double,Dynamic,Dynamic,RowMajor> v_rm = *emb_v;
 	Matrix<unsigned int,Dynamic,Dynamic,RowMajor> f_rm = emb_f->cast<unsigned int>();
 
@@ -218,12 +222,16 @@ void EmbeddedMesh::compute_sdf(
 	domain.max() += 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
 	domain.min() -= 1e-3 * domain.diagonal().norm() * Eigen::Vector3d::Ones();
 
+	// Decide an SDF resolution. We want it to scale: high resolution
+	// for lower resolution meshes. This is because it becomes WAY too
+	// expensive to compute SDFs for high res meshes.
+	int nf = emb_f->rows();
+	unsigned int res = std::max(10, 20-(int)std::log(nf));
+	std::array<unsigned int, 3> resolution;
+	resolution[0] = res; resolution[1] = res; resolution[2] = res;
 	Discregrid::TriangleMesh tm(v_rm.data(), f_rm.data(), v_rm.rows(), f_rm.rows());
 	mesh_is_closed = tm.is_closed();
-
 	Discregrid::MeshDistance md(tm);
-	std::array<unsigned int, 3> resolution;
-	resolution[0] = 30; resolution[1] = 30; resolution[2] = 30;
 	*sdf = Discregrid::CubicLagrangeDiscreteGrid(domain, resolution);
 	auto func = Discregrid::DiscreteGrid::ContinuousFunction{};
 	std::vector<std::thread::id> thread_map;
