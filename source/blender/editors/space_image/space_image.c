@@ -647,11 +647,6 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
   framebuffer_default = GPU_viewport_framebuffer_default_get(viewport);
   framebuffer_overlay = GPU_viewport_framebuffer_overlay_get(viewport);
 
-  GPU_framebuffer_bind(framebuffer_default);
-  GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
-
-  GPU_framebuffer_bind(framebuffer_overlay);
-
   /* XXX not supported yet, disabling for now */
   scene->r.scemode &= ~R_COMP_CROP;
 
@@ -682,6 +677,11 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
     UI_view2d_view_restore(C);
   }
   else {
+    GPU_framebuffer_bind(framebuffer_default);
+    GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
+
+    GPU_framebuffer_bind(framebuffer_overlay);
+
     float col[3];
     /* clear and setup matrix */
     UI_GetThemeColor3fv(TH_BACK, col);

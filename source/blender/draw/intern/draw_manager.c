@@ -2036,7 +2036,7 @@ void DRW_draw_render_loop_2d_ex(struct Depsgraph *depsgraph,
   drw_debug_init();
 
   /* No framebuffer allowed before drawing. */
-  // TODO: this is failing BLI_assert(GPU_framebuffer_active_get() == NULL);
+  BLI_assert(GPU_framebuffer_active_get() == NULL);
   GPU_framebuffer_bind(DST.default_framebuffer);
   GPU_framebuffer_clear_depth_stencil(DST.default_framebuffer, 1.0f, 0xFF);
 
