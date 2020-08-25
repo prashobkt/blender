@@ -6,7 +6,7 @@
 #define SIMA_DRAW_FLAG_SHUFFLING (1 << 2)
 #define SIMA_DRAW_FLAG_DEPTH (1 << 3)
 #define SIMA_DRAW_FLAG_TILED (1 << 4)
-#define SIMA_DRAW_FLAG_CLAMP_UV (1 << 5)
+#define SIMA_DRAW_FLAG_DO_REPEAT (1 << 5)
 
 uniform sampler2DArray imageTileArray;
 uniform sampler1DArray imageTileData;
@@ -65,7 +65,7 @@ void main()
     }
   }
   else {
-    vec2 uvs_clamped = ((drawFlags & SIMA_DRAW_FLAG_CLAMP_UV) != 0) ?
+    vec2 uvs_clamped = ((drawFlags & SIMA_DRAW_FLAG_DO_REPEAT) != 0) ?
                            fract(uvs) :
                            clamp(uvs, vec2(0.0), vec2(1.0));
     tex_color = texture(imageTexture, uvs_clamped);

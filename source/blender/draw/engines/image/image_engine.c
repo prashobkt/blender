@@ -27,8 +27,6 @@
 #include "BKE_image.h"
 #include "BKE_object.h"
 
-#include "BLI_rect.h"
-
 #include "DNA_camera_types.h"
 
 #include "IMB_imbuf_types.h"
@@ -45,12 +43,10 @@
 #define SIMA_DRAW_FLAG_SHUFFLING (1 << 2)
 #define SIMA_DRAW_FLAG_DEPTH (1 << 3)
 #define SIMA_DRAW_FLAG_TILED (1 << 4)
-#define SIMA_DRAW_FLAG_CLAMP_UV (1 << 5)
+#define SIMA_DRAW_FLAG_DO_REPEAT (1 << 5)
 
 static void image_cache_image_add(DRWShadingGroup *grp, Image *image)
 {
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
   const bool is_tiled_texture = image && image->source == IMA_SRC_TILED;
   float obmat[4][4];
   unit_m4(obmat);
@@ -67,31 +63,7 @@ static void image_cache_image_add(DRWShadingGroup *grp, Image *image)
     }
   }
   else {
-    rcti instances;
-    BLI_rcti_init(&instances, 0, 0, 0, 0);
-
-    /* repeat */
-    if ((sima->flag & SI_DRAW_TILE) != 0) {
-      float view_inv_m4[4][4];
-      DRW_view_viewmat_get(NULL, view_inv_m4, true);
-      float v3min[3] = {0.0f, 0.0f, 0.0f};
-      float v3max[3] = {1.0f, 1.0f, 0.0f};
-      mul_m4_v3(view_inv_m4, v3min);
-      mul_m4_v3(view_inv_m4, v3max);
-
-      instances.xmin = (int)floorf(v3min[0]);
-      instances.ymin = (int)floorf(v3min[1]);
-      instances.xmax = (int)floorf(v3max[0]);
-      instances.ymax = (int)floorf(v3max[1]);
-    }
-
-    for (int tile_y = instances.ymin; tile_y <= instances.ymax; tile_y++) {
-      obmat[3][1] = (float)tile_y;
-      for (int tile_x = instances.xmin; tile_x <= instances.xmax; tile_x++) {
-        obmat[3][0] = (float)tile_x;
-        DRW_shgroup_call_obmat(grp, geom, obmat);
-      }
-    }
+    DRW_shgroup_call_obmat(grp, geom, obmat);
   }
 }
 
@@ -158,19 +130,26 @@ static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser
   image_gpu_texture_get(image, iuser, ibuf, &pd->texture, &pd->owns_texture, &tex_tile_data);
 
   if (pd->texture) {
-    eGPUSamplerState state = 0;
     static float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     static float shuffle[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     static float far_near[2] = {100.0f, 0.0f};
-    const bool use_premul_alpha = image->alpha_mode == IMA_ALPHA_PREMUL;
 
     if (scene->camera && scene->camera->type == OB_CAMERA) {
       far_near[1] = ((Camera *)scene->camera->data)->clip_start;
       far_near[0] = ((Camera *)scene->camera->data)->clip_end;
     }
 
+    const bool use_premul_alpha = image->alpha_mode == IMA_ALPHA_PREMUL;
+    const bool is_tiled_texture = tex_tile_data != NULL;
+    const bool do_repeat = (!is_tiled_texture) && ((sima->flag & SI_DRAW_TILE) != 0);
+    const bool is_zoom_out = sima->zoom < 1.0f;
+
+    /* use interpolation filtering when zooming out */
+    eGPUSamplerState state = 0;
+    SET_FLAG_FROM_TEST(state, is_zoom_out, GPU_SAMPLER_FILTER);
+
     int draw_flags = 0;
-    SET_FLAG_FROM_TEST(draw_flags, (sima->flag & SI_DRAW_TILE) != 0, SIMA_DRAW_FLAG_CLAMP_UV);
+    SET_FLAG_FROM_TEST(draw_flags, do_repeat, SIMA_DRAW_FLAG_DO_REPEAT);
 
     if ((sima->flag & SI_USE_ALPHA) != 0) {
       /* Show RGBA */
@@ -272,8 +251,8 @@ static void IMAGE_cache_init(void *ved)
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
 
   {
-    /* Write depth is needed for background overlay rendering. Near depth is used for transparency
-     * checker and Far depth is used for indicating the image size. */
+    /* Write depth is needed for background overlay rendering. Near depth is used for
+     * transparency checker and Far depth is used for indicating the image size. */
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS |
                      DRW_STATE_BLEND_ALPHA_PREMUL;
     psl->image_pass = DRW_pass_create("Image", state);
