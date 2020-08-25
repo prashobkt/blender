@@ -3196,11 +3196,13 @@ void sbFree(Object *ob)
     {
       ADMMPDInterfaceData *admmpd;
       int cleared_admmpd_list = 0;
-      while ((admmpd = BLI_pophead(sb->shared->admmpd_list))) {
-        cleared_admmpd_list = 1;
-        if (admmpd != NULL) {
-          admmpd_dealloc(admmpd);
-          MEM_freeN(admmpd);
+      if (sb->shared->admmpd_list) {
+        while ((admmpd = BLI_pophead(sb->shared->admmpd_list))) {
+          cleared_admmpd_list = 1;
+          if (admmpd != NULL) {
+            admmpd_dealloc(admmpd);
+            MEM_freeN(admmpd);
+          }
         }
       }
       /* If we deleted data from the linked list
