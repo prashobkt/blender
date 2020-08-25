@@ -14,7 +14,6 @@ void main()
   vec3 image_pos = pos * 0.5 + 0.5;
 
   if ((drawFlags & SIMA_DRAW_FLAG_DO_REPEAT) != 0) {
-    /* Convert from full screen quad to image pos */
     gl_Position = vec4(pos.xy, 0.0, 1.0);
     uvs = point_view_to_object(image_pos).xy;
   }
