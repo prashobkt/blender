@@ -213,7 +213,7 @@ void DRW_globals_update(void)
       /* TODO more accurate transform. */
       srgb_to_linearrgb_v4(color, color);
       color += 4;
-    } while (color != gb->UBO_LAST_COLOR);
+    } while (color <= gb->UBO_LAST_COLOR);
   }
 
   if (G_draw.block_ubo == NULL) {
