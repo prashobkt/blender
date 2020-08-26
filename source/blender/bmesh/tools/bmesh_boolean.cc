@@ -60,7 +60,7 @@ static IMesh mesh_from_bm(BMesh *bm,
     BMVert *bmv = BM_vert_at_index(bm, v);
     vert[v] = arena->add_or_find_vert(mpq3(bmv->co[0], bmv->co[1], bmv->co[2]), v);
   }
-  Array<const Face *> face(bm->totface);
+  Array<Face *> face(bm->totface);
   constexpr int estimated_max_facelen = 100;
   Vector<const Vert *, estimated_max_facelen> face_vert;
   Vector<int, estimated_max_facelen> face_edge_orig;
@@ -84,7 +84,7 @@ static IMesh mesh_from_bm(BMesh *bm,
    * but their next and e pointers are not correct for the loops
    * that start added-diagonal edges.
    */
-  Array<const Face *> tri_face(looptris_tot);
+  Array<Face *> tri_face(looptris_tot);
   face_vert.resize(3);
   face_edge_orig.resize(3);
   for (int i = 0; i < looptris_tot; ++i) {

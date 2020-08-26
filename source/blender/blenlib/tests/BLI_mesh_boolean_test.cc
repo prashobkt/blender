@@ -57,7 +57,7 @@ class IMeshBuilder {
     }
     arena.reserve(nv, nf);
     Vector<const Vert *> verts;
-    Vector<const Face *> faces;
+    Vector<Face *> faces;
     bool spec_ok = true;
     int v_index = 0;
     while (v_index < nv && spec_ok && getline(ss, line)) {
@@ -88,7 +88,7 @@ class IMeshBuilder {
         edge_orig.append(edge_index(f_index, fpos));
         ++fpos;
       }
-      const Face *facep = arena.add_face(face_verts, f_index, edge_orig);
+      Face *facep = arena.add_face(face_verts, f_index, edge_orig);
       faces.append(facep);
       ++f_index;
     }

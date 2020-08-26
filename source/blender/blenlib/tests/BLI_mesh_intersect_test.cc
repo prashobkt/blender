@@ -60,7 +60,7 @@ class IMeshBuilder {
     }
     arena.reserve(nv, nf);
     Vector<const Vert *> verts;
-    Vector<const Face *> faces;
+    Vector<Face *> faces;
     bool spec_ok = true;
     int v_index = 0;
     while (v_index < nv && spec_ok && getline(ss, line)) {
@@ -97,7 +97,7 @@ class IMeshBuilder {
         spec_ok = false;
       }
       if (spec_ok) {
-        const Face *facep = arena.add_face(face_verts, f_index, edge_orig);
+        Face *facep = arena.add_face(face_verts, f_index, edge_orig);
         faces.append(facep);
       }
       ++f_index;
@@ -160,7 +160,7 @@ static int find_edge_pos_in_tri(const Vert *v0, const Vert *v1, const Face *f)
 TEST(mesh_intersect, Mesh)
 {
   Vector<const Vert *> verts;
-  Vector<const Face *> faces;
+  Vector<Face *> faces;
   IMeshArena arena;
 
   verts.append(arena.add_or_find_vert(mpq3(0, 0, 1), 0));
@@ -171,8 +171,6 @@ TEST(mesh_intersect, Mesh)
   IMesh mesh(faces);
   const Face *f = mesh.face(0);
   EXPECT_TRUE(f->is_tri());
-  EXPECT_EQ(f->plane.norm, double3(0.0, 0.0, 1.0));
-  EXPECT_EQ(f->plane.d, -1.0);
 }
 
 TEST(mesh_intersect, OneTri)
@@ -189,8 +187,8 @@ TEST(mesh_intersect, OneTri)
   imesh.populate_vert();
   EXPECT_EQ(imesh.vert_size(), 3);
   EXPECT_EQ(imesh.face_size(), 1);
-  const Face f_in = *mb.imesh.face(0);
-  const Face f_out = *imesh.face(0);
+  const Face &f_in = *mb.imesh.face(0);
+  const Face &f_out = *imesh.face(0);
   EXPECT_EQ(f_in.orig, f_out.orig);
   for (int i = 0; i < 3; ++i) {
     EXPECT_EQ(f_in[i], f_out[i]);
@@ -247,8 +245,6 @@ TEST(mesh_intersect, TriTri)
         EXPECT_EQ(f3->orig, 0);
         EXPECT_EQ(f4->orig, 0);
       }
-      EXPECT_TRUE(f0->plane.norm[0] == 0.0 && f0->plane.norm[1] == 0.0 &&
-                  f0->plane.norm[2] > 0.0 && f0->plane.d == 0.0);
       int e03 = find_edge_pos_in_tri(v0, v3, f2);
       int e34 = find_edge_pos_in_tri(v3, v4, f1);
       int e45 = find_edge_pos_in_tri(v4, v5, f1);
@@ -321,8 +317,6 @@ TEST(mesh_intersect, TriTriReversed)
         EXPECT_EQ(f3->orig, 0);
         EXPECT_EQ(f4->orig, 0);
       }
-      EXPECT_TRUE(f0->plane.norm[0] == 0.0 && f0->plane.norm[1] == 0.0 &&
-                  f0->plane.norm[2] < 0.0 && f0->plane.d == 0.0);
       int e03 = find_edge_pos_in_tri(v0, v3, f2);
       int e34 = find_edge_pos_in_tri(v3, v4, f1);
       int e45 = find_edge_pos_in_tri(v4, v5, f1);
@@ -443,8 +437,8 @@ TEST(mesh_intersect, TwoTris)
         for (int k = 0; k < 3; ++k) {
           f1_verts[k] = arena.add_or_find_vert(verts[co2_i + perms[i][k]], k + 3);
         }
-        const Face *f0 = arena.add_face(f0_verts, 0, {0, 1, 2});
-        const Face *f1 = arena.add_face(f1_verts, 1, {3, 4, 5});
+        Face *f0 = arena.add_face(f0_verts, 0, {0, 1, 2});
+        Face *f1 = arena.add_face(f1_verts, 1, {3, 4, 5});
         IMesh in_mesh({f0, f1});
         IMesh out_mesh = trimesh_self_intersect(in_mesh, &arena);
         out_mesh.populate_vert();
@@ -731,7 +725,7 @@ static void fill_sphere_data(int nrings,
                              const double3 &center,
                              double radius,
                              bool triangulate,
-                             MutableSpan<const Face *> face,
+                             MutableSpan<Face *> face,
                              int vid_start,
                              int fid_start,
                              IMeshArena *arena)
@@ -841,8 +835,8 @@ static void fill_sphere_data(int nrings,
       int i1 = vert_index_fn(s, rnext);
       int i2 = vert_index_fn(snext, rnext);
       int i3 = vert_index_fn(snext, r);
-      const Face *f;
-      const Face *f2 = nullptr;
+      Face *f;
+      Face *f2 = nullptr;
       if (r == 0) {
         f = arena->add_face({vert[i0], vert[i1], vert[i2]}, fid++, eid);
       }
@@ -887,7 +881,7 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
   int num_sphere_verts;
   int num_sphere_tris;
   get_sphere_params(nrings, nsegs, true, &num_sphere_verts, &num_sphere_tris);
-  Array<const Face *> tris(2 * num_sphere_tris);
+  Array<Face *> tris(2 * num_sphere_tris);
   arena.reserve(2 * num_sphere_verts, 2 * num_sphere_tris);
   double3 center1(0.0, 0.0, 0.0);
   fill_sphere_data(nrings,
@@ -895,7 +889,7 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
                    center1,
                    1.0,
                    true,
-                   MutableSpan<const Face *>(tris.begin(), num_sphere_tris),
+                   MutableSpan<Face *>(tris.begin(), num_sphere_tris),
                    0,
                    0,
                    &arena);
@@ -905,13 +899,13 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
                    center2,
                    1.0,
                    true,
-                   MutableSpan<const Face *>(tris.begin() + num_sphere_tris, num_sphere_tris),
+                   MutableSpan<Face *>(tris.begin() + num_sphere_tris, num_sphere_tris),
                    num_sphere_verts,
                    num_sphere_verts,
                    &arena);
   IMesh mesh(tris);
   double time_create = PIL_check_seconds_timer();
-  write_obj_mesh(mesh, "spheresphere_in");
+  // write_obj_mesh(mesh, "spheresphere_in");
   IMesh out;
   if (use_self) {
     out = trimesh_self_intersect(mesh, &arena);
@@ -925,7 +919,9 @@ static void spheresphere_test(int nrings, double y_offset, bool use_self)
   std::cout << "Create time: " << time_create - time_start << "\n";
   std::cout << "Intersect time: " << time_intersect - time_create << "\n";
   std::cout << "Total time: " << time_intersect - time_start << "\n";
-  // write_obj_mesh(out, "spheresphere");
+  if (DO_OBJ) {
+    write_obj_mesh(out, "spheresphere");
+  }
   BLI_task_scheduler_exit();
 }
 
@@ -946,7 +942,7 @@ static void fill_grid_data(int x_subdiv,
                            bool triangulate,
                            double size,
                            const double3 &center,
-                           MutableSpan<const Face *> face,
+                           MutableSpan<Face *> face,
                            int vid_start,
                            int fid_start,
                            IMeshArena *arena)
@@ -986,13 +982,13 @@ static void fill_grid_data(int x_subdiv,
       int i2 = vert_index_fn(ix + 1, iy + 1);
       int i3 = vert_index_fn(ix + 1, iy);
       if (triangulate) {
-        const Face *f = arena->add_face({vert[i0], vert[i1], vert[i2]}, fid++, eid);
-        const Face *f2 = arena->add_face({vert[i2], vert[i3], vert[i0]}, fid++, eid);
+        Face *f = arena->add_face({vert[i0], vert[i1], vert[i2]}, fid++, eid);
+        Face *f2 = arena->add_face({vert[i2], vert[i3], vert[i0]}, fid++, eid);
         face[tri_index_fn(ix, iy, 0)] = f;
         face[tri_index_fn(ix, iy, 1)] = f2;
       }
       else {
-        const Face *f = arena->add_face({vert[i0], vert[i1], vert[i2], vert[i3]}, fid++, eid);
+        Face *f = arena->add_face({vert[i0], vert[i1], vert[i2], vert[i3]}, fid++, eid);
         face[face_index_fn(ix, iy)] = f;
       }
     }
@@ -1021,7 +1017,7 @@ static void spheregrid_test(int nrings, int grid_level, double z_offset, bool us
   int subdivs = 1 << grid_level;
   get_sphere_params(nrings, nsegs, true, &num_sphere_verts, &num_sphere_tris);
   get_grid_params(subdivs, subdivs, true, &num_grid_verts, &num_grid_tris);
-  Array<const Face *> tris(num_sphere_tris + num_grid_tris);
+  Array<Face *> tris(num_sphere_tris + num_grid_tris);
   arena.reserve(num_sphere_verts + num_grid_verts, num_sphere_tris + num_grid_tris);
   double3 center(0.0, 0.0, z_offset);
   fill_sphere_data(nrings,
@@ -1029,7 +1025,7 @@ static void spheregrid_test(int nrings, int grid_level, double z_offset, bool us
                    center,
                    1.0,
                    true,
-                   MutableSpan<const Face *>(tris.begin(), num_sphere_tris),
+                   MutableSpan<Face *>(tris.begin(), num_sphere_tris),
                    0,
                    0,
                    &arena);
@@ -1038,7 +1034,7 @@ static void spheregrid_test(int nrings, int grid_level, double z_offset, bool us
                  true,
                  4.0,
                  double3(0, 0, 0),
-                 MutableSpan<const Face *>(tris.begin() + num_sphere_tris, num_grid_tris),
+                 MutableSpan<Face *>(tris.begin() + num_sphere_tris, num_grid_tris),
                  num_sphere_verts,
                  num_sphere_tris,
                  &arena);
@@ -1058,18 +1054,20 @@ static void spheregrid_test(int nrings, int grid_level, double z_offset, bool us
   std::cout << "Create time: " << time_create - time_start << "\n";
   std::cout << "Intersect time: " << time_intersect - time_create << "\n";
   std::cout << "Total time: " << time_intersect - time_start << "\n";
-  // write_obj_mesh(out, "spheregrid");
+  if (DO_OBJ) {
+    write_obj_mesh(out, "spheregrid");
+  }
   BLI_task_scheduler_exit();
 }
 
 TEST(mesh_intersect_perf, SphereSphere)
 {
-  spheresphere_test(512, 0.5, false);
+  spheresphere_test(64, 0.5, false);
 }
 
 TEST(mesh_intersect_perf, SphereGrid)
 {
-  spheregrid_test(512, 4, 0.1, false);
+  spheregrid_test(64, 4, 0.1, false);
 }
 
 #endif

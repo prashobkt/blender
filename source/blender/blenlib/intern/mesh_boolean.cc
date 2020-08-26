@@ -1778,7 +1778,7 @@ static Vector<ComponentContainer> find_component_containers(int comp,
     for (int p : components[comp_other]) {
       const Patch &patch = pinfo.patch(p);
       for (int t : patch.tris()) {
-        const Face tri = *tm.face(t);
+        const Face &tri = *tm.face(t);
         if (dbg_level > 1) {
           std::cout << "tri " << t << " = " << &tri << "\n";
         }
@@ -2062,7 +2062,7 @@ static bool apply_bool_op(BoolOpType bool_optype, const Array<int> &winding)
  * triangles that are part of stacks of geometrically identical
  * triangles enclosing zero volume cells.
  */
-static void extract_zero_volume_cell_tris(Vector<const Face *> &r_tris,
+static void extract_zero_volume_cell_tris(Vector<Face *> &r_tris,
                                           const IMesh &tm_subdivided,
                                           const PatchesInfo &pinfo,
                                           const CellsInfo &cinfo,
@@ -2170,7 +2170,7 @@ static void extract_zero_volume_cell_tris(Vector<const Face *> &r_tris,
             tri.edge_orig[2], tri.edge_orig[1], tri.edge_orig[0]};
         std::array<bool, 3> flipped_is_intersect = {
             tri.is_intersect[2], tri.is_intersect[1], tri.is_intersect[0]};
-        const Face *flipped_f = arena->add_face(
+        Face *flipped_f = arena->add_face(
             flipped_vs, f->orig, flipped_e_origs, flipped_is_intersect);
         r_tris.append(flipped_f);
       }
@@ -2197,7 +2197,7 @@ static IMesh extract_from_in_output_volume_diffs(const IMesh &tm_subdivided,
   if (dbg_level > 0) {
     std::cout << "\nEXTRACT_FROM_FLAG_DIFFS\n";
   }
-  Vector<const Face *> out_tris;
+  Vector<Face *> out_tris;
   out_tris.reserve(tm_subdivided.face_size());
   bool any_zero_volume_cell = false;
   for (int t : tm_subdivided.face_index_range()) {
@@ -2219,15 +2219,15 @@ static IMesh extract_from_in_output_volume_diffs(const IMesh &tm_subdivided,
       if (dbg_level > 0) {
         std::cout << "need tri " << t << " flip=" << flip << "\n";
       }
-      const Face *f = tm_subdivided.face(t);
+      Face *f = tm_subdivided.face(t);
       if (flip) {
-        const Face &tri = *f;
+        Face &tri = *f;
         std::array<const Vert *, 3> flipped_vs = {tri[0], tri[2], tri[1]};
         std::array<int, 3> flipped_e_origs = {
             tri.edge_orig[2], tri.edge_orig[1], tri.edge_orig[0]};
         std::array<bool, 3> flipped_is_intersect = {
             tri.is_intersect[2], tri.is_intersect[1], tri.is_intersect[0]};
-        const Face *flipped_f = arena->add_face(
+        Face *flipped_f = arena->add_face(
             flipped_vs, f->orig, flipped_e_origs, flipped_is_intersect);
         out_tris.append(flipped_f);
       }
@@ -2366,7 +2366,7 @@ static IMesh gwn_boolean(const IMesh &tm,
     std::cout << "GWN_BOOLEAN\n";
   }
   IMesh ans;
-  Vector<const Face *> out_faces;
+  Vector<Face *> out_faces;
   out_faces.reserve(tm.face_size());
   BLI_assert(nshapes == 2); /* TODO: generalize. */
   for (int p : pinfo.index_range()) {
@@ -2375,7 +2375,7 @@ static IMesh gwn_boolean(const IMesh &tm,
      * as the ones near the beginning may be very near other patches.
      */
     int test_t_index = patch.tri(patch.tot_tri() / 2);
-    const Face &tri_test = *tm.face(test_t_index);
+    Face &tri_test = *tm.face(test_t_index);
     /* Assume all triangles in a patch are in the same shape. */
     int shape = shape_fn(tri_test.orig);
     if (dbg_level > 0) {
@@ -2422,18 +2422,18 @@ static IMesh gwn_boolean(const IMesh &tm,
     }
     if (!do_remove) {
       for (int t : patch.tris()) {
-        const Face *f = tm.face(t);
+        Face *f = tm.face(t);
         if (!do_flip) {
           out_faces.append(f);
         }
         else {
-          const Face &tri = *f;
+          Face &tri = *f;
           /* We need flipped version of f. */
           Array<const Vert *> flipped_vs = {tri[0], tri[2], tri[1]};
           Array<int> flipped_e_origs = {tri.edge_orig[2], tri.edge_orig[1], tri.edge_orig[0]};
           Array<bool> flipped_is_intersect = {
               tri.is_intersect[2], tri.is_intersect[1], tri.is_intersect[0]};
-          const Face *flipped_f = arena->add_face(
+          Face *flipped_f = arena->add_face(
               flipped_vs, f->orig, flipped_e_origs, flipped_is_intersect);
           out_faces.append(flipped_f);
         }
@@ -2465,7 +2465,7 @@ static int find_cdt_edge(const CDT_result<mpq_class> &cdt_out, int v1, int v2)
  * for the (identical) edge of f, or else is -1. So diagonals added
  * for triangulation can later be indentified by having NO_INDEX for original.
  */
-static Array<const Face *> triangulate_poly(const Face *f, IMeshArena *arena)
+static Array<Face *> triangulate_poly(Face *f, IMeshArena *arena)
 {
   int flen = f->size();
   CDT_input<mpq_class> cdt_in;
@@ -2476,8 +2476,11 @@ static Array<const Face *> triangulate_poly(const Face *f, IMeshArena *arena)
     cdt_in.face[0].append(i);
   }
   /* Project poly along dominant axis of normal to get 2d coords. */
-  const mpq3 &poly_normal = f->plane.norm_exact;
-  int axis = mpq3::dominant_axis(poly_normal);
+  if (!f->plane_populated()) {
+    f->populate_plane(false);
+  }
+  const double3 &poly_normal = f->plane->norm;
+  int axis = double3::dominant_axis(poly_normal);
   /* If project down y axis as opposed to x or z, the orientation
    * of the polygon will be reversed.
    * Yet another reversal happens if the poly normal in the dominant
@@ -2498,7 +2501,7 @@ static Array<const Face *> triangulate_poly(const Face *f, IMeshArena *arena)
   }
   CDT_result<mpq_class> cdt_out = delaunay_2d_calc(cdt_in, CDT_INSIDE);
   int n_tris = cdt_out.face.size();
-  Array<const Face *> ans(n_tris);
+  Array<Face *> ans(n_tris);
   for (int t = 0; t < n_tris; ++t) {
     int i_v_out[3];
     const Vert *v[3];
@@ -2537,10 +2540,10 @@ static Array<const Face *> triangulate_poly(const Face *f, IMeshArena *arena)
  */
 static IMesh triangulate_polymesh(IMesh &imesh, IMeshArena *arena)
 {
-  Vector<const Face *> face_tris;
+  Vector<Face *> face_tris;
   constexpr int estimated_tris_per_face = 3;
   face_tris.reserve(estimated_tris_per_face * imesh.face_size());
-  for (const Face *f : imesh.faces()) {
+  for (Face *f : imesh.faces()) {
     /* Tesselate face f, following plan similar to BM_face_calc_tesselation. */
     int flen = f->size();
     if (flen == 3) {
@@ -2555,16 +2558,14 @@ static IMesh triangulate_polymesh(IMesh &imesh, IMeshArena *arena)
       int eo_12 = f->edge_orig[1];
       int eo_23 = f->edge_orig[2];
       int eo_30 = f->edge_orig[3];
-      const Face *f0 = arena->add_face(
-          {v0, v1, v2}, f->orig, {eo_01, eo_12, -1}, {false, false, false});
-      const Face *f1 = arena->add_face(
-          {v0, v2, v3}, f->orig, {-1, eo_23, eo_30}, {false, false, false});
+      Face *f0 = arena->add_face({v0, v1, v2}, f->orig, {eo_01, eo_12, -1}, {false, false, false});
+      Face *f1 = arena->add_face({v0, v2, v3}, f->orig, {-1, eo_23, eo_30}, {false, false, false});
       face_tris.append(f0);
       face_tris.append(f1);
     }
     else {
-      Array<const Face *> tris = triangulate_poly(f, arena);
-      for (const Face *tri : tris) {
+      Array<Face *> tris = triangulate_poly(f, arena);
+      for (Face *tri : tris) {
         face_tris.append(tri);
       }
     }
@@ -2685,7 +2686,8 @@ static void init_face_merge_state(FaceMergeState *fms,
     if (dbg_level > 0) {
       std::cout << "process tri = " << &tri << "\n";
     }
-    if (double3::dot(norm, tri.plane.norm) <= 0.0) {
+    BLI_assert(tri.plane_populated());
+    if (double3::dot(norm, tri.plane->norm) <= 0.0) {
       if (dbg_level > 0) {
         std::cout << "triangle has wrong orientation, skipping\n";
       }
@@ -2926,17 +2928,17 @@ static void do_dissolve(FaceMergeState *fms)
  * Note: it is possible that some of the triangles in tris have reversed orientation
  * to the rest, so we have to handle the two cases separately.
  */
-static Vector<const Face *> merge_tris_for_face(Vector<int> tris,
-                                                const IMesh &tm,
-                                                const IMesh &imesh_in,
-                                                IMeshArena *arena)
+static Vector<Face *> merge_tris_for_face(Vector<int> tris,
+                                          const IMesh &tm,
+                                          const IMesh &imesh_in,
+                                          IMeshArena *arena)
 {
   constexpr int dbg_level = 0;
   if (dbg_level > 0) {
     std::cout << "merge_tris_for_face\n";
     std::cout << "tris: " << tris << "\n";
   }
-  Vector<const Face *> ans;
+  Vector<Face *> ans;
   if (tris.size() <= 1) {
     if (tris.size() == 1) {
       ans.append(tm.face(tris[0]));
@@ -2944,15 +2946,15 @@ static Vector<const Face *> merge_tris_for_face(Vector<int> tris,
     return ans;
   }
   bool done = false;
-  double3 first_tri_normal = tm.face(tris[0])->plane.norm;
-  double3 second_tri_normal = tm.face(tris[1])->plane.norm;
+  double3 first_tri_normal = tm.face(tris[0])->plane->norm;
+  double3 second_tri_normal = tm.face(tris[1])->plane->norm;
   if (tris.size() == 2 && double3::dot(first_tri_normal, second_tri_normal) > 0.0) {
     /* Is this a case where quad with one diagonal remained unchanged?
      * Worth special handling because this case will be very common.
      */
-    const Face &tri1 = *tm.face(tris[0]);
-    const Face &tri2 = *tm.face(tris[1]);
-    const Face *in_face = imesh_in.face(tri1.orig);
+    Face &tri1 = *tm.face(tris[0]);
+    Face &tri2 = *tm.face(tris[1]);
+    Face *in_face = imesh_in.face(tri1.orig);
     if (in_face->size() == 4) {
       std::pair<int, int> estarts = find_tris_common_edge(tri1, tri2);
       if (estarts.first != -1 && tri1.edge_orig[estarts.first] == NO_INDEX) {
@@ -2997,7 +2999,7 @@ static Vector<const Face *> merge_tris_for_face(Vector<int> tris,
           e_orig[i] = fms.edge[mf.edge[i]].orig;
           is_intersect[i] = fms.edge[mf.edge[i]].is_intersect;
         }
-        const Face *facep = arena->add_face(mf.vert, mf.orig, e_orig, is_intersect);
+        Face *facep = arena->add_face(mf.vert, mf.orig, e_orig, is_intersect);
         ans.append(facep);
         if (dbg_level > 0) {
           std::cout << "  " << facep << "\n";
@@ -3127,6 +3129,10 @@ static IMesh polymesh_from_trimesh_with_dissolve(const IMesh &tm_out,
   if (dbg_level > 1) {
     std::cout << "\nPOLYMESH_FROM_TRIMESH_WITH_DISSOLVE\n";
   }
+  /* For now: need plane normals for all triangles. */
+  for (Face *tri : tm_out.faces()) {
+    tri->populate_plane(false);
+  }
   /* Gather all output triangles that are part of each input face.
    * face_output_tris[f] will be indices of triangles in tm_out
    * that have f as their original face.
@@ -3149,7 +3155,7 @@ static IMesh polymesh_from_trimesh_with_dissolve(const IMesh &tm_out,
    * face_output_face[f] will be new original const Face *'s that
    * make up whatever part of the boolean output remains of input face f.
    */
-  Array<Vector<const Face *>> face_output_face(tot_in_face);
+  Array<Vector<Face *>> face_output_face(tot_in_face);
   int tot_out_face = 0;
   for (int in_f : imesh_in.face_index_range()) {
     if (dbg_level > 1) {
@@ -3162,10 +3168,10 @@ static IMesh polymesh_from_trimesh_with_dissolve(const IMesh &tm_out,
     face_output_face[in_f] = merge_tris_for_face(face_output_tris[in_f], tm_out, imesh_in, arena);
     tot_out_face += face_output_face[in_f].size();
   }
-  Array<const Face *> face(tot_out_face);
+  Array<Face *> face(tot_out_face);
   int out_f_index = 0;
   for (int in_f : imesh_in.face_index_range()) {
-    const Vector<const Face *> &f_faces = face_output_face[in_f];
+    const Vector<Face *> &f_faces = face_output_face[in_f];
     if (f_faces.size() > 0) {
       std::copy(f_faces.begin(), f_faces.end(), &face[out_f_index]);
       out_f_index += f_faces.size();
@@ -3319,6 +3325,9 @@ IMesh boolean_mesh(IMesh &imesh,
   if (tm_in == nullptr) {
     our_triangulation = triangulate_polymesh(imesh, arena);
     tm_in = &our_triangulation;
+  }
+  if (dbg_level > 1) {
+    write_obj_mesh(*tm_in, "boolean_tm_in");
   }
   IMesh tm_out = boolean_trimesh(*tm_in, op, nshapes, shape_fn, use_self, arena);
   if (dbg_level > 1) {

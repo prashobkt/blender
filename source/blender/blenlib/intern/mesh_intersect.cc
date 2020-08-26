@@ -88,13 +88,49 @@ bool Plane::operator==(const Plane &other) const
   return norm_exact == other.norm_exact && d_exact == other.d_exact;
 }
 
+void Plane::make_canonical()
+{
+  if (norm_exact[0] != 0) {
+    mpq_class den = norm_exact[0];
+    norm_exact = mpq3(1, norm_exact[1] / den, norm_exact[2] / den);
+    d_exact = d_exact / den;
+  }
+  else if (norm_exact[1] != 0) {
+    mpq_class den = norm_exact[1];
+    norm_exact = mpq3(0, 1, norm_exact[2] / den);
+    d_exact = d_exact / den;
+  }
+  else {
+    if (norm_exact[2] != 0) {
+      mpq_class den = norm_exact[2];
+      norm_exact = mpq3(0, 0, 1);
+      d_exact = d_exact / den;
+    }
+    else {
+      /* A degenerate plane. */
+      d_exact = 0;
+    }
+  }
+  norm = double3(norm_exact[0].get_d(), norm_exact[1].get_d(), norm_exact[2].get_d());
+  d = d_exact.get_d();
+}
+
 Plane::Plane(const mpq3 &norm_exact, const mpq_class &d_exact)
     : norm_exact(norm_exact), d_exact(d_exact)
 {
-  norm[0] = norm_exact[0].get_d();
-  norm[1] = norm_exact[1].get_d();
-  norm[2] = norm_exact[2].get_d();
+  norm = double3(norm_exact[0].get_d(), norm_exact[1].get_d(), norm_exact[2].get_d());
   d = d_exact.get_d();
+}
+
+Plane::Plane(const double3 &norm, const double d) : norm(norm), d(d)
+{
+  norm_exact = mpq3(0, 0, 0); /* Marks as "exact not yet populated". */
+}
+
+/* This is wrong for degenerate planes, but we don't expect to call it on those. */
+bool Plane::exact_populated() const
+{
+  return norm_exact[0] != 0 || norm_exact[1] != 0 || norm_exact[2] != 0;
 }
 
 uint64_t Plane::hash() const
@@ -110,42 +146,9 @@ uint64_t Plane::hash() const
   return ans;
 }
 
-/* Need a canonical form of a plane so that can use as a key in a map and
- * all coplanar triangles will have the same key.
- * Make the first nonzero component of the normal be 1.
- * Note that this might flip the orientation of the plane.
- */
-void Plane::make_canonical()
+std::ostream &operator<<(std::ostream &os, const Plane *plane)
 {
-  if (norm_exact[0] != 0) {
-    mpq_class den = norm_exact[0];
-    norm_exact = mpq3(1, norm_exact[1] / den, norm_exact[2] / den);
-    d_exact = d_exact / den;
-  }
-  else if (norm_exact[1] != 0) {
-    mpq_class den = norm_exact[1];
-    norm_exact = mpq3(0, 1, norm_exact[2] / den);
-    d_exact = d_exact / den;
-  }
-  else {
-    mpq_class den = norm_exact[2];
-    norm_exact = mpq3(0, 0, 1);
-    if (den != 0) {
-      d_exact = d_exact / den;
-    }
-    else {
-      std::cout << "unexpected zero normal in Plane::make_canonical\n";
-      std::cout << "Plane = " << *this << "\n";
-      d_exact = 0;
-    }
-  }
-  norm = double3(norm_exact[0].get_d(), norm_exact[1].get_d(), norm_exact[2].get_d());
-  d = d_exact.get_d();
-}
-
-std::ostream &operator<<(std::ostream &os, const Plane &plane)
-{
-  os << "[" << plane.norm << ";" << plane.d << "]";
+  os << "[" << plane->norm << ";" << plane->d << "]";
   return os;
 }
 
@@ -153,40 +156,60 @@ Face::Face(
     Span<const Vert *> verts, int id, int orig, Span<int> edge_origs, Span<bool> is_intersect)
     : vert(verts), edge_orig(edge_origs), is_intersect(is_intersect), id(id), orig(orig)
 {
-  mpq3 normal;
-  if (vert.size() > 3) {
-    Array<mpq3> co(vert.size());
-    for (int i : index_range()) {
-      co[i] = vert[i]->co_exact;
-    }
-    normal = mpq3::cross_poly(co);
-  }
-  else {
-    mpq3 tr02 = vert[0]->co_exact - vert[2]->co_exact;
-    mpq3 tr12 = vert[1]->co_exact - vert[2]->co_exact;
-    normal = mpq3::cross(tr02, tr12);
-  }
-  mpq_class d = -mpq3::dot(normal, vert[0]->co_exact);
-  plane = Plane(normal, d);
 }
 
 Face::Face(Span<const Vert *> verts, int id, int orig) : vert(verts), id(id), orig(orig)
 {
-  mpq3 normal;
-  if (vert.size() > 3) {
-    Array<mpq3> co(vert.size());
-    for (int i : index_range()) {
-      co[i] = vert[i]->co_exact;
+}
+
+void Face::populate_plane(bool need_exact)
+{
+  if (plane != nullptr) {
+    if (!need_exact || plane->exact_populated()) {
+      return;
     }
-    normal = mpq3::cross_poly(co);
+  }
+  if (need_exact) {
+    mpq3 normal_exact;
+    if (vert.size() > 3) {
+      Array<mpq3> co(vert.size());
+      for (int i : index_range()) {
+        co[i] = vert[i]->co_exact;
+      }
+      normal_exact = mpq3::cross_poly(co);
+    }
+    else {
+      mpq3 tr02 = vert[0]->co_exact - vert[2]->co_exact;
+      mpq3 tr12 = vert[1]->co_exact - vert[2]->co_exact;
+      normal_exact = mpq3::cross(tr02, tr12);
+    }
+    mpq_class d_exact = -mpq3::dot(normal_exact, vert[0]->co_exact);
+    plane = new Plane(normal_exact, d_exact);
   }
   else {
-    mpq3 tr02 = vert[0]->co_exact - vert[2]->co_exact;
-    mpq3 tr12 = vert[1]->co_exact - vert[2]->co_exact;
-    normal = mpq3::cross(tr02, tr12);
+    double3 normal;
+    if (vert.size() > 3) {
+      Array<double3> co(vert.size());
+      for (int i : index_range()) {
+        co[i] = vert[i]->co;
+      }
+      normal = double3::cross_poly(co);
+    }
+    else {
+      double3 tr02 = vert[0]->co - vert[2]->co;
+      double3 tr12 = vert[1]->co - vert[2]->co;
+      normal = double3::cross_high_precision(tr02, tr12);
+    }
+    double d = -double3::dot(normal, vert[0]->co);
+    plane = new Plane(normal, d);
   }
-  mpq_class d = -mpq3::dot(normal, vert[0]->co_exact);
-  plane = Plane(normal, d);
+}
+
+Face::~Face()
+{
+  if (plane != nullptr) {
+    delete plane;
+  }
 }
 
 bool Face::operator==(const Face &other) const
@@ -273,7 +296,7 @@ std::ostream &operator<<(std::ostream &os, const Face *f)
  */
 // #define USE_SPINLOCK
 
-class IMeshArena::IMeshArenaImpl {
+class IMeshArena::IMeshArenaImpl : NonCopyable, NonMovable {
 
   /* Don't use Vert itself as key since resizing may move
    * pointers to the Vert around, and we need to have those pointers
@@ -326,8 +349,6 @@ class IMeshArena::IMeshArenaImpl {
 #  endif
     }
   }
-  IMeshArenaImpl(const IMeshArenaImpl &) = delete;
-  IMeshArenaImpl(IMeshArenaImpl &&) = delete;
   ~IMeshArenaImpl()
   {
     if (intersect_use_threading) {
@@ -368,10 +389,7 @@ class IMeshArena::IMeshArenaImpl {
     return add_or_find_vert(mco, co, orig);
   }
 
-  const Face *add_face(Span<const Vert *> verts,
-                       int orig,
-                       Span<int> edge_origs,
-                       Span<bool> is_intersect)
+  Face *add_face(Span<const Vert *> verts, int orig, Span<int> edge_origs, Span<bool> is_intersect)
   {
     Face *f = new Face(verts, next_face_id_++, orig, edge_origs, is_intersect);
     if (intersect_use_threading) {
@@ -392,13 +410,13 @@ class IMeshArena::IMeshArenaImpl {
     return f;
   }
 
-  const Face *add_face(Span<const Vert *> verts, int orig, Span<int> edge_origs)
+  Face *add_face(Span<const Vert *> verts, int orig, Span<int> edge_origs)
   {
     Array<bool> is_intersect(verts.size(), false);
     return add_face(verts, orig, edge_origs, is_intersect);
   }
 
-  const Face *add_face(Span<const Vert *> verts, int orig)
+  Face *add_face(Span<const Vert *> verts, int orig)
   {
     Array<int> edge_origs(verts.size(), NO_INDEX);
     Array<bool> is_intersect(verts.size(), false);
@@ -522,20 +540,20 @@ const Vert *IMeshArena::add_or_find_vert(const mpq3 &co, int orig)
   return pimpl_->add_or_find_vert(co, orig);
 }
 
-const Face *IMeshArena::add_face(Span<const Vert *> verts,
-                                 int orig,
-                                 Span<int> edge_origs,
-                                 Span<bool> is_intersect)
+Face *IMeshArena::add_face(Span<const Vert *> verts,
+                           int orig,
+                           Span<int> edge_origs,
+                           Span<bool> is_intersect)
 {
   return pimpl_->add_face(verts, orig, edge_origs, is_intersect);
 }
 
-const Face *IMeshArena::add_face(Span<const Vert *> verts, int orig, Span<int> edge_origs)
+Face *IMeshArena::add_face(Span<const Vert *> verts, int orig, Span<int> edge_origs)
 {
   return pimpl_->add_face(verts, orig, edge_origs);
 }
 
-const Face *IMeshArena::add_face(Span<const Vert *> verts, int orig)
+Face *IMeshArena::add_face(Span<const Vert *> verts, int orig)
 {
   return pimpl_->add_face(verts, orig);
 }
@@ -555,7 +573,7 @@ const Face *IMeshArena::find_face(Span<const Vert *> verts) const
   return pimpl_->find_face(verts);
 }
 
-void IMesh::set_faces(Span<const Face *> faces)
+void IMesh::set_faces(Span<Face *> faces)
 {
   face_ = faces;
 }
@@ -675,11 +693,13 @@ std::ostream &operator<<(std::ostream &os, const IMesh &mesh)
   int i = 0;
   for (const Face *f : mesh.faces()) {
     os << i << ": " << f << "\n";
-    os << "    plane=" << f->plane << " eorig=[";
-    for (Face::FacePos p = 0; p < f->size(); ++p) {
-      os << f->edge_orig[p] << " ";
+    if (f->plane != nullptr) {
+      os << "    plane=" << f->plane << " eorig=[";
+      for (Face::FacePos p = 0; p < f->size(); ++p) {
+        os << f->edge_orig[p] << " ";
+      }
+      os << "]\n";
     }
-    os << "]\n";
     ++i;
   }
   return os;
@@ -839,6 +859,7 @@ static Array<BoundingBox> calc_face_bounding_boxes(const IMesh &m)
   settings.userdata_chunk_size = sizeof(chunk_data);
   settings.func_reduce = calc_face_bb_reduce;
   settings.min_iter_per_thread = 1000;
+  settings.use_threading = intersect_use_threading;
   BLI_task_parallel_range(0, n, &data, calc_face_bb_range_func, &settings);
   double max_abs_val = chunk_data.max_abs_val;
   constexpr float pad_factor = 10.0f;
@@ -847,6 +868,7 @@ static Array<BoundingBox> calc_face_bounding_boxes(const IMesh &m)
   TaskParallelSettings pad_settings;
   BLI_parallel_range_settings_defaults(&pad_settings);
   settings.min_iter_per_thread = 1000;
+  settings.use_threading = intersect_use_threading;
   BBPadData pad_data(&ans, pad);
   BLI_task_parallel_range(0, n, &pad_data, pad_face_bb_range_func, &pad_settings);
   return ans;
@@ -1510,10 +1532,11 @@ static int filter_plane_side(const double3 &p,
  * where triangles share an edge or a vertex, but don't
  * otherwise intersect.
  */
-static bool may_non_trivially_intersect(const Face *t1, const Face *t2)
+static bool may_non_trivially_intersect(Face *t1, Face *t2)
 {
-  const Face &tri1 = *t1;
-  const Face &tri2 = *t2;
+  Face &tri1 = *t1;
+  Face &tri2 = *t2;
+  BLI_assert(t1->plane_populated() && t2->plane_populated());
   Face::FacePos share1_pos[3];
   Face::FacePos share2_pos[3];
   int n_shared = 0;
@@ -1532,7 +1555,7 @@ static bool may_non_trivially_intersect(const Face *t1, const Face *t2)
     /* t1 and t2 share an entire edge.
      * If their normals are not parallel, they cannot non-trivially intersect.
      */
-    if (!near_parallel_vecs(tri1.plane.norm, tri2.plane.norm)) {
+    if (!near_parallel_vecs(tri1.plane->norm, tri2.plane->norm)) {
       return false;
     }
     /* The normals are parallel or nearly parallel.
@@ -1541,8 +1564,10 @@ static bool may_non_trivially_intersect(const Face *t1, const Face *t2)
      */
     bool erev1 = tri1.prev_pos(share1_pos[0]) == share1_pos[1];
     bool erev2 = tri2.prev_pos(share2_pos[0]) == share2_pos[1];
-    if (erev1 != erev2 && dot_must_be_positive(tri1.plane.norm, tri2.plane.norm)) {
-      return false;
+    if (erev1 != erev2) {
+      if (dot_must_be_positive(tri1.plane->norm, tri2.plane->norm)) {
+        return false;
+      }
     }
   }
   else if (n_shared == 1) {
@@ -1789,6 +1814,7 @@ static ITT_value intersect_tri_tri(const IMesh &tm, int t1, int t2)
 #  endif
   const Face &tri1 = *tm.face(t1);
   const Face &tri2 = *tm.face(t2);
+  BLI_assert(tri1.plane_populated() && tri2.plane_populated());
   const Vert *vp1 = tri1[0];
   const Vert *vq1 = tri1[1];
   const Vert *vr1 = tri1[2];
@@ -1817,7 +1843,7 @@ static ITT_value intersect_tri_tri(const IMesh &tm, int t1, int t2)
   const double3 &d_p2 = vp2->co;
   const double3 &d_q2 = vq2->co;
   const double3 &d_r2 = vr2->co;
-  const double3 &d_n2 = tri2.plane.norm;
+  const double3 &d_n2 = tri2.plane->norm;
 
   const double3 &abs_d_p1 = double3::abs(d_p1);
   const double3 &abs_d_q1 = double3::abs(d_q1);
@@ -1838,7 +1864,7 @@ static ITT_value intersect_tri_tri(const IMesh &tm, int t1, int t2)
     return ITT_value(INONE);
   }
 
-  const double3 &d_n1 = tri1.plane.norm;
+  const double3 &d_n1 = tri1.plane->norm;
   const double3 &abs_d_p2 = double3::abs(d_p2);
   const double3 &abs_d_q2 = double3::abs(d_q2);
   const double3 &abs_d_n1 = double3::abs(d_n1);
@@ -1863,7 +1889,7 @@ static ITT_value intersect_tri_tri(const IMesh &tm, int t1, int t2)
   const mpq3 &q2 = vq2->co_exact;
   const mpq3 &r2 = vr2->co_exact;
 
-  const mpq3 &n2 = tri2.plane.norm_exact;
+  const mpq3 &n2 = tri2.plane->norm_exact;
   if (sp1 == 0) {
     sp1 = sgn(mpq3::dot(p1 - r2, n2));
   }
@@ -1889,7 +1915,7 @@ static ITT_value intersect_tri_tri(const IMesh &tm, int t1, int t2)
   }
 
   /* Repeat for signs of t2's vertices with respect to plane of t1. */
-  const mpq3 &n1 = tri1.plane.norm_exact;
+  const mpq3 &n1 = tri1.plane->norm_exact;
   if (sp2 == 0) {
     sp2 = sgn(mpq3::dot(p2 - r1, n1));
   }
@@ -1986,7 +2012,7 @@ static ITT_value intersect_tri_tri(const IMesh &tm, int t1, int t2)
 }
 
 struct CDT_data {
-  Plane t_plane;
+  const Plane *t_plane;
   Vector<mpq2> vert;
   Vector<std::pair<int, int>> edge;
   Vector<Vector<int>> face;
@@ -2013,9 +2039,10 @@ static int prepare_need_vert(CDT_data &cd, const mpq3 &p3d)
 static mpq3 unproject_cdt_vert(const CDT_data &cd, const mpq2 &p2d)
 {
   mpq3 p3d;
-  BLI_assert(cd.t_plane.norm_exact[cd.proj_axis] != 0);
-  const mpq3 &n = cd.t_plane.norm_exact;
-  const mpq_class &d = cd.t_plane.d_exact;
+  BLI_assert(cd.t_plane->exact_populated());
+  BLI_assert(cd.t_plane->norm_exact[cd.proj_axis] != 0);
+  const mpq3 &n = cd.t_plane->norm_exact;
+  const mpq_class &d = cd.t_plane->d_exact;
   switch (cd.proj_axis) {
     case (0): {
       mpq_class num = n[1] * p2d[0] + n[2] * p2d[1] + d;
@@ -2064,15 +2091,12 @@ static void prepare_need_tri(CDT_data &cd, const IMesh &tm, int t)
   /* How to get CCW orientation of projected tri? Note that when look down y axis
    * as opposed to x or z, the orientation of the other two axes is not right-and-up.
    */
-  if (cd.t_plane.norm_exact[cd.proj_axis] >= 0) {
+  BLI_assert(cd.t_plane->exact_populated());
+  if (tri.plane->norm_exact[cd.proj_axis] >= 0) {
     rev = cd.proj_axis == 1;
   }
   else {
     rev = cd.proj_axis != 1;
-  }
-  /* If t's plane is opposite to cd.t_plane, need to reverse again. */
-  if (sgn(tri.plane.norm_exact[cd.proj_axis]) != sgn(cd.t_plane.norm_exact[cd.proj_axis])) {
-    rev = !rev;
   }
   int cd_t = cd.face.append_and_get_index(Vector<int>());
   cd.face[cd_t].append(v0);
@@ -2091,9 +2115,10 @@ static void prepare_need_tri(CDT_data &cd, const IMesh &tm, int t)
 static CDT_data prepare_cdt_input(const IMesh &tm, int t, const Vector<ITT_value> itts)
 {
   CDT_data ans;
+  BLI_assert(tm.face(t)->plane_populated());
   ans.t_plane = tm.face(t)->plane;
-  const Plane &pl = ans.t_plane;
-  ans.proj_axis = mpq3::dominant_axis(pl.norm_exact);
+  BLI_assert(ans.t_plane->exact_populated());
+  ans.proj_axis = mpq3::dominant_axis(ans.t_plane->norm_exact);
   prepare_need_tri(ans, tm, t);
   for (const ITT_value &itt : itts) {
     switch (itt.kind) {
@@ -2126,9 +2151,10 @@ static CDT_data prepare_cdt_input_for_cluster(const IMesh &tm,
   const CoplanarCluster &cl = clinfo.cluster(c);
   BLI_assert(cl.tot_tri() > 0);
   int t0 = cl.tri(0);
+  BLI_assert(tm.face(t0)->plane_populated());
   ans.t_plane = tm.face(t0)->plane;
-  const Plane &pl = ans.t_plane;
-  ans.proj_axis = mpq3::dominant_axis(pl.norm_exact);
+  BLI_assert(ans.t_plane->exact_populated());
+  ans.proj_axis = mpq3::dominant_axis(ans.t_plane->norm_exact);
   for (const int t : cl) {
     prepare_need_tri(ans, tm, t);
   }
@@ -2280,7 +2306,7 @@ static IMesh extract_subdivided_tri(const CDT_data &cd,
   }
   int t_orig = in_tm.face(t)->orig;
   constexpr int inline_buf_size = 20;
-  Vector<const Face *, inline_buf_size> faces;
+  Vector<Face *, inline_buf_size> faces;
   for (int f : cdt_out.face.index_range()) {
     if (cdt_out.face_orig[f].contains(t_in_cdt)) {
       BLI_assert(cdt_out.face[f].size() == 3);
@@ -2297,7 +2323,7 @@ static IMesh extract_subdivided_tri(const CDT_data &cd,
       const Vert *v0 = arena->add_or_find_vert(v0co, NO_INDEX);
       const Vert *v1 = arena->add_or_find_vert(v1co, NO_INDEX);
       const Vert *v2 = arena->add_or_find_vert(v2co, NO_INDEX);
-      const Face *facep;
+      Face *facep;
       bool is_isect0;
       bool is_isect1;
       bool is_isect2;
@@ -2315,6 +2341,7 @@ static IMesh extract_subdivided_tri(const CDT_data &cd,
         facep = arena->add_face(
             {v0, v1, v2}, t_orig, {oe0, oe1, oe2}, {is_isect0, is_isect1, is_isect2});
       }
+      facep->populate_plane(false);
       faces.append(facep);
     }
   }
@@ -2323,7 +2350,7 @@ static IMesh extract_subdivided_tri(const CDT_data &cd,
 
 static IMesh extract_single_tri(const IMesh &tm, int t)
 {
-  const Face *f = tm.face(t);
+  Face *f = tm.face(t);
   return IMesh({f});
 }
 
@@ -2543,6 +2570,7 @@ static void calc_overlap_itts(Map<std::pair<int, int>, ITT_value> &itt_map,
   TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.min_iter_per_thread = 1000;
+  settings.use_threading = intersect_use_threading;
   BLI_task_parallel_range(0, tot_intersect_pairs, &data, calc_overlap_itts_range_func, &settings);
 }
 
@@ -2669,6 +2697,7 @@ static void calc_subdivided_tris(Array<IMesh> &r_tri_subdivided,
   TaskParallelSettings settings;
   BLI_parallel_range_settings_defaults(&settings);
   settings.min_iter_per_thread = 50;
+  settings.use_threading = intersect_use_threading;
   BLI_task_parallel_range(
       0, overlap_tri_range_tot, &data, calc_subdivided_tri_range_func, &settings);
 }
@@ -2750,10 +2779,10 @@ static IMesh union_tri_subdivides(const blender::Array<IMesh> &tri_subdivided)
   for (const IMesh &m : tri_subdivided) {
     tot_tri += m.face_size();
   }
-  Array<const Face *> faces(tot_tri);
+  Array<Face *> faces(tot_tri);
   int face_index = 0;
   for (const IMesh &m : tri_subdivided) {
-    for (const Face *f : m.faces()) {
+    for (Face *f : m.faces()) {
       faces[face_index++] = f;
     }
   }
@@ -2778,10 +2807,11 @@ static CoplanarClusterInfo find_clusters(const IMesh &tm, const Array<BoundingBo
      * We can't just store the canonical version in the face
      * since canonicalizing loses the orientation of the normal.
      */
-    Plane tplane = tm.face(t)->plane;
+    Plane tplane = *tm.face(t)->plane;
+    BLI_assert(tplane.exact_populated());
     tplane.make_canonical();
     if (dbg_level > 0) {
-      std::cout << "plane for tri " << t << " = " << tplane << "\n";
+      std::cout << "plane for tri " << t << " = " << &tplane << "\n";
     }
     /* Assume all planes are in canonical from (see canon_plane()). */
     if (plane_cls.contains(tplane)) {
@@ -2796,24 +2826,39 @@ static CoplanarClusterInfo find_clusters(const IMesh &tm, const Array<BoundingBo
       for (CoplanarCluster &cl : curcls) {
         if (bbs_might_intersect(tri_bb[t], cl.bounding_box()) &&
             non_trivially_coplanar_intersects(tm, t, cl, proj_axis)) {
+          if (dbg_level > 1) {
+            std::cout << "append to int_cls\n";
+          }
           int_cls.append(&cl);
         }
         else {
+          if (dbg_level > 1) {
+            std::cout << "append to no_int_cls\n";
+          }
           no_int_cls.append(&cl);
         }
       }
       if (int_cls.size() == 0) {
         /* t doesn't intersect any existing cluster in its plane, so make one just for it. */
+        if (dbg_level > 1) {
+          std::cout << "no intersecting clusters for t, make a new one\n";
+        }
         curcls.append(CoplanarCluster(t, tri_bb[t]));
       }
       else if (int_cls.size() == 1) {
         /* t intersects exactly one existing cluster, so can add t to that cluster. */
+        if (dbg_level > 1) {
+          std::cout << "exactly one existing cluster, " << int_cls[0] << ", adding to it\n";
+        }
         int_cls[0]->add_tri(t, tri_bb[t]);
       }
       else {
         /* t intersections 2 or more existing clusters: need to merge them and replace all the
          * originals with the merged one in curcls.
          */
+        if (dbg_level > 1) {
+          std::cout << "merging\n";
+        }
         CoplanarCluster mergecl;
         mergecl.add_tri(t, tri_bb[t]);
         for (CoplanarCluster *cl : int_cls) {
@@ -2917,6 +2962,7 @@ static bool has_degenerate_tris(const IMesh &tm)
   settings.userdata_chunk_size = sizeof(degen_chunk_data);
   settings.func_reduce = degenerate_reduce;
   settings.min_iter_per_thread = 1000;
+  settings.use_threading = intersect_use_threading;
   BLI_task_parallel_range(0, tm.face_size(), &degen_data, degenerate_range_func, &settings);
   return degen_chunk_data.has_degenerate_tri;
 }
@@ -2924,9 +2970,9 @@ static bool has_degenerate_tris(const IMesh &tm)
 static IMesh remove_degenerate_tris(const IMesh &tm_in)
 {
   IMesh ans;
-  Vector<const Face *> new_faces;
+  Vector<Face *> new_faces;
   new_faces.reserve(tm_in.face_size());
-  for (const Face *f : tm_in.faces()) {
+  for (Face *f : tm_in.faces()) {
     if (!face_is_degenerate(f)) {
       new_faces.append(f);
     }
@@ -2982,6 +3028,10 @@ IMesh trimesh_nary_intersect(const IMesh &tm_in,
     if (dbg_level > 1) {
       std::cout << "cleaned input mesh:\n" << tm_cleaned;
     }
+  }
+  /* Temporary, while developing: populate all plane normals exactly. */
+  for (Face *f : tm_clean->faces()) {
+    f->populate_plane(true);
   }
 #  ifdef PERFDEBUG
   double clean_time = PIL_check_seconds_timer();

@@ -74,7 +74,12 @@ struct Vert {
 
 std::ostream &operator<<(std::ostream &os, const Vert *v);
 
-/* A Plane whose equation is dot(nprm, p) + d = 0. */
+/* A Plane whose equation is dot(norm, p) + d = 0.
+ * The norm and d fields are always present, but the norm_exact
+ * and d_exact fields may be lazily populated. Since we don't
+ * store degenerate planes, we can tell if a the exact versions
+ * are not populated yet by having norm_exact == 0.
+ */
 struct Plane {
   mpq3 norm_exact;
   mpq_class d_exact;
@@ -83,6 +88,7 @@ struct Plane {
 
   Plane() = default;
   Plane(const mpq3 &norm_exact, const mpq_class &d_exact);
+  Plane(const double3 &norm, const double d);
 
   /* Test equality on the exact fields. */
   bool operator==(const Plane &other) const;
@@ -91,9 +97,11 @@ struct Plane {
   uint64_t hash() const;
 
   void make_canonical();
+  bool exact_populated() const;
+  void populate_exact();
 };
 
-std::ostream &operator<<(std::ostream &os, const Plane &plane);
+std::ostream &operator<<(std::ostream &os, const Plane *plane);
 
 /* A Face has a sequence of Verts that for a CCW ordering around them.
  * Faces carry an index, created at allocation time, useful for making
@@ -107,13 +115,14 @@ std::ostream &operator<<(std::ostream &os, const Plane &plane);
  * for each edge whether or not it is the result of intersecting
  * with another face in the intersect algorithm.
  * Since the intersect algorithm needs the plane for each face,
- * a Face also stores the Plane of the face.
+ * a Face also stores the Plane of the face, but this is only
+ * populate later because not all faces will be intersected.
  */
-struct Face {
+struct Face : NonCopyable {
   Array<const Vert *> vert;
   Array<int> edge_orig;
   Array<bool> is_intersect;
-  Plane plane;
+  Plane *plane = nullptr;
   int id = NO_INDEX;
   int orig = NO_INDEX;
 
@@ -122,7 +131,7 @@ struct Face {
   Face() = default;
   Face(Span<const Vert *> verts, int id, int orig, Span<int> edge_origs, Span<bool> is_intersect);
   Face(Span<const Vert *> verts, int id, int orig);
-  ~Face() = default;
+  ~Face();
 
   bool is_tri() const
   {
@@ -169,6 +178,13 @@ struct Face {
   {
     return IndexRange(vert.size());
   }
+
+  void populate_plane(bool need_exact);
+
+  bool plane_populated() const
+  {
+    return plane != nullptr;
+  }
 };
 
 std::ostream &operator<<(std::ostream &os, const Face *f);
@@ -203,12 +219,12 @@ class IMeshArena : NonCopyable, NonMovable {
   const Vert *add_or_find_vert(const mpq3 &co, int orig);
   const Vert *add_or_find_vert(const double3 &co, int orig);
 
-  const Face *add_face(Span<const Vert *> verts,
-                       int orig,
-                       Span<int> edge_origs,
-                       Span<bool> is_intersect);
-  const Face *add_face(Span<const Vert *> verts, int orig, Span<int> edge_origs);
-  const Face *add_face(Span<const Vert *> verts, int orig);
+  Face *add_face(Span<const Vert *> verts,
+                 int orig,
+                 Span<int> edge_origs,
+                 Span<bool> is_intersect);
+  Face *add_face(Span<const Vert *> verts, int orig, Span<int> edge_origs);
+  Face *add_face(Span<const Vert *> verts, int orig);
 
   /* The following return nullptr if not found. */
   const Vert *find_vert(const mpq3 &co) const;
@@ -226,19 +242,19 @@ class IMeshArena : NonCopyable, NonMovable {
  */
 
 class IMesh {
-  Array<const Face *> face_;
+  Array<Face *> face_;                   /* Not const so can lazily populate planes. */
   Array<const Vert *> vert_;             /* Only valid if vert_populated_. */
   Map<const Vert *, int> vert_to_index_; /* Only valid if vert_populated_. */
   bool vert_populated_ = false;
 
  public:
   IMesh() = default;
-  IMesh(Span<const Face *> faces) : face_(faces)
+  IMesh(Span<Face *> faces) : face_(faces)
   {
   }
 
-  void set_faces(Span<const Face *> faces);
-  const Face *face(int index) const
+  void set_faces(Span<Face *> faces);
+  Face *face(int index) const
   {
     return face_[index];
   }
@@ -297,9 +313,9 @@ class IMesh {
     return Span<const Vert *>(vert_);
   }
 
-  Span<const Face *> faces() const
+  Span<Face *> faces() const
   {
-    return Span<const Face *>(face_);
+    return Span<Face *>(face_);
   }
 
   /* Replace face at given index with one that elides the

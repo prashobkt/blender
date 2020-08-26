@@ -19,6 +19,7 @@
 #include <iostream>
 
 #include "BLI_math_vector.h"
+#include "BLI_span.hh"
 
 namespace blender {
 
@@ -225,6 +226,16 @@ struct double3 {
   {
     return double3(fabs(a.x), fabs(a.y), fabs(a.z));
   }
+
+  static int dominant_axis(const double3 &a)
+  {
+    double x = (a.x >= 0) ? a.x : -a.x;
+    double y = (a.y >= 0) ? a.y : -a.y;
+    double z = (a.z >= 0) ? a.z : -a.z;
+    return ((x > y) ? ((x > z) ? 0 : 2) : ((y > z) ? 1 : 2));
+  }
+
+  static double3 cross_poly(Span<double3> poly);
 
   /* orient3d gives the exact result, using multiprecision artihmetic when result
    * is close to zero. orient3d_fast just uses double arithmetic, so may be
