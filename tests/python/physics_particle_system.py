@@ -24,13 +24,15 @@ import sys
 import bpy
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from modules.mesh_test import ModifierTest, ParticleSystemSpec
+from modules.mesh_test import ModifierTest, ParticleSystemSpec, MeshTest
 
 
 def main():
     test = [
-        ["ParticleSystemTest", "test", "exp",
-         [ParticleSystemSpec('Particles', 'PARTICLE_SYSTEM', {'render_type': "OBJECT", 'instance_object': bpy.data.objects['Cube']}, 20)]],
+        MeshTest("ParticleSystemTest", "test", "exp",
+         [ParticleSystemSpec('Particles', 'PARTICLE_SYSTEM', {'render_type': "OBJECT",
+          'instance_object': bpy.data.objects['Cube']}, 20)]),
+
     ]
     particle_test = ModifierTest(test, threshold=1e-3)
 

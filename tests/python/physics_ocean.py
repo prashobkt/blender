@@ -24,14 +24,14 @@ import sys
 import bpy
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from modules.mesh_test import ModifierTest, ModifierSpec
+from modules.mesh_test import ModifierTest, ModifierSpec, MeshTest
 
 
 def main():
     test = [
         # World coordinates of test and expected object should be same.
-        ["PlaneOcean", "testObjPlaneOcean", "expObjPlaneOcean",
-         [ModifierSpec('Ocean', 'OCEAN', {})]],
+        MeshTest("PlaneOcean", "testObjPlaneOcean", "expObjPlaneOcean",
+                 [ModifierSpec('Ocean', 'OCEAN', {})]),
     ]
     ocean_test = ModifierTest(test)
 

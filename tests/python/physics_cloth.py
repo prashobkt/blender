@@ -24,30 +24,30 @@ import sys
 import bpy
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from modules.mesh_test import ModifierTest, ModifierSpec
+from modules.mesh_test import ModifierTest, ModifierSpec, MeshTest
 
 
 def main():
     test = [
 
         # Make sure no modifier is added on the test object.
-        ["ClothSimple", "testClothPlane", "expectedClothPlane",
-         [ModifierSpec('Cloth', 'CLOTH', {'settings': {'quality': 5}}, 10)]],
+        MeshTest("ClothSimple", "testClothPlane", "expectedClothPlane",
+                 [ModifierSpec('Cloth', 'CLOTH', {'settings': {'quality': 5}}, 10)], threshold=1e-3),
 
         # Not reproducible
-        # ["ClothPressure", "testObjClothPressure", "expObjClothPressure",
-        #  [ModifierSpec('Cloth2', 'CLOTH', {'settings': {'use_pressure': True, 'uniform_pressure_force': 1}}, 16)]],
+        # MeshTest("ClothPressure", "testObjClothPressure", "expObjClothPressure",
+        #           [ModifierSpec('Cloth2', 'CLOTH', {'settings': {'use_pressure': True,
+        #           'uniform_pressure_force': 1}}, 16)]),
 
         # Not reproducible
-        # ["ClothSelfCollision", "testClothCollision", "expClothCollision",
-        #  [ModifierSpec('Cloth', 'CLOTH', {'collision_settings': {'use_self_collision': True}}, 67)]],
+        # MeshTest("ClothSelfCollision", "testClothCollision", "expClothCollision",
+        #           [ModifierSpec('Cloth', 'CLOTH', {'collision_settings': {'use_self_collision': True}}, 67)]),
 
-        ["ClothSpring", "testTorusClothSpring", "expTorusClothSpring",
-         [ModifierSpec('Cloth2', 'CLOTH', {'settings': {'use_internal_springs': True}}, 10)]],
-
+        MeshTest("ClothSpring", "testTorusClothSpring", "expTorusClothSpring",
+                 [ModifierSpec('Cloth2', 'CLOTH', {'settings': {'use_internal_springs': True}}, 10)], threshold=1e-3),
 
     ]
-    cloth_test = ModifierTest(test, threshold=1e-3)
+    cloth_test = ModifierTest(test)
 
     command = list(sys.argv)
     for i, cmd in enumerate(command):

@@ -24,14 +24,14 @@ import sys
 import bpy
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from modules.mesh_test import ModifierTest, ModifierSpec
+from modules.mesh_test import ModifierTest, ModifierSpec, MeshTest
 
 
 def main():
     test = [
 
-        ["ParticleInstanceSimple", "testParticleInstance", "expectedParticleInstance",
-         [ModifierSpec('ParticleInstance', 'PARTICLE_INSTANCE', {'object': bpy.data.objects['Cube']})]],
+        MeshTest("ParticleInstanceSimple", "testParticleInstance", "expectedParticleInstance",
+                 [ModifierSpec('ParticleInstance', 'PARTICLE_INSTANCE', {'object': bpy.data.objects['Cube']})]),
 
     ]
     particle_instance_test = ModifierTest(test, threshold=1e-3)
