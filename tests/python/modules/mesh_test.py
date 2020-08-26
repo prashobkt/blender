@@ -44,6 +44,7 @@ import bpy
 import functools
 import inspect
 import os
+from abc import ABC, abstractmethod
 
 # Output from this module and from blender itself will occur during tests.
 # We need to flush python so that the output is properly interleaved, otherwise
@@ -717,49 +718,17 @@ class OperatorTest:
             raise Exception("Tests {} failed".format(self._failed_tests_list))
 
 
-class ModifierTest:
+class RunTest(ABC):
     """
-    Helper class that stores and executes modifier tests.
-
-    Example usage:
-
-    >>> modifier_list = [
-    >>>     ModifierSpec("firstSUBSURF", "SUBSURF", {"quality": 5}),
-    >>>     ModifierSpec("firstSOLIDIFY", "SOLIDIFY", {"thickness_clamp": 0.9, "thickness": 1})
-    >>> ]
-    >>> tests = [
-    >>>     ["Test1","testCube", "expectedCube", modifier_list],
-    >>>     ["Test2","testCube_2", "expectedCube_2", modifier_list]
-    >>> ]
-    >>> modifiers_test = ModifierTest(tests)
-    >>> modifiers_test.run_all_tests()
+    Inherited from Abstract Base Class, used by ModifierTest (Child Class)
     """
-
-    def __init__(self, modifier_tests: list, apply_modifiers=False, threshold=None):
-        """
-        Construct a modifier test.
-        :param modifier_tests: list - list of modifier test cases. Each element in the list must contain the following
-         in the correct order:
-             0) test_name: str - unique test name
-             1) test_object_name: bpy.Types.Object - test object
-             2) expected_object_name: bpy.Types.Object - expected object
-             3) modifiers: list - list of mesh_test.ModifierSpec objects.
-        """
-
-        self.modifier_tests = modifier_tests
-        self._check_for_unique_test_name()
-        self.apply_modifiers = apply_modifiers
-        self.threshold = threshold
-        self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
-        self._failed_tests_list = []
-
     def _check_for_unique_test_name(self):
         """
         Check if the test name is unique
         """
         all_test_names = []
-        for index, _ in enumerate(self.modifier_tests):
-            test_name = self.modifier_tests[index][0]
+        for index, _ in enumerate(self.tests):
+            test_name = self.tests[index].test_name
             all_test_names.append(test_name)
         seen_name = set()
         for ele in all_test_names:
@@ -768,50 +737,12 @@ class ModifierTest:
             else:
                 seen_name.add(ele)
 
-    def run_test(self, test_name: str):
-        """
-        Run a single test from self.modifier_tests list
-        :param test_name: str - name of test
-        :return: bool - True if test passed, False otherwise.
-        """
-        case = None
-        len_test = len(self.modifier_tests)
-        count = 0
-        for index, _ in enumerate(self.modifier_tests):
-            if test_name == self.modifier_tests[index][0]:
-                case = self.modifier_tests[index]
-                break
-            count = count + 1
-        if count == len_test:
-            raise Exception("No test {} found!".format(test_name))
-
-        if len(case) != 4:
-            raise ValueError("Expected exactly 4 parameters for each test case, got {}".format(len(case)))
-        test_name = case[0]
-        test_object_name = case[1]
-        expected_object_name = case[2]
-        spec_list = case[3]
-
-        test = MeshTest(test_name, test_object_name, expected_object_name, threshold=self.threshold)
-        if self.apply_modifiers:
-            test.apply_modifier = True
-
-        for modifier_spec in spec_list:
-            test.add_modifier_to_stack(modifier_spec)
-
-        success = test.run_test()
-        if test.is_test_updated():
-            # Run the test again if the blend file has been updated.
-            success = test.run_test()
-
-        return success
-
     def run_all_tests(self):
         """
-        Run all tests in self.modifiers_tests list. Raises an exception if one the tests fails.
+        Run all tests in self.tests list. Raises an exception if one the tests fails.
         """
-        for index, _ in enumerate(self.modifier_tests):
-            test_name = self.modifier_tests[index][0]
+        for index, _ in enumerate(self.tests):
+            test_name = self.tests[index].test_name
             if self.verbose:
                 print()
                 print("Running test {}...".format(index))
@@ -836,50 +767,47 @@ class ModifierTest:
 
             raise Exception("Tests {} failed".format(self._failed_tests_list))
 
+    @abstractmethod
+    def run_test(self, test_name: str):
+        """
+        For enforcing a check that any child class should have this method.
+        """
+        pass
 
-class DeformModifierTest:
+
+class ModifierTest(RunTest):
     """
-    Helper class that stores and executes deform modifier tests.
+    Helper class that stores and executes modifier tests.
 
     Example usage:
 
-    >>> deform_modifier_list = [
-    >>>         MeshTest("WarpPlane", "testObjPlaneWarp", "expObjPlaneWarp",
-    >>>        [DeformModifierSpec(10, [ModifierSpec('warp', 'WARP',
-    >>>                                               {'object_from': bpy.data.objects["From"],
-    >>>                                                'object_to': bpy.data.objects["To"],})])]),
+    >>> modifier_list = [
+    >>>     ModifierSpec("firstSUBSURF", "SUBSURF", {"quality": 5}),
+    >>>     ModifierSpec("firstSOLIDIFY", "SOLIDIFY", {"thickness_clamp": 0.9, "thickness": 1})
     >>> ]
-    >>> deform_test = DeformModifierTest(deform_modifier_list)
-    >>> deform_test.run_all_tests()
+    >>> tests = [
+    >>>     MeshTest("Test1", "testCube", "expectedCube", modifier_list),
+    >>>     MeshTest("Test2", "testCube_2", "expectedCube_2", modifier_list)
+    >>> ]
+    >>> modifiers_test = ModifierTest(tests)
+    >>> modifiers_test.run_all_tests()
     """
 
-    def __init__(self, deform_tests: list, apply_modifiers=False):
+    def __init__(self, tests, apply_modifiers=False):
         """
-        Construct a deform modifier test.
-        Each test is made up of a MeshTest Class with its parameters
-        :param: deform_test: list: List of modifiers can be added.
-                                 Tt consists of a ModifierSpec and OperatorSpecObjectMode
+        Construct a modifier test.
+        :param tests: list - list of modifier test cases. Each element in the list must contain the following
+         in the correct order:
+             0) test_name: str - unique test name
+             1) test_object_name: bpy.Types.Object - test object
+             2) expected_object_name: bpy.Types.Object - expected object
+             3) modifiers: list - list of mesh_test.ModifierSpec objects.
         """
-        self.deform_tests = deform_tests
+        self.tests = tests
         self._check_for_unique_test_name()
         self.apply_modifiers = apply_modifiers
         self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
         self._failed_tests_list = []
-
-    def _check_for_unique_test_name(self):
-        """
-        Check if the test name is unique
-        """
-        all_test_names = []
-        for index, _ in enumerate(self.deform_tests):
-            test_name = self.deform_tests[index].test_name
-            all_test_names.append(test_name)
-        seen_name = set()
-        for ele in all_test_names:
-            if ele in seen_name:
-                raise ValueError("{} is a duplicate, write a new unique name.".format(ele))
-            else:
-                seen_name.add(ele)
 
     def run_test(self, test_name: str):
         """
@@ -887,12 +815,12 @@ class DeformModifierTest:
         :param test_name: int - name of test
         :return: bool - True if test passed, False otherwise.
         """
-        case = self.deform_tests[0]
-        len_test = len(self.deform_tests)
+        case = self.tests[0]
+        len_test = len(self.tests)
         count = 0
-        for index, _ in enumerate(self.deform_tests):
-            if test_name == self.deform_tests[index].test_name:
-                case = self.deform_tests[index]
+        for index, _ in enumerate(self.tests):
+            if test_name == self.tests[index].test_name:
+                case = self.tests[index]
                 break
             count = count + 1
 
@@ -910,32 +838,5 @@ class DeformModifierTest:
 
         return success
 
-    def run_all_tests(self):
-        """
-        Run all tests in self.modifiers_tests list. Raises an exception if one the tests fails.
-        """
-        for index, _ in enumerate(self.deform_tests):
-            test_name = self.deform_tests[index].test_name
-            if self.verbose:
-                print()
-                print("Running test {}...".format(index))
-                print("Test name {}\n".format(test_name))
-            success = self.run_test(test_name)
 
-            if not success:
-                self._failed_tests_list.append(test_name)
 
-        if len(self._failed_tests_list) != 0:
-            print("Following tests failed: {}".format(self._failed_tests_list))
-
-            blender_path = bpy.app.binary_path
-            blend_path = bpy.data.filepath
-            frame = inspect.stack()[1]
-            module = inspect.getmodule(frame[0])
-            python_path = module.__file__
-
-            print("Run following command to open Blender and run the failing test:")
-            print("{} {} --python {} -- {} {}"
-                  .format(blender_path, blend_path, python_path, "--run-test", "<test_name>"))
-
-            raise Exception("Tests {} failed".format(self._failed_tests_list))
