@@ -266,8 +266,9 @@ typedef struct LineartRenderBuffer {
 typedef enum eLineartRenderStatus {
   LRT_RENDER_IDLE = 0,
   LRT_RENDER_RUNNING = 1,
-  LRT_RENDER_INCOMPELTE = 2,
+  LRT_RENDER_INCOMPELTE = 2, /* Not used yet. */
   LRT_RENDER_FINISHED = 3,
+  LRT_RENDER_CANCELING = 4,
 } eLineartRenderStatus;
 
 typedef enum eLineartInitStatus {
@@ -280,7 +281,7 @@ typedef enum eLineartModifierSyncStatus {
   LRT_SYNC_WAITING = 1,
   LRT_SYNC_FRESH = 2,
   LRT_SYNC_IGNORE = 3,
-  LRT_SYNC_CLEARING = 4
+  LRT_SYNC_CLEARING = 4,
 } eLineartModifierSyncStatus;
 
 typedef struct LineartSharedResource {
@@ -309,6 +310,13 @@ typedef struct LineartSharedResource {
   SpinLock lock_render_status;
   eLineartRenderStatus flag_render_status;
   eLineartModifierSyncStatus flag_sync_staus;
+
+  int thread_count;
+
+  /** To determine whether all threads are completely canceled. Each thread add 1 into this value
+   * before return, until it reaches thread count. Not needed for the implementation at the moment
+   * as occlusion thread is work-and-wait, preserved for future usages. */
+  int canceled_thread_accumulator;
 
   /** Geometry loading is done in the worker thread,
    * Lock the render thread until loading is done, so that

@@ -471,7 +471,7 @@ static void lineart_occlusion_worker(TaskPool *__restrict UNUSED(pool), LineartR
 
 static void lineart_occlusion_begin_calculation(LineartRenderBuffer *rb)
 {
-  int thread_count = rb->thread_count;
+  int thread_count = lineart_share.thread_count;
   LineartRenderTaskInfo *rti = MEM_callocN(sizeof(LineartRenderTaskInfo) * thread_count,
                                            "Task Pool");
   int i;
@@ -2591,10 +2591,11 @@ static int lineart_occlusion_get_max_level(Depsgraph *dg)
 
 static int lineart_triangle_size_get(LineartRenderBuffer *rb, const Scene *scene)
 {
-  if (rb->thread_count == 0) {
-    rb->thread_count = BKE_render_num_threads(&scene->r);
+  if (lineart_share.thread_count == 0) {
+    lineart_share.thread_count = BKE_render_num_threads(&scene->r);
   }
-  return sizeof(LineartRenderTriangle) + (sizeof(LineartRenderLine *) * rb->thread_count);
+  return sizeof(LineartRenderTriangle) +
+         (sizeof(LineartRenderLine *) * lineart_share.thread_count);
 }
 
 #define LRT_BOUND_AREA_CROSSES(b1, b2) \
@@ -3510,6 +3511,17 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
     return OPERATOR_CANCELLED;
   }
 
+#define LRT_PROGRESS(progress, message) \
+  if (show_frame_progress) { \
+    ED_lineart_update_render_progress(progress, message); \
+  }
+
+#define LRT_CANCEL_STAGE \
+  if (ED_lineart_calculation_flag_check(LRT_RENDER_CANCELING)) { \
+    LRT_PROGRESS(100, "LRT: Finished."); \
+    return OPERATOR_FINISHED; \
+  }
+
   rb = ED_lineart_create_render_buffer(scene);
 
   /* Has to be set after render buffer creation, to avoid locking from editor undo. */
@@ -3521,9 +3533,7 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
 
   rb->max_occlusion_level = lineart_occlusion_get_max_level(depsgraph);
 
-  if (show_frame_progress) {
-    ED_lineart_update_render_progress(0, "LRT: Loading geometries.");
-  }
+  LRT_PROGRESS(0, "LRT: Loading geometries.");
 
   lineart_main_load_geometries(depsgraph, scene, scene->camera, rb);
 
@@ -3533,11 +3543,11 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
 
   if (!rb->vertex_buffer_pointers.first) {
     /* Nothing loaded, early return. */
-    if (show_frame_progress) {
-      ED_lineart_update_render_progress(100, "LRT: Finished.");
-    }
+    LRT_PROGRESS(100, "LRT: Finished.");
     return OPERATOR_FINISHED;
   }
+
+  LRT_CANCEL_STAGE
 
   lineart_compute_view_vector(rb);
   lineart_main_cull_triangles(rb);
@@ -3546,31 +3556,32 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
 
   lineart_bounding_area_make_initial(rb);
 
-  if (show_frame_progress) {
-    ED_lineart_update_render_progress(10, "LRT: Computing contour lines.");
+  LRT_CANCEL_STAGE
+  LRT_PROGRESS(10, "LRT: Contour lines.");
+
+  if (ED_lineart_calculation_flag_check(LRT_RENDER_CANCELING)) {
+    LRT_PROGRESS(100, "LRT: Finished.");
+    return OPERATOR_FINISHED;
   }
 
   if (!intersections_only) {
     lineart_compute_scene_contours(rb, lineart->crease_threshold);
   }
 
-  if (show_frame_progress) {
-    ED_lineart_update_render_progress(25, "LRT: Computing intersections.");
-  }
+  LRT_CANCEL_STAGE
+  LRT_PROGRESS(25, "LRT: Intersections.");
 
   lineart_add_triangles(rb);
 
-  if (show_frame_progress) {
-    ED_lineart_update_render_progress(50, "LRT: Computing line occlusion.");
-  }
+  LRT_CANCEL_STAGE
+  LRT_PROGRESS(50, "LRT: Occlusion.");
 
   if (!intersections_only) {
     lineart_occlusion_begin_calculation(rb);
   }
 
-  if (show_frame_progress) {
-    ED_lineart_update_render_progress(75, "LRT: Chaining.");
-  }
+  LRT_CANCEL_STAGE
+  LRT_PROGRESS(75, "LRT: Chaining.");
 
   /* intersection_only is preserved for furure functions.*/
   if (!intersections_only) {
@@ -3605,12 +3616,10 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
       ED_lineart_chain_split_angle(rb, rb->angle_splitting_threshold);
     }
   }
-  // Set after GP done.
-  // ED_lineart_calculation_flag_set(LRT_RENDER_FINISHED);
 
-  if (show_frame_progress) {
-    ED_lineart_update_render_progress(100, "LRT: Finished.");
-  }
+  LRT_PROGRESS(100, "LRT: Finished.");
+
+#undef LRT_PROGRESS
 
   return OPERATOR_FINISHED;
 }
@@ -3628,6 +3637,12 @@ static void lineart_compute_feature_lines_worker(TaskPool *__restrict UNUSED(poo
 {
 
   ED_lineart_compute_feature_lines_internal(worker_data->dg, worker_data->show_frame_progress);
+
+  if (ED_lineart_calculation_flag_check(LRT_RENDER_CANCELING)) {
+    ED_lineart_calculation_flag_set(LRT_RENDER_FINISHED);
+    return;
+  }
+
   ED_lineart_chain_clear_picked_flag(lineart_share.render_buffer_shared);
 
   /* Calculation is done, give fresh data. */
@@ -3647,9 +3662,16 @@ void ED_lineart_compute_feature_lines_background(Depsgraph *dg, const int show_f
 
   /* If the calculation is already started then bypass it. */
   if (ED_lineart_calculation_flag_check(LRT_RENDER_RUNNING)) {
-    /* Release lock when early return. TODO: Canceling */
-    BLI_spin_unlock(&lineart_share.lock_loader);
-    return;
+    /* Set CANCEL flag, and when operation is canceled, flag will become FINISHED. */
+    ED_lineart_calculation_flag_set(LRT_RENDER_CANCELING);
+
+    while (!ED_lineart_calculation_flag_check(LRT_RENDER_FINISHED)) {
+      /* Wait for canceling */
+    }
+
+    /* If canceling is not used, then early return. */
+    /* BLI_spin_unlock(&lineart_share.lock_loader); */
+    /* return; */
   }
 
   if (tp_read) {
