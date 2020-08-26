@@ -231,15 +231,6 @@ class MeshTest:
         objects = bpy.data.objects
         self.expected_object = objects[expected_object_name]
 
-    def add_modifier_to_stack(self, modifier_spec: ModifierSpec):
-        """
-        Add a modifier to the operations stack.
-        :param modifier_spec: modifier to add to the operations stack
-        """
-        self.operations_stack.append(modifier_spec)
-        if self.verbose:
-            print("Added modifier {}".format(modifier_spec))
-
     def add_operator_to_stack(self, operator_spec: OperatorSpecEditMode):
         """
         Adds an operator to the operations stack.
@@ -718,10 +709,40 @@ class OperatorTest:
             raise Exception("Tests {} failed".format(self._failed_tests_list))
 
 
-class RunTest(ABC):
+class ModifierTest:
     """
-    Inherited from Abstract Base Class, used by ModifierTest (Child Class)
+    Helper class that stores and executes modifier tests.
+
+    Example usage:
+
+    >>> modifier_list = [
+    >>>     ModifierSpec("firstSUBSURF", "SUBSURF", {"quality": 5}),
+    >>>     ModifierSpec("firstSOLIDIFY", "SOLIDIFY", {"thickness_clamp": 0.9, "thickness": 1})
+    >>> ]
+    >>> tests = [
+    >>>     MeshTest("Test1", "testCube", "expectedCube", modifier_list),
+    >>>     MeshTest("Test2", "testCube_2", "expectedCube_2", modifier_list)
+    >>> ]
+    >>> modifiers_test = ModifierTest(tests)
+    >>> modifiers_test.run_all_tests()
     """
+
+    def __init__(self, tests, apply_modifiers=False):
+        """
+        Construct a modifier test.
+        :param tests: list - list of modifier test cases. Each element in the list must contain the following
+         in the correct order:
+             0) test_name: str - unique test name
+             1) test_object_name: bpy.Types.Object - test object
+             2) expected_object_name: bpy.Types.Object - expected object
+             3) modifiers: list - list of mesh_test.ModifierSpec objects.
+        """
+        self.tests = tests
+        self._check_for_unique_test_name()
+        self.apply_modifiers = apply_modifiers
+        self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
+        self._failed_tests_list = []
+
     def _check_for_unique_test_name(self):
         """
         Check if the test name is unique
@@ -766,48 +787,6 @@ class RunTest(ABC):
                   .format(blender_path, blend_path, python_path, "--run-test", "<test_name>"))
 
             raise Exception("Tests {} failed".format(self._failed_tests_list))
-
-    @abstractmethod
-    def run_test(self, test_name: str):
-        """
-        For enforcing a check that any child class should have this method.
-        """
-        pass
-
-
-class ModifierTest(RunTest):
-    """
-    Helper class that stores and executes modifier tests.
-
-    Example usage:
-
-    >>> modifier_list = [
-    >>>     ModifierSpec("firstSUBSURF", "SUBSURF", {"quality": 5}),
-    >>>     ModifierSpec("firstSOLIDIFY", "SOLIDIFY", {"thickness_clamp": 0.9, "thickness": 1})
-    >>> ]
-    >>> tests = [
-    >>>     MeshTest("Test1", "testCube", "expectedCube", modifier_list),
-    >>>     MeshTest("Test2", "testCube_2", "expectedCube_2", modifier_list)
-    >>> ]
-    >>> modifiers_test = ModifierTest(tests)
-    >>> modifiers_test.run_all_tests()
-    """
-
-    def __init__(self, tests, apply_modifiers=False):
-        """
-        Construct a modifier test.
-        :param tests: list - list of modifier test cases. Each element in the list must contain the following
-         in the correct order:
-             0) test_name: str - unique test name
-             1) test_object_name: bpy.Types.Object - test object
-             2) expected_object_name: bpy.Types.Object - expected object
-             3) modifiers: list - list of mesh_test.ModifierSpec objects.
-        """
-        self.tests = tests
-        self._check_for_unique_test_name()
-        self.apply_modifiers = apply_modifiers
-        self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
-        self._failed_tests_list = []
 
     def run_test(self, test_name: str):
         """
