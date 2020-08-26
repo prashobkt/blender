@@ -4068,8 +4068,12 @@ void ED_lineart_update_render_progress(int nr, const char *info)
       WM_progress_clear(lineart_share.main_window);
     }
     else {
-      WM_cursor_time(lineart_share.main_window, nr);
-      WM_progress_set(lineart_share.main_window, (float)nr / 100);
+      /* Hack: this prevents XWindow cursor error crashes when this thread and an operator is
+       * setting cursor at the same time. */
+      if (!G.moving) {
+        WM_cursor_time(lineart_share.main_window, nr);
+        WM_progress_set(lineart_share.main_window, (float)nr / 100);
+      }
     }
   }
 
