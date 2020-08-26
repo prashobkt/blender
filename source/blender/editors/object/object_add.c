@@ -1313,6 +1313,10 @@ static int object_gpencil_add_exec(bContext *C, wmOperator *op)
       /* Stroke object is drawn in front of meshes by default. */
       ob->dtx |= OB_DRAW_IN_FRONT;
 
+      /* Because we only use this GP for showing the result, so don't allow select to prevent it
+       * from interfering with selection of actual objects */
+      ob->restrictflag |= OB_RESTRICT_SELECT;
+
       /* Turn on Line Art auto update to show the result. */
       Scene *scene = CTX_data_scene(C);
       scene->lineart.flags |= LRT_AUTO_UPDATE;
