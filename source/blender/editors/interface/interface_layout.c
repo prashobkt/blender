@@ -5188,7 +5188,9 @@ static bool button_matches_search_filter(uiBut *but, const char *search_filter)
     }
 #endif
 
-    /* Search through labels of enum property items if they are in a dropdown menu. */
+    /* Search through labels of enum property items if they are in a dropdown menu.
+     * Unfortunately we have no context here so we cannot search through RNA enums
+     * with dynamic entries (or "itemf" functions) which require context. */
     if (but->type == UI_BTYPE_MENU) {
       PointerRNA *ptr = &but->rnapoin;
       PropertyRNA *enum_prop = but->rnaprop;
