@@ -31,11 +31,17 @@
 namespace blender {
 namespace gpu {
 
+/**
+ * State manager keeping track of the draw state and applying it before drawing.
+ * Opengl Implementation.
+ **/
 class GLStateManager : public GPUStateManager {
  private:
   /** Current state of the GL implementation. Avoids resetting the whole state for every change. */
   GPUState current_;
   GPUStateMutable current_mutable_;
+  /** Limits. */
+  float line_width_range_[2];
 
  public:
   GLStateManager();

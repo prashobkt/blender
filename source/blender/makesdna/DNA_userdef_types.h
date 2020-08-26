@@ -265,6 +265,7 @@ typedef struct ThemeSpace {
   uiPanelColors panelcolors;
 
   unsigned char search_match_color[4];
+  char _pad2[4];
 
   unsigned char shade1[4];
   unsigned char shade2[4];
@@ -374,8 +375,6 @@ typedef struct ThemeSpace {
 
   /** Two uses, for uvs with modifier applied on mesh and uvs during painting. */
   unsigned char uv_shadow[4];
-  /** Uvs of other objects. */
-  unsigned char uv_others[4];
 
   /** Outliner - filter match. */
   unsigned char match[4];
