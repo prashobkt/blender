@@ -536,13 +536,14 @@ struct bGPDframe;
 struct GpencilModifierData;
 
 void ED_lineart_gpencil_generate_from_chain(struct Depsgraph *depsgraph,
-                                            struct Object *ob,
+                                            float *gp_obmat,
                                             struct bGPDlayer *UNUSED(gpl),
                                             struct bGPDframe *gpf,
                                             int level_start,
                                             int level_end,
                                             int material_nr,
-                                            struct Collection *col,
+                                            struct Object *source_object,
+                                            struct Collection *source_collection,
                                             int types,
                                             unsigned char transparency_flags,
                                             unsigned char transparency_mask,

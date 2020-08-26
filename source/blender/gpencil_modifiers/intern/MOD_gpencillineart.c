@@ -84,7 +84,6 @@ static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
 static void generate_strokes_actual(
     GpencilModifierData *md, Depsgraph *depsgraph, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
-  Scene *scene = DEG_get_evaluated_scene(depsgraph);
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
 #if 0
   int line_types = ((scene->flag & LRT_EVERYTHING_AS_CONTOUR) ?
@@ -259,6 +258,8 @@ static void updateDepsgraph(GpencilModifierData *md,
                             const ModifierUpdateDepsgraphContext *ctx,
                             const int mode)
 {
+  DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
+
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
   if (lmd->source_type == LRT_SOURCE_OBJECT && lmd->source_object) {
     DEG_add_object_relation(

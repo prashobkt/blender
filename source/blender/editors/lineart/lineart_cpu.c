@@ -3691,13 +3691,14 @@ static void lineart_gpencil_notify_targets(Depsgraph *dg)
 }
 
 void ED_lineart_gpencil_generate_from_chain(Depsgraph *UNUSED(depsgraph),
-                                            Object *ob,
+                                            float *gp_obmat_inverse,
                                             bGPDlayer *UNUSED(gpl),
                                             bGPDframe *gpf,
                                             int level_start,
                                             int level_end,
                                             int material_nr,
-                                            Collection *col,
+                                            Object *source_object,
+                                            Collection *source_collection,
                                             int types,
                                             unsigned char transparency_flags,
                                             unsigned char transparency_mask,
@@ -3730,13 +3731,14 @@ void ED_lineart_gpencil_generate_from_chain(Depsgraph *UNUSED(depsgraph),
   int color_idx = 0;
 
   Object *orig_ob = NULL;
-  if (ob) {
-    orig_ob = ob->id.orig_id ? (Object *)ob->id.orig_id : ob;
+  if (source_object) {
+    orig_ob = source_object->id.orig_id ? (Object *)source_object->id.orig_id : source_object;
   }
 
   Collection *orig_col = NULL;
-  if (col) {
-    orig_col = col->id.orig_id ? (Collection *)col->id.orig_id : col;
+  if (source_collection) {
+    orig_col = source_collection->id.orig_id ? (Collection *)source_collection->id.orig_id :
+                                               source_collection;
   }
   float mat[4][4];
   unit_m4(mat);
@@ -3788,6 +3790,7 @@ void ED_lineart_gpencil_generate_from_chain(Depsgraph *UNUSED(depsgraph),
       stroke_data[array_idx] = rlci->gpos[0];
       stroke_data[array_idx + 1] = rlci->gpos[1];
       stroke_data[array_idx + 2] = rlci->gpos[2];
+      mul_m4_v3(gp_obmat_inverse, &stroke_data[array_idx]);
       stroke_data[array_idx + 3] = 1;       /*  thickness */
       stroke_data[array_idx + 4] = opacity; /*  hardness? */
       array_idx += 5;
@@ -3842,13 +3845,16 @@ void ED_lineart_gpencil_generate_strokes_direct(Depsgraph *depsgraph,
     source_collection = (Collection *)source_reference;
     use_types = line_types;
   }
+  float gp_obmat_inverse[16];
+  invert_m4_m4(gp_obmat_inverse, ob->obmat);
   ED_lineart_gpencil_generate_from_chain(depsgraph,
-                                         source_object,
+                                         gp_obmat_inverse,
                                          gpl,
                                          gpf,
                                          level_start,
                                          level_end,
                                          mat_nr,
+                                         source_object,
                                          source_collection,
                                          use_types,
                                          transparency_flags,
