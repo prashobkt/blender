@@ -1313,51 +1313,6 @@ static const EnumPropertyItem *rna_UserDef_icons_itemf(bContext *UNUSED(C),
   return item;
 }
 
-/*static const EnumPropertyItem *rna_UserDef_usermenus_items_itemf(bContext *UNUSED(C),
-                                                                  PointerRNA *ptr,
-                                                                  PropertyRNA *UNUSED(prop),
-                                                                  bool *r_free)
-{
-  int totitem = 0;
-  EnumPropertyItem *item = NULL;
-
-  bUserMenu *bum = rna_UserDef_usermenus_get_current(ptr->data, false);
-  if (bum) {
-
-    ListBase *lb = &bum->items;
-    int i = 0;
-    for (bUserMenuItem *umi = lb->first; umi; umi = umi->next, i++) {
-      EnumPropertyItem new_item;
-      if (!strcmp(umi->ui_name, "")) {
-        const char *name = " ";
-
-        if (umi->type == USER_MENU_TYPE_MENU) {
-          bUserMenuItem_Menu *umi_mt = (bUserMenuItem_Menu *)umi;
-          MenuType *mt = WM_menutype_find(umi_mt->mt_idname, true);
-          name = (const char *)CTX_IFACE_(mt->translation_context, mt->label);
-          BLI_strncpy(umi->ui_name, name, FILE_MAX);
-        }
-
-        new_item = (EnumPropertyItem){i + 1, name, 0, name, name};
-
-      } else {
-        new_item = (EnumPropertyItem){i + 1, umi->ui_name, 0, umi->ui_name, umi->ui_name};
-      }
-
-      if (umi->type == USER_MENU_TYPE_SEP) {
-        new_item = (EnumPropertyItem){i + 1, "___________", 0, "___________", "Separator"};
-      }
-
-      RNA_enum_item_add(&item, &totitem, &new_item);
-    }
-  }
-
-  RNA_enum_item_end(&item, &totitem);
-  *r_free = true;
-
-  return item;
-}*/
-
 static void rna_UserDef_usermenus_item_add(UserDef *userdef, int index)
 {
   bUserMenu *um = rna_UserDef_usermenus_get_current(userdef, true);
@@ -1511,6 +1466,22 @@ static int rna_UserDef_usermenus_item_type_get(PointerRNA *ptr)
   return 0;
 }
 
+static void rna_UserDef_usermenus_item_name_get(PointerRNA *ptr, char *value)
+{
+  bUserMenuItem *umi = (bUserMenuItem *)(ptr->data);
+  
+  if (!*umi->ui_name) {
+    const char *name = " ";
+    if (umi->type == USER_MENU_TYPE_MENU) {
+      bUserMenuItem_Menu *umi_mt = (bUserMenuItem_Menu *)umi;
+      MenuType *mt = WM_menutype_find(umi_mt->mt_idname, true);
+      name = (const char *)CTX_IFACE_(mt->translation_context, mt->label);
+      BLI_strncpy(umi->ui_name, name, FILE_MAX);
+    }
+  }
+  BLI_strncpy(value, umi->ui_name, FILE_MAX);
+}
+
 static void rna_UserDef_usermenus_pie_set(PointerRNA *ptr, int value)
 {
   bUserMenusGroup *umg = (bUserMenusGroup *)ptr->data;
@@ -1533,8 +1504,6 @@ static PointerRNA rna_UserDef_usermenus_item_op_prop_get(PointerRNA *ptr)
   if (umi_op->ptr) {
     return *(umi_op->ptr);
   }
-
-  /*return rna_pointer_inherit_refine(ptr, &RNA_OperatorProperties, op->properties); */
   return PointerRNA_NULL;
 }
 
@@ -6657,6 +6626,7 @@ static void rna_def_userdef_usermenu(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, NULL, "ui_name");
+  RNA_def_property_string_funcs(prop, "rna_UserDef_usermenus_item_name_get", NULL, NULL);
   RNA_def_property_ui_text(prop, "Name", "Name of the item");
   RNA_def_struct_name_property(srna, prop);
 
