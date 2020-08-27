@@ -108,7 +108,8 @@ static void lineart_bounding_area_link_triangle(LineartRenderBuffer *rb,
                                                 LineartBoundingArea *root_ba,
                                                 LineartRenderTriangle *rt,
                                                 double *LRUB,
-                                                int recursive);
+                                                int recursive,
+                                                int recursive_level);
 
 static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *spl,
                                                             const LineartRenderTriangle *rt,
@@ -2786,17 +2787,15 @@ static void lineart_bounding_areas_connect_new(LineartRenderBuffer *rb, LineartB
   }
 
   /* Finally clear parent'scene adjacent list. */
-  while (lineart_list_pop_pointer_no_free(&root->lp))
-    ;
-  while (lineart_list_pop_pointer_no_free(&root->rp))
-    ;
-  while (lineart_list_pop_pointer_no_free(&root->up))
-    ;
-  while (lineart_list_pop_pointer_no_free(&root->bp))
-    ;
+  BLI_listbase_clear(&root->lp);
+  BLI_listbase_clear(&root->rp);
+  BLI_listbase_clear(&root->up);
+  BLI_listbase_clear(&root->bp);
 }
 
-static void lineart_bounding_area_split(LineartRenderBuffer *rb, LineartBoundingArea *root)
+static void lineart_bounding_area_split(LineartRenderBuffer *rb,
+                                        LineartBoundingArea *root,
+                                        int recursive_level)
 {
   LineartBoundingArea *ba = lineart_mem_aquire(&rb->render_data_pool,
                                                sizeof(LineartBoundingArea) * 4);
@@ -2843,16 +2842,16 @@ static void lineart_bounding_area_split(LineartRenderBuffer *rb, LineartBounding
     b[2] = MAX3(rt->v[0]->fbcoord[1], rt->v[1]->fbcoord[1], rt->v[2]->fbcoord[1]);
     b[3] = MIN3(rt->v[0]->fbcoord[1], rt->v[1]->fbcoord[1], rt->v[2]->fbcoord[1]);
     if (LRT_BOUND_AREA_CROSSES(b, &cba[0].l)) {
-      lineart_bounding_area_link_triangle(rb, &cba[0], rt, b, 0);
+      lineart_bounding_area_link_triangle(rb, &cba[0], rt, b, 0, recursive_level + 1);
     }
     if (LRT_BOUND_AREA_CROSSES(b, &cba[1].l)) {
-      lineart_bounding_area_link_triangle(rb, &cba[1], rt, b, 0);
+      lineart_bounding_area_link_triangle(rb, &cba[1], rt, b, 0, recursive_level + 1);
     }
     if (LRT_BOUND_AREA_CROSSES(b, &cba[2].l)) {
-      lineart_bounding_area_link_triangle(rb, &cba[2], rt, b, 0);
+      lineart_bounding_area_link_triangle(rb, &cba[2], rt, b, 0, recursive_level + 1);
     }
     if (LRT_BOUND_AREA_CROSSES(b, &cba[3].l)) {
-      lineart_bounding_area_link_triangle(rb, &cba[3], rt, b, 0);
+      lineart_bounding_area_link_triangle(rb, &cba[3], rt, b, 0, recursive_level + 1);
     }
   }
 
@@ -2948,7 +2947,8 @@ static void lineart_bounding_area_link_triangle(LineartRenderBuffer *rb,
                                                 LineartBoundingArea *root_ba,
                                                 LineartRenderTriangle *rt,
                                                 double *LRUB,
-                                                int recursive)
+                                                int recursive,
+                                                int recursive_level)
 {
   if (!lineart_bounding_area_triangle_covered(rb, rt, root_ba)) {
     return;
@@ -2956,8 +2956,12 @@ static void lineart_bounding_area_link_triangle(LineartRenderBuffer *rb,
   if (root_ba->child == NULL) {
     lineart_list_append_pointer_static(&root_ba->linked_triangles, &rb->render_data_pool, rt);
     root_ba->triangle_count++;
-    if (root_ba->triangle_count > 200 && recursive) {
-      lineart_bounding_area_split(rb, root_ba);
+    /* If splitting doesn't improve triangle separation, then shouldn't allow splitting anymore.
+     * Here we use recursive limit. This is espetially useful in ortho render, where a lot of faces
+     * could easily line up perfectly in image space, which can not be separated by simply slicing
+     * the image tile. */
+    if (root_ba->triangle_count > 200 && recursive && recursive_level < 10) {
+      lineart_bounding_area_split(rb, root_ba, recursive_level);
     }
     if (recursive && rb->use_intersections) {
       lineart_triangle_intersections_in_bounding_area(rb, rt, root_ba);
@@ -2975,16 +2979,16 @@ static void lineart_bounding_area_link_triangle(LineartRenderBuffer *rb,
       B1 = b;
     }
     if (LRT_BOUND_AREA_CROSSES(B1, &ba[0].l)) {
-      lineart_bounding_area_link_triangle(rb, &ba[0], rt, B1, recursive);
+      lineart_bounding_area_link_triangle(rb, &ba[0], rt, B1, recursive, recursive_level + 1);
     }
     if (LRT_BOUND_AREA_CROSSES(B1, &ba[1].l)) {
-      lineart_bounding_area_link_triangle(rb, &ba[1], rt, B1, recursive);
+      lineart_bounding_area_link_triangle(rb, &ba[1], rt, B1, recursive, recursive_level + 1);
     }
     if (LRT_BOUND_AREA_CROSSES(B1, &ba[2].l)) {
-      lineart_bounding_area_link_triangle(rb, &ba[2], rt, B1, recursive);
+      lineart_bounding_area_link_triangle(rb, &ba[2], rt, B1, recursive, recursive_level + 1);
     }
     if (LRT_BOUND_AREA_CROSSES(B1, &ba[3].l)) {
-      lineart_bounding_area_link_triangle(rb, &ba[3], rt, B1, recursive);
+      lineart_bounding_area_link_triangle(rb, &ba[3], rt, B1, recursive, recursive_level + 1);
     }
   }
 }
@@ -3191,7 +3195,7 @@ static void lineart_add_triangles(LineartRenderBuffer *rb)
         for (co = x1; co <= x2; co++) {
           for (r = y1; r <= y2; r++) {
             lineart_bounding_area_link_triangle(
-                rb, &rb->initial_bounding_areas[r * 4 + co], rt, 0, 1);
+                rb, &rb->initial_bounding_areas[r * 4 + co], rt, 0, 1, 0);
           }
         }
       } /* else throw away. */
