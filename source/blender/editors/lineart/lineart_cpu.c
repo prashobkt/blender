@@ -70,7 +70,7 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "BKE_text.h"
+#include "UI_resources.h"
 
 #include "lineart_intern.h"
 
@@ -3620,6 +3620,7 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
   LRT_PROGRESS(100, "LRT: Finished.");
 
 #undef LRT_PROGRESS
+#undef LRT_CANCEL_STAGE
 
   return OPERATOR_FINISHED;
 }
@@ -3713,7 +3714,7 @@ static void lineart_gpencil_notify_targets(Depsgraph *dg)
 }
 
 void ED_lineart_gpencil_generate_from_chain(Depsgraph *UNUSED(depsgraph),
-                                            float *gp_obmat_inverse,
+                                            float **gp_obmat_inverse,
                                             bGPDlayer *UNUSED(gpl),
                                             bGPDframe *gpf,
                                             int level_start,
@@ -3899,7 +3900,7 @@ static int lineart_gpencil_update_strokes_exec(bContext *C, wmOperator *UNUSED(o
   return OPERATOR_FINISHED;
 }
 
-static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op))
+static int lineart_gpencil_bake_strokes_invoke(bContext *C, wmOperator *op, wmEvent *UNUSED(event))
 {
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
@@ -4002,9 +4003,27 @@ static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op)
   ED_lineart_modifier_sync_flag_set(LRT_SYNC_IDLE, false);
   ED_lineart_calculation_flag_set(LRT_RENDER_FINISHED);
 
+  BKE_report(op->reports, RPT_INFO, "Line Art baking is complete.");
+  WM_operator_confirm_message_ex(C,
+                                 op,
+                                 "Line Art baking is complete.",
+                                 ICON_MOD_WIREFRAME,
+                                 "Disable Line Art master switch",
+                                 WM_OP_EXEC_REGION_WIN);
+
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED | ND_SPACE_PROPERTIES, NULL);
 
   ED_lineart_update_render_progress(100, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+
+  /* If confirmed in the dialog, then just turn off the master switch upon finished baking. */
+  scene->lineart.flags &= (~LRT_AUTO_UPDATE);
 
   return OPERATOR_FINISHED;
 }
@@ -4026,6 +4045,7 @@ void SCENE_OT_lineart_bake_strokes(wmOperatorType *ot)
   ot->description = "Bake Line Art into grease pencil strokes for all frames";
   ot->idname = "SCENE_OT_lineart_bake_strokes";
 
+  ot->invoke = lineart_gpencil_bake_strokes_invoke;
   ot->exec = lineart_gpencil_bake_strokes_exec;
 }
 

@@ -21,8 +21,7 @@
  * \ingroup editors
  */
 
-#ifndef __ED_LRT_H__
-#define __ED_LRT_H__
+#pragma once
 
 #ifndef WITH_LINEART
 #  error Lineart code included in non-Lineart-enabled build
@@ -544,7 +543,7 @@ struct bGPDframe;
 struct GpencilModifierData;
 
 void ED_lineart_gpencil_generate_from_chain(struct Depsgraph *depsgraph,
-                                            float *gp_obmat,
+                                            float **gp_obmat_inverse,
                                             struct bGPDlayer *UNUSED(gpl),
                                             struct bGPDframe *gpf,
                                             int level_start,
@@ -594,5 +593,3 @@ void SCENE_OT_lineart_update_strokes(struct wmOperatorType *ot);
 void SCENE_OT_lineart_bake_strokes(struct wmOperatorType *ot);
 
 void ED_operatortypes_lineart(void);
-
-#endif /* __ED_LRT_H__ */
