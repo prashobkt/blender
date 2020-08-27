@@ -26,7 +26,7 @@ from random import shuffle, seed
 seed(0)
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from modules.mesh_test import OperatorTest
+from modules.mesh_test import OperatorTest, MeshTest, OperatorSpecEditMode, RunTest
 
 # Central vertical loop of Suzanne
 MONKEY_LOOP_VERT = {68, 69, 71, 73, 74, 75, 76, 77, 90, 129, 136, 175, 188, 189, 198, 207,
@@ -39,139 +39,170 @@ def main():
     tests = [
         #### 0
         # bisect
-        ['FACE', {0, 1, 2, 3, 4, 5}, "CubeBisect", "testCubeBisect", "expectedCubeBisect", "bisect",
-         {"plane_co": (0, 0, 0), "plane_no": (0, 1, 1), "clear_inner": True, "use_fill": True}],
+        MeshTest("CubeBisect", "testCubeBisect", "expectedCubeBisect",
+                 [OperatorSpecEditMode("bisect",
+                                       {"plane_co": (0, 0, 0), "plane_no": (0, 1, 1), "clear_inner": True,
+                                        "use_fill": True}, 'FACE', {0, 1, 2, 3, 4, 5}, )]),
 
         # blend from shape
-        ['FACE', {0, 1, 2, 3, 4, 5}, "CubeBlendFromShape", "testCubeBlendFromShape", "expectedCubeBlendFromShape",
-         "blend_from_shape", {"shape": "Key 1"}],
+        MeshTest("CubeBlendFromShape", "testCubeBlendFromShape", "expectedCubeBlendFromShape",
+                 [OperatorSpecEditMode("blend_from_shape", {"shape": "Key 1"}, 'FACE', {0, 1, 2, 3, 4, 5})]),
 
         # bridge edge loops
-        ["FACE", {0, 1}, "CubeBridgeEdgeLoop", "testCubeBrigeEdgeLoop", "expectedCubeBridgeEdgeLoop",
-         "bridge_edge_loops", {}],
+        MeshTest("CubeBridgeEdgeLoop", "testCubeBrigeEdgeLoop", "expectedCubeBridgeEdgeLoop",
+                 [OperatorSpecEditMode("bridge_edge_loops", {}, "FACE", {0, 1})]),
 
         # decimate
-        ["FACE", {i for i in range(500)}, "MonkeyDecimate", "testMonkeyDecimate", "expectedMonkeyDecimate", "decimate",
-         {"ratio": 0.1}],
+        MeshTest("MonkeyDecimate", "testMonkeyDecimate", "expectedMonkeyDecimate",
+                 [OperatorSpecEditMode("decimate",
+                                       {"ratio": 0.1}, "FACE", {i for i in range(500)})]),
 
         ### 4
         # delete
-        ["VERT", {3}, "CubeDeleteVertices", "testCubeDeleteVertices", "expectedCubeDeleteVertices", "delete", {}],
-        ["FACE", {0}, "CubeDeleteFaces", "testCubeDeleteFaces", "expectedCubeDeleteFaces", "delete", {}],
-        ["EDGE", {0, 1, 2, 3}, "CubeDeleteEdges", "testCubeDeleteEdges", "expectedCubeDeleteEdges", "delete", {}],
+        MeshTest("CubeDeleteVertices", "testCubeDeleteVertices", "expectedCubeDeleteVertices",
+                 [OperatorSpecEditMode("delete", {}, "VERT", {3})]),
+        MeshTest("CubeDeleteFaces", "testCubeDeleteFaces", "expectedCubeDeleteFaces",
+                 [OperatorSpecEditMode("delete", {}, "FACE", {0})]),
+        MeshTest("CubeDeleteEdges", "testCubeDeleteEdges", "expectedCubeDeleteEdges",
+                 [OperatorSpecEditMode("delete", {}, "EDGE", {0, 1, 2, 3})]),
 
         # delete edge loop
-        ["VERT", MONKEY_LOOP_VERT, "MonkeyDeleteEdgeLoopVertices", "testMokneyDeleteEdgeLoopVertices",
-         "expectedMonkeyDeleteEdgeLoopVertices", "delete_edgeloop", {}],
+        MeshTest("MonkeyDeleteEdgeLoopVertices", "testMokneyDeleteEdgeLoopVertices",
+                 "expectedMonkeyDeleteEdgeLoopVertices",
+                 [OperatorSpecEditMode("delete_edgeloop", {}, "VERT", MONKEY_LOOP_VERT)]),
 
-        ["EDGE", MONKEY_LOOP_EDGE, "MonkeyDeleteEdgeLoopEdges", "testMokneyDeleteEdgeLoopEdges",
-         "expectedMonkeyDeleteEdgeLoopEdges", "delete_edgeloop", {}],
+        MeshTest("MonkeyDeleteEdgeLoopEdges", "testMokneyDeleteEdgeLoopEdges",
+                 "expectedMonkeyDeleteEdgeLoopEdges",
+                 [OperatorSpecEditMode("delete_edgeloop", {}, "EDGE", MONKEY_LOOP_EDGE)]),
 
         ### 9
         # delete loose
-        ["VERT", {i for i in range(12)}, "CubeDeleteLooseVertices", "testCubeDeleteLooseVertices",
-         "expectedCubeDeleteLooseVertices",
-         "delete_loose", {"use_verts": True, "use_edges": False, "use_faces": False}],
-        ["EDGE", {i for i in range(14)}, "CubeDeleteLooseEdges", "testCubeDeleteLooseEdges",
-         "expectedCubeDeleteLooseEdges",
-         "delete_loose", {"use_verts": False, "use_edges": True, "use_faces": False}],
-        ["FACE", {i for i in range(7)}, "CubeDeleteLooseFaces", "testCubeDeleteLooseFaces",
-         "expectedCubeDeleteLooseFaces",
-         "delete_loose", {"use_verts": False, "use_edges": False, "use_faces": True}],
+        MeshTest("CubeDeleteLooseVertices", "testCubeDeleteLooseVertices",
+                 "expectedCubeDeleteLooseVertices",
+                 [OperatorSpecEditMode("delete_loose", {"use_verts": True, "use_edges": False, "use_faces": False},
+                                       "VERT",
+                                       {i for i in range(12)})]),
+        MeshTest("CubeDeleteLooseEdges", "testCubeDeleteLooseEdges",
+                 "expectedCubeDeleteLooseEdges",
+                 [OperatorSpecEditMode("delete_loose", {"use_verts": False, "use_edges": True, "use_faces": False},
+                                       "EDGE",
+                                       {i for i in range(14)})]),
+        MeshTest("CubeDeleteLooseFaces", "testCubeDeleteLooseFaces",
+                 "expectedCubeDeleteLooseFaces",
+                 [OperatorSpecEditMode("delete_loose", {"use_verts": False, "use_edges": False, "use_faces": True},
+                                       "FACE",
+                                       {i for i in range(7)})]),
 
         # dissolve degenerate
-        ["VERT", {i for i in range(8)}, "CubeDissolveDegenerate", "testCubeDissolveDegenerate",
-         "expectedCubeDissolveDegenerate", "dissolve_degenerate", {}],
+        MeshTest("CubeDissolveDegenerate", "testCubeDissolveDegenerate",
+                 "expectedCubeDissolveDegenerate",
+                 [OperatorSpecEditMode("dissolve_degenerate", {}, "VERT", {i for i in range(8)})]),
 
         ### 13
         # dissolve edges
-        ["EDGE", {0, 5, 6, 9}, "CylinderDissolveEdges", "testCylinderDissolveEdges", "expectedCylinderDissolveEdges",
-         "dissolve_edges", {}],
+        MeshTest("CylinderDissolveEdges", "testCylinderDissolveEdges", "expectedCylinderDissolveEdges",
+                 [OperatorSpecEditMode("dissolve_edges", {}, "EDGE", {0, 5, 6, 9})]),
 
         # dissolve faces
-        ["VERT", {5, 34, 47, 49, 83, 91, 95}, "CubeDissolveFaces", "testCubeDissolveFaces", "expectedCubeDissolveFaces",
-         "dissolve_faces", {}],
+        MeshTest("CubeDissolveFaces", "testCubeDissolveFaces", "expectedCubeDissolveFaces",
+                 [OperatorSpecEditMode("dissolve_faces", {}, "VERT", {5, 34, 47, 49, 83, 91, 95})]),
 
         ### 15
         # dissolve verts
-        ["VERT", {16, 20, 22, 23, 25}, "CubeDissolveVerts", "testCubeDissolveVerts", "expectedCubeDissolveVerts",
-         "dissolve_verts", {}],
+        MeshTest("CubeDissolveVerts", "testCubeDissolveVerts", "expectedCubeDissolveVerts",
+                 [OperatorSpecEditMode("dissolve_verts", {}, "VERT", {16, 20, 22, 23, 25})]),
 
         # duplicate
-        ["VERT", {i for i in range(33)} - {23}, "ConeDuplicateVertices", "testConeDuplicateVertices",
-         "expectedConeDuplicateVertices", "duplicate", {}],
+        MeshTest("ConeDuplicateVertices", "testConeDuplicateVertices",
+                 "expectedConeDuplicateVertices",
+                 [OperatorSpecEditMode("duplicate", {}, "VERT", {i for i in range(33)} - {23})]),
 
-        ["VERT", {23}, "ConeDuplicateOneVertex", "testConeDuplicateOneVertex", "expectedConeDuplicateOneVertex",
-         "duplicate", {}],
-        ["FACE", {6, 9}, "ConeDuplicateFaces", "testConeDuplicateFaces", "expectedConeDuplicateFaces", "duplicate", {}],
-        ["EDGE", {i for i in range(64)}, "ConeDuplicateEdges", "testConeDuplicateEdges", "expectedConeDuplicateEdges",
-         "duplicate", {}],
+        MeshTest("ConeDuplicateOneVertex", "testConeDuplicateOneVertex", "expectedConeDuplicateOneVertex",
+                 [OperatorSpecEditMode("duplicate", {}, "VERT", {23})]),
+        MeshTest("ConeDuplicateFaces", "testConeDuplicateFaces", "expectedConeDuplicateFaces",
+                 [OperatorSpecEditMode("duplicate", {}, "FACE", {6, 9})]),
+        MeshTest("ConeDuplicateEdges", "testConeDuplicateEdges", "expectedConeDuplicateEdges",
+                 [OperatorSpecEditMode("duplicate", {}, "EDGE", {i for i in range(64)})]),
 
         ### 20
         # edge collapse
-        ["EDGE", {1, 9, 4}, "CylinderEdgeCollapse", "testCylinderEdgeCollapse", "expectedCylinderEdgeCollapse",
-         "edge_collapse", {}],
+        MeshTest("CylinderEdgeCollapse", "testCylinderEdgeCollapse", "expectedCylinderEdgeCollapse",
+                 [OperatorSpecEditMode("edge_collapse", {}, "EDGE", {1, 9, 4})]),
 
         # edge face add
-        ["VERT", {1, 3, 4, 5, 7}, "CubeEdgeFaceAddFace", "testCubeEdgeFaceAddFace", "expectedCubeEdgeFaceAddFace",
-         "edge_face_add", {}],
-        ["VERT", {4, 5}, "CubeEdgeFaceAddEdge", "testCubeEdgeFaceAddEdge", "expectedCubeEdgeFaceAddEdge",
-         "edge_face_add", {}],
+        MeshTest("CubeEdgeFaceAddFace", "testCubeEdgeFaceAddFace", "expectedCubeEdgeFaceAddFace",
+                 [OperatorSpecEditMode("edge_face_add", {}, "VERT", {1, 3, 4, 5, 7})]),
+        MeshTest("CubeEdgeFaceAddEdge", "testCubeEdgeFaceAddEdge", "expectedCubeEdgeFaceAddEdge",
+                 [OperatorSpecEditMode("edge_face_add", {}, "VERT", {4, 5})]),
 
         # edge rotate
-        ["EDGE", {1}, "CubeEdgeRotate", "testCubeEdgeRotate", "expectedCubeEdgeRotate", "edge_rotate", {}],
+        MeshTest("CubeEdgeRotate", "testCubeEdgeRotate", "expectedCubeEdgeRotate",
+                 [OperatorSpecEditMode("edge_rotate", {}, "EDGE", {1})]),
 
         # edge split
-        ["EDGE", {2, 5, 8, 11, 14, 17, 20, 23}, "CubeEdgeSplit", "testCubeEdgeSplit", "expectedCubeEdgeSplit",
-         "edge_split", {}],
+        MeshTest("CubeEdgeSplit", "testCubeEdgeSplit", "expectedCubeEdgeSplit",
+                 [OperatorSpecEditMode("edge_split", {}, "EDGE", {2, 5, 8, 11, 14, 17, 20, 23})]),
 
         ### 25
         # face make planar
-        ["FACE", {i for i in range(500)}, "MonkeyFaceMakePlanar", "testMonkeyFaceMakePlanar",
-         "expectedMonkeyFaceMakePlanar", "face_make_planar", {}],
+        MeshTest("MonkeyFaceMakePlanar", "testMonkeyFaceMakePlanar",
+                 "expectedMonkeyFaceMakePlanar",
+                 [OperatorSpecEditMode("face_make_planar", {}, "FACE", {i for i in range(500)})]),
 
         # face split by edges
-        ["VERT", {i for i in range(6)}, "PlaneFaceSplitByEdges", "testPlaneFaceSplitByEdges",
-         "expectedPlaneFaceSplitByEdges", "face_split_by_edges", {}],
+        MeshTest("PlaneFaceSplitByEdges", "testPlaneFaceSplitByEdges",
+                 "expectedPlaneFaceSplitByEdges",
+                 [OperatorSpecEditMode("face_split_by_edges", {}, "VERT", {i for i in range(6)})]),
 
         # fill
-        ["EDGE", {20, 21, 22, 23, 24, 45, 46, 47, 48, 49}, "IcosphereFill", "testIcosphereFill",
-         "expectedIcosphereFill",
-         "fill", {}],
-        ["EDGE", {20, 21, 22, 23, 24, 45, 46, 47, 48, 49}, "IcosphereFillUseBeautyFalse",
-         "testIcosphereFillUseBeautyFalse",
-         "expectedIcosphereFillUseBeautyFalse", "fill", {"use_beauty": False}],
+        MeshTest("IcosphereFill", "testIcosphereFill", "expectedIcosphereFill",
+                 [OperatorSpecEditMode("fill", {}, "EDGE", {20, 21, 22, 23, 24, 45, 46, 47, 48, 49})]),
+        MeshTest("IcosphereFillUseBeautyFalse",
+                 "testIcosphereFillUseBeautyFalse", "expectedIcosphereFillUseBeautyFalse",
+                 [OperatorSpecEditMode("fill", {"use_beauty": False}, "EDGE",
+                                       {20, 21, 22, 23, 24, 45, 46, 47, 48, 49})]),
 
         # fill grid
-        ["EDGE", {1, 2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 15}, "PlaneFillGrid", "testPlaneFillGrid",
-         "expectedPlaneFillGrid", "fill_grid", {}],
+        MeshTest("PlaneFillGrid", "testPlaneFillGrid",
+                 "expectedPlaneFillGrid",
+                 [OperatorSpecEditMode("fill_grid", {}, "EDGE", {1, 2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 15})]),
 
-        ["EDGE", {1, 2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 15}, "PlaneFillGridSimpleBlending",
-         "testPlaneFillGridSimpleBlending",
-         "expectedPlaneFillGridSimpleBlending", "fill_grid", {"use_interp_simple": True}],
+        MeshTest("PlaneFillGridSimpleBlending",
+                 "testPlaneFillGridSimpleBlending",
+                 "expectedPlaneFillGridSimpleBlending",
+                 [OperatorSpecEditMode("fill_grid", {"use_interp_simple": True}, "EDGE",
+                                       {1, 2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 15})]),
 
         ### 31
         # fill holes
-        ["VERT", {i for i in range(481)}, "SphereFillHoles", "testSphereFillHoles", "expectedSphereFillHoles",
-         "fill_holes", {"sides": 9}],
+        MeshTest("SphereFillHoles", "testSphereFillHoles", "expectedSphereFillHoles",
+                 [OperatorSpecEditMode("fill_holes", {"sides": 9}, "VERT", {i for i in range(481)})]),
 
         # inset faces
-        ["VERT", {5, 16, 17, 19, 20, 22, 23, 34, 47, 49, 50, 52, 59, 61, 62, 65, 83, 91, 95}, "CubeInset",
-         "testCubeInset", "expectedCubeInset", "inset", {"thickness": 0.2}],
+        MeshTest("CubeInset",
+                 "testCubeInset", "expectedCubeInset", [OperatorSpecEditMode("inset", {"thickness": 0.2}, "VERT",
+                                                                             {5, 16, 17, 19, 20, 22, 23, 34, 47, 49, 50,
+                                                                              52,
+                                                                              59, 61, 62, 65, 83, 91, 95})]),
 
-        ["VERT", {5, 16, 17, 19, 20, 22, 23, 34, 47, 49, 50, 52, 59, 61, 62, 65, 83, 91, 95},
-         "CubeInsetEvenOffsetFalse",
-         "testCubeInsetEvenOffsetFalse", "expectedCubeInsetEvenOffsetFalse",
-         "inset", {"thickness": 0.2, "use_even_offset": False}],
-        ["VERT", {5, 16, 17, 19, 20, 22, 23, 34, 47, 49, 50, 52, 59, 61, 62, 65, 83, 91, 95}, "CubeInsetDepth",
-         "testCubeInsetDepth",
-         "expectedCubeInsetDepth", "inset", {"thickness": 0.2, "depth": 0.2}],
-        ["FACE", {35, 36, 37, 45, 46, 47, 55, 56, 57}, "GridInsetRelativeOffset", "testGridInsetRelativeOffset",
-         "expectedGridInsetRelativeOffset",
-         "inset", {"thickness": 0.4, "use_relative_offset": True}],
+        MeshTest("CubeInsetEvenOffsetFalse",
+                 "testCubeInsetEvenOffsetFalse", "expectedCubeInsetEvenOffsetFalse",
+                 [OperatorSpecEditMode("inset", {"thickness": 0.2, "use_even_offset": False}, "VERT",
+                                       {5, 16, 17, 19, 20, 22, 23, 34, 47, 49, 50, 52, 59, 61, 62, 65, 83, 91, 95})]),
+        MeshTest("CubeInsetDepth",
+                 "testCubeInsetDepth",
+                 "expectedCubeInsetDepth", [OperatorSpecEditMode("inset", {"thickness": 0.2, "depth": 0.2}, "VERT",
+                                                                 {5, 16, 17, 19, 20, 22, 23, 34, 47, 49, 50, 52, 59, 61,
+                                                                  62,
+                                                                  65, 83, 91, 95})]),
+        MeshTest("GridInsetRelativeOffset", "testGridInsetRelativeOffset",
+                 "expectedGridInsetRelativeOffset",
+                 [OperatorSpecEditMode("inset", {"thickness": 0.4,
+                                                 "use_relative_offset": True}, "FACE",
+                                       {35, 36, 37, 45, 46, 47, 55, 56, 57})]),
     ]
 
-    operators_test = OperatorTest(tests)
+    operators_test = RunTest(tests)
 
     command = list(sys.argv)
     for i, cmd in enumerate(command):
