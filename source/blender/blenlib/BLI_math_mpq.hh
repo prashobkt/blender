@@ -16,6 +16,10 @@
 
 #pragma once
 
+/** \file
+ * \ingroup bli
+ */
+
 #ifdef WITH_GMP
 
 /* This file uses an external file header to define the multiprecision

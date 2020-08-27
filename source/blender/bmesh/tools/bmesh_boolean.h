@@ -14,8 +14,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef __BMESH_BOOLEAN_H__
-#define __BMESH_BOOLEAN_H__
+#pragma once
 
 /** \file
  * \ingroup bmesh
@@ -44,5 +43,3 @@ bool BM_mesh_boolean_knife(BMesh *bm,
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __BMESH_BOOLEAN_H__ */

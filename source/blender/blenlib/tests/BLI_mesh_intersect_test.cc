@@ -269,8 +269,7 @@ TEST(mesh_intersect, TriTri)
 TEST(mesh_intersect, TriTriReversed)
 {
   /* Like TriTri but with triangles of opposite orientation.
-   * This matters because projection to 2D will now need reversed triangles.
-   */
+   * This matters because projection to 2D will now need reversed triangles. */
   const char *spec = R"(6 2
   0 0 0
   4 0 0
@@ -462,8 +461,7 @@ TEST(mesh_intersect, OverlapCluster)
 {
   /* Chain of 5 overlapping coplanar tris.
    * Ordered so that clustering will make two separate clusters
-   * that it will have to merge into one cluster with everything.
-   */
+   * that it will have to merge into one cluster with everything. */
   const char *spec = R"(15 5
   0 0 0
   1 0 0
@@ -1001,8 +999,7 @@ static void spheregrid_test(int nrings, int grid_level, double z_offset, bool us
    * The sphere is radius 1, has nrings rings and 2 * nrings segs,
    * and is centered at (0,0,z_offset).
    * The plane is 4x4, has 2**grid_level subdivisions x and y,
-   * and is centered at the origin.
-   */
+   * and is centered at the origin. */
   if (nrings < 2 || grid_level < 1) {
     return;
   }

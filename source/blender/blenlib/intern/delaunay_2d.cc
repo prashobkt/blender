@@ -14,6 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+/** \file
+ * \ingroup bli
+ */
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -31,8 +35,7 @@
 namespace blender::meshintersect {
 
 /* Throughout this file, template argument T will be an
- * arithmetic-like type, like float, double, or mpq_class.
- */
+ * arithmetic-like type, like float, double, or mpq_class. */
 
 template<typename T> T math_abs(const T v)
 {
@@ -69,10 +72,11 @@ template<> double math_to_double<double>(const double v)
   return v;
 }
 
-/* Define a templated 2D arrangment of vertices, edges, and faces.
- * The SymEdge data structure is the basis for a structure that allows
- * easy traversal to neighboring (by toplogy) geometric elements.
- * Each of CDTVert, CDTEdge, and CDTFace have an input_id linked list,
+/**
+ * Define a templated 2D arrangement of vertices, edges, and faces.
+ * The #SymEdge data structure is the basis for a structure that allows
+ * easy traversal to neighboring (by topology) geometric elements.
+ * Each of #CDTVert, #CDTEdge, and #CDTFace have an input_id linked list,
  * whose nodes contain integers that keep track of which input verts, edges,
  * and faces, respectively, that the element was derived from.
  *
@@ -84,44 +88,46 @@ template<typename Arith_t> struct CDTEdge;
 template<typename Arith_t> struct CDTFace;
 
 template<typename Arith_t> struct SymEdge {
-  /* Next SymEdge in face, doing CCW traversal of face. */
+  /** Next #SymEdge in face, doing CCW traversal of face. */
   SymEdge<Arith_t> *next{nullptr};
-  /* Next SymEdge CCW around vert. */
+  /** Next #SymEdge CCW around vert. */
   SymEdge<Arith_t> *rot{nullptr};
-  /* Vert at origin. */
+  /** Vert at origin. */
   CDTVert<Arith_t> *vert{nullptr};
-  /* Undirected edge this is for. */
+  /** Un-directed edge this is for. */
   CDTEdge<Arith_t> *edge{nullptr};
-  /* Face on left side. */
+  /** Face on left side. */
   CDTFace<Arith_t> *face{nullptr};
 
   SymEdge() = default;
 };
 
-/* Return other SymEdge for same CDTEdge as se. */
+/**
+ * Return other #SymEdge for same #CDTEdge as \a se.
+ */
 template<typename T> inline SymEdge<T> *sym(const SymEdge<T> *se)
 {
   return se->next->rot;
 }
 
-/* Return SymEdge whose next is se. */
+/** Return #SymEdge whose next is \a se. */
 template<typename T> inline SymEdge<T> *prev(const SymEdge<T> *se)
 {
   return se->rot->next->rot;
 }
 
 template<typename Arith_t> struct CDTVert {
-  /* Coordinate. */
+  /** Coordinate. */
   vec2<Arith_t> co;
-  /* Some edge attached to it. */
+  /** Some edge attached to it. */
   SymEdge<Arith_t> *symedge{nullptr};
-  /* List of corresponding vertex input ids. */
+  /** List of corresponding vertex input ids. */
   LinkNode *input_ids{nullptr};
-  /* Index into array that CDTArrangement keeps. */
+  /** Index into array that #CDTArrangement keeps. */
   int index{-1};
-  /* Index of a CDTVert that this has merged to. -1 if no merge. */
+  /** Index of a CDTVert that this has merged to. -1 if no merge. */
   int merge_to_index{-1};
-  /* Used by algorithms operating on CDT structures. */
+  /** Used by algorithms operating on CDT structures. */
   int visit_index{0};
 
   CDTVert() = default;
@@ -129,22 +135,22 @@ template<typename Arith_t> struct CDTVert {
 };
 
 template<typename Arith_t> struct CDTEdge {
-  /* List of input edge ids that this is part of. */
+  /** List of input edge ids that this is part of. */
   LinkNode *input_ids{nullptr};
-  /* The directed edges for this edge. */
+  /** The directed edges for this edge. */
   SymEdge<Arith_t> symedges[2]{SymEdge<Arith_t>(), SymEdge<Arith_t>()};
 
   CDTEdge() = default;
 };
 
 template<typename Arith_t> struct CDTFace {
-  /* A symedge in face; only used during output, so only valid then. */
+  /** A symedge in face; only used during output, so only valid then. */
   SymEdge<Arith_t> *symedge{nullptr};
-  /* List of input face ids that this is part of. */
+  /** List of input face ids that this is part of. */
   LinkNode *input_ids{nullptr};
-  /* Used by algorithms operating on CDT structures. */
+  /** Used by algorithms operating on CDT structures. */
   int visit_index{0};
-  /* Marks this face no longer used. */
+  /** Marks this face no longer used. */
   bool deleted{false};
 
   CDTFace() = default;
@@ -153,70 +159,81 @@ template<typename Arith_t> struct CDTFace {
 template<typename Arith_t> struct CDTArrangement {
   /* The arrangement owns the memory pointed to by the pointers in these vectors.
    * They are pointers instead of actual structures because these vectors may be resized and
-   * other elements refer to the elements by pointer.
-   */
+   * other elements refer to the elements by pointer. */
 
-  /* The verts. Some may be merged to others (see their merge_to_index). */
+  /** The verts. Some may be merged to others (see their merge_to_index). */
   Vector<CDTVert<Arith_t> *> verts;
-  /* The edges. Some may be deleted (SymEdge next and rot pointers are null). */
+  /** The edges. Some may be deleted (SymEdge next and rot pointers are null). */
   Vector<CDTEdge<Arith_t> *> edges;
-  /* The faces. Some may be deleted (see their delete member). */
+  /** The faces. Some may be deleted (see their delete member). */
   Vector<CDTFace<Arith_t> *> faces;
-  /* Which CDTFace is the outer face. */
+  /** Which CDTFace is the outer face. */
   CDTFace<Arith_t> *outer_face{nullptr};
 
   CDTArrangement() = default;
   ~CDTArrangement();
 
-  /* Hint to how much space to reserve in the Vectors of the arrangement, based on these counts of
-   * input elements. */
+  /** Hint to how much space to reserve in the Vectors of the arrangement,
+   * based on these counts of input elements. */
   void reserve(int num_verts, int num_edges, int num_faces);
 
-  /* Add a new vertex to the arrangement, with the given 2D coordinate. It will not be connected to
-   * anything yet. */
+  /**
+   * Add a new vertex to the arrangement, with the given 2D coordinate.
+   * It will not be connected to anything yet.
+   */
   CDTVert<Arith_t> *add_vert(const vec2<Arith_t> &pt);
 
-  /* Add an edge from v1 to v2. The edge will have a left face and a right face, specified by fleft
-   * and fright. The edge will not be connected to anything yet. If the vertices do not yet have a
-   * symedge pointer, their pointer is set to the symedge in this new edge.
+  /**
+   * Add an edge from v1 to v2. The edge will have a left face and a right face,
+   * specified by \a fleft and \a fright. The edge will not be connected to anything yet.
+   * If the vertices do not yet have a #SymEdge pointer,
+   * their pointer is set to the #SymEdge in this new edge.
    */
   CDTEdge<Arith_t> *add_edge(CDTVert<Arith_t> *v1,
                              CDTVert<Arith_t> *v2,
                              CDTFace<Arith_t> *fleft,
                              CDTFace<Arith_t> *fright);
 
-  /* Add a new face. It is disconnected until an add_edge makes it the left or right face of an
-   * edge. */
+  /**
+   * Add a new face. It is disconnected until an add_edge makes it the
+   * left or right face of an edge.
+   */
   CDTFace<Arith_t> *add_face();
 
-  /* Make a new edge from v to se->vert, splicing it in. */
+  /** Make a new edge from v to se->vert, splicing it in. */
   CDTEdge<Arith_t> *add_vert_to_symedge_edge(CDTVert<Arith_t> *v, SymEdge<Arith_t> *se);
 
-  /* Assuming s1 and s2 are both SymEdges in a face with > 3 sides and one is not the next of the
-   * other, Add an edge from s1->v to s2->v, splitting the face in two. The original face will be
-   * the one that s1 has as left face, and a new face will be added and made s2 and its
+  /**
+   * Assuming s1 and s2 are both #SymEdge's in a face with > 3 sides and one is not the next of the
+   * other, Add an edge from `s1->v` to `s2->v`, splitting the face in two. The original face will
+   * be the one that s1 has as left face, and a new face will be added and made s2 and its
    * next-cycle's left face.
    */
   CDTEdge<Arith_t> *add_diagonal(SymEdge<Arith_t> *s1, SymEdge<Arith_t> *s2);
 
-  /* Connect the verts of se1 and se2, assuming that currently those two SymEdges are on teh outer
-   * boundary (have face == outer_face) of two components that are isolated from each other.
+  /**
+   * Connect the verts of se1 and se2, assuming that currently those two #SymEdge's are on the
+   * outer boundary (have face == outer_face) of two components that are isolated from each other.
    */
   CDTEdge<Arith_t> *connect_separate_parts(SymEdge<Arith_t> *se1, SymEdge<Arith_t> *se2);
 
-  /* Split se at fraction lambda, and return the new CDTEdge that is the new second half.
+  /**
+   * Split se at fraction lambda, and return the new #CDTEdge that is the new second half.
    * Copy the edge input_ids into the new one.
    */
   CDTEdge<Arith_t> *split_edge(SymEdge<Arith_t> *se, Arith_t lambda);
 
-  /* Delete an edge. The new combined face on either side of the deleted edge will be the one that
+  /**
+   * Delete an edge. The new combined face on either side of the deleted edge will be the one that
    * was e's face. There will now be an unused face, which will be marked deleted, and an unused
-   * CDTEdge, marked by setting the next and rot pointers of its SymEdges to nullptr.
+   * #CDTEdge, marked by setting the next and rot pointers of its #SymEdge's to #nullptr.
    */
   void delete_edge(SymEdge<Arith_t> *se);
 
-  /* If the vertex with index i in the vert array has not been merge, return it.
-   * Else return the one that it has merged to. */
+  /**
+   * If the vertex with index i in the vert array has not been merge, return it.
+   * Else return the one that it has merged to.
+   */
   CDTVert<Arith_t> *get_vert_resolve_merge(int i)
   {
     CDTVert<Arith_t> *v = this->verts[i];
@@ -230,15 +247,16 @@ template<typename Arith_t> struct CDTArrangement {
 template<typename T> class CDT_state {
  public:
   CDTArrangement<T> cdt;
-  /* How many verts were in input (will be first in vert_array). */
+  /** How many verts were in input (will be first in vert_array). */
   int input_vert_tot;
-  /* Used for visiting things without having to initialized their visit fields. */
+  /** Used for visiting things without having to initialized their visit fields. */
   int visit_count;
-  /* Edge ids for face start with this, and each face gets this much index space
+  /**
+   * Edge ids for face start with this, and each face gets this much index space
    * to encode positions within the face.
    */
   int face_edge_offset;
-  /* How close before coords considered equal. */
+  /** How close before coords considered equal. */
   T epsilon;
 
   explicit CDT_state(int num_input_verts, int num_input_edges, int num_input_faces, T epsilon);
@@ -388,7 +406,7 @@ template<typename T> void cdt_draw(const std::string &label, const CDTArrangemen
 {
   static bool append = false; /* Will be set to true after first call. */
 
-/* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
+/* Would like to use #BKE_tempdir_base() here, but that brings in dependence on kernel library.
  * This is just for developer debugging anyway, and should never be called in production Blender.
  */
 #  ifdef _WIN32
@@ -501,10 +519,11 @@ template<typename T> void cdt_draw(const std::string &label, const CDTArrangemen
 }
 #endif
 
-/*
- * Return true if a -- b -- c are in that order, assuming they are on a straight line according to
- * orient2d and we know the order is either `abc` or `bac`.
- * This means `ab . ac` and `bc . ac` must both be non-negative.  */
+/**
+ * Return true if `a -- b -- c` are in that order, assuming they are on a straight line according
+ * to #orient2d and we know the order is either `abc` or `bac`.
+ * This means `ab . ac` and `bc . ac` must both be non-negative.
+ */
 template<typename T> bool in_line(const vec2<T> &a, const vec2<T> &b, const vec2<T> &c)
 {
   vec2<T> ab = b - a;
@@ -661,7 +680,9 @@ SymEdge<T> *find_symedge_between_verts(const CDTVert<T> *v1, const CDTVert<T> *v
   return nullptr;
 }
 
-/* Return the SymEdge attached to v that has face f, if it exists, else return nullptr. */
+/**
+ * Return the SymEdge attached to v that has face f, if it exists, else return nullptr.
+ */
 template<typename T> SymEdge<T> *find_symedge_with_face(const CDTVert<T> *v, const CDTFace<T> *f)
 {
   SymEdge<T> *t = v->symedge;
@@ -674,13 +695,17 @@ template<typename T> SymEdge<T> *find_symedge_with_face(const CDTVert<T> *v, con
   return nullptr;
 }
 
-/* Is there already an edge between a and b? */
+/**
+ * Is there already an edge between a and b?
+ */
 template<typename T> inline bool exists_edge(const CDTVert<T> *v1, const CDTVert<T> *v2)
 {
   return find_symedge_between_verts(v1, v2) != nullptr;
 }
 
-/* Is the vertex v incident on face f? */
+/**
+ * Is the vertex v incident on face f?
+ */
 template<typename T> bool vert_touches_face(const CDTVert<T> *v, const CDTFace<T> *f)
 {
   SymEdge<T> *se = v->symedge;
@@ -692,13 +717,13 @@ template<typename T> bool vert_touches_face(const CDTVert<T> *v, const CDTFace<T
   return false;
 }
 
-/*
- * Assume s1 and s2 are both SymEdges in a face with > 3 sides,
+/**
+ * Assume s1 and s2 are both #SymEdges in a face with > 3 sides,
  * and one is not the next of the other.
- * Add an edge from s1->v to s2->v, splitting the face in two.
- * The original face will continue to be associated with the subface
+ * Add an edge from `s1->v` to `s2->v`, splitting the face in two.
+ * The original face will continue to be associated with the sub-face
  * that has s1, and a new face will be made for s2's new face.
- * Return the new diagonal's CDTEdge *.
+ * Return the new diagonal's #CDTEdge pointer.
  */
 template<typename T> CDTEdge<T> *CDTArrangement<T>::add_diagonal(SymEdge<T> *s1, SymEdge<T> *s2)
 {
@@ -744,7 +769,8 @@ CDTEdge<T> *CDTArrangement<T>::add_vert_to_symedge_edge(CDTVert<T> *v, SymEdge<T
   return e;
 }
 
-/* Connect the verts of se1 and se2, assuming that currently those two SymEdges are on
+/**
+ * Connect the verts of se1 and se2, assuming that currently those two #SymEdge's are on
  * the outer boundary (have face == outer_face) of two components that are isolated from
  * each other.
  */
@@ -770,9 +796,9 @@ CDTEdge<T> *CDTArrangement<T>::connect_separate_parts(SymEdge<T> *se1, SymEdge<T
   return e;
 }
 
-/*
+/**
  * Split se at fraction lambda,
- * and return the new CDTEdge that is the new second half.
+ * and return the new #CDTEdge that is the new second half.
  * Copy the edge input_ids into the new one.
  */
 template<typename T> CDTEdge<T> *CDTArrangement<T>::split_edge(SymEdge<T> *se, T lambda)
@@ -804,12 +830,12 @@ template<typename T> CDTEdge<T> *CDTArrangement<T>::split_edge(SymEdge<T> *se, T
   return e;
 }
 
-/*
+/**
  * Delete an edge from the structure. The new combined face on either side of
  * the deleted edge will be the one that was e's face.
  * There will be now an unused face, marked by setting its deleted flag,
  * and an unused #CDTEdge, marked by setting the next and rot pointers of
- * its SymEdges to NULL.
+ * its #SymEdges to #nullptr.
  * <pre>
  *        .  v2               .
  *       / \                 / \
@@ -886,7 +912,9 @@ template<typename T> class SiteInfo {
   int orig_index;
 };
 
-/* Compare function for lexicographic sort: x, then y, then index. */
+/**
+ * Compare function for lexicographic sort: x, then y, then index.
+ */
 template<typename T> bool site_lexicographic_sort(const SiteInfo<T> &a, const SiteInfo<T> &b)
 {
   const vec2<T> &co_a = a.v->co;
@@ -942,9 +970,10 @@ inline bool dc_tri_valid(SymEdge<T> *se, SymEdge<T> *basel, SymEdge<T> *basel_sy
   return vec2<T>::orient2d(se->next->vert->co, basel_sym->vert->co, basel->vert->co) > 0;
 }
 
-/* Delaunay triangulate sites[start} to sites[end-1].
+/**
+ * Delaunay triangulate sites[start} to sites[end-1].
  * Assume sites are lexicographically sorted by coordinate.
- * Return SymEdge of ccw convex hull at left-most point in *r_le
+ * Return #SymEdge of ccw convex hull at left-most point in *r_le
  * and that of right-most point of cw convex null in *r_re.
  */
 template<typename T>
@@ -1114,9 +1143,8 @@ void dc_tri(CDTArrangement<T> *cdt,
     if (!valid_lcand && !valid_rcand) {
       break;
     }
-    /* The next cross edge to be connected is to either lcand->next->vert or rcand->next->vert;
-     * if both are valid, choose the appropriate one using the incircle test.
-     */
+    /* The next cross edge to be connected is to either `lcand->next->vert` or `rcand->next->vert`;
+     * if both are valid, choose the appropriate one using the #incircle test. */
     if (!valid_lcand || (valid_rcand && vec2<T>::incircle(lcand->next->vert->co,
                                                           lcand->vert->co,
                                                           rcand->vert->co,
@@ -1171,7 +1199,7 @@ template<typename T> void dc_triangulate(CDTArrangement<T> *cdt, Array<SiteInfo<
   dc_tri(cdt, sites, 0, n, &le, &re);
 }
 
-/*
+/**
  * Do a Delaunay Triangulation of the points in cdt.verts.
  * This  is only a first step in the Constrained Delaunay triangulation,
  * because it doesn't yet deal with the segment constraints.
@@ -1205,7 +1233,7 @@ template<typename T> void initial_triangulation(CDTArrangement<T> *cdt)
   dc_triangulate(cdt, sites);
 }
 
-/*
+/**
  * Re-triangulates, assuring constrained delaunay condition,
  * the pseudo-polygon that cycles from se.
  * "pseudo" because a vertex may be repeated.
@@ -1263,27 +1291,27 @@ template<typename T> inline int tri_orient(const SymEdge<T> *t)
   return vec2<T>::orient2d(t->vert->co, t->next->vert->co, t->next->next->vert->co);
 }
 
-/*
- * The CrossData class defines either an endpoint or an intermediate point
+/**
+ * The #CrossData class defines either an endpoint or an intermediate point
  * in the path we will take to insert an edge constraint.
  * Each such point will either be
  * (a) a vertex or
- * (b) a fraction lambda (0 < lambda < 1) along some SymEdge.]
+ * (b) a fraction lambda (0 < lambda < 1) along some #SymEdge.]
  *
  * In general, lambda=0 indicates case a and lambda != 0 indicates case be.
  * The 'in' edge gives the destination attachment point of a diagonal from the previous crossing,
  * and the 'out' edge gives the origin attachment point of a diagonal to the next crossing.
  * But in some cases, 'in' and 'out' are undefined or not needed, and will be NULL.
  *
- * For case (a), 'vert' will be the vertex, and lambda will be 0, and 'in' will be the SymEdge from
- * 'vert' that has as face the one that you go through to get to this vertex. If you go exactly
- * along an edge then we set 'in' to NULL, since it won't be needed. The first crossing will have
- * 'in' = NULL. We set 'out' to the SymEdge that has the face we go though to get to the next
- * crossing, or, if the next crossing is a case (a), then it is the edge that goes to that next
- * vertex. 'out' wlll be NULL for the last one.
+ * For case (a), 'vert' will be the vertex, and lambda will be 0, and 'in' will be the #SymEdge
+ * from 'vert' that has as face the one that you go through to get to this vertex. If you go
+ * exactly along an edge then we set 'in' to NULL, since it won't be needed. The first crossing
+ * will have 'in' = NULL. We set 'out' to the #SymEdge that has the face we go though to get to the
+ * next crossing, or, if the next crossing is a case (a), then it is the edge that goes to that
+ * next vertex. 'out' will be NULL for the last one.
  *
  * For case (b), vert will be NULL at first, and later filled in with the created split vertex,
- * and 'in' will be the SymEdge that we go through, and lambda will be between 0 and 1,
+ * and 'in' will be the #SymEdge that we go through, and lambda will be between 0 and 1,
  * the fraction from in's vert to in->next's vert to put the split vertex.
  * 'out' is not needed in this case, since the attachment point will be the sym of the first
  * half of the split edge.
@@ -1339,7 +1367,7 @@ bool get_next_crossing_from_vert(CDT_state<T> *cdt_state,
                                  CrossData<T> *cd_next,
                                  const CDTVert<T> *v2);
 
-/*
+/**
  * As part of finding crossings, we found a case where the next crossing goes through vert v.
  * If it came from a previous vert in cd, then cd_out is the edge that leads from that to v.
  * Else cd_out can be NULL, because it won't be used.
@@ -1375,10 +1403,10 @@ void fill_crossdata_for_through_vert(CDTVert<T> *v,
   }
 }
 
-/*
+/**
  * As part of finding crossings, we found a case where orient tests say that the next crossing
- * is on the SymEdge t, while intersecting with the ray from curco to v2.
- * Find the intersection point and fill in the CrossData for that point.
+ * is on the #SymEdge t, while intersecting with the ray from \a curco to \a v2.
+ * Find the intersection point and fill in the #CrossData for that point.
  * It may turn out that when doing the intersection, we get an answer that says that
  * this case is better handled as through-vertex case instead, so we may do that.
  * In the latter case, we want to avoid a situation where the current crossing is on an edge
@@ -1478,7 +1506,7 @@ void fill_crossdata_for_intersect(const vec2<T> &curco,
   }
 }  // namespace blender::meshintersect
 
-/*
+/**
  * As part of finding the crossings of a ray to v2, find the next crossing after 'cd', assuming
  * 'cd' represents a crossing that goes through a vertex.
  *
@@ -1496,14 +1524,12 @@ bool get_next_crossing_from_vert(CDT_state<T> *cdt_state,
   CDTVert<T> *vcur = cd->vert;
   bool ok = false;
   do {
-    /*
-     * The ray from vcur to v2 has to go either between two successive
-     * edges around vcur or exactly along them. This time through the
-     * loop, check to see if the ray goes along vcur-va
-     * or between vcur-va and vcur-vb, where va is the end of t
+    /* The ray from `vcur` to v2 has to go either between two successive
+     * edges around `vcur` or exactly along them. This time through the
+     * loop, check to see if the ray goes along `vcur-va`
+     * or between `vcur-va` and `vcur-vb`, where va is the end of t
      * and vb is the next vertex (on the next rot edge around vcur, but
-     * should also be the next vert of triangle starting with vcur-va.
-     */
+     * should also be the next vert of triangle starting with `vcur-va`. */
     if (t->face != cdt_state->cdt.outer_face && tri_orient(t) < 0) {
       BLI_assert(false); /* Shouldn't happen. */
     }
@@ -1530,13 +1556,13 @@ bool get_next_crossing_from_vert(CDT_state<T> *cdt_state,
   return ok;
 }
 
-/*
- * As part of finding the crossings of a ray to v2, find the next crossing after 'cd', assuming
+/**
+ * As part of finding the crossings of a ray to `v2`, find the next crossing after 'cd', assuming
  * 'cd' represents a crossing that goes through a an edge, not at either end of that edge.
  *
- * We have the triangle vb-va-vc, where va and vb are the split edge and vc is the third vertex on
- * that new side of the edge (should be closer to v2). The next crossing should be through vc or
- * intersecting vb-vc or va-vc.
+ * We have the triangle `vb-va-vc`, where `va` and vb are the split edge and `vc` is the third
+ * vertex on that new side of the edge (should be closer to `v2`).
+ * The next crossing should be through `vc` or intersecting `vb-vc` or `va-vc`.
  */
 template<typename T>
 void get_next_crossing_from_edge(CrossData<T> *cd,
@@ -1583,7 +1609,7 @@ void dump_crossings(const Vector<CrossData<T>, inline_crossings_size> &crossings
   }
 }
 
-/*
+/**
  * Add a constrained edge between v1 and v2 to cdt structure.
  * This may result in a number of #CDTEdges created, due to intersections
  * and partial overlaps with existing cdt vertices and edges.
@@ -1678,7 +1704,7 @@ void add_edge_constraint(
   }
 
   /*
-   * Postprocess crossings.
+   * Post-process crossings.
    * Some crossings may have an intersection crossing followed
    * by a vertex crossing that is on the same edge that was just
    * intersected. We prefer to go directly from the previous
@@ -1813,9 +1839,10 @@ void add_edge_constraint(
   }
 }
 
-/* Incrementally add edge input edge as a constraint. This may cause the graph structure
+/**
+ * Incrementally add edge input edge as a constraint. This may cause the graph structure
  * to change, in cases where the constraints intersect existing edges.
- * The code will ensure that CDTEdges created will have ids that tie them back
+ * The code will ensure that #CDTEdge's created will have ids that tie them back
  * to the original edge constraint index.
  */
 template<typename T> void add_edge_constraints(CDT_state<T> *cdt_state, const CDT_input<T> &input)
@@ -1836,10 +1863,10 @@ template<typename T> void add_edge_constraints(CDT_state<T> *cdt_state, const CD
   cdt_state->face_edge_offset = ne;
 }
 
-/*
+/**
  * Add face_id to the input_ids lists of all #CDTFace's on the interior of the input face with that
  * id. face_symedge is on edge of the boundary of the input face, with assumption that interior is
- * on the left of that SymEdge.
+ * on the left of that #SymEdge.
  *
  * The algorithm is: starting from the #CDTFace for face_symedge, add the face_id and then
  * process all adjacent faces where the adjacency isn't across an edge that was a constraint added
@@ -1848,11 +1875,11 @@ template<typename T> void add_edge_constraints(CDT_state<T> *cdt_state, const CD
  *
  * Note: if the input face is not CCW oriented, we'll be labeling the outside, not the inside.
  * Note 2: if the boundary has self-crossings, this method will arbitrarily pick one of the
- * contiguous set of faces enclosed by parts of the boundary, leaving the other such untagged. This
- * may be a feature instead of a bug if the first contiguous section is most of the face and the
- * others are tiny self-crossing triangles at some parts of the boundary. On the other hand, if
- * decide we want to handle these in full generality, then will need a more complicated algorithm
- * (using "inside" tests and a parity rule) to decide on the interior.
+ * contiguous set of faces enclosed by parts of the boundary, leaving the other such un-tagged.
+ * This may be a feature instead of a bug if the first contiguous section is most of the face and
+ * the others are tiny self-crossing triangles at some parts of the boundary.
+ * On the other hand, if decide we want to handle these in full generality, then will need a more
+ * complicated algorithm (using "inside" tests and a parity rule) to decide on the interior.
  */
 template<typename T>
 void add_face_ids(
@@ -1898,8 +1925,9 @@ static int power_of_10_greater_equal_to(int x)
   return ans;
 }
 
-/* Incrementally each edge of each input face as an edge constraint.
- * The code will ensure that the CDTEdges created will have ids that tie them
+/**
+   Incrementally each edge of each input face as an edge constraint.
+ * The code will ensure that the #CDTEdge's created will have ids that tie them
  * back to the original face edge (using a numbering system for those edges
  * that starts with cdt->face_edge_offset, and continues with the edges in
  * order around each face in turn. And then the next face starts at
@@ -1998,7 +2026,9 @@ template<typename T> void dissolve_symedge(CDT_state<T> *cdt_state, SymEdge<T> *
   cdt->delete_edge(se);
 }
 
-/* Remove all non-constraint edges. */
+/**
+ * Remove all non-constraint edges.
+ */
 template<typename T> void remove_non_constraint_edges(CDT_state<T> *cdt_state)
 {
   for (CDTEdge<T> *e : cdt_state->cdt.edges) {
@@ -2011,7 +2041,7 @@ template<typename T> void remove_non_constraint_edges(CDT_state<T> *cdt_state)
 
 /*
  * Remove the non-constraint edges, but leave enough of them so that all of the
- * faces that would be bmesh faces (that is, the faces that have some input representative)
+ * faces that would be #BMesh faces (that is, the faces that have some input representative)
  * are valid: they can't have holes, they can't have repeated vertices, and they can't have
  * repeated edges.
  *
@@ -2153,7 +2183,7 @@ template<typename T> void remove_outer_edges_until_constraints(CDT_state<T> *cdt
   }
 }
 
-/*
+/**
  * Remove edges and merge faces to get desired output, as per options.
  * \note the cdt cannot be further changed after this.
  */
@@ -2333,8 +2363,9 @@ blender::meshintersect::CDT_result<mpq_class> delaunay_2d_calc(const CDT_input<m
 
 /* C interface. */
 
-/* This function uses the double version of CDT::delaunay_calc.
- * Almost all of the work here is to convert between C++ Arrays<Vector<int>>
+/**
+   This function uses the double version of #CDT::delaunay_calc.
+ * Almost all of the work here is to convert between C++ #Arrays<Vector<int>>
  * and a C version that linearizes all the elements and uses a "start"
  * and "len" array to say where the individual vectors start and how
  * long they are.

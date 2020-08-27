@@ -317,6 +317,5 @@ set(ISPC_URI https://github.com/ispc/ispc/archive/${ISPC_VERSION}.tar.gz)
 set(ISPC_HASH 4bf5e8d0020c4b9980faa702c1a6f25f)
 
 set(GMP_VERSION 6.2.0)
-
 set(GMP_URI https://gmplib.org/download/gmp/gmp-${GMP_VERSION}.tar.xz)
 set(GMP_HASH a325e3f09e6d91e62101e59f9bda3ec1)

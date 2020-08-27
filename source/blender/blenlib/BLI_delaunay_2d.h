@@ -239,9 +239,10 @@ template<typename Arith_t> class CDT_result {
   Array<vec2<Arith_t>> vert;
   Array<std::pair<int, int>> edge;
   Array<Vector<int>> face;
-  /* For each output vert, which input verts correspond to it? */
+  /** For each output vert, which input verts correspond to it? */
   Array<Vector<int>> vert_orig;
-  /* For each output edge, which input edges does it overlap?
+  /**
+   * For each output edge, which input edges does it overlap?
    * The input edge ids are encoded as follows:
    *   if the value is less than face_edge_offset, then it is
    *      an index into the input edge[] array.
@@ -250,9 +251,9 @@ template<typename Arith_t> class CDT_result {
    *      and "b" will be a position within that face.
    */
   Array<Vector<int>> edge_orig;
-  /* For each output face, which original faces does it overlap? */
+  /** For each output face, which original faces does it overlap? */
   Array<Vector<int>> face_orig;
-  /* Used to encode edge_orig (see above). */
+  /** Used to encode edge_orig (see above). */
   int face_edge_offset;
 };
 

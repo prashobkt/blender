@@ -41,7 +41,8 @@ namespace blender::meshintersect {
 
 constexpr int NO_INDEX = -1;
 
-/* Vertex coordinates are stored both as double3 and mpq3, which should agree.
+/**
+ * Vertex coordinates are stored both as #double3 and #mpq3, which should agree.
  * Most calculations are done in exact arithmetic, using the mpq3 version,
  * but some predicates can be sped up by operating on doubles and using error analysis
  * to find the cases where that is good enough.
@@ -49,8 +50,8 @@ constexpr int NO_INDEX = -1;
  * is useful for making algorithms that don't depend on pointers.
  * Also, they are easier to read while debugging.
  * They also carry an orig index, which can be used to tie them back to
- * vertices that tha caller may have in a different way (e.g., BMVerts).
- * An orig index can be NO_INDEX, indicating the Vert was created by
+ * vertices that the caller may have in a different way (e.g., #BMVert).
+ * An orig index can be #NO_INDEX, indicating the Vert was created by
  * the algorithm and doesn't match an original Vert.
  * Vertices can be reliably compared for equality,
  * and hashed (on their co_exact field).
@@ -65,20 +66,21 @@ struct Vert {
   Vert(const mpq3 &mco, const double3 &dco, int id, int orig);
   ~Vert() = default;
 
-  /* Test equality on the co_exact field. */
+  /** Test equality on the co_exact field. */
   bool operator==(const Vert &other) const;
 
-  /* Hash on the co_exact field. */
+  /** Hash on the co_exact field. */
   uint64_t hash() const;
 };
 
 std::ostream &operator<<(std::ostream &os, const Vert *v);
 
-/* A Plane whose equation is dot(norm, p) + d = 0.
+/**
+ * A Plane whose equation is `dot(norm, p) + d = 0`.
  * The norm and d fields are always present, but the norm_exact
  * and d_exact fields may be lazily populated. Since we don't
  * store degenerate planes, we can tell if a the exact versions
- * are not populated yet by having norm_exact == 0.
+ * are not populated yet by having `norm_exact == 0`.
  */
 struct Plane {
   mpq3 norm_exact;
@@ -103,9 +105,10 @@ struct Plane {
 
 std::ostream &operator<<(std::ostream &os, const Plane *plane);
 
-/* A Face has a sequence of Verts that for a CCW ordering around them.
+/**
+ * A #Face has a sequence of Verts that for a CCW ordering around them.
  * Faces carry an index, created at allocation time, useful for making
- * pointer-indenpendent algorithms, and for debugging.
+ * pointer-independent algorithms, and for debugging.
  * They also carry an original index, meaningful to the caller.
  * And they carry original edge indices too: each is a number meaningful
  * to the caller for the edge starting from the corresponding face position.
@@ -115,7 +118,7 @@ std::ostream &operator<<(std::ostream &os, const Plane *plane);
  * for each edge whether or not it is the result of intersecting
  * with another face in the intersect algorithm.
  * Since the intersect algorithm needs the plane for each face,
- * a Face also stores the Plane of the face, but this is only
+ * a #Face also stores the Plane of the face, but this is only
  * populate later because not all faces will be intersected.
  */
 struct Face : NonCopyable {
@@ -189,11 +192,12 @@ struct Face : NonCopyable {
 
 std::ostream &operator<<(std::ostream &os, const Face *f);
 
-/* IMeshArena is the owner of the Vert and Face resources used
- * during a run of one of the meshintersect main functions.
+/**
+ * #IMeshArena is the owner of the Vert and Face resources used
+ * during a run of one of the mesh-intersect main functions.
  * It also keeps has a hash table of all Verts created so that it can
  * ensure that only one instance of a Vert with a given co_exact will
- * exist. I.e., it dedups the vertices.
+ * exist. I.e., it de-duplicates the vertices.
  */
 class IMeshArena : NonCopyable, NonMovable {
   class IMeshArenaImpl;
@@ -203,7 +207,8 @@ class IMeshArena : NonCopyable, NonMovable {
   IMeshArena();
   ~IMeshArena();
 
-  /* Provide hints to number of expected Verts and Faces expected
+  /**
+   * Provide hints to number of expected Verts and Faces expected
    * to be allocated.
    */
   void reserve(int vert_num_hint, int face_num_hint);
@@ -211,7 +216,8 @@ class IMeshArena : NonCopyable, NonMovable {
   int tot_allocated_verts() const;
   int tot_allocated_faces() const;
 
-  /* These add routines find and return an existing Vert with the same
+  /**
+   * These add routines find and return an existing Vert with the same
    * co_exact, if it exists (the orig argument is ignored in this case),
    * or else allocates and returns a new one. The index field of a
    * newly allocated Vert will be the index in creation order.
@@ -226,23 +232,24 @@ class IMeshArena : NonCopyable, NonMovable {
   Face *add_face(Span<const Vert *> verts, int orig, Span<int> edge_origs);
   Face *add_face(Span<const Vert *> verts, int orig);
 
-  /* The following return nullptr if not found. */
+  /** The following return #nullptr if not found. */
   const Vert *find_vert(const mpq3 &co) const;
   const Face *find_face(Span<const Vert *> verts) const;
 };
 
-/* A blender::meshintersect::IMesh is a self-contained mesh structure
- * that can be used in Blenlib without depending on the rest of Blender.
- * The Vert and Face resources used in the IMesh should be owned by
- * some IMeshArena.
- * The Verts used by a IMesh can be recovered from the Faces, so
- * are usually not stored, but on request, the IMesh can populate
+/**
+ * A #blender::meshintersect::IMesh is a self-contained mesh structure
+ * that can be used in `blenlib` without depending on the rest of Blender.
+ * The Vert and #Face resources used in the #IMesh should be owned by
+ * some #IMeshArena.
+ * The Verts used by a #IMesh can be recovered from the Faces, so
+ * are usually not stored, but on request, the #IMesh can populate
  * internal structures for indexing exactly the set of needed Verts,
  * and also going from a Vert pointer to the index in that system.
  */
 
 class IMesh {
-  Array<Face *> face_;                   /* Not const so can lazily populate planes. */
+  Array<Face *> face_;                   /* Not `const` so can lazily populate planes. */
   Array<const Vert *> vert_;             /* Only valid if vert_populated_. */
   Map<const Vert *, int> vert_to_index_; /* Only valid if vert_populated_. */
   bool vert_populated_ = false;
@@ -281,9 +288,7 @@ class IMesh {
     vert_ = Array<const Vert *>();
   }
 
-  /* Use the second of these if there is a good bound
-   * estimate on the maximum number of verts.
-   */
+  /* Pass `max_verts` if there is a good bound estimate on the maximum number of verts. */
   void populate_vert();
   void populate_vert(int max_verts);
 
@@ -293,7 +298,7 @@ class IMesh {
     return vert_[index];
   }
 
-  /* Returns index in vert_ where v is, or NO_INDEX. */
+  /** Returns index in vert_ where v is, or #NO_INDEX. */
   int lookup_vert(const Vert *v) const;
 
   IndexRange vert_index_range() const
@@ -318,7 +323,8 @@ class IMesh {
     return Span<Face *>(face_);
   }
 
-  /* Replace face at given index with one that elides the
+  /**
+   * Replace face at given index with one that elides the
    * vertices at the positions in face_pos_erase that are true.
    * Use arena to allocate the new face in.
    */
@@ -327,13 +333,14 @@ class IMesh {
 
 std::ostream &operator<<(std::ostream &os, const IMesh &mesh);
 
-/* The output will have dup vertices merged and degenerate triangles ignored.
- * If the input has overlapping coplanar triangles, then there will be
+/**
+ * The output will have duplicate vertices merged and degenerate triangles ignored.
+ * If the input has overlapping co-planar triangles, then there will be
  * as many duplicates as there are overlaps in each overlapping triangular region.
- * The orig field of each IndexedTriangle will give the orig index in the input IMesh
+ * The orig field of each #IndexedTriangle will give the orig index in the input #IMesh
  * that the output triangle was a part of (input can have -1 for that field and then
- * the index in tri[] will be used as the original index).
- * The orig structure of the output IMesh gives the originals for vertices and edges.
+ * the index in `tri[]` will be used as the original index).
+ * The orig structure of the output #IMesh gives the originals for vertices and edges.
  * Note: if the input tm_in has a non-empty orig structure, then it is ignored.
  */
 IMesh trimesh_self_intersect(const IMesh &tm_in, IMeshArena *arena);
@@ -344,7 +351,7 @@ IMesh trimesh_nary_intersect(const IMesh &tm_in,
                              bool use_self,
                              IMeshArena *arena);
 
-/* This has the side effect of populating verts in the IMesh. */
+/** This has the side effect of populating verts in the #IMesh. */
 void write_obj_mesh(IMesh &m, const std::string &objname);
 
 } /* namespace blender::meshintersect */

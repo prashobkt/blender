@@ -16,6 +16,10 @@
 
 #pragma once
 
+/** \file
+ * \ingroup bli
+ */
+
 #ifdef WITH_GMP
 
 #  include <iostream>
@@ -268,7 +272,7 @@ struct mpq3 {
 
   static int orient3d(const mpq3 &a, const mpq3 &b, const mpq3 &c, const mpq3 &d);
 
-  /* There is a sensible use for hashing on exact arithmetic types. */
+  /** There is a sensible use for hashing on exact arithmetic types. */
   uint64_t hash() const;
 };
 

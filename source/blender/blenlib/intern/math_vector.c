@@ -809,7 +809,7 @@ void reflect_v3_v3v3_db(double out[3], const double v[3], const double normal[3]
 {
   const double dot2 = 2.0 * dot_v3v3_db(v, normal);
 
-  /* BLI_ASSERT_UNIT_V3_DB(normal); this assert is not knownn? */
+  /* BLI_ASSERT_UNIT_V3_DB(normal); this assert is not known? */
 
   out[0] = v[0] - (dot2 * normal[0]);
   out[1] = v[1] - (dot2 * normal[1]);

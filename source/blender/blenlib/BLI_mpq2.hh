@@ -16,6 +16,10 @@
 
 #pragma once
 
+/** \file
+ * \ingroup bli
+ */
+
 #ifdef WITH_GMP
 
 #  include "BLI_math_mpq.hh"
@@ -76,7 +80,8 @@ struct mpq2 {
     return &x;
   }
 
-  /* Cannot do this exactly in rational arithmetic!
+  /**
+   * Cannot do this exactly in rational arithmetic!
    * Approximate by going in and out of doubles.
    */
   mpq_class length() const
@@ -174,7 +179,7 @@ struct mpq2 {
 
   static int incircle(const mpq2 &a, const mpq2 &b, const mpq2 &c, const mpq2 &d);
 
-  /* There is a sensible use for hashing on exact arithmetic types. */
+  /** There is a sensible use for hashing on exact arithmetic types. */
   uint64_t hash() const;
 };
 

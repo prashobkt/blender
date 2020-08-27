@@ -14,6 +14,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+/** \file
+ * \ingroup bli
+ */
+
 #ifdef WITH_GMP
 
 #  include <algorithm>
@@ -39,7 +43,8 @@
 
 namespace blender::meshintersect {
 
-/* Edge as two const Vert *'s, in a canonical order (lower vert id first).
+/**
+ * Edge as two `const` Vert *'s, in a canonical order (lower vert id first).
  * We use the Vert id field for hashing to get algorithms
  * that yield predictable results from run-to-run and machine-to-machine.
  */
@@ -118,19 +123,19 @@ static std::ostream &operator<<(std::ostream &os, const Array<int> &iarr)
   return os;
 }
 
-/* Holds information about topology of an IMesh that is all triangles. */
+/** Holds information about topology of an #IMesh that is all triangles. */
 class TriMeshTopology : NonCopyable {
-  /* Triangles that contain a given Edge (either order). */
+  /** Triangles that contain a given Edge (either order). */
   Map<Edge, Vector<int> *> edge_tri_;
-  /* Edges incident on each vertex. */
+  /** Edges incident on each vertex. */
   Map<const Vert *, Vector<Edge>> vert_edges_;
 
  public:
   TriMeshTopology(const IMesh &tm);
   ~TriMeshTopology();
 
-  /* If e is manifold, return index of the other triangle (not t) that has it. Else return
-   * NO_INDEX. */
+  /* If e is manifold, return index of the other triangle (not t) that has it.
+   * Else return NO_INDEX. */
   int other_tri_if_manifold(Edge e, int t) const
   {
     if (edge_tri_.contains(e)) {
@@ -149,8 +154,7 @@ class TriMeshTopology : NonCopyable {
   }
 
   /* Which edges are incident on the given vertex?
-   * We assume v has some incident edges.
-   */
+   * We assume v has some incident edges. */
   const Vector<Edge> &vert_edges(const Vert *v) const
   {
     return vert_edges_.lookup(v);
@@ -168,9 +172,8 @@ TriMeshTopology::TriMeshTopology(const IMesh &tm)
   if (dbg_level > 0) {
     std::cout << "TRIMESHTOPOLOGY CONSTRUCTION\n";
   }
-  /* If everything were manifold, F+V-E=2 and E=3F/2.
-   * So an likely overestimate, allowing for non-manifoldness, is E=2F and V=F.
-   */
+  /* If everything were manifold, `F+V-E=2` and `E=3F/2`.
+   * So an likely overestimate, allowing for non-manifoldness, is `E=2F` and `V=F`. */
   const int estimate_num_edges = 2 * tm.face_size();
   const int estimate_num_verts = tm.face_size();
   edge_tri_.reserve(estimate_num_edges);
@@ -221,7 +224,7 @@ TriMeshTopology::~TriMeshTopology()
   }
 }
 
-/* A Patch is a maximal set of triangles that share manifold edges only. */
+/** A Patch is a maximal set of triangles that share manifold edges only. */
 class Patch {
   Vector<int> tri_; /* Indices of triangles in the Patch. */
 
@@ -277,11 +280,11 @@ static std::ostream &operator<<(std::ostream &os, const Patch &patch)
 }
 
 class PatchesInfo {
-  /* All of the Patches for a IMesh. */
+  /** All of the Patches for a #IMesh. */
   Vector<Patch> patch_;
-  /* Patch index for corresponding triangle. */
+  /** Patch index for corresponding triangle. */
   Array<int> tri_patch_;
-  /* Shared edge for incident patches; (-1, -1) if none. */
+  /** Shared edge for incident patches; (-1, -1) if none. */
   Map<std::pair<int, int>, Edge> pp_edge_;
 
  public:
@@ -368,7 +371,8 @@ class PatchesInfo {
 
 static bool apply_bool_op(BoolOpType bool_optype, const Array<int> &winding);
 
-/* A Cell is a volume of 3-space, surrounded by patches.
+/**
+ * A Cell is a volume of 3-space, surrounded by patches.
  * We will partition all 3-space into Cells.
  * One cell, the Ambient cell, contains all other cells.
  */
@@ -453,7 +457,8 @@ class Cell {
     merged_to_ = c;
   }
 
-  /* Call this when it is possible that this Cell has zero volume,
+  /**
+   * Call this when it is possible that this Cell has zero volume,
    * and if it does, set zero_volume_ to true.
    */
   void check_for_zero_volume(const PatchesInfo &pinfo, const IMesh &mesh);
@@ -490,7 +495,8 @@ static bool tris_have_same_verts(const IMesh &mesh, int t1, int t2)
   return false;
 }
 
-/* A Cell will have zero volume if it is bounded by exactly two patches and those
+/**
+ * A Cell will have zero volume if it is bounded by exactly two patches and those
  * patches are geometrically identical triangles (perhaps flipped versions of each other).
  * If this Cell has zero volume, set its zero_volume_ member to true.
  */
@@ -568,16 +574,18 @@ class CellsInfo {
   }
 };
 
-/* For Debugging: write a .obj file showing the patch/cell structure or just the cells. */
+/**
+ * For Debugging: write a .obj file showing the patch/cell structure or just the cells.
+ */
 static void write_obj_cell_patch(const IMesh &m,
                                  const CellsInfo &cinfo,
                                  const PatchesInfo &pinfo,
                                  bool cells_only,
                                  const std::string &name)
 {
-  /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
-   * This is just for developer debugging anyway, and should never be called in production Blender.
-   */
+  /* Would like to use #BKE_tempdir_base() here, but that brings in dependence on kernel library.
+   * This is just for developer debugging anyway,
+   * and should never be called in production Blender. */
 #  ifdef _WIN_32
   const char *objdir = BLI_getenv("HOME");
 #  else
@@ -658,7 +666,9 @@ static void merge_cells(int merge_to, int merge_from, CellsInfo &cinfo, PatchesI
   merge_from_cell.set_merged_to(final_merge_to);
 }
 
-/* Partition the triangles of tm into Patches. */
+/**
+ * Partition the triangles of \a tm into Patches.
+ */
 static PatchesInfo find_patches(const IMesh &tm, const TriMeshTopology &tmtopo)
 {
   const int dbg_level = 0;
@@ -754,7 +764,8 @@ static PatchesInfo find_patches(const IMesh &tm, const TriMeshTopology &tmtopo)
   return pinfo;
 }
 
-/* If e is an edge in tri, return the vertex that isn't part of tri,
+/**
+ * If e is an edge in tri, return the vertex that isn't part of tri,
  * the "flap" vertex, or nullptr if e is not part of tri.
  * Also, e may be reversed in tri.
  * Set *r_rev to true if it is reversed, else false.
@@ -808,12 +819,12 @@ static const Vert *find_flap_vert(const Face &tri, const Edge e, bool *r_rev)
   return flapv;
 }
 
-/*
- * Triangle tri and tri0 share edge e.
- * Classify tri with respect to tri0 as described in
- * sort_tris_around_edge, and return 1, 2, 3, or 4 as tri is:
- * (1) coplanar with tri0 and on same side of e
- * (2) coplanar with tri0 and on opposite side of e
+/**
+ * Triangle \a tri and tri0 share edge e.
+ * Classify \a tri with respect to tri0 as described in
+ * sort_tris_around_edge, and return 1, 2, 3, or 4 as \a tri is:
+ * (1) co-planar with tri0 and on same side of e
+ * (2) co-planar with tri0 and on opposite side of e
  * (3) below plane of tri0
  * (4) above plane of tri0
  * For "above" and "below", we use the orientation of non-reversed
@@ -863,7 +874,8 @@ static int sort_tris_class(const Face &tri, const Face &tri0, const Edge e)
 
 constexpr int EXTRA_TRI_INDEX = INT_MAX;
 
-/* To ensure consistent ordering of coplanar triangles if they happen to be sorted around
+/**
+ * To ensure consistent ordering of co-planar triangles if they happen to be sorted around
  * more than one edge, sort the triangle indices in g (in place) by their index -- but also apply
  * a sign to the index: positive if the triangle has edge e in the same orientation,
  * otherwise negative.
@@ -887,10 +899,10 @@ static void sort_by_signed_triangle_index(Vector<int> &g,
   }
 }
 
-/*
- * Sort the triangles tris, which all share edge e, as they appear
+/**
+ * Sort the triangles \a tris, which all share edge e, as they appear
  * geometrically clockwise when looking down edge e.
- * Triangle t0 is the first triangle in the toplevel call
+ * Triangle t0 is the first triangle in the top-level call
  * to this recursive routine. The merge step below differs
  * for the top level call and all the rest, so this distinguishes those cases.
  * Care is taken in the case of duplicate triangles to have
@@ -908,17 +920,16 @@ static Array<int> sort_tris_around_edge(const IMesh &tm,
                                         const int t0,
                                         const Face *extra_tri)
 {
-  /* Divide and conquer, quicksort-like sort.
+  /* Divide and conquer, quick-sort-like sort.
    * Pick a triangle t0, then partition into groups:
-   * (1) coplanar with t0 and on same side of e
-   * (2) coplanar with t0 and on opposite side of e
+   * (1) co-planar with t0 and on same side of e
+   * (2) co-planar with t0 and on opposite side of e
    * (3) below plane of t0
    * (4) above plane of t0
    * Each group is sorted and then the sorts are merged to give the answer.
    * We don't expect the input array to be very large - should typically
    * be only 3 or 4 - so OK to make copies of arrays instead of swapping
-   * around in a single array.
-   */
+   * around in a single array. */
   const int dbg_level = 0;
   if (tris.size() == 0) {
     return Array<int>();
@@ -1006,10 +1017,11 @@ static Array<int> sort_tris_around_edge(const IMesh &tm,
   return ans;
 }
 
-/* Find the Cells around edge e.
- * This possibly makes new cells in cinfo, and sets up the
+/**
+ * Find the Cells around edge e.
+ * This possibly makes new cells in \a cinfo, and sets up the
  * bipartite graph edges between cells and patches.
- * Will modify pinfo and cinfo and the patches and cells they contain.
+ * Will modify \a pinfo and \a cinfo and the patches and cells they contain.
  */
 static void find_cells_from_edge(const IMesh &tm,
                                  const TriMeshTopology &tmtopo,
@@ -1105,7 +1117,8 @@ static void find_cells_from_edge(const IMesh &tm,
   }
 }
 
-/* Find the partition of 3-space into Cells.
+/**
+ * Find the partition of 3-space into Cells.
  * This assigns the cell_above and cell_below for each Patch.
  */
 static CellsInfo find_cells(const IMesh &tm, const TriMeshTopology &tmtopo, PatchesInfo &pinfo)
@@ -1133,8 +1146,7 @@ static CellsInfo find_cells(const IMesh &tm, const TriMeshTopology &tmtopo, Patc
    * (a) a closed manifold patch only incident on itself (sphere, torus, klein bottle, etc.).
    * (b) an open manifold patch only incident on itself (has non-manifold boundaries).
    * Make above and below cells for these patches. This will create a disconnected patch-cell
-   * bipartite graph, which will have to be fixed later.
-   */
+   * bipartite graph, which will have to be fixed later. */
   for (int p : pinfo.index_range()) {
     Patch &patch = pinfo.patch(p);
     if (patch.cell_above == NO_INDEX) {
@@ -1166,7 +1178,8 @@ static CellsInfo find_cells(const IMesh &tm, const TriMeshTopology &tmtopo, Patc
   return cinfo;
 }
 
-/* Find the connected patch components (connects are via intermediate cells), and put
+/**
+ * Find the connected patch components (connects are via intermediate cells), and put
  * component numbers in each patch.
  * Return a Vector of components - each a Vector of the patch ids in the component.
  */
@@ -1217,7 +1230,8 @@ static Vector<Vector<int>> find_patch_components(const CellsInfo &cinfo, Patches
   return ans;
 }
 
-/* Do all patches have cell_above and cell_below set?
+/**
+ * Do all patches have cell_above and cell_below set?
  * Is the bipartite graph connected?
  */
 static bool patch_cell_graph_ok(const CellsInfo &cinfo, const PatchesInfo &pinfo)
@@ -1253,7 +1267,8 @@ static bool patch_cell_graph_ok(const CellsInfo &cinfo, const PatchesInfo &pinfo
   return true;
 }
 
-/* Is trimesh tm PWN ("piecewise constant winding number")?
+/**
+ * Is trimesh tm PWN ("Piece-wise constant Winding Number")?
  * See Zhou et al. paper for exact definition, but roughly
  * means that the faces connect so as to form closed volumes.
  * The actual definition says that if you calculate the
@@ -1261,7 +1276,7 @@ static bool patch_cell_graph_ok(const CellsInfo &cinfo, const PatchesInfo &pinfo
  * the mesh, it will always be an integer.
  * Necessary (but not sufficient) conditions that a mesh be PWN:
  *    No edges with a non-zero sum of incident face directions.
- * I think that cases like Klein bottles are likly to satisfy
+ * I think that cases like Klein bottles are likely to satisfy
  * this without being PWN. So this routine will be only
  * approximately right.
  */
@@ -1272,8 +1287,7 @@ static bool is_pwn(const IMesh &tm, const TriMeshTopology &tmtopo)
     const Edge &edge = item.key;
     int tot_orient = 0;
     /* For each face t attached to edge, add +1 if the edge
-     * is positively in t, and -1 if negatively in t.
-     */
+     * is positively in t, and -1 if negatively in t. */
     for (int t : *item.value) {
       const Face &face = *tm.face(t);
       BLI_assert(face.size() == 3);
@@ -1299,7 +1313,8 @@ static bool is_pwn(const IMesh &tm, const TriMeshTopology &tmtopo)
   return true;
 }
 
-/* Find which of the cells around edge e contains point p.
+/**
+ * Find which of the cells around edge e contains point p.
  * Do this by inserting a dummy triangle containing v and sorting the
  * triangles around the edge to find out where in the sort order
  * the dummy triangle lies, then finding which cell is between
@@ -1355,7 +1370,7 @@ static int find_cell_for_point_near_edge(mpq3 p,
   return c;
 }
 
-/*
+/**
  * Find the ambient cell -- that is, the cell that is outside
  * all other cells.
  * If component_patches != nullptr, restrict consideration to patches
@@ -1380,7 +1395,7 @@ static int find_ambient_cell(const IMesh &tm,
     std::cout << "FIND_AMBIENT_CELL\n";
   }
   /* First find a vertex with the maximum x value. */
-  /* Prefer not to populate the verts in the IMesh just for this. */
+  /* Prefer not to populate the verts in the #IMesh just for this. */
   const Vert *v_extreme;
   mpq_class extreme_x;
   if (component_patches == nullptr) {
@@ -1420,9 +1435,8 @@ static int find_ambient_cell(const IMesh &tm,
     std::cout << "v_extreme = " << v_extreme << "\n";
   }
   /* Find edge attached to v_extreme with max absolute slope
-   * when projected onto the xy plane. That edge is guaranteed to
-   * be on the convex hull of the mesh.
-   */
+   * when projected onto the XY plane. That edge is guaranteed to
+   * be on the convex hull of the mesh. */
   const Vector<Edge> &edges = tmtopo.vert_edges(v_extreme);
   const mpq_class extreme_y = v_extreme->co_exact.y;
   Edge ehull;
@@ -1456,13 +1470,14 @@ static int find_ambient_cell(const IMesh &tm,
   return c_ambient;
 }
 
-/* We need an edge on the convex hull of the edges incident on closestp
- * in order to sort around, including a dummy triangle that has testp and
- * the sorting edge vertices. So we don't want an edge that is collinear
- * with the line through testp and closestp.
- * The method is to project onto a plane that contains testp-closestp,
+/**
+ * We need an edge on the convex hull of the edges incident on \a closestp
+ * in order to sort around, including a dummy triangle that has \a testp and
+ * the sorting edge vertices. So we don't want an edge that is co-llinear
+ * with the line through \a testp and \a closestp.
+ * The method is to project onto a plane that contains `testp-closestp`,
  * and then choose the edge that, when projected, has the maximum absolute
- * slope (regarding the line testp-closestp as the xaxis for slope computation).
+ * slope (regarding the line `testp-closestp` as the x-axis for slope computation).
  */
 static Edge find_good_sorting_edge(const Vert *testp,
                                    const Vert *closestp,
@@ -1477,8 +1492,7 @@ static Edge find_good_sorting_edge(const Vert *testp,
    * and whose abscissa direction is some perpendicular to that.
    * A perpendicular direction can be found by swapping two coordinates
    * and negating one, and zeroing out the third, being careful that one
-   * of the swapped vertices is non-zero.
-   */
+   * of the swapped vertices is non-zero. */
   const mpq3 &co_closest = closestp->co_exact;
   const mpq3 &co_test = testp->co_exact;
   BLI_assert(co_test != co_closest);
@@ -1516,8 +1530,7 @@ static Edge find_good_sorting_edge(const Vert *testp,
     mpq3 proj_evec = evec - (mpq3::dot(evec, normal) / nlen2) * normal;
     /* The projection calculations along the abscissa and ordinate should
      * be scaled by 1/abscissa and 1/ordinate respectively,
-     * but we can skip: it won't affect which evec has the maximum slope.
-     */
+     * but we can skip: it won't affect which `evec` has the maximum slope. */
     mpq_class evec_a = mpq3::dot(proj_evec, abscissa);
     mpq_class evec_o = mpq3::dot(proj_evec, ordinate);
     if (dbg_level > 0) {
@@ -1546,9 +1559,10 @@ static Edge find_good_sorting_edge(const Vert *testp,
   return esort;
 }
 
-/* Find the cell that contains v. Consider the cells adjacent to triangle t.
+/**
+ * Find the cell that contains v. Consider the cells adjacent to triangle t.
  * The close_edge and close_vert values are what were returned by
- * closest_on_tri_to_point when determining that v was close to t.
+ * #closest_on_tri_to_point when determining that v was close to t.
  * They will indicate whether the point of closest approach to t is to
  * an edge of t, a vertex of t, or somewhere inside t.
  *
@@ -1616,13 +1630,14 @@ static int find_containing_cell(const Vert *v,
   return c;
 }
 
-/* Find the closest point in triangle (a, b, c) to point p.
+/**
+ * Find the closest point in triangle (a, b, c) to point p.
  * Return the distance squared to that point.
  * Also, if the closest point in the triangle is on a vertex,
  * return 0, 1, or 2 for a, b, c in *r_vert; else -1.
  * If the closest point is on an edge, return 0, 1, or 2
  * for edges ab, bc, or ca in *r_edge; else -1.
- * (Adapted from closest_on_tri_to_point_v3()).
+ * (Adapted from #closest_on_tri_to_point_v3()).
  */
 static mpq_class closest_on_tri_to_point(
     const mpq3 &p, const mpq3 &a, const mpq3 &b, const mpq3 &c, int *r_edge, int *r_vert)
@@ -1740,7 +1755,8 @@ struct ComponentContainer {
   }
 };
 
-/* Find out all the components, not equal to comp, that contain a point
+/**
+ * Find out all the components, not equal to comp, that contain a point
  * in comp in a non-ambient cell of those components.
  * In other words, find the components that comp is nested inside
  * (maybe not directly nested, which is why there can be more than one).
@@ -1829,7 +1845,8 @@ static Vector<ComponentContainer> find_component_containers(int comp,
   return ans;
 }
 
-/* The cells and patches are supposed to form a bipartite graph.
+/**
+ * The cells and patches are supposed to form a bipartite graph.
  * The graph may be disconnected (if parts of meshes are nested or side-by-side
  * without intersection with other each other).
  * Connect the bipartite graph. This involves discovering the connected components
@@ -1939,9 +1956,10 @@ static void finish_patch_cell_graph(const IMesh &tm,
   }
 }
 
-/* Starting with ambient cell c_ambient, with all zeros for winding numbers,
+/**
+ * Starting with ambient cell c_ambient, with all zeros for winding numbers,
  * propagate winding numbers to all the other cells.
- * There will be a vector of nshapes winding numbers in each cell, one per
+ * There will be a vector of \a nshapes winding numbers in each cell, one per
  * input shape.
  * As one crosses a patch into a new cell, the original shape (mesh part)
  * that that patch was part of dictates which winding number changes.
@@ -2009,7 +2027,8 @@ static void propagate_windings_and_in_output_volume(PatchesInfo &pinfo,
   }
 }
 
-/* Given an array of winding numbers, where the ith entry is a cell's winding
+/**
+ * Given an array of winding numbers, where the ith entry is a cell's winding
  * number with respect to input shape (mesh part) i, return true if the
  * cell should be included in the output of the boolean operation.
  *   Intersection: all the winding numbers must be nonzero.
@@ -2058,7 +2077,8 @@ static bool apply_bool_op(BoolOpType bool_optype, const Array<int> &winding)
   }
 }
 
-/* Special processing for extract_from_in_output_volume_diffs to handle
+/**
+ * Special processing for extract_from_in_output_volume_diffs to handle
  * triangles that are part of stacks of geometrically identical
  * triangles enclosing zero volume cells.
  */
@@ -2096,10 +2116,9 @@ static void extract_zero_volume_cell_tris(Vector<Face *> &r_tris,
     Vector<bool> flipped{false};
     allocated_to_stack[p] = true;
     /* We arbitrarily choose p's above and below directions as above and below for whole stack.
-     * Triangles in the stack that don't follow that convention are makred with flipped = true.
+     * Triangles in the stack that don't follow that convention are marked with flipped = true.
      * The non-zero-volume cell above the whole stack, following this convention, is
-     * above_stack_cell. The non-zero-volume cell below the whole stack is below_stack_cell.
-     */
+     * above_stack_cell. The non-zero-volume cell below the whole stack is #below_stack_cell. */
     /* First, walk in the above_cell direction from p. */
     int pwalk = p;
     const Patch *pwalk_patch = &pinfo.patch(pwalk);
@@ -2178,12 +2197,13 @@ static void extract_zero_volume_cell_tris(Vector<Face *> &r_tris,
   }
 }
 
-/* Extract the output mesh from tm_subdivided and return it as a new mesh.
- * The cells in cinfo must have cells-to-be-retained with in_output_volume set.
+/**
+ * Extract the output mesh from tm_subdivided and return it as a new mesh.
+ * The cells in \a cinfo must have cells-to-be-retained with in_output_volume set.
  * We keep only triangles between those in the output volume and those not in.
  * We flip the normals of any triangle that has an in_output_volume cell above
  * and a  not-in_output_volume cell below.
- * For all stacks of exact duplicate coplanar triangles, we want to
+ * For all stacks of exact duplicate co-planar triangles, we want to
  * include either one version of the triangle or none, depending on
  * whether the in_output_volume in_output_volumes on either side of the stack are
  * different or the same.
@@ -2267,7 +2287,8 @@ static mpq3 calc_point_inside_tri(const Face &tri)
   return ans;
 }
 
-/* Return the Generalized Winding Number of point testp wih respect to the
+/**
+ * Return the Generalized Winding Number of point \a testp with respect to the
  * volume implied by the faces for which shape_fn returns the value shape.
  * See "Robust Inside-Outside Segmentation using Generalized Winding Numbers"
  * by Jacobson, Kavan, and Sorkine-Hornung.
@@ -2275,8 +2296,8 @@ static mpq3 calc_point_inside_tri(const Face &tri)
  * is inside the volume. But it is tolerant of not-completely-watertight
  * volumes, still doing a passable job of classifying inside/outside
  * as we intuitively understand that to mean.
- * TOOD: speed up this calculation using the heirarchical algorithm in
- * that paper.
+ *
+ * TOOD: speed up this calculation using the hierarchical algorithm in that paper.
  */
 static double generalized_winding_number(const IMesh &tm,
                                          std::function<int(int)> shape_fn,
@@ -2303,8 +2324,7 @@ static double generalized_winding_number(const IMesh &tm,
       double3 c = v2->co - testp;
       /* Calculate the solid angle of abc relative to origin.
        * See "The Solid Angle of a Plane Triangle" by Oosterom and Strackee
-       * for the derivation of the formula.
-       */
+       * for the derivation of the formula. */
       double alen = a.length();
       double blen = b.length();
       double clen = c.length();
@@ -2333,7 +2353,8 @@ static double generalized_winding_number(const IMesh &tm,
   return gwn;
 }
 
-/* Return true if point testp is inside the volume implied by the
+/**
+ * Return true if point \a testp is inside the volume implied by the
  * faces for which the shape_fn returns the value shape.
  */
 static bool point_is_inside_shape(const IMesh &tm,
@@ -2345,12 +2366,12 @@ static bool point_is_inside_shape(const IMesh &tm,
   /* Due to floating point error, an outside point should get a value
    * of zero for gwn, but may have a very slightly positive value instead.
    * It is not important to get this epsilon very small, because practical
-   * cases of interest will have gwn at least 0.2 if it is not zero.
-   */
+   * cases of interest will have gwn at least 0.2 if it is not zero. */
   return (gwn > 0.01);
 }
 
-/* Use the Generalized Winding Number method for deciding if a patch of the
+/**
+ * Use the Generalized Winding Number method for deciding if a patch of the
  * mesh is supposed to be included or excluded in the boolean result,
  * and return the mesh that is the boolean result.
  */
@@ -2372,8 +2393,7 @@ static IMesh gwn_boolean(const IMesh &tm,
   for (int p : pinfo.index_range()) {
     const Patch &patch = pinfo.patch(p);
     /* For test triangle, choose one in the middle of patch list
-     * as the ones near the beginning may be very near other patches.
-     */
+     * as the ones near the beginning may be very near other patches. */
     int test_t_index = patch.tri(patch.tot_tri() / 2);
     Face &tri_test = *tm.face(test_t_index);
     /* Assume all triangles in a patch are in the same shape. */
@@ -2444,8 +2464,10 @@ static IMesh gwn_boolean(const IMesh &tm,
   return ans;
 }
 
-/* Which CDT output edge index is for an edge between output verts
- * v1 and v2 (in either order)? Return -1 if none.
+/**
+ * Which CDT output edge index is for an edge between output verts
+ * v1 and v2 (in either order)?
+ * \return -1 if none.
  */
 static int find_cdt_edge(const CDT_result<mpq_class> &cdt_out, int v1, int v2)
 {
@@ -2458,12 +2480,13 @@ static int find_cdt_edge(const CDT_result<mpq_class> &cdt_out, int v1, int v2)
   return -1;
 }
 
-/* Tesselate face f into triangles and return an array of const Face *
+/**
+ * Tessellate face f into triangles and return an array of `const Face *`
  * giving that triangulation.
  * Care is taken so that the original edge index associated with
  * each edge in the output triangles either matches the original edge
  * for the (identical) edge of f, or else is -1. So diagonals added
- * for triangulation can later be indentified by having NO_INDEX for original.
+ * for triangulation can later be identified by having #NO_INDEX for original.
  */
 static Array<Face *> triangulate_poly(Face *f, IMeshArena *arena)
 {
@@ -2484,8 +2507,7 @@ static Array<Face *> triangulate_poly(Face *f, IMeshArena *arena)
   /* If project down y axis as opposed to x or z, the orientation
    * of the polygon will be reversed.
    * Yet another reversal happens if the poly normal in the dominant
-   * direction is opposite that of the positive dominant axis.
-   */
+   * direction is opposite that of the positive dominant axis. */
   bool rev1 = (axis == 1);
   bool rev2 = poly_normal[axis] < 0;
   bool rev = rev1 ^ rev2;
@@ -2533,10 +2555,11 @@ static Array<Face *> triangulate_poly(Face *f, IMeshArena *arena)
   return ans;
 }
 
-/* Return an IMesh that is a triangulation of a mesh with general
- * polygonal faces, imesh.
+/**
+ * Return an #IMesh that is a triangulation of a mesh with general
+ * polygonal faces, #imesh.
  * Added diagonals will be distinguishable by having edge original
- * indices of NO_INDEX.
+ * indices of #NO_INDEX.
  */
 static IMesh triangulate_polymesh(IMesh &imesh, IMeshArena *arena)
 {
@@ -2544,7 +2567,7 @@ static IMesh triangulate_polymesh(IMesh &imesh, IMeshArena *arena)
   constexpr int estimated_tris_per_face = 3;
   face_tris.reserve(estimated_tris_per_face * imesh.face_size());
   for (Face *f : imesh.faces()) {
-    /* Tesselate face f, following plan similar to BM_face_calc_tesselation. */
+    /* Tessellate face f, following plan similar to #BM_face_calc_tesselation. */
     int flen = f->size();
     if (flen == 3) {
       face_tris.append(f);
@@ -2573,8 +2596,9 @@ static IMesh triangulate_polymesh(IMesh &imesh, IMeshArena *arena)
   return IMesh(face_tris);
 }
 
-/* If tri1 and tri2 have a common edge (in opposite orientation), return the indices into tri1 and
- * tri2 where that common edge starts. Else return (-1,-1).
+/**
+ * If \a tri1 and \a tri2 have a common edge (in opposite orientation),
+ * return the indices into \a tri1 and \a tri2 where that common edge starts. Else return (-1,-1).
  */
 static std::pair<int, int> find_tris_common_edge(const Face &tri1, const Face &tri2)
 {
@@ -2589,18 +2613,19 @@ static std::pair<int, int> find_tris_common_edge(const Face &tri1, const Face &t
 }
 
 struct MergeEdge {
-  /* Length (squared) of the edge, used for sorting. */
+  /** Length (squared) of the edge, used for sorting. */
   double len_squared = 0.0;
-  /* v1 and v2 are the ends of the edge, ordered so that v1->id < v2->id */
+  /* v1 and v2 are the ends of the edge, ordered so that `v1->id < v2->id` */
   const Vert *v1 = nullptr;
   const Vert *v2 = nullptr;
-  /* left_face and right_face are indices into FaceMergeState->face. */
+  /* left_face and right_face are indices into #FaceMergeState.face. */
   int left_face = -1;
   int right_face = -1;
   int orig = -1; /* An edge orig index that can be used for this edge. */
-  /* Is it allowed to dissolve this edge? */
+  /** Is it allowed to dissolve this edge? */
   bool dissolvable = false;
-  bool is_intersect = false; /* Is this an intersect edge? */
+  /** Is this an intersect edge? */
+  bool is_intersect = false;
 
   MergeEdge() = default;
 
@@ -2618,24 +2643,28 @@ struct MergeEdge {
 };
 
 struct MergeFace {
-  /* The current sequence of Verts forming this face. */
+  /** The current sequence of Verts forming this face. */
   Vector<const Vert *> vert;
-  /* For each position in face, what is index in FaceMergeState of edge for that position? */
+  /** For each position in face, what is index in #FaceMergeState of edge for that position? */
   Vector<int> edge;
-  /* If not -1, merge_to gives a face index in FaceMergeState that this is merged to. */
+  /** If not -1, merge_to gives a face index in #FaceMergeState that this is merged to. */
   int merge_to = -1;
-  /* A face->orig that can be used for the merged face. */
+  /** A face->orig that can be used for the merged face. */
   int orig = -1;
 };
 struct FaceMergeState {
-  /* The faces being considered for merging. Some will already have been merge (merge_to != -1). */
+  /**
+   * The faces being considered for merging. Some will already have been merge (merge_to != -1).
+   */
   Vector<MergeFace> face;
-  /* The edges that are part of the faces in face[], together with current topological
+  /**
+   * The edges that are part of the faces in face[], together with current topological
    * information (their left and right faces) and whether or not they are dissolvable.
    */
   Vector<MergeEdge> edge;
-  /* edge_map maps a pair of const Vert * ids (in canonical order: smaller id first)
-   * to the index in the above edge vector in which to find the corresonding MergeEdge.
+  /**
+   * `edge_map` maps a pair of `const Vert *` ids (in canonical order: smaller id first)
+   * to the index in the above edge vector in which to find the corresponding #MergeEdge.
    */
   Map<std::pair<int, int>, int> edge_map;
 };
@@ -2663,8 +2692,9 @@ static std::ostream &operator<<(std::ostream &os, const FaceMergeState &fms)
   return os;
 }
 
-/* tris all have the same original face.
- * Find the 2d edge/tri topology for these triangles, but only the ones facing in the
+/**
+ * \a tris all have the same original face.
+ * Find the 2d edge/triangle topology for these triangles, but only the ones facing in the
  * norm direction, and whether each edge is dissolvable or not.
  */
 static void init_face_merge_state(FaceMergeState *fms,
@@ -2772,7 +2802,8 @@ static void init_face_merge_state(FaceMergeState *fms,
   }
 }
 
-/* To have a valid bmesh, there are constraints on what edges can be removed.
+/**
+ * To have a valid #BMesh, there are constraints on what edges can be removed.
  * We cannot remove an edge if (a) it would create two disconnected boundary parts
  * (which will happen if there's another edge sharing the same two faces);
  * or (b) it would create a face with a repeated vertex.
@@ -2798,8 +2829,8 @@ static bool dissolve_leaves_valid_bmesh(FaceMergeState *fms,
     }
   }
   /* Is there a vert in A, not me.v1 or me.v2, that is also in B?
-   * One could avoid this O(n^2) algorithm if had a structure saying which faces a vertex touches.
-   */
+   * One could avoid this O(n^2) algorithm if had a structure
+   * saying which faces a vertex touches. */
   for (int a_v_index = 0; ok && a_v_index < alen; ++a_v_index) {
     const Vert *a_v = mf_left.vert[a_v_index];
     if (a_v != me.v1 && a_v != me.v2) {
@@ -2814,7 +2845,8 @@ static bool dissolve_leaves_valid_bmesh(FaceMergeState *fms,
   return ok;
 }
 
-/* mf_left and mf_right should share a MergeEdge me, having index me_index.
+/**
+ * mf_left and mf_right should share a #MergeEdge me, having index me_index.
  * We change mf_left to remove edge me and insert the appropriate edges of
  * mf_right in between the start and end vertices of that edge.
  * We change the left face of the spliced-in edges to be mf_left's index.
@@ -2869,8 +2901,9 @@ static void splice_faces(
   me.right_face = -1;
 }
 
-/* Given that fms has been properly initialized to contain a set of faces that
- * together form a face or part of a face of the original IMesh, and that
+/**
+ * Given that fms has been properly initialized to contain a set of faces that
+ * together form a face or part of a face of the original #IMesh, and that
  * it has properly recorded with faces are dissolvable, dissolve as many edges as possible.
  * We try to dissolve in decreasing order of edge length, so that it is more likely
  * that the final output doesn't have awkward looking long edges with extreme angles.
@@ -2919,13 +2952,14 @@ static void do_dissolve(FaceMergeState *fms)
   }
 }
 
-/* Given that tris form a triangulation of a face or part of a face that was in imesh_in,
+/**
+ * Given that \a tris form a triangulation of a face or part of a face that was in \a imesh_in,
  * merge as many of the triangles together as possible, by dissolving the edges between them.
  * We can only dissolve triangulation edges that don't overlap real input edges, and we
- * can only dissolve them if doing so leaves the remaining faces able to create valid BMesh.
+ * can only dissolve them if doing so leaves the remaining faces able to create valid #BMesh.
  * We can tell edges that don't overlap real input edges because they will have an
- * "original edge" that is different from NO_INDEX.
- * Note: it is possible that some of the triangles in tris have reversed orientation
+ * "original edge" that is different from #NO_INDEX.
+ * \note it is possible that some of the triangles in \a tris have reversed orientation
  * to the rest, so we have to handle the two cases separately.
  */
 static Vector<Face *> merge_tris_for_face(Vector<int> tris,
@@ -2950,8 +2984,7 @@ static Vector<Face *> merge_tris_for_face(Vector<int> tris,
   double3 second_tri_normal = tm.face(tris[1])->plane->norm;
   if (tris.size() == 2 && double3::dot(first_tri_normal, second_tri_normal) > 0.0) {
     /* Is this a case where quad with one diagonal remained unchanged?
-     * Worth special handling because this case will be very common.
-     */
+     * Worth special handling because this case will be very common. */
     Face &tri1 = *tm.face(tris[0]);
     Face &tri2 = *tm.face(tris[1]);
     Face *in_face = imesh_in.face(tri1.orig);
@@ -3010,7 +3043,8 @@ static Vector<Face *> merge_tris_for_face(Vector<int> tris,
   return ans;
 }
 
-/* Return an array, paralleling imesh_out.vert, saying which vertices can be dissolved.
+/**
+ * Return an array, paralleling imesh_out.vert, saying which vertices can be dissolved.
  * A vertex v can be dissolved if (a) it is not an input vertex; (b) it has valence 2;
  * and (c) if v's two neighboring vertices are u and w, then (u,v,w) forms a straight line.
  * Return the number of dissolvable vertices in r_count_dissolve.
@@ -3026,8 +3060,7 @@ static Array<bool> find_dissolve_verts(IMesh &imesh_out, int *r_count_dissolve)
   }
   /* neighbors[i] will be a pair giving the up-to-two neighboring vertices
    * of the vertex v in position i of imesh_out.vert.
-   * If we encounter a third, then v will not be dissolvable.
-   */
+   * If we encounter a third, then v will not be dissolvable. */
   Array<std::pair<const Vert *, const Vert *>> neighbors(
       imesh_out.vert_size(), std::pair<const Vert *, const Vert *>(nullptr, nullptr));
   for (int f : imesh_out.face_index_range()) {
@@ -3081,9 +3114,10 @@ static Array<bool> find_dissolve_verts(IMesh &imesh_out, int *r_count_dissolve)
   return dissolve;
 }
 
-/* The dissolve array parallels the imesh.vert array. Wherever it is true,
+/**
+ * The dissolve array parallels the `imesh.vert` array. Wherever it is true,
  * remove the corresponding vertex from the vertices in the faces of
- * imesh.faces to account for the close-up of the gaps in imesh.vert.
+ * `imesh.faces` to account for the close-up of the gaps in `imesh.vert`.
  */
 static void dissolve_verts(IMesh *imesh, const Array<bool> dissolve, IMeshArena *arena)
 {
@@ -3111,14 +3145,15 @@ static void dissolve_verts(IMesh *imesh, const Array<bool> dissolve, IMeshArena 
   imesh->set_dirty_verts();
 }
 
-/* The main boolean function operates on a triangle IMesh and produces a
- * Triangle IMesh as output.
+/**
+ * The main boolean function operates on a triangle #IMesh and produces a
+ * Triangle #IMesh as output.
  * This function converts back into a general polygonal mesh by removing
  * any possible triangulation edges (which can be identified because they
  * will have an original edge that is NO_INDEX.
  * Not all triangulation edges can be removed: if they ended up non-trivially overlapping a real
  * input edge, then we need to keep it. Also, some are necessary to make the output satisfy
- * the "valid BMesh" property: we can't produce output faces that have repeated vertices in them,
+ * the "valid #BMesh" property: we can't produce output faces that have repeated vertices in them,
  * or have several disconnected boundaries (e.g., faces with holes).
  */
 static IMesh polymesh_from_trimesh_with_dissolve(const IMesh &tm_out,
@@ -3135,8 +3170,7 @@ static IMesh polymesh_from_trimesh_with_dissolve(const IMesh &tm_out,
   }
   /* Gather all output triangles that are part of each input face.
    * face_output_tris[f] will be indices of triangles in tm_out
-   * that have f as their original face.
-   */
+   * that have f as their original face. */
   int tot_in_face = imesh_in.face_size();
   Array<Vector<int>> face_output_tris(tot_in_face);
   for (int t : tm_out.face_index_range()) {
@@ -3153,8 +3187,7 @@ static IMesh polymesh_from_trimesh_with_dissolve(const IMesh &tm_out,
 
   /* Merge triangles that we can from face_output_tri to make faces for output.
    * face_output_face[f] will be new original const Face *'s that
-   * make up whatever part of the boolean output remains of input face f.
-   */
+   * make up whatever part of the boolean output remains of input face f. */
   Array<Vector<Face *>> face_output_face(tot_in_face);
   int tot_out_face = 0;
   for (int in_f : imesh_in.face_index_range()) {
@@ -3180,8 +3213,7 @@ static IMesh polymesh_from_trimesh_with_dissolve(const IMesh &tm_out,
   IMesh imesh_out(face);
   /* Dissolve vertices that were (a) not original; and (b) now have valence 2 and
    * are between two other vertices that are exactly in line with them.
-   * These were created because of triangulation edges that have been dissolved.
-   */
+   * These were created because of triangulation edges that have been dissolved. */
   int count_dissolve;
   Array<bool> v_dissolve = find_dissolve_verts(imesh_out, &count_dissolve);
   if (count_dissolve > 0) {
@@ -3194,11 +3226,11 @@ static IMesh polymesh_from_trimesh_with_dissolve(const IMesh &tm_out,
   return imesh_out;
 }
 
-/*
+/**
  * This function does a boolean operation on a TriMesh with nshapes inputs.
  * All the shapes are combined in tm_in.
  * The shape_fn function should take a triangle index in tm_in and return
- * a number in the range 0 to nshapes-1, to say which shape that triangle is in.
+ * a number in the range 0 to `nshapes-1`, to say which shape that triangle is in.
  */
 IMesh boolean_trimesh(IMesh &tm_in,
                       BoolOpType op,
@@ -3296,7 +3328,8 @@ static void dump_test_spec(IMesh &imesh)
   }
 }
 
-/* Do the boolean operation op on the polygon mesh imesh_in.
+/**
+ * Do the boolean operation op on the polygon mesh imesh_in.
  * See the header file for a complete description.
  */
 IMesh boolean_mesh(IMesh &imesh,

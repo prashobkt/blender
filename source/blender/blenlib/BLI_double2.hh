@@ -16,6 +16,10 @@
 
 #pragma once
 
+/** \file
+ * \ingroup bli
+ */
+
 #include "BLI_double3.hh"
 
 namespace blender {

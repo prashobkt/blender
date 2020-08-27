@@ -14,7 +14,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-/* The blender::meshintersect API needs GMP. */
+/** \file
+ * \ingroup bli
+ */
+
+/* The #blender::meshintersect API needs GMP. */
 #ifdef WITH_GMP
 
 #  include <algorithm>
@@ -55,7 +59,7 @@ static void doperfmax(int maxnum, int val);
 static void dump_perfdata(void);
 #  endif
 
-/* For debugging, can disable threading in intersect code with this static constant. */
+/** For debugging, can disable threading in intersect code with this static constant. */
 static constexpr bool intersect_use_threading = true;
 
 Vert::Vert(const mpq3 &mco, const double3 &dco, int id, int orig)
@@ -127,7 +131,7 @@ Plane::Plane(const double3 &norm, const double d) : norm(norm), d(d)
   norm_exact = mpq3(0, 0, 0); /* Marks as "exact not yet populated". */
 }
 
-/* This is wrong for degenerate planes, but we don't expect to call it on those. */
+/** This is wrong for degenerate planes, but we don't expect to call it on those. */
 bool Plane::exact_populated() const
 {
   return norm_exact[0] != 0 || norm_exact[1] != 0 || norm_exact[2] != 0;
@@ -219,8 +223,7 @@ bool Face::operator==(const Face &other) const
   }
   for (FacePos i : index_range()) {
     /* Can test pointer equality since we will have
-     * unique vert pointers for unique co_equal's.
-     */
+     * unique vert pointers for unique co_equal's. */
     if (this->vert[i] != other.vert[i]) {
       return false;
     }
@@ -282,25 +285,27 @@ std::ostream &operator<<(std::ostream &os, const Face *f)
   return os;
 }
 
-/* IMeshArena is the owner of the Vert and Face resources used
- * during a run of one of the meshintersect main functions.
- * It also keeps has a hash table of all Verts created so that it can
- * ensure that only one instance of a Vert with a given co_exact will
- * exist. I.e., it dedups the vertices.
- */
-
-/* Uncomment the following to try using a spinlock instead of
+/**
+ * Un-comment the following to try using a spin-lock instead of
  * a mutex in the arena allocation routines.
  * Initial tests showed that it doesn't seem to help very much,
- * if at all, to use a spinlock.
+ * if at all, to use a spin-lock.
  */
 // #define USE_SPINLOCK
 
+/**
+ * #IMeshArena is the owner of the Vert and Face resources used
+ * during a run of one of the mesh-intersect main functions.
+ * It also keeps has a hash table of all Verts created so that it can
+ * ensure that only one instance of a Vert with a given co_exact will
+ * exist. I.e., it de-duplicates the vertices.
+ */
 class IMeshArena::IMeshArenaImpl : NonCopyable, NonMovable {
 
-  /* Don't use Vert itself as key since resizing may move
+  /**
+   * Don't use Vert itself as key since resizing may move
    * pointers to the Vert around, and we need to have those pointers
-   * stay the same throughout the lifetime of the IMeshArena.
+   * stay the same throughout the lifetime of the #IMeshArena.
    */
   struct VSetKey {
     Vert *vert;
@@ -322,8 +327,11 @@ class IMeshArena::IMeshArenaImpl : NonCopyable, NonMovable {
 
   VectorSet<VSetKey> vset_; /* TODO: replace with Set */
 
-  /* Ownership of the Vert memory is here, so destroying this reclaims that memory. */
-  /* TODO: replace these with pooled allocation, and just destory the pools at the end. */
+  /**
+   * Ownership of the Vert memory is here, so destroying this reclaims that memory.
+   *
+   * TODO: replace these with pooled allocation, and just destroy the pools at the end.
+   */
   Vector<std::unique_ptr<Vert>> allocated_verts_;
   Vector<std::unique_ptr<Face>> allocated_faces_;
 
@@ -331,7 +339,7 @@ class IMeshArena::IMeshArenaImpl : NonCopyable, NonMovable {
   int next_vert_id_ = 0;
   int next_face_id_ = 0;
 
-  /* Need a lock when multithreading to protect allocation of new elements. */
+  /* Need a lock when multi-threading to protect allocation of new elements. */
 #  ifdef USE_SPINLOCK
   SpinLock lock_;
 #  else
@@ -452,7 +460,8 @@ class IMeshArena::IMeshArenaImpl : NonCopyable, NonMovable {
     return ans;
   }
 
-  /* This is slow. Only used for unit tests right now.
+  /**
+   * This is slow. Only used for unit tests right now.
    * Since it is only used for that purpose, access is not lock-protected.
    * The argument vs can be a cyclic shift of the actual stored Face.
    */
@@ -491,13 +500,11 @@ class IMeshArena::IMeshArenaImpl : NonCopyable, NonMovable {
       ans = vskey.vert;
     }
     else {
-      /* It was a dup, so return the existing one.
+      /* It was a duplicate, so return the existing one.
        * Note that the returned Vert may have a different orig.
        * This is the intended semantics: if the Vert already
        * exists then we are merging verts and using the first-seen
-       * one as the canonical one.
-       */
-
+       * one as the canonical one. */
       ans = vset_[i].vert;
     }
     if (intersect_use_threading) {
@@ -587,8 +594,7 @@ int IMesh::lookup_vert(const Vert *v) const
 void IMesh::populate_vert()
 {
   /* This is likely an overestimate, since verts are shared between
-   * faces. It is ok if estimate is over or even under.
-   */
+   * faces. It is ok if estimate is over or even under. */
   constexpr int ESTIMATE_VERTS_PER_FACE = 4;
   int estimate_num_verts = ESTIMATE_VERTS_PER_FACE * face_.size();
   populate_vert(estimate_num_verts);
@@ -621,8 +627,7 @@ void IMesh::populate_vert(int max_verts)
   }
   /* Easier debugging (at least when there are no merged input verts)
    * if output vert order is same as input, with new verts at the end.
-   * TODO: when all debugged, set fix_order = false.
-   */
+   * TODO: when all debugged, set fix_order = false. */
   const bool fix_order = true;
   if (fix_order) {
     std::sort(vert_.begin(), vert_.end(), [](const Vert *a, const Vert *b) {
@@ -776,7 +781,8 @@ struct BoundingBox {
   }
 };
 
-/* Assume bounding boxes have been expanded by a sufficient epislon on all sides
+/**
+ * Assume bounding boxes have been expanded by a sufficient epsilon on all sides
  * so that the comparisons against the bb bounds are sufficient to guarantee that
  * if an overlap or even touching could happen, this will return true.
  */
@@ -785,7 +791,8 @@ static bool bbs_might_intersect(const BoundingBox &bb_a, const BoundingBox &bb_b
   return isect_aabb_aabb_v3(bb_a.min, bb_a.max, bb_b.min, bb_b.max);
 }
 
-/* Data and functions to calculate bounding boxes and pad them, in parallel.
+/**
+ * Data and functions to calculate bounding boxes and pad them, in parallel.
  * The bounding box calculation has the additional task of calculating the maximum
  * absolute value of any coordinate in the mesh, which will be used to calculate
  * the pad value.
@@ -843,7 +850,8 @@ static void calc_face_bb_reduce(const void *__restrict UNUSED(userdata),
   bbchunk_join->max_abs_val = max_dd(bbchunk_join->max_abs_val, bbchunk->max_abs_val);
 }
 
-/* We will expand the bounding boxes by an epsilon on all sides so that
+/**
+ * We will expand the bounding boxes by an epsilon on all sides so that
  * the "less than" tests in isect_aabb_aabb_v3 are sufficient to detect
  * touching or overlap.
  */
@@ -874,12 +882,13 @@ static Array<BoundingBox> calc_face_bounding_boxes(const IMesh &m)
   return ans;
 }
 
-/* A cluster of coplanar triangles, by index.
- * A pair of triangles T0 and T1 is said to "nontrivially coplanar-intersect"
- * if they are coplanar, intersect, and their intersection is not just existing
+/**
+ * A cluster of co-planar triangles, by index.
+ * A pair of triangles T0 and T1 is said to "non-trivially co-planar-intersect"
+ * if they are co-planar, intersect, and their intersection is not just existing
  * elements (verts, edges) of both triangles.
- * A coplanar cluster is said to be "nontrivial" if it has more than one triangle
- * and every triangle in it nontrivially coplanar-intersects with at least one other
+ * A co-planar cluster is said to be "nontrivial" if it has more than one triangle
+ * and every triangle in it non-trivially co-planar-intersects with at least one other
  * triangle in the cluster.
  */
 class CoplanarCluster {
@@ -944,10 +953,11 @@ class CoplanarCluster {
   }
 };
 
-/* Maintains indexed set of CoplanarCluster, with the added ability
+/**
+ * Maintains indexed set of #CoplanarCluster, with the added ability
  * to efficiently find the cluster index of any given triangle
  * (the max triangle index needs to be given in the initializer).
- * The tri_cluster(t) function returns -1 if t is not part of any cluster.
+ * The #tri_cluster(t) function returns -1 if t is not part of any cluster.
  */
 class CoplanarClusterInfo {
   Vector<CoplanarCluster> clusters_;
@@ -1067,7 +1077,8 @@ struct ITT_value {
 
 static std::ostream &operator<<(std::ostream &os, const ITT_value &itt);
 
-/* Project a 3d vert to a 2d one by eliding proj_axis. This does not create
+/**
+ * Project a 3d vert to a 2d one by eliding proj_axis. This does not create
  * degeneracies as long as the projection axis is one where the corresponding
  * component of the originating plane normal is non-zero.
  */
@@ -1096,11 +1107,12 @@ static mpq2 project_3d_to_2d(const mpq3 &p3d, int proj_axis)
   return p2d;
 }
 
-/* Is a point in the interior of a 2d triangle or on one of its
+/**
+   Is a point in the interior of a 2d triangle or on one of its
  * edges but not either endpoint of the edge?
  * orient[pi][i] is the orientation test of the point pi against
  * the side of the triangle starting at index i.
- * Assume the triangele is non-degenerate and CCW-oriented.
+ * Assume the triangle is non-degenerate and CCW-oriented.
  * Then answer is true if p is left of or on all three of triangle a's edges,
  * and strictly left of at least on of them.
  */
@@ -1113,9 +1125,10 @@ static bool non_trivially_2d_point_in_tri(const int orients[3][3], int pi)
           (p_left_01 + p_left_12 + p_left_20) >= 2);
 }
 
-/* Given orients as defined in non_trivially_2d_intersect, do the triangles
+/**
+ * Given orients as defined in non_trivially_2d_intersect, do the triangles
  * overlap in a "hex" pattern? That is, the overlap region is a hexagon, which
- * one gets by having, each point of one triangle being strictly rightof one
+ * one gets by having, each point of one triangle being strictly right-of one
  * edge of the other and strictly left of the other two edges; and vice versa.
  */
 static bool non_trivially_2d_hex_overlap(int orients[2][3][3])
@@ -1132,10 +1145,11 @@ static bool non_trivially_2d_hex_overlap(int orients[2][3][3])
   return true;
 }
 
-/* Given orients as defined in non_trivially_2d_intersect, do the triangles
+/**
+ * Given orients as defined in non_trivially_2d_intersect, do the triangles
  * have one shared edge in a "folded-over" configuration?
  * As well as a shared edge, the third vertex of one triangle needs to be
- * rightof one and leftof the other two edges of the other triangle.
+ * right-of one and left-of the other two edges of the other triangle.
  */
 static bool non_trivially_2d_shared_edge_overlap(int orients[2][3][3],
                                                  const mpq2 *a[3],
@@ -1149,10 +1163,9 @@ static bool non_trivially_2d_shared_edge_overlap(int orients[2][3][3],
       int jnn = (j + 2) % 3;
       if (*a[i] == *b[j] && *a[in] == *b[jn]) {
         /* Edge from a[i] is shared with edge from b[j]. */
-        /* See if a[inn] is rightof or on one of the other edges of b.
-         * If it is on, then it has to be rightof or leftof the shared edge,
-         * depending on which edge it is.
-         */
+        /* See if a[inn] is right-of or on one of the other edges of b.
+         * If it is on, then it has to be right-of or left-of the shared edge,
+         * depending on which edge it is. */
         if (orients[0][inn][jn] < 0 || orients[0][inn][jnn] < 0) {
           return true;
         }
@@ -1162,7 +1175,7 @@ static bool non_trivially_2d_shared_edge_overlap(int orients[2][3][3],
         if (orients[0][inn][jnn] == 0 && orients[0][inn][j] == -1) {
           return true;
         }
-        /* Similarly for b[jnn]. */
+        /* Similarly for `b[jnn]`. */
         if (orients[1][jnn][in] < 0 || orients[1][jnn][inn] < 0) {
           return true;
         }
@@ -1178,7 +1191,9 @@ static bool non_trivially_2d_shared_edge_overlap(int orients[2][3][3],
   return false;
 }
 
-/* Are the triangles the same, perhaps with some permutation of vertices? */
+/**
+ * Are the triangles the same, perhaps with some permutation of vertices?
+ */
 static bool same_triangles(const mpq2 *a[3], const mpq2 *b[3])
 {
   for (int i = 0; i < 3; ++i) {
@@ -1189,19 +1204,19 @@ static bool same_triangles(const mpq2 *a[3], const mpq2 *b[3])
   return false;
 }
 
-/* Do 2d triangles (a[0], a[1], a[2]) and (b[0], b[1], b2[2]) intersect at more than just shared
- * vertices or a shared edge? This is true if any point of one tri is non-trivially inside the
+/**
+ * Do 2d triangles (a[0], a[1], a[2]) and (b[0], b[1], b2[2]) intersect at more than just shared
+ * vertices or a shared edge? This is true if any point of one triangle is non-trivially inside the
  * other. NO: that isn't quite sufficient: there is also the case where the verts are all mutually
  * outside the other's triangle, but there is a hexagonal overlap region where they overlap.
  */
 static bool non_trivially_2d_intersect(const mpq2 *a[3], const mpq2 *b[3])
 {
   /* TODO: Could experiment with trying bounding box tests before these.
-   * TODO: Find a less expensive way than 18 orient tests to do this.
-   */
-  /* orients[0][ai][bi] is orient of point a[ai] compared to seg starting at b[bi].
-   * orients[1][bi][ai] is orient of point b[bi] compared to seg starting at a[ai].
-   */
+   * TODO: Find a less expensive way than 18 orient tests to do this. */
+
+  /* `orients[0][ai][bi]` is orient of point `a[ai]` compared to segment starting at `b[bi]`.
+   * `orients[1][bi][ai]` is orient of point `b[bi]` compared to segment starting at `a[ai]`. */
   int orients[2][3][3];
   for (int ab = 0; ab < 2; ++ab) {
     for (int ai = 0; ai < 3; ++ai) {
@@ -1225,8 +1240,9 @@ static bool non_trivially_2d_intersect(const mpq2 *a[3], const mpq2 *b[3])
   return true;
 }
 
-/* Does triangle t in tm non-trivially non-coplanar intersect any triangle
- * in CoplanarCluster cl? Assume t is known to be in the same plane as all
+/**
+ * Does triangle t in tm non-trivially non-co-planar intersect any triangle
+ * in `CoplanarCluster cl`? Assume t is known to be in the same plane as all
  * the triangles in cl, and that proj_axis is a good axis to project down
  * to solve this problem in 2d.
  */
@@ -1267,9 +1283,10 @@ static bool non_trivially_coplanar_intersects(const IMesh &tm,
  * trivial intersects are found before calling intersect_tri_tri now.
  */
 #  if 0
-/* Do tri1 and tri2 intersect at all, and if so, is the intersection
+/**
+ * Do tri1 and tri2 intersect at all, and if so, is the intersection
  * something other than a common vertex or a common edge?
- * The itt value is the result of calling intersect_tri_tri on tri1, tri2.
+ * The \a itt value is the result of calling intersect_tri_tri on tri1, tri2.
  */
 static bool non_trivial_intersect(const ITT_value &itt, const Face * tri1, const Face * tri2)
 {
@@ -1327,7 +1344,8 @@ static bool non_trivial_intersect(const ITT_value &itt, const Face * tri1, const
 }
 #  endif
 
-/* The sup and index functions are defined in the paper:
+/**
+ * The sup and index functions are defined in the paper:
  * EXACT GEOMETRIC COMPUTATION USING CASCADING, by
  * Burnikel, Funke, and Seel. They are used to find absolute
  * bounds on the error due to doing a calculation in double
@@ -1356,24 +1374,23 @@ static bool non_trivial_intersect(const ITT_value &itt, const Face * tri1, const
  * be calculated ahead of time. The global max could be passed
  * from above.
  */
-
 static double supremum_dot_cross(const double3 &a, const double3 &b)
 {
   double3 abs_a = double3::abs(a);
   double3 abs_b = double3::abs(b);
   double3 c;
-  /* This is dot(cross(a, b), cross(a,b)) but using absoluate values for a and b
-   * and always using + when operation is + or -.
-   */
+  /* This is dot(cross(a, b), cross(a,b)) but using absolute values for a and b
+   * and always using + when operation is + or -. */
   c[0] = abs_a[1] * abs_b[2] + abs_a[2] * abs_b[1];
   c[1] = abs_a[2] * abs_b[0] + abs_a[0] * abs_b[2];
   c[2] = abs_a[0] * abs_b[1] + abs_a[1] * abs_b[0];
   return double3::dot(c, c);
 }
 
-/* Used with supremum to get error bound. See Burnikel et al paper.
+/**
+ * Used with supremum to get error bound. See Burnikel et al paper.
  * index_plane_coord is the index of a plane coordinate calculated
- * for a triangle using the usual formuala, assuming the input
+ * for a triangle using the usual formula, assuming the input
  * coordinates have index 1.
  * index_cross is the index of each coordinate of the cross product.
  * It is actually 2 + 2 * (max index of input coords).
@@ -1427,10 +1444,11 @@ static double supremum_orient3d(const double3 &a,
   return det;
 }
 
-/* Actually index_orient3d = 10 + 4 * (max degree of input coordinates) */
+/** Actually index_orient3d = 10 + 4 * (max degree of input coordinates) */
 constexpr int index_orient3d = 14;
 
-/* Return the approximate orient3d of the four double3's, with
+/**
+ * Return the approximate orient3d of the four double3's, with
  * the guarantee that if the value is -1 or 1 then the underlying
  * mpq3 test would also have returned that value.
  * When the return value is 0, we are not sure of the sign.
@@ -1448,7 +1466,8 @@ static int filter_orient3d(const double3 &a, const double3 &b, const double3 &c,
   return 0;
 }
 
-/* Return the approximate orient3d of the tri plane points and v, with
+/**
+ * Return the approximate orient3d of the triangle plane points and v, with
  * the guarantee that if the value is -1 or 1 then the underlying
  * mpq3 test would also have returned that value.
  * When the return value is 0, we are not sure of the sign.
@@ -1458,7 +1477,8 @@ static int filter_tri_plane_vert_orient3d(const Face &tri, const Vert *v)
   return filter_orient3d(tri[0]->co, tri[1]->co, tri[2]->co, v->co);
 }
 
-/* Are vectors a and b parallel or nearly parallel?
+/**
+ * Are vectors a and b parallel or nearly parallel?
  * This routine should only return false if we are certain
  * that they are not parallel, taking into account the
  * possible numeric errors and input value approximation.
@@ -1477,7 +1497,8 @@ static bool near_parallel_vecs(const double3 &a, const double3 &b)
   return true;
 }
 
-/* Return true if we are sure that dot(a,b) > 0, taking into
+/**
+ * Return true if we are sure that dot(a,b) > 0, taking into
  * account the error bounds due to numeric errors and input value
  * approximation.
  */
@@ -1494,13 +1515,14 @@ static bool dot_must_be_positive(const double3 &a, const double3 &b)
   return false;
 }
 
-/* Return the approximate side of point p on a plane with normal plane_no and point plane_p.
+/**
+ * Return the approximate side of point p on a plane with normal plane_no and point plane_p.
  * The answer will be 1 if p is definitely above the plane, -1 if it is definitely below.
  * If the answer is 0, we are unsure about which side of the plane (or if it is on the plane).
- * In exact arithmetic, the answer is just sgn(dot(p - plane_p, plane_no)).
+ * In exact arithmetic, the answer is just `sgn(dot(p - plane_p, plane_no))`.
+ *
+ * The plane_no input is constructed, so has a higher index.
  */
-
-/* The plane_no input is constructed, so has a higher index. */
 constexpr int index_plane_side = 3 + 2 * index_dot_plane_coords;
 
 static int filter_plane_side(const double3 &p,
@@ -1522,11 +1544,12 @@ static int filter_plane_side(const double3 &p,
   return 0;
 }
 
-/* A fast, non-exhaustive test for non_trivial intersection.
+/**
+ * A fast, non-exhaustive test for non_trivial intersection.
  * If this returns false then we are sure that tri1 and tri2
  * do not intersect. If it returns true, they may or may not
  * non-trivially intersect.
- * We assume that boundinb box overlap tests have already been
+ * We assume that bounding box overlap tests have already been
  * done, so don't repeat those here. This routine is checking
  * for the very common cases (when doing mesh self-intersect)
  * where triangles share an edge or a vertex, but don't
@@ -1553,15 +1576,13 @@ static bool may_non_trivially_intersect(Face *t1, Face *t2)
   }
   if (n_shared == 2) {
     /* t1 and t2 share an entire edge.
-     * If their normals are not parallel, they cannot non-trivially intersect.
-     */
+     * If their normals are not parallel, they cannot non-trivially intersect. */
     if (!near_parallel_vecs(tri1.plane->norm, tri2.plane->norm)) {
       return false;
     }
     /* The normals are parallel or nearly parallel.
      * If the normals are in the same direction and the edges have opposite
-     * directions in the two triangles, they cannot non-trivially intersect.
-     */
+     * directions in the two triangles, they cannot non-trivially intersect. */
     bool erev1 = tri1.prev_pos(share1_pos[0]) == share1_pos[1];
     bool erev2 = tri2.prev_pos(share2_pos[0]) == share2_pos[1];
     if (erev1 != erev2) {
@@ -1575,8 +1596,7 @@ static bool may_non_trivially_intersect(Face *t1, Face *t2)
      * If the two non-shared verts of t2 are both on the same
      * side of tri1's plane, then they cannot non-trivially intersect.
      * (There are some other cases that could be caught here but
-     * they are more expensive to check).
-     */
+     * they are more expensive to check). */
     Face::FacePos p = share2_pos[0];
     const Vert *v2a = p == 0 ? tri2[1] : tri2[0];
     const Vert *v2b = (p == 0 || p == 1) ? tri2[2] : tri2[1];
@@ -1606,7 +1626,8 @@ static bool may_non_trivially_intersect(Face *t1, Face *t2)
  * github.com/erich666/jgt-code/tree/master/Volume_08/Number_1/Guigue2003
  */
 
-/* Return the point on ab where the plane with normal n containing point c intersects it.
+/**
+ * Return the point on ab where the plane with normal n containing point c intersects it.
  * Assumes ab is not perpendicular to n.
  * This works because the ratio of the projections of ab and ac onto n is the same as
  * the ratio along the line ab of the intersection point to the whole of ab.
@@ -1620,9 +1641,10 @@ static inline mpq3 tti_interp(const mpq3 &a, const mpq3 &b, const mpq3 &c, const
   return a - alpha * ab;
 }
 
-/* Return +1, 0, -1 as a + ad is above, on, or below the oriented plane containing a, b, c in CCW
+/**
+ * Return +1, 0, -1 as a + ad is above, on, or below the oriented plane containing a, b, c in CCW
  * order. This is the same as -oriented(a, b, c, a + ad), but uses fewer arithmetic operations.
- * TODO: change arguments to const Vert * and use floating filters.
+ * TODO: change arguments to `const Vert *` and use floating filters.
  */
 static inline int tti_above(const mpq3 &a, const mpq3 &b, const mpq3 &c, const mpq3 &ad)
 {
@@ -1630,7 +1652,8 @@ static inline int tti_above(const mpq3 &a, const mpq3 &b, const mpq3 &c, const m
   return sgn(mpq3::dot(ad, n));
 }
 
-/* Given that triangles (p1, q1, r1) and (p2, q2, r2) are in canonical order,
+/**
+ * Given that triangles (p1, q1, r1) and (p2, q2, r2) are in canonical order,
  * use the classification chart in the Guigue and Devillers paper to find out
  * how the intervals [i,j] and [k,l] overlap, where [i,j] is where p1r1 and p1q1
  * intersect the plane-plane intersection line, L, and [k,l] is where p2q2 and p2r2
@@ -1728,7 +1751,7 @@ static ITT_value itt_canon2(const mpq3 &p1,
         if (dbg_level > 0) {
           std::cout << "overlap [i [k j] l]\n";
         }
-        /* k is intersect with p2q2. j is intersect with p1q1.  */
+        /* k is intersect with p2q2. j is intersect with p1q1. */
         intersect_1 = tti_interp(p2, q2, p1, n1);
         intersect_2 = tti_interp(p1, q1, p2, n2);
       }
@@ -1801,7 +1824,7 @@ static ITT_value itt_canon1(const mpq3 &p1,
     return itt_canon2(p1, r1, q1, r2, p2, q2, n1, n2);
   }
   if (dbg_level > 0) {
-    std::cout << "triangles are coplanar\n";
+    std::cout << "triangles are co-planar\n";
   }
   return ITT_value(ICOPLANAR);
 }
@@ -1835,8 +1858,7 @@ static ITT_value intersect_tri_tri(const IMesh &tm, int t1, int t2)
 
   /* Try first getting signs with double arithmetic, with error bounds.
    * If the signs calculated in this section are not 0, they are the same
-   * as what they would be using exact arithmetic.
-   */
+   * as what they would be using exact arithmetic. */
   const double3 &d_p1 = vp1->co;
   const double3 &d_q1 = vq1->co;
   const double3 &d_r1 = vr1->co;
@@ -1909,7 +1931,7 @@ static ITT_value intersect_tri_tri(const IMesh &tm, int t1, int t2)
       std::cout << "no intersection, all t1's verts above or below t2 (exact)\n";
     }
 #  ifdef PERFDEBUG
-    incperfcount(3); /* Tri tri interects decided by exact plane tests. */
+    incperfcount(3); /* Tri tri intersects decided by exact plane tests. */
 #  endif
     return ITT_value(INONE);
   }
@@ -1935,15 +1957,14 @@ static ITT_value intersect_tri_tri(const IMesh &tm, int t1, int t2)
       std::cout << "no intersection, all t2's verts above or below t1 (exact)\n";
     }
 #  ifdef PERFDEBUG
-    incperfcount(3); /* Tri tri interects decided by exact plane tests. */
+    incperfcount(3); /* Tri tri intersects decided by exact plane tests. */
 #  endif
     return ITT_value(INONE);
   }
 
   /* Do rest of the work with vertices in a canonical order, where p1 is on
-   * postive side of plane and q1, r1 are not, or p1 is on the plane and
-   * q1 and r1 are off the plane on the same side.
-   */
+   * positive side of plane and q1, r1 are not, or p1 is on the plane and
+   * q1 and r1 are off the plane on the same side. */
   ITT_value ans;
   if (sp1 > 0) {
     if (sq1 > 0) {
@@ -1993,7 +2014,7 @@ static ITT_value intersect_tri_tri(const IMesh &tm, int t1, int t2)
       }
       else {
         if (dbg_level > 0) {
-          std::cout << "triangles are coplanar\n";
+          std::cout << "triangles are co-planar\n";
         }
         ans = ITT_value(ICOPLANAR);
       }
@@ -2016,13 +2037,18 @@ struct CDT_data {
   Vector<mpq2> vert;
   Vector<std::pair<int, int>> edge;
   Vector<Vector<int>> face;
-  Vector<int> input_face;        /* Parallels face, gives id from input IMesh of input face. */
-  Vector<bool> is_reversed;      /* Parallels face, says if input face orientation is opposite. */
-  CDT_result<mpq_class> cdt_out; /* Result of running CDT on input with (vert, edge, face). */
+  /** Parallels face, gives id from input #IMesh of input face. */
+  Vector<int> input_face;
+  /** Parallels face, says if input face orientation is opposite. */
+  Vector<bool> is_reversed;
+  /** Result of running CDT on input with (vert, edge, face). */
+  CDT_result<mpq_class> cdt_out;
   int proj_axis;
 };
 
-/* We could dedup verts here, but CDT routine will do that anyway. */
+/**
+ * We could de-duplicate verts here, but CDT routine will do that anyway.
+ */
 static int prepare_need_vert(CDT_data &cd, const mpq3 &p3d)
 {
   mpq2 p2d = project_3d_to_2d(p3d, cd.proj_axis);
@@ -2030,7 +2056,8 @@ static int prepare_need_vert(CDT_data &cd, const mpq3 &p3d)
   return v;
 }
 
-/* To unproject a 2d vert that was projected along cd.proj_axis, we copy the coordinates
+/**
+ * To un-project a 2d vert that was projected along cd.proj_axis, we copy the coordinates
  * from the two axes not involved in the projection, and use the plane equation of the
  * originating 3d plane, cd.t_plane, to derive the coordinate of the projected axis.
  * The plane equation says a point p is on the plane if dot(p, plane.n()) + plane.d() == 0.
@@ -2088,9 +2115,8 @@ static void prepare_need_tri(CDT_data &cd, const IMesh &tm, int t)
   int v1 = prepare_need_vert(cd, tri[1]->co_exact);
   int v2 = prepare_need_vert(cd, tri[2]->co_exact);
   bool rev;
-  /* How to get CCW orientation of projected tri? Note that when look down y axis
-   * as opposed to x or z, the orientation of the other two axes is not right-and-up.
-   */
+  /* How to get CCW orientation of projected triangle? Note that when look down y axis
+   * as opposed to x or z, the orientation of the other two axes is not right-and-up. */
   BLI_assert(cd.t_plane->exact_populated());
   if (tri.plane->norm_exact[cd.proj_axis] >= 0) {
     rev = cd.proj_axis == 1;
@@ -2175,7 +2201,9 @@ static CDT_data prepare_cdt_input_for_cluster(const IMesh &tm,
   return ans;
 }
 
-/* Fills in cd.cdt_out with result of doing the cdt calculation on (vert, edge, face). */
+/**
+ * Fills in cd.cdt_out with result of doing the cdt calculation on (vert, edge, face).
+ */
 static void do_cdt(CDT_data &cd)
 {
   constexpr int dbg_level = 0;
@@ -2246,16 +2274,14 @@ static int get_cdt_edge_orig(
     if ((edge.first == i0 && edge.second == i1) || (edge.first == i1 && edge.second == i0)) {
       /* Pick an arbitrary orig, but not one equal to NO_INDEX, if we can help it. */
       /* TODO: if edge has origs from more than on part of the nary input,
-       * then want to set *r_is_intersect to true.
-       */
+       * then want to set *r_is_intersect to true. */
       for (int orig_index : cd.cdt_out.edge_orig[e]) {
         /* orig_index encodes the triangle and pos within the triangle of the input edge. */
         if (orig_index >= foff) {
           int in_face_index = (orig_index / foff) - 1;
           int pos = orig_index % foff;
           /* We need to retrieve the edge orig field from the Face used to populate the
-           * in_face_index'th face of the CDT, at the pos'th position of the face.
-           */
+           * in_face_index'th face of the CDT, at the pos'th position of the face. */
           int in_tm_face_index = cd.input_face[in_face_index];
           BLI_assert(in_tm_face_index < in_tm.face_size());
           const Face *facep = in_tm.face(in_tm_face_index);
@@ -2268,13 +2294,11 @@ static int get_cdt_edge_orig(
         }
         else {
           /* This edge came from an edge input to the CDT problem,
-           * so it is an intersect edge.
-           */
+           * so it is an intersect edge. */
           *r_is_intersect = true;
           /* TODO: maybe there is an orig index:
            * This happens if an input edge was formed by an input face having
-           * an edge that is coplanar with the cluster, while the face as a whole is not.
-           */
+           * an edge that is co-planar with the cluster, while the face as a whole is not. */
           return NO_INDEX;
         }
       }
@@ -2284,7 +2308,8 @@ static int get_cdt_edge_orig(
   return NO_INDEX;
 }
 
-/* Using the result of CDT in cd.cdt_out, extract an IMesh representing the subdivision
+/**
+ * Using the result of CDT in cd.cdt_out, extract an #IMesh representing the subdivision
  * of input triangle t, which should be an element of cd.input_face.
  */
 static IMesh extract_subdivided_tri(const CDT_data &cd,
@@ -2318,8 +2343,7 @@ static IMesh extract_subdivided_tri(const CDT_data &cd,
       mpq3 v2co = unproject_cdt_vert(cd, cdt_out.vert[i2]);
       /* No need to provide an original index: if coord matches
        * an original one, then it will already be in the arena
-       * with the correct orig field.
-       */
+       * with the correct orig field. */
       const Vert *v0 = arena->add_or_find_vert(v0co, NO_INDEX);
       const Vert *v1 = arena->add_or_find_vert(v1co, NO_INDEX);
       const Vert *v2 = arena->add_or_find_vert(v2co, NO_INDEX);
@@ -2391,8 +2415,7 @@ class TriOverlaps {
     /* Tree type is 8 => octtree; axis = 6 => using XYZ axes only. */
     tree_ = BLI_bvhtree_new(tm.face_size(), FLT_EPSILON, 8, 6);
     /* In the common case of a binary boolean and no self intersection in
-     * each shape, we will use two trees and simple bounding box overlap.
-     */
+     * each shape, we will use two trees and simple bounding box overlap. */
     bool two_trees_no_self = nshapes == 2 && !use_self;
     if (two_trees_no_self) {
       tree_b_ = BLI_bvhtree_new(tm.face_size(), FLT_EPSILON, 8, 6);
@@ -2428,8 +2451,7 @@ class TriOverlaps {
       if (nshapes == 1 && use_self) {
         /* Expect a lot of trivial intersects from quads that are triangulated
          * and faces that share vertices.
-         * Filter them out with a callback.
-         */
+         * Filter them out with a callback. */
         overlap_ = BLI_bvhtree_overlap(
             tree_, tree_, &overlap_tot_, only_nontrivial_intersects, &cbdata);
       }
@@ -2440,8 +2462,7 @@ class TriOverlaps {
     }
     /* The rest of the code is simpler and easier to parallelize if, in the two-trees case,
      * we repeat the overlaps with indexA and indexB reversed. It is important that
-     * in the repeated part, sorting will then bring things with indexB together.
-     */
+     * in the repeated part, sorting will then bring things with indexB together. */
     if (two_trees_no_self) {
       overlap_ = static_cast<BVHTreeOverlap *>(
           MEM_reallocN(overlap_, 2 * overlap_tot_ * sizeof(overlap_[0])));
@@ -2451,7 +2472,7 @@ class TriOverlaps {
       }
       overlap_tot_ += overlap_tot_;
     }
-    /* Sort the overlaps to bring all the intersects with a given indexA together.   */
+    /* Sort the overlaps to bring all the intersects with a given indexA together.  */
     std::sort(overlap_, overlap_ + overlap_tot_, bvhtreeverlap_cmp);
     if (dbg_level > 0) {
       std::cout << overlap_tot_ << " overlaps found:\n";
@@ -2496,7 +2517,9 @@ class TriOverlaps {
   }
 };
 
-/* Data needed for parallelization of calc_overlap_itts. */
+/**
+ * Data needed for parallelization of #calc_overlap_itts.
+ */
 struct OverlapIttsData {
   Vector<std::pair<int, int>> intersect_pairs;
   Map<std::pair<int, int>, ITT_value> &itt_map;
@@ -2509,7 +2532,8 @@ struct OverlapIttsData {
   }
 };
 
-/* Return a std::pair containing a and b in canonical order:
+/**
+ * Return a std::pair containing a and b in canonical order:
  * With a <= b.
  */
 static std::pair<int, int> canon_int_pair(int a, int b)
@@ -2540,9 +2564,10 @@ static void calc_overlap_itts_range_func(void *__restrict userdata,
   data->itt_map.add_overwrite(tri_pair, itt);
 }
 
-/* Fill in itt_map with the vector of ITT_values that result from intersecting the triangles in ov.
+/**
+ * Fill in itt_map with the vector of ITT_values that result from intersecting the triangles in ov.
  * Use a canonical order for triangles: (a,b) where  a < b.
- * Don't bother doing this if both a and b are part of the same coplanar cluster, as the
+ * Don't bother doing this if both a and b are part of the same co-planar cluster, as the
  * intersection for those will be handled by CDT, later.
  */
 static void calc_overlap_itts(Map<std::pair<int, int>, ITT_value> &itt_map,
@@ -2552,9 +2577,9 @@ static void calc_overlap_itts(Map<std::pair<int, int>, ITT_value> &itt_map,
                               IMeshArena *arena)
 {
   OverlapIttsData data(itt_map, tm, arena);
-  /* Put dummy values in itt_map intially, so map entries will exist when doing the range function.
-   * This means we won't have to protect the itt_map.add_overwrite function with a lock.
-   */
+  /* Put dummy values in `itt_map` initially,
+   * so map entries will exist when doing the range function.
+   * This means we won't have to protect the `itt_map.add_overwrite` function with a lock. */
   for (const BVHTreeOverlap &olap : ov.overlap()) {
     std::pair<int, int> key = canon_int_pair(olap.indexA, olap.indexB);
     if (!itt_map.contains(key)) {
@@ -2574,8 +2599,9 @@ static void calc_overlap_itts(Map<std::pair<int, int>, ITT_value> &itt_map,
   BLI_task_parallel_range(0, tot_intersect_pairs, &data, calc_overlap_itts_range_func, &settings);
 }
 
-/* Data needed for parallelization of calc_subdivided_tris. */
-
+/**
+ * Data needed for parallelization of calc_subdivided_tris.
+ */
 struct OverlapTriRange {
   int tri_index;
   int overlap_start;
@@ -2588,11 +2614,10 @@ struct SubdivideTrisData {
   Span<BVHTreeOverlap> overlap;
   IMeshArena *arena;
 
-  /* This vector gives, for each tri in tm that has an intersection
-   * we want to calculate: what the index of that tri in tm is,
+  /* This vector gives, for each triangle in tm that has an intersection
+   * we want to calculate: what the index of that triangle in tm is,
    * where it starts in the ov structure as indexA, and how many
-   * overlap pairs have that same indexA (they will be continguous).
-   */
+   * overlap pairs have that same indexA (they will be continuous). */
   Vector<OverlapTriRange> overlap_tri_range;
 
   SubdivideTrisData(Array<IMesh> &r_tri_subdivided,
@@ -2648,7 +2673,8 @@ static void calc_subdivided_tri_range_func(void *__restrict userdata,
   }
 }
 
-/* For each triangle in tm, fill in the corresponding slot in
+/**
+ * For each triangle in tm, fill in the corresponding slot in
  * r_tri_subdivided with the result of intersecting it with
  * all the other triangles in the mesh, if it intersects any others.
  * But don't do this for triangles that are part of a cluster.
@@ -2679,8 +2705,7 @@ static void calc_subdivided_tris(Array<IMesh> &r_tri_subdivided,
     }
     /* Now overlap[overlap_index] to overlap[i] have indexA == t.
      * We only record ranges for triangles that are not in clusters,
-     * because the ones in clusters are handled separately.
-     */
+     * because the ones in clusters are handled separately. */
     if (clinfo.tri_cluster(t) == NO_INDEX) {
       int len = i - overlap_index + 1;
       if (!(len == 1 && overlap[overlap_index].indexB == t)) {
@@ -2735,9 +2760,8 @@ static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
     std::cout << "CALC_CLUSTER_SUBDIVIDED for cluster " << c << " = " << cl << "\n";
   }
   /* Get vector itts of all intersections of a triangle of cl with any triangle of tm not
-   * in cl and not coplanar with it (for that latter, if there were an intersection,
-   * it should already be in cluster cl).
-   */
+   * in cl and not co-planar with it (for that latter, if there were an intersection,
+   * it should already be in cluster cl). */
   Vector<ITT_value> itts;
   Span<BVHTreeOverlap> ovspan = ov.overlap();
   for (int t : cl) {
@@ -2796,17 +2820,15 @@ static CoplanarClusterInfo find_clusters(const IMesh &tm, const Array<BoundingBo
     std::cout << "FIND_CLUSTERS\n";
   }
   CoplanarClusterInfo ans(tm.face_size());
-  /* There can be more than one CoplanarCluster per plane. Accumulate them in
+  /* There can be more than one #CoplanarCluster per plane. Accumulate them in
    * a Vector. We will have to merge some elements of the Vector as we discover
-   * triangles that form intersection bridges between two or more clusters.
-   */
+   * triangles that form intersection bridges between two or more clusters. */
   Map<Plane, Vector<CoplanarCluster>> plane_cls;
   plane_cls.reserve(tm.face_size());
   for (int t : tm.face_index_range()) {
     /* Use a canonical version of the plane for map index.
      * We can't just store the canonical version in the face
-     * since canonicalizing loses the orientation of the normal.
-     */
+     * since canonicalizing loses the orientation of the normal. */
     Plane tplane = *tm.face(t)->plane;
     BLI_assert(tplane.exact_populated());
     tplane.make_canonical();
@@ -2820,7 +2842,7 @@ static CoplanarClusterInfo find_clusters(const IMesh &tm, const Array<BoundingBo
         std::cout << "already has " << curcls.size() << " clusters\n";
       }
       int proj_axis = mpq3::dominant_axis(tplane.norm_exact);
-      /* Paritition curcls into those that intersect t non-trivially, and those that don't. */
+      /* Partition `curcls` into those that intersect t non-trivially, and those that don't. */
       Vector<CoplanarCluster *> int_cls;
       Vector<CoplanarCluster *> no_int_cls;
       for (CoplanarCluster &cl : curcls) {
@@ -2854,8 +2876,7 @@ static CoplanarClusterInfo find_clusters(const IMesh &tm, const Array<BoundingBo
       }
       else {
         /* t intersections 2 or more existing clusters: need to merge them and replace all the
-         * originals with the merged one in curcls.
-         */
+         * originals with the merged one in `curcls`. */
         if (dbg_level > 1) {
           std::cout << "merging\n";
         }
@@ -2882,8 +2903,7 @@ static CoplanarClusterInfo find_clusters(const IMesh &tm, const Array<BoundingBo
     }
   }
   /* Does this give deterministic order for cluster ids? I think so, since
-   * hash for planes is on their values, not their addresses.
-   */
+   * hash for planes is on their values, not their addresses. */
   for (auto item : plane_cls.items()) {
     for (const CoplanarCluster &cl : item.value) {
       if (cl.tot_tri() > 1) {
@@ -2951,7 +2971,7 @@ static void degenerate_reduce(const void *__restrict UNUSED(userdata),
   degen_chunk_join->has_degenerate_tri |= degen_chunk->has_degenerate_tri;
 }
 
-/* Does triangle IMesh tm have any triangles with zero area? */
+/* Does triangle #IMesh tm have any triangles with zero area? */
 static bool has_degenerate_tris(const IMesh &tm)
 {
   DegenData degen_data = {tm};
@@ -3015,8 +3035,7 @@ IMesh trimesh_nary_intersect(const IMesh &tm_in,
   std::cout << "trimesh_nary_intersect start\n";
 #  endif
   /* Usually can use tm_in but if it has degenerate or illegal triangles,
-   * then need to work on a copy of it without those triangles.
-   */
+   * then need to work on a copy of it without those triangles. */
   const IMesh *tm_clean = &tm_in;
   IMesh tm_cleaned;
   if (has_degenerate_tris(tm_in)) {
@@ -3060,8 +3079,7 @@ IMesh trimesh_nary_intersect(const IMesh &tm_in,
   doperfmax(2, tri_ov.overlap().size());
 #  endif
   /* itt_map((a,b)) will hold the intersection value resulting from intersecting
-   * triangles with indices a and b, where a < b.
-   */
+   * triangles with indices a and b, where a < b. */
   Map<std::pair<int, int>, ITT_value> itt_map;
   itt_map.reserve(tri_ov.overlap().size());
   calc_overlap_itts(itt_map, *tm_clean, clinfo, tri_ov, arena);
@@ -3151,18 +3169,20 @@ static std::ostream &operator<<(std::ostream &os, const ITT_value &itt)
       os << "segment " << itt.p1 << " " << itt.p2;
       break;
     case ICOPLANAR:
-      os << "coplanar t" << itt.t_source;
+      os << "co-planar t" << itt.t_source;
       break;
   }
   return os;
 }
 
-/* Writing the obj_mesh has the side effect of populating verts. */
+/**
+ * Writing the obj_mesh has the side effect of populating verts.
+ */
 void write_obj_mesh(IMesh &m, const std::string &objname)
 {
-  /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
-   * This is just for developer debugging anyway, and should never be called in production Blender.
-   */
+  /* Would like to use #BKE_tempdir_base() here, but that brings in dependence on kernel library.
+   * This is just for developer debugging anyway,
+   * and should never be called in production Blender. */
 #  ifdef _WIN_32
   const char *objdir = BLI_getenv("HOME");
 #  else
