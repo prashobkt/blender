@@ -1991,7 +1991,7 @@ typedef struct BLOCacheStorage {
 static void blo_cache_storage_entry_register(ID *id,
                                              const IDCacheKey *key,
                                              void **UNUSED(cache_p),
-                                             eIDTypeInfoCacheCallbackFlags UNUSED(flags),
+                                             uint UNUSED(flags),
                                              void *cache_storage_v)
 {
   BLI_assert(key->id_session_uuid == id->session_uuid);
@@ -2006,11 +2006,8 @@ static void blo_cache_storage_entry_register(ID *id,
 }
 
 /** Restore a cache data entry from old ID into new one, when reading some undo memfile. */
-static void blo_cache_storage_entry_restore_in_new(ID *UNUSED(id),
-                                                   const IDCacheKey *key,
-                                                   void **cache_p,
-                                                   eIDTypeInfoCacheCallbackFlags flags,
-                                                   void *cache_storage_v)
+static void blo_cache_storage_entry_restore_in_new(
+    ID *UNUSED(id), const IDCacheKey *key, void **cache_p, uint flags, void *cache_storage_v)
 {
   BLOCacheStorage *cache_storage = cache_storage_v;
 
@@ -2037,7 +2034,7 @@ static void blo_cache_storage_entry_restore_in_new(ID *UNUSED(id),
 static void blo_cache_storage_entry_clear_in_old(ID *UNUSED(id),
                                                  const IDCacheKey *key,
                                                  void **cache_p,
-                                                 eIDTypeInfoCacheCallbackFlags UNUSED(flags),
+                                                 uint UNUSED(flags),
                                                  void *cache_storage_v)
 {
   BLOCacheStorage *cache_storage = cache_storage_v;
