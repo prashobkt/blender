@@ -231,13 +231,6 @@ class MeshTest:
         objects = bpy.data.objects
         self.expected_object = objects[expected_object_name]
 
-    def add_operator_to_stack(self, operator_spec: OperatorSpecEditMode):
-        """
-        Adds an operator to the operations stack.
-        :param operator_spec: OperatorSpecEditMode - operator to add to the operations stack.
-        """
-        self.operations_stack.append(operator_spec)
-
     def _on_failed_test(self, compare_result, validation_success, evaluated_test_object):
         if self.update and validation_success:
             if self.verbose:
@@ -593,123 +586,7 @@ class MeshTest:
             return self._on_failed_test(compare_result, validation_success, evaluated_test_object)
 
 
-class OperatorTest:
-    """
-    Helper class that stores and executes operator tests.
-
-    Example usage:
-
-    >>> tests = [
-    >>>     ['FACE', {0, 1, 2, 3, 4, 5}, 'Cubecube', 'Cubecube_result_1', 'intersect_boolean', {'operation': 'UNION'}],
-    >>>     ['FACE', {0, 1, 2, 3, 4, 5}, 'Cubecube', 'Cubecube_result_2', 'intersect_boolean', {'operation': 'INTERSECT'}],
-    >>> ]
-    >>> operator_test = OperatorTest(tests)
-    >>> operator_test.run_all_tests()
-    """
-
-    def __init__(self, operator_tests):
-        """
-        Constructs an operator test.
-        :param operator_tests: list - list of operator test cases. Each element in the list must contain the following
-         in the correct order:
-             1) select_mode: str - mesh selection mode, must be either 'VERT', 'EDGE' or 'FACE'
-             2) selection: set - set of vertices/edges/faces indices to select, e.g. [0, 9, 10].
-             3) test_name: str - unique name for each test
-             4) test_object_name: bpy.Types.Object - test object
-             5) expected_object_name: bpy.Types.Object - expected object
-             6) operator_name: str - name of mesh operator from bpy.ops.mesh, e.g. "bevel" or "fill"
-             7) operator_parameters: dict - {name : val} dictionary containing operator parameters.
-        """
-        self.operator_tests = operator_tests
-        self._check_for_unique_test_name()
-        self.verbose = os.environ.get("BLENDER_VERBOSE") is not None
-        self._failed_tests_list = []
-
-    def _check_for_unique_test_name(self):
-        """
-        Check if the test name is unique in existing test names within the file.
-        """
-        all_test_names = []
-        for index, _ in enumerate(self.operator_tests):
-            test_name = self.operator_tests[index][2]
-            all_test_names.append(test_name)
-        seen_name = set()
-
-        for ele in all_test_names:
-            if ele in seen_name:
-                raise ValueError("{} is a duplicate, write a new unique name.".format(ele))
-            else:
-                seen_name.add(ele)
-
-    def run_test(self, test_name: str):
-        """
-        Run a single test from operator_tests list
-        :param test_name: str - name of test
-        :return: bool - True if test is successful. False otherwise.
-        """
-        case = None
-        len_test = len(self.operator_tests)
-        count = 0
-        # Finding the index of the test to match the "test name"
-        for index, _ in enumerate(self.operator_tests):
-            if test_name == self.operator_tests[index][2]:
-                case = self.operator_tests[index]
-                break
-            count = count + 1
-
-        if count == len_test:
-            raise Exception("No test {} found!".format(test_name))
-        if len(case) != 7:
-            raise ValueError("Expected exactly 7 parameters for each test case, got {}".format(len(case)))
-
-        select_mode = case[0]
-        selection = case[1]
-        test_name = case[2]
-        test_object_name = case[3]
-        expected_object_name = case[4]
-        operator_name = case[5]
-        operator_parameters = case[6]
-
-        operator_spec = OperatorSpecEditMode(operator_name, operator_parameters, select_mode, selection)
-
-        test = MeshTest(test_name, test_object_name, expected_object_name)
-        test.add_operator_to_stack(operator_spec)
-
-        success = test.run_test()
-        if test.is_test_updated():
-            # Run the test again if the blend file has been updated.
-            success = test.run_test()
-        return success
-
-    def run_all_tests(self):
-        for index, _ in enumerate(self.operator_tests):
-            test_name = self.operator_tests[index][2]
-            if self.verbose:
-                print()
-                print("Running test {}...".format(index))
-                print("Test name {}\n".format(test_name))
-            success = self.run_test(test_name)
-
-            if not success:
-                self._failed_tests_list.append(test_name)
-
-        if len(self._failed_tests_list) != 0:
-            print("Following tests failed: {}".format(self._failed_tests_list))
-
-            blender_path = bpy.app.binary_path
-            blend_path = bpy.data.filepath
-            frame = inspect.stack()[1]
-            module = inspect.getmodule(frame[0])
-            python_path = module.__file__
-
-            print("Run following command to open Blender and run the failing test:")
-            print("{} {} --python {} -- {} {}"
-                  .format(blender_path, blend_path, python_path, "--run-test", "<test_name>"))
-
-            raise Exception("Tests {} failed".format(self._failed_tests_list))
-
-
-class ModifierTest:
+class RunTest:
     """
     Helper class that stores and executes modifier tests.
 
@@ -719,23 +596,29 @@ class ModifierTest:
     >>>     ModifierSpec("firstSUBSURF", "SUBSURF", {"quality": 5}),
     >>>     ModifierSpec("firstSOLIDIFY", "SOLIDIFY", {"thickness_clamp": 0.9, "thickness": 1})
     >>> ]
+    >>> operator_list = [
+    >>>     OperatorSpecEditMode("delete_edgeloop", {}, "EDGE", MONKEY_LOOP_EDGE),
+    >>> ]
     >>> tests = [
     >>>     MeshTest("Test1", "testCube", "expectedCube", modifier_list),
-    >>>     MeshTest("Test2", "testCube_2", "expectedCube_2", modifier_list)
+    >>>     MeshTest("Test2", "testCube_2", "expectedCube_2", modifier_list),
+    >>>     MeshTest("MonkeyDeleteEdge", "testMonkey","expectedMonkey", operator_list)
     >>> ]
-    >>> modifiers_test = ModifierTest(tests)
+    >>> modifiers_test = RunTest(tests)
     >>> modifiers_test.run_all_tests()
     """
 
     def __init__(self, tests, apply_modifiers=False):
         """
         Construct a modifier test.
-        :param tests: list - list of modifier test cases. Each element in the list must contain the following
+        :param tests: list - list of modifier or operator test cases. Each element in the list must contain the
+        following
          in the correct order:
              0) test_name: str - unique test name
              1) test_object_name: bpy.Types.Object - test object
              2) expected_object_name: bpy.Types.Object - expected object
-             3) modifiers: list - list of mesh_test.ModifierSpec objects.
+             3) modifiers or operators: list - list of mesh_test.ModifierSpec objects or
+             mesh_test.OperatorSpecEditMode objects
         """
         self.tests = tests
         self._check_for_unique_test_name()
@@ -790,7 +673,7 @@ class ModifierTest:
 
     def run_test(self, test_name: str):
         """
-        Run a single test from self.deform_tests list
+        Run a single test from self.tests list
         :param test_name: int - name of test
         :return: bool - True if test passed, False otherwise.
         """
