@@ -45,7 +45,7 @@ struct vert_treplet {
   }
   friend bool operator==(const vert_treplet &one, const vert_treplet &other)
   {
-    return other.i == one.i;
+    return other.v == one.v;
   }
   friend bool operator!=(const vert_treplet &one, const vert_treplet &other)
   {
@@ -53,34 +53,43 @@ struct vert_treplet {
   }
 };
 
-static std::pair<int, int> ed_key_mlen(const vert_treplet &v1, const vert_treplet &v2)
+static std::pair<float3, float3> ed_key_mlen(const vert_treplet &v1, const vert_treplet &v2)
 {
-  if (v1.mlen > v2.mlen) {
-    return {v2.i, v1.i};
+  if (v2.mlen < v1.mlen) {
+    return {v2.v, v1.v};
   }
-  return {v1.i, v2.i};
+  return {v1.v, v2.v};
 }
 
-static bool join_segments(Vector<vert_treplet> &seg1, Vector<vert_treplet> &seg2)
+static bool join_segments(Vector<vert_treplet> *r_seg1, Vector<vert_treplet> *r_seg2)
 {
-  if (seg1.last().v == seg2.last().v) {
-    Vector<vert_treplet> &temp = seg1;
-    seg1 = seg2;
-    seg2 = temp;
+  if ((*r_seg1)[0].v == r_seg2->last().v) {
+    Vector<vert_treplet> *temp = r_seg1;
+    r_seg1 = r_seg2;
+    r_seg2 = temp;
+  }
+  else if (r_seg1->last().v == (*r_seg2)[0].v) {
   }
   else {
     return false;
   }
-  seg1.remove_last();
-  seg2.extend(seg1);
-  if (seg1.last().v == seg1[0].v) {
-    seg1.remove_last();
+  r_seg1->remove_last();
+  r_seg1->extend(*r_seg2);
+  if (r_seg1->last().v == (*r_seg1)[0].v) {
+    r_seg1->remove_last();
   }
-  seg2.clear();
+  r_seg2->clear();
   return true;
 }
 
-static void tessellate_polygon(Vector<Vector<const float3 *>> &polyLineSeq,
+/**
+ *  A simplified version of `M_Geometry_tessellate_polygon`.
+ *
+ * \param polyLineSeq List of polylines.
+ * \param r_new_line_seq Empty vector that fill be filled with indices of corners of triangles.
+ */
+
+static void tessellate_polygon(const Vector<Vector<float3>> &polyLineSeq,
                                Vector<Vector<int>> &r_new_line_seq)
 {
   int64_t totpoints = 0;
@@ -90,38 +99,40 @@ static void tessellate_polygon(Vector<Vector<const float3 *>> &polyLineSeq,
   const int64_t len_polylines{polyLineSeq.size()};
 
   for (int i = 0; i < len_polylines; i++) {
-    Vector<const float3 *> &polyLine = polyLineSeq[i];
+    Span<float3> polyLine = polyLineSeq[i];
 
     const int64_t len_polypoints{polyLine.size()};
     totpoints += len_polypoints;
-    if (len_polypoints > 0) { /* don't bother adding edges as polylines */
-      dl = static_cast<DispList *>(MEM_callocN(sizeof(DispList), __func__));
-      BLI_addtail(&dispbase, dl);
-      dl->type = DL_INDEX3;
-      dl->nr = len_polypoints;
-      dl->type = DL_POLY;
-      dl->parts = 1; /* no faces, 1 edge loop */
-      dl->col = 0;   /* no material */
-      dl->verts = static_cast<float *>(MEM_mallocN(sizeof(float[3]) * len_polypoints, "dl verts"));
-      dl->index = static_cast<int *>(MEM_callocN(sizeof(int[3]) * len_polypoints, "dl index"));
+    if (len_polypoints <= 0) { /* don't bother adding edges as polylines */
+      continue;
+    }
+    dl = static_cast<DispList *>(MEM_callocN(sizeof(DispList), __func__));
+    BLI_addtail(&dispbase, dl);
+    dl->type = DL_INDEX3;
+    dl->nr = len_polypoints;
+    dl->type = DL_POLY;
+    dl->parts = 1; /* no faces, 1 edge loop */
+    dl->col = 0;   /* no material */
+    dl->verts = static_cast<float *>(MEM_mallocN(sizeof(float[3]) * len_polypoints, "dl verts"));
+    dl->index = static_cast<int *>(MEM_callocN(sizeof(int[3]) * len_polypoints, "dl index"));
+    float *fp_verts = dl->verts;
+    for (int j = 0; j < len_polypoints; j++, fp_verts += 3) {
+      copy_v3_v3(fp_verts, polyLine[j]);
     }
   }
 
   if (totpoints) {
-    /* now make the list to return */
+    /* now make the list to fill */
     BKE_displist_fill(&dispbase, &dispbase, NULL, false);
 
     /* The faces are stored in a new DisplayList
      * that's added to the head of the #ListBase. */
     dl = static_cast<DispList *>(dispbase.first);
 
-    int *dl_face = dl->index;
-    r_new_line_seq.append({dl_face[0], dl_face[1], dl_face[2]});
+    for (int index = 0, *dl_face = dl->index; index < dl->parts; index++, dl_face += 3) {
+      r_new_line_seq.append({dl_face[0], dl_face[1], dl_face[2]});
+    }
     BKE_displist_free(&dispbase);
-  }
-  else {
-    /* no points, do this so scripts don't barf */
-    BKE_displist_free(&dispbase); /* possible some dl was allocated */
   }
 }
 
@@ -149,37 +160,39 @@ Vector<Vector<int>> ngon_tessellate(Span<float3> vertex_coords, Span<int> face_v
   }
   edges[0] = {0, static_cast<int>(face_vertex_indices.size() - 1)};
 
-  Set<std::pair<int, int>> used_edges;
-  Set<std::pair<int, int>> double_edges;
-
-  for (const Array<int, 2> &edge : edges) {
-    std::pair<int, int> edge_key = ed_key_mlen(verts[edge[0]], verts[edge[1]]);
-    if (used_edges.contains(edge_key)) {
-      double_edges.add(edge_key);
-    }
-    else {
-      used_edges.add(edge_key);
+  Set<std::pair<float3, float3>> edges_double;
+  {
+    Set<std::pair<float3, float3>> edges_used;
+    for (Span<int> edge : edges) {
+      std::pair<float3, float3> edge_key{ed_key_mlen(verts[edge[0]], verts[edge[1]])};
+      if (edges_used.contains(edge_key)) {
+        edges_double.add(edge_key);
+      }
+      else {
+        edges_used.add(edge_key);
+      }
     }
   }
 
   Vector<Vector<vert_treplet>> loop_segments;
   {
     const vert_treplet *vert_prev = &verts[0];
-    Vector<vert_treplet> contex_loop{1, *vert_prev};
-    loop_segments.append(contex_loop);
+    Vector<vert_treplet> context_loop{1, *vert_prev};
+    loop_segments.append(context_loop);
     for (const vert_treplet &vertex : verts) {
       if (vertex == *vert_prev) {
         continue;
       }
-      if (double_edges.contains(ed_key_mlen(vertex, *vert_prev))) {
-        contex_loop = {vertex};
-        loop_segments.append(contex_loop);
+      if (edges_double.contains(ed_key_mlen(vertex, *vert_prev))) {
+        context_loop = {vertex};
+        loop_segments.append(context_loop);
       }
       else {
-        if (!contex_loop.is_empty() && contex_loop.last() == vertex) {
+        if (!context_loop.is_empty() && context_loop.last() == vertex) {
         }
         else {
-          contex_loop.append(vertex);
+          loop_segments.last().append(vertex);
+          context_loop.append(vertex);
         }
       }
       vert_prev = &vertex;
@@ -189,9 +202,8 @@ Vector<Vector<int>> ngon_tessellate(Span<float3> vertex_coords, Span<int> face_v
   bool joining_segements = true;
   while (joining_segements) {
     joining_segements = false;
-    const int segcount = loop_segments.size();
-    for (int j = segcount - 1; j >= 0; j--) {
-      Vector<vert_treplet> seg_j = loop_segments[j];
+    for (int j = loop_segments.size() - 1; j >= 0; j--) {
+      Vector<vert_treplet> &seg_j = loop_segments[j];
       if (seg_j.is_empty()) {
         continue;
       }
@@ -199,8 +211,8 @@ Vector<Vector<int>> ngon_tessellate(Span<float3> vertex_coords, Span<int> face_v
         if (seg_j.is_empty()) {
           break;
         }
-        Vector<vert_treplet> seg_k = loop_segments[k];
-        if (!seg_j.is_empty() && join_segments(seg_j, seg_k)) {
+        Vector<vert_treplet> &seg_k = loop_segments[k];
+        if (!seg_k.is_empty() && join_segments(&seg_j, &seg_k)) {
           joining_segements = true;
         }
       }
@@ -208,7 +220,7 @@ Vector<Vector<int>> ngon_tessellate(Span<float3> vertex_coords, Span<int> face_v
   }
 
   for (Vector<vert_treplet> &loop : loop_segments) {
-    if (!loop.is_empty() && loop[0].v == loop.last().v) {
+    while (!loop.is_empty() && loop[0].v == loop.last().v) {
       loop.remove_last();
     }
   }
@@ -221,37 +233,39 @@ Vector<Vector<int>> ngon_tessellate(Span<float3> vertex_coords, Span<int> face_v
   }
   // Done with loop fixing.
 
-  Vector<int> vert_map{face_vertex_indices.size()};
+  Vector<int> vert_map(face_vertex_indices.size(), 0);
   int ii = 0;
-  for (Vector<vert_treplet> &verts : loop_list) {
+  for (Span<vert_treplet> verts : loop_list) {
     if (verts.size() <= 2) {
       continue;
     }
     for (int i = 0; i < verts.size(); i++) {
       vert_map[i + ii] = verts[i].i;
     }
+    ii += verts.size();
   }
 
-  Vector<Vector<const float3 *>> coord_list;
-  for (int i = 0; i < loop_list.size(); i++) {
-    Span<vert_treplet> loop = loop_list[i];
-    Vector<const float3 *> vert_ptrs;
-    for (const vert_treplet &vert : loop) {
-      vert_ptrs.append(&vert.v);
-    }
-    coord_list.append(vert_ptrs);
-  }
   Vector<Vector<int>> fill;
-  tessellate_polygon(coord_list, fill);
+  {
+    Vector<Vector<float3>> coord_list;
+    for (Span<vert_treplet> loop : loop_list) {
+      Vector<float3> coord;
+      for (const vert_treplet &vert : loop) {
+        coord.append(vert.v);
+      }
+      coord_list.append(coord);
+    }
+    tessellate_polygon(coord_list, fill);
+  }
 
   Vector<Vector<int>> fill_indices;
   Vector<Vector<int>> fill_indices_reversed;
   for (Span<int> f : fill) {
-    Vector<int> corner(f.size());
+    Vector<int> tri;
     for (const int i : f) {
-      corner.append(vert_map[i]);
+      tri.append(vert_map[i]);
     }
-    fill_indices.append(corner);
+    fill_indices.append(tri);
   }
 
   if (fill_indices.is_empty()) {
@@ -277,11 +291,12 @@ Vector<Vector<int>> ngon_tessellate(Span<float3> vertex_coords, Span<int> face_v
         }
       }
     }
-    if (flip != 1) {
+    if (flip == 1) {
       for (int i = 0; i < fill_indices.size(); i++) {
-        Vector<int> rev_face(fill_indices[i].size());
-        for (const int fi : fill_indices[i]) {
-          rev_face.append(fi);
+        Span<int> fi = fill_indices[i];
+        Vector<int> rev_face(fi.size());
+        for (int j = 0; j < rev_face.size(); j++) {
+          rev_face[j] = fi[rev_face.size() - 1 - j];
         }
         fill_indices_reversed.append(rev_face);
       }
@@ -289,7 +304,6 @@ Vector<Vector<int>> ngon_tessellate(Span<float3> vertex_coords, Span<int> face_v
   }
 
   if (!fill_indices_reversed.is_empty()) {
-    fill_indices.clear();
     return fill_indices_reversed;
   }
   return fill_indices;
