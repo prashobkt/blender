@@ -373,7 +373,7 @@ static RobustInitCaller init_caller;
  * reference.  Each of these macros requires certain variables to be
  * defined in the calling routine.  The variables `bvirt', `c', `abig',
  * `_i', `_j', `_k', `_l', `_m', and `_n' are declared `INEXACT' because
- * they store the result of an operation that may incur roundoff error.
+ * they store the result of an operation that may incur round-off error.
  * The input parameter `x' (or the highest numbered `x_' parameter) must
  * also be declared `INEXACT'.
  */
@@ -578,8 +578,8 @@ static RobustInitCaller init_caller;
   Two_Two_Sum(_j, _1, _l, _2, x5, x4, x3, x2)
 
 static double splitter; /* = 2^ceiling(p / 2) + 1.  Used to split floats in half. */
-static double epsilon;  /* = 2^(-p).  Used to estimate roundoff errors. */
-/* A set of coefficients used to calculate maximum roundoff errors. */
+static double epsilon;  /* = 2^(-p).  Used to estimate round-off errors. */
+/* A set of coefficients used to calculate maximum round-off errors. */
 static double resulterrbound;
 static double ccwerrboundA, ccwerrboundB, ccwerrboundC;
 static double o3derrboundA, o3derrboundB, o3derrboundC;
@@ -785,7 +785,7 @@ static double estimate(int elen, const double *e)
 }
 
 /**
- * orient2dfast()   Approximate 2D orientation test.  Nonrobust.
+ * orient2dfast()   Approximate 2D orientation test.  Non-robust.
  * orient2d()    Adaptive exact 2D orientation test.  Robust.
  *               Return a positive value if the points pa, pb, and pc occur
  *               in counterclockwise order; a negative value if they occur
@@ -1438,12 +1438,12 @@ double orient3d(const double *pa, const double *pb, const double *pc, const doub
 }
 
 /**
- *  incirclefast()   Approximate 2D incircle test.  Nonrobust.
+ *  incirclefast()   Approximate 2D incircle test.  Non-robust.
  *  incircle()
  *
  *               Return a positive value if the point pd lies inside the
  *               circle passing through pa, pb, and pc; a negative value if
- *               it lies outside; and zero if the four points are cocircular.
+ *               it lies outside; and zero if the four points are co-circular.
  *               The points pa, pb, and pc must be in counterclockwise
  *               order, or the sign of the result will be reversed.
  *
@@ -1452,7 +1452,7 @@ double orient3d(const double *pa, const double *pb, const double *pc, const doub
  *  this determinant is computed adaptively, in the sense that exact
  *  arithmetic is used only to the degree it is needed to ensure that the
  *  returned value has the correct sign.  Hence, incircle() is usually quite
- *  fast, but will run more slowly when the input points are cocircular or
+ *  fast, but will run more slowly when the input points are co-circular or
  *  nearly so.
  */
 
@@ -2047,13 +2047,13 @@ double incircle(const double *pa, const double *pb, const double *pc, const doub
 }
 
 /**
- *  inspherefast()   Approximate 3D insphere test.  Nonrobust.
+ *  inspherefast()   Approximate 3D insphere test.  Non-robust.
  *  insphere()   Adaptive exact 3D insphere test.  Robust.
  *
  *               Return a positive value if the point pe lies inside the
  *               sphere passing through pa, pb, pc, and pd; a negative value
  *               if it lies outside; and zero if the five points are
- *               cospherical.  The points pa, pb, pc, and pd must be ordered
+ *               co-spherical.  The points pa, pb, pc, and pd must be ordered
  *               so that they have a positive orientation (as defined by
  *               orient3d()), or the sign of the result will be reversed.
  *
@@ -2062,7 +2062,7 @@ double incircle(const double *pa, const double *pb, const double *pc, const doub
  *  this determinant is computed adaptively, in the sense that exact
  *  arithmetic is used only to the degree it is needed to ensure that the
  *  returned value has the correct sign.  Hence, insphere() is usually quite
- *  fast, but will run more slowly when the input points are cospherical or
+ *  fast, but will run more slowly when the input points are co-spherical or
  *  nearly so.
  */
 

@@ -1473,7 +1473,7 @@ static int find_ambient_cell(const IMesh &tm,
 /**
  * We need an edge on the convex hull of the edges incident on \a closestp
  * in order to sort around, including a dummy triangle that has \a testp and
- * the sorting edge vertices. So we don't want an edge that is co-llinear
+ * the sorting edge vertices. So we don't want an edge that is co-linear
  * with the line through \a testp and \a closestp.
  * The method is to project onto a plane that contains `testp-closestp`,
  * and then choose the edge that, when projected, has the maximum absolute

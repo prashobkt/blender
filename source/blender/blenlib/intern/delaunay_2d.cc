@@ -934,8 +934,9 @@ template<typename T> bool site_lexicographic_sort(const SiteInfo<T> &a, const Si
   return a.orig_index < b.orig_index;
 }
 
-/* Find series of equal vertices in the sorted sites array
- * and use the vertice's merge_to_index to indicate that
+/**
+ * Find series of equal vertices in the sorted sites array
+ * and use the vertices merge_to_index to indicate that
  * all vertices after the first merge to the first.
  */
 template<typename T> void find_site_merges(Array<SiteInfo<T>> &sites)
@@ -973,7 +974,7 @@ inline bool dc_tri_valid(SymEdge<T> *se, SymEdge<T> *basel, SymEdge<T> *basel_sy
 /**
  * Delaunay triangulate sites[start} to sites[end-1].
  * Assume sites are lexicographically sorted by coordinate.
- * Return #SymEdge of ccw convex hull at left-most point in *r_le
+ * Return #SymEdge of CCW convex hull at left-most point in *r_le
  * and that of right-most point of cw convex null in *r_re.
  */
 template<typename T>
@@ -1208,7 +1209,7 @@ template<typename T> void dc_triangulate(CDTArrangement<T> *cdt, Array<SiteInfo<
  * and the Computation of Voronoi Diagrams" paper.
  * The data structure here is similar to but not exactly the same as
  * the quad-edge structure described in that paper.
- * If T is not exact arithmetic, incircle and ccw tests are done using
+ * If T is not exact arithmetic, incircle and CCW tests are done using
  * Shewchuk's exact primitives, so that this routine is robust.
  *
  * As a preprocessing step, we want to merge all vertices that the same.
@@ -2051,7 +2052,9 @@ template<typename T> void remove_non_constraint_edges(CDT_state<T> *cdt_state)
  * direct path from an outer face to an inner hole face.
  */
 
-/* For sorting edges by decreasing length (squared). */
+/**
+ * For sorting edges by decreasing length (squared).
+ */
 template<typename T> struct EdgeToSort {
   T len_squared = T(0);
   CDTEdge<T> *e{nullptr};
@@ -2113,9 +2116,8 @@ template<typename T> void remove_non_constraint_edges_leave_valid_bmesh(CDT_stat
     CDTFace<T> *fright = sym(se)->face;
     if (fleft != cdt->outer_face && fright != cdt->outer_face &&
         (fleft->input_ids != nullptr || fright->input_ids != nullptr)) {
-      /* Is there another symedge with same left and right faces?
-       * Or is there a vertex not part of e touching the same left and right faces?
-       */
+      /* Is there another #SymEdge with same left and right faces?
+       * Or is there a vertex not part of e touching the same left and right faces? */
       for (SymEdge<T> *se2 = se->next; dissolve && se2 != se; se2 = se2->next) {
         if (sym(se2)->face == fright ||
             (se2->vert != se->next->vert && vert_touches_face(se2->vert, fright))) {
@@ -2231,8 +2233,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   /* All verts without a merge_to_index will be output.
    * vert_to_output_map[i] will hold the output vertex index
    * corresponding to the vert in position i in cdt->verts.
-   * This first loop sets vert_to_output_map for unmerged verts.
-   */
+   * This first loop sets vert_to_output_map for un-merged verts. */
   int verts_size = cdt->verts.size();
   Array<int> vert_to_output_map(verts_size);
   int nv = 0;
@@ -2248,8 +2249,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   }
   /* Now we can set vert_to_output_map for merged verts,
    * and also add the input indices of merged verts to the input_ids
-   * list of the merge target if they were an original input id.
-   */
+   * list of the merge target if they were an original input id. */
   if (nv < verts_size) {
     for (int i = 0; i < verts_size; ++i) {
       CDTVert<T> *v = cdt->verts[i];
@@ -2322,7 +2322,9 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   return result;
 }
 
-/* Add all the input verts into cdt. This will dedup, setting vert's merge_to_index to show merges.
+/**
+ * Add all the input verts into cdt. This will deduplicate,
+ * setting vertices merge_to_index to show merges.
  */
 template<typename T> void add_input_verts(CDT_state<T> *cdt_state, const CDT_input<T> &input)
 {

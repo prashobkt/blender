@@ -1355,7 +1355,7 @@ static bool non_trivial_intersect(const ITT_value &itt, const Face * tri1, const
  * The index function follows these rules:
  *    index(x op y) = 1 + max(index(x), index(y)) for op + or -
  *    index(x * y)  = 1 + index(x) + index(y)
- *    index(x) = 0 if input x can be respresented exactly as a double
+ *    index(x) = 0 if input x can be represented exactly as a double
  *    index(x) = 1 otherwise.
  *
  * With these rules in place, we know an absolute error bound:
