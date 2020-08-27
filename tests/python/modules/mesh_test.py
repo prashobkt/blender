@@ -44,7 +44,6 @@ import bpy
 import functools
 import inspect
 import os
-from abc import ABC, abstractmethod
 
 # Output from this module and from blender itself will occur during tests.
 # We need to flush python so that the output is properly interleaved, otherwise
