@@ -28,7 +28,7 @@ import sys
 import bpy
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from modules.mesh_test import MeshTest, ModifierSpec, OperatorSpecObjectMode, DeformModifierSpec, ModifierTest
+from modules.mesh_test import MeshTest, ModifierSpec, OperatorSpecObjectMode, DeformModifierSpec, RunTest
 
 tests = [
 
@@ -103,7 +103,7 @@ tests = [
 
 ]
 
-deform_tests = ModifierTest(tests)
+deform_tests = RunTest(tests)
 command = list(sys.argv)
 for i, cmd in enumerate(command):
     if cmd == "--run-all-tests":

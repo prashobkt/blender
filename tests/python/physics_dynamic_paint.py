@@ -24,7 +24,7 @@ import sys
 import bpy
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from modules.mesh_test import ModifierTest, ModifierSpec, MeshTest
+from modules.mesh_test import RunTest, ModifierSpec, MeshTest
 
 
 def main():
@@ -37,7 +37,7 @@ def main():
                                15)]),
 
     ]
-    dynamic_paint_test = ModifierTest(test)
+    dynamic_paint_test = RunTest(test)
 
     command = list(sys.argv)
     for i, cmd in enumerate(command):

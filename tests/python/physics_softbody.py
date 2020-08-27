@@ -35,7 +35,7 @@ def main():
                                {'settings': {'use_goal': False, 'bend': 8, 'pull': 0.8, 'push': 0.8}},
                                45)]),
     ]
-    soft_body_test = ModifierTest(test)
+    soft_body_test = RunTest(test)
 
     command = list(sys.argv)
     for i, cmd in enumerate(command):
