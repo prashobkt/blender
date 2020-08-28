@@ -405,10 +405,10 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &r_all_geometr
           Vector<StringRef> vert_uv_normal_split{};
           split_by_char(str_corner, '/', vert_uv_normal_split);
           copy_string_to_int(vert_uv_normal_split[0], INT32_MAX, corner.vert_index);
+          copy_string_to_int(vert_uv_normal_split[1], INT32_MAX, corner.uv_vert_index);
           if (vert_uv_normal_split.size() == 3) {
-            copy_string_to_int(vert_uv_normal_split[1], INT32_MAX, corner.uv_vert_index);
+            copy_string_to_int(vert_uv_normal_split[2], INT32_MAX, corner.vertex_normal_index);
           }
-          copy_string_to_int(vert_uv_normal_split[2], INT32_MAX, corner.vertex_normal_index);
         }
         /* Always keep stored indices non-negative and zero-based. */
         corner.vert_index += corner.vert_index < 0 ? r_global_vertices.vertices.size() :
