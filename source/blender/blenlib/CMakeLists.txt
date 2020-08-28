@@ -90,6 +90,7 @@ set(SRC
   intern/math_base_inline.c
   intern/math_base_safe_inline.c
   intern/math_bits_inline.c
+  intern/math_boolean.cc
   intern/math_color.c
   intern/math_color_blend_inline.c
   intern/math_color_inline.c
@@ -220,6 +221,7 @@ set(SRC
   BLI_math_base.h
   BLI_math_base_safe.h
   BLI_math_bits.h
+  BLI_math_boolean.hh
   BLI_math_color.h
   BLI_math_color_blend.h
   BLI_math_geom.h

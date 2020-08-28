@@ -175,10 +175,6 @@ struct mpq2 {
                                     const mpq2 &v3,
                                     const mpq2 &v4);
 
-  static int orient2d(const mpq2 &a, const mpq2 &b, const mpq2 &c);
-
-  static int incircle(const mpq2 &a, const mpq2 &b, const mpq2 &c, const mpq2 &d);
-
   /** There is a sensible use for hashing on exact arithmetic types. */
   uint64_t hash() const;
 };

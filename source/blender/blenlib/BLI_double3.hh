@@ -240,20 +240,6 @@ struct double3 {
   }
 
   static double3 cross_poly(Span<double3> poly);
-
-  /* #orient3d gives the exact result, using multi-precision arithmetic when result
-   * is close to zero. orient3d_fast just uses double arithmetic, so may be
-   * wrong if the answer is very close to zero.
-   * Similarly, for #insphere and #insphere_fast. */
-  static int orient3d(const double3 &a, const double3 &b, const double3 &c, const double3 &d);
-
-  static int orient3d_fast(const double3 &a, const double3 &b, const double3 &c, const double3 &d);
-
-  static int insphere(
-      const double3 &a, const double3 &b, const double3 &c, const double3 &d, const double3 &e);
-
-  static int insphere_fast(
-      const double3 &a, const double3 &b, const double3 &c, const double3 &d, const double3 &e);
 };
 
 }  // namespace blender

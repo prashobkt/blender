@@ -270,8 +270,6 @@ struct mpq3 {
 
   static mpq3 cross_poly(Span<mpq3> poly);
 
-  static int orient3d(const mpq3 &a, const mpq3 &b, const mpq3 &c, const mpq3 &d);
-
   /** There is a sensible use for hashing on exact arithmetic types. */
   uint64_t hash() const;
 };

@@ -34,6 +34,7 @@
 #  include "BLI_hash.hh"
 #  include "BLI_kdopbvh.h"
 #  include "BLI_map.hh"
+#  include "BLI_math_boolean.hh"
 #  include "BLI_math_mpq.hh"
 #  include "BLI_mpq2.hh"
 #  include "BLI_mpq3.hh"
@@ -1222,10 +1223,10 @@ static bool non_trivially_2d_intersect(const mpq2 *a[3], const mpq2 *b[3])
     for (int ai = 0; ai < 3; ++ai) {
       for (int bi = 0; bi < 3; ++bi) {
         if (ab == 0) {
-          orients[0][ai][bi] = mpq2::orient2d(*b[bi], *b[(bi + 1) % 3], *a[ai]);
+          orients[0][ai][bi] = orient2d(*b[bi], *b[(bi + 1) % 3], *a[ai]);
         }
         else {
-          orients[1][bi][ai] = mpq2::orient2d(*a[ai], *a[(ai + 1) % 3], *b[bi]);
+          orients[1][bi][ai] = orient2d(*a[ai], *a[(ai + 1) % 3], *b[bi]);
         }
       }
     }
@@ -1255,7 +1256,7 @@ static bool non_trivially_coplanar_intersects(const IMesh &tm,
   mpq2 v0 = project_3d_to_2d(tri[0]->co_exact, proj_axis);
   mpq2 v1 = project_3d_to_2d(tri[1]->co_exact, proj_axis);
   mpq2 v2 = project_3d_to_2d(tri[2]->co_exact, proj_axis);
-  if (mpq2::orient2d(v0, v1, v2) != 1) {
+  if (orient2d(v0, v1, v2) != 1) {
     mpq2 tmp = v1;
     v1 = v2;
     v2 = tmp;
@@ -1265,7 +1266,7 @@ static bool non_trivially_coplanar_intersects(const IMesh &tm,
     mpq2 ctv0 = project_3d_to_2d(cl_tri[0]->co_exact, proj_axis);
     mpq2 ctv1 = project_3d_to_2d(cl_tri[1]->co_exact, proj_axis);
     mpq2 ctv2 = project_3d_to_2d(cl_tri[2]->co_exact, proj_axis);
-    if (mpq2::orient2d(ctv0, ctv1, ctv2) != 1) {
+    if (orient2d(ctv0, ctv1, ctv2) != 1) {
       mpq2 tmp = ctv1;
       ctv1 = ctv2;
       ctv2 = tmp;
@@ -1455,7 +1456,7 @@ constexpr int index_orient3d = 14;
  */
 static int filter_orient3d(const double3 &a, const double3 &b, const double3 &c, const double3 &d)
 {
-  double o3dfast = double3::orient3d_fast(a, b, c, d);
+  double o3dfast = orient3d_fast(a, b, c, d);
   if (o3dfast == 0.0) {
     return 0;
   }

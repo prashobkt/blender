@@ -26,6 +26,7 @@
 #include "BLI_array.hh"
 #include "BLI_double2.hh"
 #include "BLI_linklist.h"
+#include "BLI_math_boolean.hh"
 #include "BLI_math_mpq.hh"
 #include "BLI_mpq2.hh"
 #include "BLI_vector.hh"
@@ -956,19 +957,19 @@ template<typename T> void find_site_merges(Array<SiteInfo<T>> &sites)
 
 template<typename T> inline bool vert_left_of_symedge(CDTVert<T> *v, SymEdge<T> *se)
 {
-  return vec2<T>::orient2d(v->co, se->vert->co, se->next->vert->co) > 0;
+  return orient2d(v->co, se->vert->co, se->next->vert->co) > 0;
 }
 
 template<typename T> inline bool vert_right_of_symedge(CDTVert<T> *v, SymEdge<T> *se)
 {
-  return vec2<T>::orient2d(v->co, se->next->vert->co, se->vert->co) > 0;
+  return orient2d(v->co, se->next->vert->co, se->vert->co) > 0;
 }
 
 /* Is se above basel? */
 template<typename T>
 inline bool dc_tri_valid(SymEdge<T> *se, SymEdge<T> *basel, SymEdge<T> *basel_sym)
 {
-  return vec2<T>::orient2d(se->next->vert->co, basel_sym->vert->co, basel->vert->co) > 0;
+  return orient2d(se->next->vert->co, basel_sym->vert->co, basel->vert->co) > 0;
 }
 
 /**
@@ -1012,7 +1013,7 @@ void dc_tri(CDTArrangement<T> *cdt,
     }
     CDTVert<T> *v3 = sites[start + 2].v;
     CDTEdge<T> *eb = cdt->add_vert_to_symedge_edge(v3, &ea->symedges[1]);
-    int orient = vec2<T>::orient2d(v1->co, v2->co, v3->co);
+    int orient = orient2d(v1->co, v2->co, v3->co);
     if (orient > 0) {
       cdt->add_diagonal(&eb->symedges[0], &ea->symedges[0]);
       *r_le = &ea->symedges[0];
@@ -1100,10 +1101,10 @@ void dc_tri(CDTArrangement<T> *cdt,
         std::cout << "found valid lcand\n";
         std::cout << "  lcand" << lcand << "\n";
       }
-      while (vec2<T>::incircle(basel_sym->vert->co,
-                               basel->vert->co,
-                               lcand->next->vert->co,
-                               lcand->rot->next->vert->co) > 0.0) {
+      while (incircle(basel_sym->vert->co,
+                      basel->vert->co,
+                      lcand->next->vert->co,
+                      lcand->rot->next->vert->co) > 0.0) {
         if (dbg_level > 1) {
           std::cout << "incircle says to remove lcand\n";
           std::cout << "  lcand" << lcand << "\n";
@@ -1119,10 +1120,10 @@ void dc_tri(CDTArrangement<T> *cdt,
         std::cout << "found valid rcand\n";
         std::cout << "  rcand" << rcand << "\n";
       }
-      while (vec2<T>::incircle(basel_sym->vert->co,
-                               basel->vert->co,
-                               rcand->next->vert->co,
-                               sym(rcand)->next->next->vert->co) > 0.0) {
+      while (incircle(basel_sym->vert->co,
+                      basel->vert->co,
+                      rcand->next->vert->co,
+                      sym(rcand)->next->next->vert->co) > 0.0) {
         if (dbg_level > 0) {
           std::cout << "incircle says to remove rcand\n";
           std::cout << "  rcand" << rcand << "\n";
@@ -1146,10 +1147,10 @@ void dc_tri(CDTArrangement<T> *cdt,
     }
     /* The next cross edge to be connected is to either `lcand->next->vert` or `rcand->next->vert`;
      * if both are valid, choose the appropriate one using the #incircle test. */
-    if (!valid_lcand || (valid_rcand && vec2<T>::incircle(lcand->next->vert->co,
-                                                          lcand->vert->co,
-                                                          rcand->vert->co,
-                                                          rcand->next->vert->co) > 0)) {
+    if (!valid_lcand ||
+        (valid_rcand &&
+         incircle(lcand->next->vert->co, lcand->vert->co, rcand->vert->co, rcand->next->vert->co) >
+             0)) {
       if (dbg_level > 0) {
         std::cout << "connecting rcand\n";
         std::cout << "  se1=basel_sym" << basel_sym << "\n";
@@ -1264,7 +1265,7 @@ template<typename T> static void re_delaunay_triangulate(CDTArrangement<T> *cdt,
   SymEdge<T> *cse = first;
   for (SymEdge<T> *ss = first->next; ss != se; ss = ss->next) {
     CDTVert<T> *v = ss->vert;
-    if (vec2<T>::incircle(a->co, b->co, c->co, v->co) > 0) {
+    if (incircle(a->co, b->co, c->co, v->co) > 0) {
       c = v;
       cse = ss;
     }
@@ -1289,7 +1290,7 @@ template<typename T> static void re_delaunay_triangulate(CDTArrangement<T> *cdt,
 
 template<typename T> inline int tri_orient(const SymEdge<T> *t)
 {
-  return vec2<T>::orient2d(t->vert->co, t->next->vert->co, t->next->next->vert->co);
+  return orient2d(t->vert->co, t->next->vert->co, t->next->next->vert->co);
 }
 
 /**
@@ -1536,14 +1537,14 @@ bool get_next_crossing_from_vert(CDT_state<T> *cdt_state,
     }
     CDTVert<T> *va = t->next->vert;
     CDTVert<T> *vb = t->next->next->vert;
-    int orient1 = vec2<T>::orient2d(t->vert->co, va->co, v2->co);
+    int orient1 = orient2d(t->vert->co, va->co, v2->co);
     if (orient1 == 0 && in_line<T>(vcur->co, va->co, v2->co)) {
       fill_crossdata_for_through_vert(va, t, cd, cd_next);
       ok = true;
       break;
     }
     if (t->face != cdt_state->cdt.outer_face) {
-      int orient2 = vec2<T>::orient2d(vcur->co, vb->co, v2->co);
+      int orient2 = orient2d(vcur->co, vb->co, v2->co);
       /* Don't handle orient2 == 0 case here: next rotation will get it. */
       if (orient1 > 0 && orient2 < 0) {
         /* Segment intersection. */
@@ -1576,7 +1577,7 @@ void get_next_crossing_from_edge(CrossData<T> *cd,
   vec2<T> curco = vec2<T>::interpolate(va->co, vb->co, cd->lambda);
   SymEdge<T> *se_ac = sym(cd->in)->next;
   CDTVert<T> *vc = se_ac->next->vert;
-  int orient = vec2<T>::orient2d(curco, v2->co, vc->co);
+  int orient = orient2d(curco, v2->co, vc->co);
   if (orient < 0) {
     fill_crossdata_for_intersect<T>(curco, v2, se_ac->next, cd, cd_next, epsilon);
   }

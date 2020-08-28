@@ -138,14 +138,6 @@ struct double2 {
                                     const double2 &v2,
                                     const double2 &v3,
                                     const double2 &v4);
-
-  static int orient2d(const double2 &a, const double2 &b, const double2 &c);
-
-  static int orient2d_fast(const double2 &a, const double2 &b, const double2 &c);
-
-  static int incircle(const double2 &a, const double2 &b, const double2 &c, const double2 &d);
-
-  static int incircle_fast(const double2 &a, const double2 &b, const double2 &c, const double2 &d);
 };
 
 }  // namespace blender

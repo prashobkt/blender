@@ -30,6 +30,7 @@
 #  include "BLI_hash.hh"
 #  include "BLI_map.hh"
 #  include "BLI_math.h"
+#  include "BLI_math_boolean.hh"
 #  include "BLI_math_mpq.hh"
 #  include "BLI_mesh_intersect.hh"
 #  include "BLI_mpq3.hh"
@@ -855,7 +856,7 @@ static int sort_tris_class(const Face &tri, const Face &tri0, const Edge e)
   BLI_assert(flapv != nullptr && flapv0 != nullptr);
   const mpq3 flap = flapv->co_exact;
   /* orient will be positive if flap is below oriented plane of a0,a1,a2. */
-  int orient = mpq3::orient3d(a0, a1, a2, flap);
+  int orient = orient3d(a0, a1, a2, flap);
   int ans;
   if (orient > 0) {
     ans = rev0 ? 4 : 3;
