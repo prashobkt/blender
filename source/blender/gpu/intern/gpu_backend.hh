@@ -27,11 +27,29 @@
 
 struct GPUContext;
 
+namespace blender {
+namespace gpu {
+
+class Batch;
+class DrawList;
+class Shader;
+class UniformBuf;
+
 class GPUBackend {
  public:
   virtual ~GPUBackend(){};
 
+  static GPUBackend *get(void);
+
   virtual GPUContext *context_alloc(void *ghost_window) = 0;
+
+  virtual Batch *batch_alloc(void) = 0;
+  virtual DrawList *drawlist_alloc(int list_length) = 0;
+  // virtual FrameBuffer *framebuffer_alloc(void) = 0;
+  virtual Shader *shader_alloc(const char *name) = 0;
+  // virtual Texture *texture_alloc(void) = 0;
+  virtual UniformBuf *uniformbuf_alloc(int size, const char *name) = 0;
 };
 
-GPUBackend *gpu_backend_get(void);
+}  // namespace gpu
+}  // namespace blender

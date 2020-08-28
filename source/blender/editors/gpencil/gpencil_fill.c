@@ -237,6 +237,7 @@ static void gpencil_draw_datablock(tGPDfill *tgpf, const float ink[4])
   bGPdata *gpd = tgpf->gpd;
   Brush *brush = tgpf->brush;
   BrushGpencilSettings *brush_settings = brush->gpencil_settings;
+  ToolSettings *ts = tgpf->scene->toolsettings;
 
   tGPDdraw tgpw;
   tgpw.rv3d = tgpf->rv3d;
@@ -251,7 +252,7 @@ static void gpencil_draw_datablock(tGPDfill *tgpf, const float ink[4])
   tgpw.disable_fill = 1;
   tgpw.dflag |= (GP_DRAWFILLS_ONLY3D | GP_DRAWFILLS_NOSTATUS);
 
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
   BLI_assert(gpl_active != NULL);
@@ -309,7 +310,14 @@ static void gpencil_draw_datablock(tGPDfill *tgpf, const float ink[4])
     /* if active layer and no keyframe, create a new one */
     if (gpl == tgpf->gpl) {
       if ((gpl->actframe == NULL) || (gpl->actframe->framenum != tgpf->active_cfra)) {
-        BKE_gpencil_layer_frame_get(gpl, tgpf->active_cfra, GP_GETFRAME_ADD_NEW);
+        short add_frame_mode;
+        if (ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) {
+          add_frame_mode = GP_GETFRAME_ADD_COPY;
+        }
+        else {
+          add_frame_mode = GP_GETFRAME_ADD_NEW;
+        }
+        BKE_gpencil_layer_frame_get(gpl, tgpf->active_cfra, add_frame_mode);
       }
     }
 
@@ -363,7 +371,7 @@ static void gpencil_draw_datablock(tGPDfill *tgpf, const float ink[4])
     }
   }
 
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 /* draw strokes in offscreen buffer */
@@ -446,8 +454,9 @@ static bool gpencil_render_offscreen(tGPDfill *tgpf)
   GPU_matrix_push();
   GPU_matrix_identity_set();
 
+  GPU_depth_mask(true);
   GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
-  GPU_clear(GPU_COLOR_BIT | GPU_DEPTH_BIT);
+  GPU_clear_depth(1.0f);
 
   ED_view3d_update_viewmat(
       tgpf->depsgraph, tgpf->scene, tgpf->v3d, tgpf->region, NULL, winmat, NULL, true);
@@ -458,6 +467,8 @@ static bool gpencil_render_offscreen(tGPDfill *tgpf)
   /* draw strokes */
   const float ink[4] = {1.0f, 0.0f, 0.0f, 1.0f};
   gpencil_draw_datablock(tgpf, ink);
+
+  GPU_depth_mask(false);
 
   GPU_matrix_pop_projection();
   GPU_matrix_pop();

@@ -27,7 +27,11 @@
 
 #include "BLI_vector.hh"
 
+#include "gl_batch.hh"
 #include "gl_context.hh"
+#include "gl_drawlist.hh"
+#include "gl_shader.hh"
+#include "gl_uniform_buffer.hh"
 
 namespace blender {
 namespace gpu {
@@ -37,9 +41,34 @@ class GLBackend : public GPUBackend {
   GLSharedOrphanLists shared_orphan_list_;
 
  public:
+  static GLBackend *get(void)
+  {
+    return static_cast<GLBackend *>(GPUBackend::get());
+  }
+
   GPUContext *context_alloc(void *ghost_window)
   {
     return new GLContext(ghost_window, shared_orphan_list_);
+  };
+
+  Batch *batch_alloc(void)
+  {
+    return new GLBatch();
+  };
+
+  DrawList *drawlist_alloc(int list_length)
+  {
+    return new GLDrawList(list_length);
+  };
+
+  Shader *shader_alloc(const char *name)
+  {
+    return new GLShader(name);
+  };
+
+  UniformBuf *uniformbuf_alloc(int size, const char *name)
+  {
+    return new GLUniformBuf(size, name);
   };
 
   /* TODO remove */

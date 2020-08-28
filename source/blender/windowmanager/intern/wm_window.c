@@ -645,11 +645,10 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
       GHOST_SetWindowState(ghostwin, (GHOST_TWindowState)win->windowstate);
     }
 #endif
-    /* until screens get drawn, make it nice gray */
-    GPU_clear_color(0.55, 0.55, 0.55, 1.0f);
     /* Crash on OSS ATI: bugs.launchpad.net/ubuntu/+source/mesa/+bug/656100 */
     if (!GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_UNIX, GPU_DRIVER_OPENSOURCE)) {
-      GPU_clear(GPU_COLOR_BIT);
+      /* until screens get drawn, make it nice gray */
+      GPU_clear_color(0.55f, 0.55f, 0.55f, 1.0f);
     }
 
     /* needed here, because it's used before it reads userdef */
@@ -658,9 +657,6 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
     wm_window_swap_buffers(win);
 
     // GHOST_SetWindowState(ghostwin, GHOST_kWindowStateModified);
-
-    /* standard state vars for window */
-    GPU_state_init();
   }
   else {
     wm_window_set_drawable(wm, prev_windrawable, false);
@@ -1112,8 +1108,6 @@ static void wm_window_set_drawable(wmWindowManager *wm, wmWindow *win, bool acti
 void wm_window_clear_drawable(wmWindowManager *wm)
 {
   if (wm->windrawable) {
-    BLF_batch_reset();
-    gpu_batch_presets_reset();
     immDeactivate();
     wm->windrawable = NULL;
   }

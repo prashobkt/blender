@@ -13,28 +13,33 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
- * The Original Code is Copyright (C) 2016 by Mike Erwin.
+ * The Original Code is Copyright (C) 2020 Blender Foundation.
  * All rights reserved.
  */
 
 /** \file
  * \ingroup gpu
  *
- * GPU geometry batch
- * Contains VAOs + VBOs + Shader representing a drawable entity.
+ * GPUDrawList is an API to do lots of similar draw-calls very fast using
+ * multi-draw-indirect. There is a fallback if the feature is not supported.
  */
 
 #pragma once
-
-#include "GPU_batch.h"
-#include "GPU_context.h"
-#include "GPU_shader_interface.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void gpu_batch_remove_interface_ref(GPUBatch *batch, const GPUShaderInterface *interface);
+struct GPUBatch;
+
+typedef void *GPUDrawList; /* Opaque pointer. */
+
+/* Create a list with at least length drawcalls. Length can affect performance. */
+GPUDrawList GPU_draw_list_create(int length);
+void GPU_draw_list_discard(GPUDrawList list);
+
+void GPU_draw_list_append(GPUDrawList list, GPUBatch *batch, int i_first, int i_count);
+void GPU_draw_list_submit(GPUDrawList list);
 
 #ifdef __cplusplus
 }

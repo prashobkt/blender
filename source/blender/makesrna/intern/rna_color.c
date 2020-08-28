@@ -623,13 +623,13 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain,
       bool seq_found = false;
 
       if (&scene->sequencer_colorspace_settings != colorspace_settings) {
-        SEQ_BEGIN (scene->ed, seq) {
+        SEQ_ALL_BEGIN (scene->ed, seq) {
           if (seq->strip && &seq->strip->colorspace_settings == colorspace_settings) {
             seq_found = true;
             break;
           }
         }
-        SEQ_END;
+        SEQ_ALL_END;
       }
 
       if (seq_found) {
@@ -643,10 +643,10 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain,
         BKE_sequence_invalidate_cache_preprocessed(scene, seq);
       }
       else {
-        SEQ_BEGIN (scene->ed, seq) {
+        SEQ_ALL_BEGIN (scene->ed, seq) {
           BKE_sequence_free_anim(seq);
         }
-        SEQ_END;
+        SEQ_ALL_END;
       }
 
       WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);
@@ -1222,7 +1222,7 @@ static void rna_def_colormanage(BlenderRNA *brna)
                               "rna_ColorManagedViewSettings_look_set",
                               "rna_ColorManagedViewSettings_look_itemf");
   RNA_def_property_ui_text(
-      prop, "Look", "Additional transform applied before view transform for an artistic needs");
+      prop, "Look", "Additional transform applied before view transform for artistic needs");
   RNA_def_property_update(prop, NC_WINDOW, "rna_ColorManagement_update");
 
   prop = RNA_def_property(srna, "view_transform", PROP_ENUM, PROP_NONE);
