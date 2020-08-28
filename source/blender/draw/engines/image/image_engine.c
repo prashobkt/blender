@@ -196,30 +196,6 @@ static void image_cache_image(IMAGE_Data *vedata, Image *image, ImageUser *iuser
     DRW_shgroup_uniform_bool_copy(shgrp, "imgPremultiplied", use_premul_alpha);
     image_cache_image_add(shgrp, image);
   }
-  else {
-    /* No image available. use the image unavailable shader. */
-    int image_size[2];
-    if (image && image->type == IMA_TYPE_R_RESULT) {
-      image_size[0] = (scene->r.xsch * scene->r.size) * 0.01f;
-      image_size[1] = (scene->r.ysch * scene->r.size) * 0.01f;
-    }
-    else {
-      image_size[0] = image_size[1] = 256;
-    }
-
-    /* sima->zoom texels covers (sima->zoom * sima->zoom) screen pixels.
-     * Creates a curve function for better visual result. */
-    float zoom_level = powf(MAX2(sima->zoom - 1.0f, 0.1f), 0.25f);
-    zoom_level = clamp_f(zoom_level, 1.25f, 4.75f);
-
-    GPUShader *shader = IMAGE_shader_image_unavailable_get();
-    DRWShadingGroup *grp = DRW_shgroup_create(shader, psl->image_pass);
-    DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
-    DRW_shgroup_uniform_float_copy(grp, "zoomScale", sima->zoom);
-    DRW_shgroup_uniform_float_copy(grp, "zoomLevel", zoom_level);
-    DRW_shgroup_uniform_ivec2_copy(grp, "imageSize", image_size);
-    DRW_shgroup_call(grp, DRW_cache_quad_get(), NULL);
-  }
 }
 
 /* -------------------------------------------------------------------- */

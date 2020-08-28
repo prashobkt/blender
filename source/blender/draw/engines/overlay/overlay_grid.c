@@ -42,12 +42,35 @@ enum {
   CLIP_ZNEG = (1 << 8),
   GRID_BACK = (1 << 9),
   GRID_CAMERA = (1 << 10),
+  PLANE_IMAGE = (1 << 11),
 };
 
 void OVERLAY_grid_init(OVERLAY_Data *vedata)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   OVERLAY_ShadingData *shd = &pd->shdata;
+
+  shd->grid_flag = 0;
+  shd->zneg_flag = 0;
+  shd->zpos_flag = 0;
+  shd->grid_line_size = max_ff(0.0f, U.pixelsize - 1.0f) * 0.5f;
+
+  if (pd->is_image_editor) {
+    shd->grid_flag = PLANE_IMAGE | SHOW_GRID;
+    shd->grid_distance = 10.0f;
+    shd->grid_mesh_size = 1.0f;
+    const float multiplier = 0.01f;
+    shd->grid_steps[0] = 1 * multiplier;
+    shd->grid_steps[1] = 10 * multiplier;
+    shd->grid_steps[2] = 100 * multiplier;
+    shd->grid_steps[3] = 1000 * multiplier;
+    shd->grid_steps[4] = 10000 * multiplier;
+    shd->grid_steps[5] = 100000 * multiplier;
+    shd->grid_steps[6] = 1000000 * multiplier;
+    shd->grid_steps[7] = 10000000 * multiplier;
+    shd->grid_steps[8] = 100000000 * multiplier;
+    return;
+  }
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
   View3D *v3d = draw_ctx->v3d;
@@ -59,10 +82,6 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata)
   const bool show_axis_z = (pd->v3d_gridflag & V3D_SHOW_Z) != 0;
   const bool show_floor = (pd->v3d_gridflag & V3D_SHOW_FLOOR) != 0;
   const bool show_ortho_grid = (pd->v3d_gridflag & V3D_SHOW_ORTHO_GRID) != 0;
-
-  shd->grid_flag = 0;
-  shd->zneg_flag = 0;
-  shd->zpos_flag = 0;
 
   if (pd->hide_overlays || !(pd->v3d_gridflag & (V3D_SHOW_X | V3D_SHOW_Y | V3D_SHOW_Z |
                                                  V3D_SHOW_FLOOR | V3D_SHOW_ORTHO_GRID))) {
@@ -163,7 +182,6 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata)
   }
 
   shd->grid_distance = dist / 2.0f;
-  shd->grid_line_size = max_ff(0.0f, U.pixelsize - 1.0f) * 0.5f;
 
   ED_view3d_grid_steps(scene, v3d, rv3d, shd->grid_steps);
 }

@@ -67,6 +67,7 @@ static void OVERLAY_engine_init(void *vedata)
 
   if (pd->is_image_editor) {
     pd->clipping_state = 0;
+    OVERLAY_grid_init(data);
     OVERLAY_edit_uv_init(data);
     return;
   }
@@ -139,6 +140,7 @@ static void OVERLAY_cache_init(void *vedata)
 
   if (pd->is_image_editor) {
     OVERLAY_background_cache_init(vedata);
+    OVERLAY_grid_cache_init(vedata);
     OVERLAY_edit_uv_cache_init(vedata);
     return;
   }
@@ -482,6 +484,7 @@ static void OVERLAY_draw_scene(void *vedata)
 
   if (pd->is_image_editor) {
     OVERLAY_background_draw(data);
+    OVERLAY_grid_draw(data);
     OVERLAY_edit_uv_draw(data);
     return;
   }

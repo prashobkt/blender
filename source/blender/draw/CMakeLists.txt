@@ -415,7 +415,6 @@ data_to_c_simple(engines/overlay/shaders/wireframe_frag.glsl SRC)
 data_to_c_simple(engines/overlay/shaders/xray_fade_frag.glsl SRC)
 
 data_to_c_simple(engines/image/shaders/engine_image_frag.glsl SRC)
-data_to_c_simple(engines/image/shaders/engine_image_unavailable_frag.glsl SRC)
 data_to_c_simple(engines/image/shaders/engine_image_vert.glsl SRC)
 
 list(APPEND INC
