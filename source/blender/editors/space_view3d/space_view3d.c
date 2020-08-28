@@ -468,7 +468,7 @@ static bool view3d_drop_id_in_main_region_poll(bContext *C,
   if (ED_region_overlap_isect_any_xy(area, &event->x)) {
     return false;
   }
-  return WM_drag_ID(drag, id_type) != NULL;
+  return WM_drag_ID(drag, id_type) || WM_drag_asset_data(drag, id_type);
 }
 
 static bool view3d_ob_drop_poll(bContext *C,
@@ -508,7 +508,7 @@ static bool view3d_ima_drop_poll(bContext *C,
     return (ELEM(drag->icon, 0, ICON_FILE_IMAGE, ICON_FILE_MOVIE));
   }
 
-  return WM_drag_ID(drag, ID_IM) != NULL;
+  return WM_drag_ID(drag, ID_IM) || WM_drag_asset_data(drag, ID_IM);
 }
 
 static bool view3d_ima_bg_is_camera_view(bContext *C)
@@ -571,14 +571,14 @@ static bool view3d_volume_drop_poll(bContext *UNUSED(C),
 
 static void view3d_ob_drop_copy(wmDrag *drag, wmDropBox *drop)
 {
-  ID *id = WM_drag_ID(drag, ID_OB);
+  ID *id = WM_drag_asset_id(drag, ID_OB);
 
   RNA_string_set(drop->ptr, "name", id->name + 2);
 }
 
 static void view3d_collection_drop_copy(wmDrag *drag, wmDropBox *drop)
 {
-  ID *id = WM_drag_ID(drag, ID_GR);
+  ID *id = WM_drag_asset_id(drag, ID_GR);
 
   drop->opcontext = WM_OP_EXEC_DEFAULT;
   RNA_string_set(drop->ptr, "name", id->name + 2);
@@ -586,14 +586,14 @@ static void view3d_collection_drop_copy(wmDrag *drag, wmDropBox *drop)
 
 static void view3d_id_drop_copy(wmDrag *drag, wmDropBox *drop)
 {
-  ID *id = WM_drag_ID(drag, 0);
+  ID *id = WM_drag_asset_id(drag, 0);
 
   RNA_string_set(drop->ptr, "name", id->name + 2);
 }
 
 static void view3d_id_path_drop_copy(wmDrag *drag, wmDropBox *drop)
 {
-  ID *id = WM_drag_ID(drag, 0);
+  ID *id = WM_drag_asset_id(drag, 0);
 
   if (id) {
     RNA_string_set(drop->ptr, "name", id->name + 2);

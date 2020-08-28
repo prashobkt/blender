@@ -879,7 +879,8 @@ typedef enum eFileSel_File_Types {
 
   /** An FS directory (i.e. S_ISDIR on its path is true). */
   FILE_TYPE_DIR = (1 << 30),
-  FILE_TYPE_BLENDERLIB = (1u << 31),
+  FILE_TYPE_BLENDERLIB = (1ul << 31),
+  FILE_TYPE_ASSET = (1ul << 32),
 } eFileSel_File_Types;
 
 /* Selection Flags in filesel: struct direntry, unsigned char selflag */
@@ -968,7 +969,7 @@ typedef struct FileDirEntry {
   FileDirEntryRevision *entry;
 
   /** #eFileSel_File_Types. */
-  int typeflag;
+  uint64_t typeflag;
   /** ID type, in case typeflag has FILE_TYPE_BLENDERLIB set. */
   int blentype;
 

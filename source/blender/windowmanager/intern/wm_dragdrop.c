@@ -37,6 +37,7 @@
 #include "BIF_glutil.h"
 
 #include "BKE_context.h"
+#include "BKE_global.h"
 #include "BKE_idtype.h"
 
 #include "GPU_shader.h"
@@ -152,16 +153,23 @@ wmDrag *WM_event_start_drag(
   drag->flags = flags;
   drag->icon = icon;
   drag->type = type;
-  if (type == WM_DRAG_PATH) {
-    BLI_strncpy(drag->path, poin, FILE_MAX);
-  }
-  else if (type == WM_DRAG_ID) {
-    if (poin) {
-      WM_drag_add_ID(drag, poin, NULL);
-    }
-  }
-  else {
-    drag->poin = poin;
+  switch (type) {
+    case WM_DRAG_PATH:
+      BLI_strncpy(drag->path, poin, FILE_MAX);
+      break;
+    case WM_DRAG_ID:
+      if (poin) {
+        WM_drag_add_ID(drag, poin, NULL);
+      }
+      break;
+    case WM_DRAG_ASSET:
+      /* Move ownership of poin to wmDrag. */
+      drag->poin = poin;
+      drag->flags |= WM_DRAG_FREE_DATA;
+      break;
+    default:
+      drag->poin = poin;
+      break;
   }
   drag->value = value;
 
@@ -176,12 +184,26 @@ void WM_event_drag_image(wmDrag *drag, ImBuf *imb, float scale, int sx, int sy)
   drag->sy = sy;
 }
 
-void WM_drag_free(wmDrag *drag)
+void WM_drag_data_free(int dragtype, void *poin)
 {
-  if ((drag->flags & WM_DRAG_FREE_DATA) && drag->poin) {
-    MEM_freeN(drag->poin);
+  /* Don't require all the callers to have a NULL-check, just allow passing NULL. */
+  if (!poin) {
+    return;
   }
 
+  /* Not too nice, could become a callback. */
+  if (dragtype == WM_DRAG_ASSET) {
+    wmDragAsset *asset_drag = poin;
+    MEM_freeN((void *)asset_drag->path);
+  }
+  MEM_freeN(poin);
+}
+
+void WM_drag_free(wmDrag *drag)
+{
+  if (drag->flags & WM_DRAG_FREE_DATA) {
+    WM_drag_data_free(drag->type, drag->poin);
+  }
   BLI_freelistN(&drag->ids);
   MEM_freeN(drag);
 }
@@ -334,6 +356,42 @@ ID *WM_drag_ID_from_event(const wmEvent *event, short idcode)
   return WM_drag_ID(lb->first, idcode);
 }
 
+wmDragAsset *WM_drag_asset_data(const wmDrag *drag, int idcode)
+{
+  if (drag->type != WM_DRAG_ASSET) {
+    return NULL;
+  }
+
+  wmDragAsset *asset_drag = drag->poin;
+  return (idcode == 0 || asset_drag->id_type == idcode) ? asset_drag : NULL;
+}
+
+static ID *wm_drag_asset_id_import(wmDragAsset *asset_drag)
+{
+  /* Append only for now, wmDragAsset could have a `link` bool. */
+  return WM_file_append_datablock(
+      G_MAIN, NULL, NULL, NULL, asset_drag->path, asset_drag->id_type, asset_drag->name);
+}
+
+ID *WM_drag_asset_id(const wmDrag *drag, int idcode)
+{
+  if (!ELEM(drag->type, WM_DRAG_ASSET, WM_DRAG_ID)) {
+    return NULL;
+  }
+
+  if (drag->type == WM_DRAG_ID) {
+    return WM_drag_ID(drag, idcode);
+  }
+
+  wmDragAsset *asset_drag = WM_drag_asset_data(drag, idcode);
+  if (!asset_drag) {
+    return NULL;
+  }
+
+  /* Link/append the asset. */
+  return wm_drag_asset_id_import(asset_drag);
+}
+
 /* ************** draw ***************** */
 
 static void wm_drop_operator_draw(const char *name, int x, int y)
@@ -359,6 +417,10 @@ static const char *wm_drag_name(wmDrag *drag)
         return BKE_idtype_idcode_to_name_plural(GS(id->name));
       }
       break;
+    }
+    case WM_DRAG_ASSET: {
+      const wmDragAsset *asset_drag = WM_drag_asset_data(drag, 0);
+      return asset_drag->name;
     }
     case WM_DRAG_PATH:
     case WM_DRAG_NAME:

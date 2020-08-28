@@ -205,11 +205,9 @@ typedef struct FileListInternEntry {
   char uuid[16];
 
   /** eFileSel_File_Types */
-  int typeflag;
+  uint64_t typeflag;
   /** ID type, in case typeflag has FILE_TYPE_BLENDERLIB set. */
   int blentype;
-  /** Tag for assets, in case typeflag has FILE_TYPE_BLENDERLIB set. */
-  bool is_asset;
 
   char *relpath;
   /** Optional argument for shortcuts, aliases etc. */
@@ -266,7 +264,7 @@ enum {
 
 typedef struct FileListEntryPreview {
   char path[FILE_MAX];
-  uint flags;
+  uint64_t flags;
   int index;
   ImBuf *img;
 } FileListEntryPreview;
@@ -699,7 +697,7 @@ static bool is_filtered_hidden(const char *filename,
     return true;
   }
 #endif
-  if ((filter->flags & FLF_ASSETS_ONLY) && !file->is_asset) {
+  if ((filter->flags & FLF_ASSETS_ONLY) && !(file->typeflag & FILE_TYPE_ASSET)) {
     return true;
   }
 
@@ -1014,7 +1012,7 @@ static int filelist_geticon_ex(FileDirEntry *file,
                                const bool is_main,
                                const bool ignore_libdir)
 {
-  const int typeflag = file->typeflag;
+  const eFileSel_File_Types typeflag = file->typeflag;
 
   if ((typeflag & FILE_TYPE_DIR) &&
       !(ignore_libdir && (typeflag & (FILE_TYPE_BLENDERLIB | FILE_TYPE_BLENDER)))) {
@@ -1600,7 +1598,7 @@ BlendHandle *filelist_lib(struct FileList *filelist)
 
 static const char *fileentry_uiname(const char *root,
                                     const char *relpath,
-                                    const int typeflag,
+                                    const eFileSel_File_Types typeflag,
                                     char *buff)
 {
   char *name = NULL;
@@ -2627,7 +2625,9 @@ static int filelist_readjob_list_lib(const char *root, ListBase *entries, const 
     entry = MEM_callocN(sizeof(*entry), __func__);
     entry->relpath = BLI_strdup(blockname);
     entry->typeflag |= FILE_TYPE_BLENDERLIB;
-    entry->is_asset = info && info->is_asset;
+    if (info && info->is_asset) {
+      entry->typeflag |= FILE_TYPE_ASSET;
+    }
     if (!(group && idcode)) {
       entry->typeflag |= FILE_TYPE_DIR;
       entry->blentype = groupname_to_code(blockname);

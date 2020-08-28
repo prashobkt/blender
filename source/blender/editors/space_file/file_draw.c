@@ -134,6 +134,8 @@ static void draw_tile(int sx, int sy, int width, int height, int colorid, int sh
 }
 
 static void file_draw_icon(uiBlock *block,
+                           const FileDirEntry *file,
+                           const char *rootpath,
                            const char *path,
                            int sx,
                            int sy,
@@ -157,8 +159,16 @@ static void file_draw_icon(uiBlock *block,
   UI_but_func_tooltip_set(but, file_draw_tooltip_func, BLI_strdup(path));
 
   if (drag) {
-    /* path is no more static, cannot give it directly to but... */
-    UI_but_drag_set_path(but, BLI_strdup(path), true);
+    if (file->typeflag & FILE_TYPE_ASSET) {
+      char *rootpath_cpy = BLI_strdup(rootpath);
+      BLI_path_slash_rstrip(rootpath_cpy);
+      UI_but_drag_set_asset(
+          but, file->name, rootpath_cpy, file->blentype, icon, file->image, UI_DPI_FAC);
+    }
+    else {
+      /* path is no more static, cannot give it directly to but... */
+      UI_but_drag_set_path(but, BLI_strdup(path), true);
+    }
   }
 }
 
@@ -210,6 +220,8 @@ void file_calc_previews(const bContext *C, ARegion *region)
 }
 
 static void file_draw_preview(uiBlock *block,
+                              const FileDirEntry *file,
+                              const char *rootpath,
                               const char *path,
                               int sx,
                               int sy,
@@ -218,7 +230,6 @@ static void file_draw_preview(uiBlock *block,
                               const int icon,
                               FileLayout *layout,
                               const bool is_icon,
-                              const int typeflags,
                               const bool drag,
                               const bool dimmed,
                               const bool is_link)
@@ -232,7 +243,7 @@ static void file_draw_preview(uiBlock *block,
   float scale;
   int ex, ey;
   bool show_outline = !is_icon &&
-                      (typeflags & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
+                      (file->typeflag & (FILE_TYPE_IMAGE | FILE_TYPE_MOVIE | FILE_TYPE_BLENDER));
 
   BLI_assert(imb != NULL);
 
@@ -273,14 +284,14 @@ static void file_draw_preview(uiBlock *block,
 
   float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   if (is_icon) {
-    if (typeflags & FILE_TYPE_DIR) {
+    if (file->typeflag & FILE_TYPE_DIR) {
       UI_GetThemeColor4fv(TH_ICON_FOLDER, col);
     }
     else {
       UI_GetThemeColor4fv(TH_TEXT, col);
     }
   }
-  else if (typeflags & FILE_TYPE_FTFONT) {
+  else if (file->typeflag & FILE_TYPE_FTFONT) {
     UI_GetThemeColor4fv(TH_TEXT, col);
   }
 
@@ -288,7 +299,7 @@ static void file_draw_preview(uiBlock *block,
     col[3] *= 0.3f;
   }
 
-  if (!is_icon && typeflags & FILE_TYPE_BLENDERLIB) {
+  if (!is_icon && file->typeflag & FILE_TYPE_BLENDERLIB) {
     /* Datablock preview images use premultiplied alpha. */
     GPU_blend(GPU_BLEND_ALPHA_PREMULT);
   }
@@ -324,7 +335,7 @@ static void file_draw_preview(uiBlock *block,
       icon_color[2] = 255;
     }
     icon_x = xco + (ex / 2.0f) - (icon_size / 2.0f);
-    icon_y = yco + (ey / 2.0f) - (icon_size * ((typeflags & FILE_TYPE_DIR) ? 0.78f : 0.75f));
+    icon_y = yco + (ey / 2.0f) - (icon_size * ((file->typeflag & FILE_TYPE_DIR) ? 0.78f : 0.75f));
     UI_icon_draw_ex(
         icon_x, icon_y, icon, icon_aspect / U.dpi_fac, icon_opacity, 0.0f, icon_color, false);
   }
@@ -346,13 +357,13 @@ static void file_draw_preview(uiBlock *block,
       /* Link to folder or non-previewed file. */
       uchar icon_color[4];
       UI_GetThemeColor4ubv(TH_BACK, icon_color);
-      icon_x = xco + ((typeflags & FILE_TYPE_DIR) ? 0.14f : 0.23f) * scaledx;
-      icon_y = yco + ((typeflags & FILE_TYPE_DIR) ? 0.24f : 0.14f) * scaledy;
+      icon_x = xco + ((file->typeflag & FILE_TYPE_DIR) ? 0.14f : 0.23f) * scaledx;
+      icon_y = yco + ((file->typeflag & FILE_TYPE_DIR) ? 0.24f : 0.14f) * scaledy;
       UI_icon_draw_ex(
           icon_x, icon_y, arrow, icon_aspect / U.dpi_fac * 1.8, 0.3f, 0.0f, icon_color, false);
     }
   }
-  else if (icon && !is_icon && !(typeflags & FILE_TYPE_FTFONT)) {
+  else if (icon && !is_icon && !(file->typeflag & FILE_TYPE_FTFONT)) {
     /* Smaller, fainter icon at bottom-left for preview image thumbnail, but not for fonts. */
     float icon_x, icon_y;
     const uchar dark[4] = {0, 0, 0, 255};
@@ -386,7 +397,14 @@ static void file_draw_preview(uiBlock *block,
   /* dragregion */
   if (drag) {
     /* path is no more static, cannot give it directly to but... */
-    UI_but_drag_set_image(but, BLI_strdup(path), icon, imb, scale, true);
+    if (file->typeflag & FILE_TYPE_ASSET) {
+      char *rootpath_cpy = BLI_strdup(rootpath);
+      BLI_path_slash_rstrip(rootpath_cpy);
+      UI_but_drag_set_asset(but, file->name, rootpath_cpy, file->blentype, icon, imb, scale);
+    }
+    else {
+      UI_but_drag_set_image(but, BLI_strdup(path), icon, imb, scale, true);
+    }
   }
 
   GPU_blend(GPU_BLEND_NONE);
@@ -820,6 +838,8 @@ void file_draw_list(const bContext *C, ARegion *region)
       }
 
       file_draw_preview(block,
+                        file,
+                        root,
                         path,
                         sx,
                         sy,
@@ -828,13 +848,14 @@ void file_draw_list(const bContext *C, ARegion *region)
                         icon,
                         layout,
                         is_icon,
-                        file->typeflag,
                         do_drag,
                         is_hidden,
                         is_link);
     }
     else {
       file_draw_icon(block,
+                     file,
+                     root,
                      path,
                      sx,
                      sy - layout->tile_border_y,
