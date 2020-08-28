@@ -20,6 +20,10 @@
  * \ingroup draw_engine
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Forward declarations */
 struct rcti;
 struct GPUBatch;
@@ -57,6 +61,9 @@ typedef struct IMAGE_Data {
 
 /* image_shader.c */
 GPUShader *IMAGE_shader_image_get(void);
-GPUShader *IMAGE_shader_image_unavailable_get(void);
 void IMAGE_shader_library_ensure(void);
 void IMAGE_shader_free(void);
+
+#ifdef __cplusplus
+}
+#endif
