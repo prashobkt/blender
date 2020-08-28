@@ -36,7 +36,7 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-static int asset_create_exec(bContext *C, wmOperator *op)
+static int asset_make_exec(bContext *C, wmOperator *op)
 {
   PointerRNA idptr = RNA_pointer_get(op->ptr, "id");
   ID *id = idptr.data;
@@ -50,43 +50,30 @@ static int asset_create_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  struct Main *bmain = CTX_data_main(C);
-  ID *copied_id = NULL;
+  /* TODO this should probably be somewhere in BKE and/or ED. */
 
-  /* TODO this should probably be somewhere in BKE. */
-  /* TODO this is not a deep copy... */
-  if (!BKE_id_copy(bmain, id, &copied_id)) {
-    BKE_reportf(op->reports,
-                RPT_ERROR,
-                "Data-block '%s' could not be copied into an asset data-block",
-                id->name);
-    return OPERATOR_CANCELLED;
-  }
-  id_fake_user_set(copied_id);
+  id_fake_user_set(id);
 
-  copied_id->asset_data = BKE_asset_data_create();
+  id->asset_data = BKE_asset_data_create();
 
-  UI_id_icon_render(C, NULL, copied_id, true, false);
+  UI_id_icon_render(C, NULL, id, true, false);
   /* Store reference to the ID's preview. */
-  copied_id->asset_data->preview = BKE_previewimg_id_get(copied_id);
+  id->asset_data->preview = BKE_previewimg_id_get(id);
 
-  /* TODO generate more default meta-data */
-  /* TODO create asset in the asset DB, not in the local file. */
-
-  BKE_reportf(op->reports, RPT_INFO, "Asset '%s' created", copied_id->name + 2);
+  BKE_reportf(op->reports, RPT_INFO, "Data-block '%s' is now an asset", id->name + 2);
 
   WM_event_add_notifier(C, NC_ID | NA_EDITED, NULL);
 
   return OPERATOR_FINISHED;
 }
 
-static void ASSET_OT_create(wmOperatorType *ot)
+static void ASSET_OT_make(wmOperatorType *ot)
 {
-  ot->name = "Create Asset";
+  ot->name = "Make Asset";
   ot->description = "Enable asset management for a data-block";
-  ot->idname = "ASSET_OT_create";
+  ot->idname = "ASSET_OT_make";
 
-  ot->exec = asset_create_exec;
+  ot->exec = asset_make_exec;
 
   RNA_def_pointer_runtime(
       ot->srna, "id", &RNA_ID, "Data-block", "Data-block to enable asset management for");
@@ -96,5 +83,5 @@ static void ASSET_OT_create(wmOperatorType *ot)
 
 void ED_operatortypes_asset(void)
 {
-  WM_operatortype_append(ASSET_OT_create);
+  WM_operatortype_append(ASSET_OT_make);
 }
