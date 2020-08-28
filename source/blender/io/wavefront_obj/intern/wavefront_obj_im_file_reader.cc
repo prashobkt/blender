@@ -264,9 +264,10 @@ OBJParser::OBJParser(const OBJImportParams &import_params) : import_params_(impo
 {
   obj_file_.open(import_params_.filepath);
   if (!obj_file_.good()) {
-    fprintf(stderr, "Cannot read from OBJ file:%s.\n", import_params_.filepath);
+    fprintf(stderr, "Cannot read from OBJ file:'%s'.\n", import_params_.filepath);
     return;
   }
+  fprintf(stderr, "Reading OBJ file from '%s'\n", import_params.filepath);
 }
 
 /**
@@ -531,8 +532,9 @@ MTLParser::MTLParser(StringRef mtl_library, StringRefNull obj_filepath)
   BLI_split_dir_part(mtl_file_path_, mtl_dir_path_, FILE_MAXDIR);
   mtl_file_.open(mtl_file_path_);
   if (!mtl_file_.good()) {
-    fprintf(stderr, "Cannot read from MTL file:%s\n", mtl_file_path_);
+    fprintf(stderr, "Cannot read from MTL file:'%s'\n", mtl_file_path_);
   }
+  fprintf(stderr, "Reading MTL file from:'%s'\n", mtl_file_path_);
 }
 
 /**

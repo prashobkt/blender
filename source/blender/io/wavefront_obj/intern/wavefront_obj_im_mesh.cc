@@ -114,7 +114,7 @@ std::pair<int64_t, int64_t> MeshFromGeometry::tessellate_polygons(
   int64_t removed_faces = 0;
   int64_t removed_loops = 0;
   for (const FaceElement &curr_face : mesh_geometry_.face_elements()) {
-    if (curr_face.shaded_smooth && true) {  // should be valid/invalid
+    if (curr_face.shaded_smooth || true) {  // should be valid/invalid
       return {removed_faces, removed_loops};
     }
     Vector<int> face_vert_indices;

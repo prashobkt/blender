@@ -203,7 +203,7 @@ void exporter_main(bContext *C, const OBJExportParams &export_params)
     }
 
     CFRA = frame;
-    BKE_scene_graph_update_for_newframe(depsgraph, bmain);
+    BKE_scene_graph_update_for_newframe(depsgraph);
     fprintf(stderr, "Writing to %s\n", filepath_with_frames);
     export_frame(view_layer, depsgraph, export_params, filepath_with_frames);
   }
