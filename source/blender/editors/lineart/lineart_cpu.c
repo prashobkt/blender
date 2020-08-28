@@ -405,21 +405,6 @@ static void lineart_occlusion_single_line(LineartRenderBuffer *rb,
   }
 }
 
-static bool lineart_calculation_is_canceled(void)
-{
-  bool is_canceled;
-  BLI_spin_lock(&lineart_share.lock_render_status);
-  switch (lineart_share.flag_render_status) {
-    case LRT_RENDER_INCOMPELTE:
-      is_canceled = true;
-      break;
-    default:
-      is_canceled = false;
-  }
-  BLI_spin_unlock(&lineart_share.lock_render_status);
-  return is_canceled;
-}
-
 static void lineart_occlusion_worker(TaskPool *__restrict UNUSED(pool), LineartRenderTaskInfo *rti)
 {
   LineartRenderBuffer *rb = lineart_share.render_buffer_shared;
@@ -433,40 +418,44 @@ static void lineart_occlusion_worker(TaskPool *__restrict UNUSED(pool), LineartR
     }
 
     /* Monitoring cancelation flag every once a while. */
-    if (lineart_calculation_is_canceled())
+    if (ED_lineart_calculation_flag_check(LRT_RENDER_CANCELING)) {
       return;
+    }
 
     for (lip = (void *)rti->crease; lip && lip->prev != rti->crease_pointers.last;
          lip = lip->next) {
       lineart_occlusion_single_line(rb, lip->data, rti->thread_id);
     }
 
-    if (lineart_calculation_is_canceled())
+    if (ED_lineart_calculation_flag_check(LRT_RENDER_CANCELING)) {
       return;
+    }
 
     for (lip = (void *)rti->intersection; lip && lip->prev != rti->intersection_pointers.last;
          lip = lip->next) {
       lineart_occlusion_single_line(rb, lip->data, rti->thread_id);
     }
 
-    if (lineart_calculation_is_canceled())
+    if (ED_lineart_calculation_flag_check(LRT_RENDER_CANCELING)) {
       return;
+    }
 
     for (lip = (void *)rti->material; lip && lip->prev != rti->material_pointers.last;
          lip = lip->next) {
       lineart_occlusion_single_line(rb, lip->data, rti->thread_id);
     }
-
-    if (lineart_calculation_is_canceled())
+    if (ED_lineart_calculation_flag_check(LRT_RENDER_CANCELING)) {
       return;
+    }
 
     for (lip = (void *)rti->edge_mark; lip && lip->prev != rti->edge_mark_pointers.last;
          lip = lip->next) {
       lineart_occlusion_single_line(rb, lip->data, rti->thread_id);
     }
 
-    if (lineart_calculation_is_canceled())
+    if (ED_lineart_calculation_flag_check(LRT_RENDER_CANCELING)) {
       return;
+    }
   }
 }
 
@@ -1525,6 +1514,10 @@ static void lineart_geometry_object_load(Object *ob,
       CanFindFreestyle = 1;
     }
 
+    if (ED_lineart_calculation_flag_check(LRT_RENDER_CANCELING)) {
+      return;
+    }
+
     orv = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderVert) * bm->totvert);
     ort = lineart_mem_aquire(&rb->render_data_pool, bm->totface * rb->triangle_size);
     orl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine) * bm->totedge);
@@ -2542,7 +2535,7 @@ LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *scene)
 {
   /* Re-init render_buffer_shared */
   if (lineart_share.render_buffer_shared) {
-    ED_lineart_destroy_render_data();
+    ED_lineart_destroy_render_data_external();
   }
 
   LineartRenderBuffer *rb = MEM_callocN(sizeof(LineartRenderBuffer), "Line Art render buffer");
@@ -2591,6 +2584,13 @@ LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *scene)
 
   lineart_share.allow_overlapping_edges = (scene->lineart.flags & LRT_ALLOW_OVERLAPPING_EDGES) !=
                                           0;
+
+  BLI_spin_lock(&lineart_share.lock_render_status);
+  lineart_share.background_render_task = lineart_share.pending_render_task;
+  lineart_share.pending_render_task = NULL;
+  BLI_spin_unlock(&lineart_share.lock_render_status);
+
+  ED_lineart_calculation_flag_set(LRT_RENDER_IDLE);
   return rb;
 }
 
@@ -3280,6 +3280,7 @@ static void lineart_add_triangles(LineartRenderBuffer *rb)
   int i, lim;
   int x1, x2, y1, y2;
   int r, co;
+  int temp_count = 0;
 
   LISTBASE_FOREACH (LineartRenderElementLinkNode *, reln, &rb->triangle_buffer_pointers) {
     rt = reln->pointer;
@@ -3296,8 +3297,12 @@ static void lineart_add_triangles(LineartRenderBuffer *rb)
                 rb, &rb->initial_bounding_areas[r * 4 + co], rt, 0, 1, 0);
           }
         }
+        temp_count++;
       } /* else throw away. */
       rt = (void *)(((unsigned char *)rt) + rb->triangle_size);
+      if ((!(temp_count % 1000)) && ED_lineart_calculation_flag_check(LRT_RENDER_CANCELING)) {
+        return;
+      }
     }
   }
 }
@@ -3760,27 +3765,18 @@ void ED_lineart_compute_feature_lines_background(Depsgraph *dg, const int show_f
 {
   TaskPool *tp_read;
   BLI_spin_lock(&lineart_share.lock_render_status);
-  tp_read = lineart_share.background_render_task;
+  tp_read = lineart_share.pending_render_task;
   BLI_spin_unlock(&lineart_share.lock_render_status);
 
   /* If the calculation is already started then bypass it. */
   if (ED_lineart_calculation_flag_check(LRT_RENDER_RUNNING)) {
     /* Set CANCEL flag, and when operation is canceled, flag will become FINISHED. */
     ED_lineart_calculation_flag_set(LRT_RENDER_CANCELING);
-
-    while (!ED_lineart_calculation_flag_check(LRT_RENDER_FINISHED)) {
-      /* Wait for canceling */
-    }
-
-    /* If canceling is not used, then early return. */
-    /* BLI_spin_unlock(&lineart_share.lock_loader); */
-    /* return; */
   }
 
   if (tp_read) {
-    BLI_task_pool_work_and_wait(lineart_share.background_render_task);
-    BLI_task_pool_free(lineart_share.background_render_task);
-    lineart_share.background_render_task = NULL;
+    BLI_spin_unlock(&lineart_share.lock_loader);
+    return;
   }
 
   LRT_FeatureLineWorker *flw = MEM_callocN(sizeof(LRT_FeatureLineWorker), "Line Art Worker");
@@ -3791,7 +3787,7 @@ void ED_lineart_compute_feature_lines_background(Depsgraph *dg, const int show_f
 
   TaskPool *tp = BLI_task_pool_create_background(0, TASK_PRIORITY_HIGH);
   BLI_spin_lock(&lineart_share.lock_render_status);
-  lineart_share.background_render_task = tp;
+  lineart_share.pending_render_task = tp;
   BLI_spin_unlock(&lineart_share.lock_render_status);
 
   BLI_task_pool_push(tp, (TaskRunFunction)lineart_compute_feature_lines_worker, flw, true, NULL);

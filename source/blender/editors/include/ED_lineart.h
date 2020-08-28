@@ -299,6 +299,7 @@ typedef struct LineartSharedResource {
   struct BLI_mempool *mp_batch_list;
 
   struct TaskPool *background_render_task;
+  struct TaskPool *pending_render_task;
 
   eLineartInitStatus init_complete;
 
