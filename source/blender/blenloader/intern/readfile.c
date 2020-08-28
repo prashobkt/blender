@@ -2430,7 +2430,7 @@ static int direct_link_id_restore_recalc(const FileData *fd,
 static void direct_link_id_common(
     BlendDataReader *reader, Library *current_library, ID *id, ID *id_old, const int tag)
 {
-  if (reader->fd->memfile == NULL) {
+  if (!BLO_read_data_is_undo(reader)) {
     /* When actually reading a file , we do want to reset/re-generate session uuids.
      * In undo case, we want to re-use existing ones. */
     id->session_uuid = MAIN_ID_SESSION_UUID_UNSET;
@@ -2471,7 +2471,7 @@ static void direct_link_id_common(
    *
    * But for regular file load we clear the flag, since the flags might have been changed since
    * the version the file has been saved with. */
-  if (reader->fd->memfile == NULL) {
+  if (!BLO_read_data_is_undo(reader)) {
     id->recalc = 0;
     id->recalc_after_undo_push = 0;
   }
@@ -2948,7 +2948,7 @@ static void lib_link_ntree(BlendLibReader *reader, Library *lib, bNodeTree *ntre
 
   /* For nodes with static socket layout, add/remove sockets as needed
    * to match the static layout. */
-  if (reader->fd->memfile == NULL) {
+  if (!BLO_read_lib_is_undo(reader)) {
     LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
       node_verify_socket_templates(ntree, node);
     }
@@ -3228,7 +3228,7 @@ static void lib_link_pose(BlendLibReader *reader, Object *ob, bPose *pose)
   /* always rebuild to match proxy or lib changes, but on Undo */
   bool rebuild = false;
 
-  if (reader->fd->memfile == NULL) {
+  if (!BLO_read_lib_is_undo(reader)) {
     if (ob->proxy || ob->id.lib != arm->id.lib) {
       rebuild = true;
     }
@@ -3587,7 +3587,7 @@ static void direct_link_image(BlendDataReader *reader, Image *ima)
   BLO_read_list(reader, &ima->tiles);
 
   BLO_read_list(reader, &(ima->renderslots));
-  if (reader->fd->memfile == NULL) {
+  if (!BLO_read_data_is_undo(reader)) {
     /* We reset this last render slot index only when actually reading a file, not for undo. */
     ima->last_render_slot = ima->render_slot;
   }
@@ -4108,32 +4108,6 @@ static void direct_link_particlesystems(BlendDataReader *reader, ListBase *parti
 /* -------------------------------------------------------------------- */
 /** \name Read ID: Mesh
  * \{ */
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Read ID: Lattice
- * \{ */
-
-static void lib_link_latt(BlendLibReader *reader, Lattice *lt)
-{
-  BLO_read_id_address(reader, lt->id.lib, &lt->ipo);  // XXX deprecated - old animation system
-  BLO_read_id_address(reader, lt->id.lib, &lt->key);
-}
-
-static void direct_link_latt(BlendDataReader *reader, Lattice *lt)
-{
-  BLO_read_data_address(reader, &lt->def);
-
-  BLO_read_data_address(reader, &lt->dvert);
-  BKE_defvert_blend_read(reader, lt->pntsu * lt->pntsv * lt->pntsw, lt->dvert);
-
-  lt->editlatt = NULL;
-  lt->batch_cache = NULL;
-
-  BLO_read_data_address(reader, &lt->adt);
-  BKE_animdata_blend_read_data(reader, lt->adt);
-}
 
 /** \} */
 
@@ -4829,9 +4803,10 @@ static void direct_link_object(BlendDataReader *reader, Object *ob)
    * Also when linking in a file don't allow edit and pose modes.
    * See [#34776, #42780] for more information.
    */
-  if (reader->fd->memfile || (ob->id.tag & (LIB_TAG_EXTERN | LIB_TAG_INDIRECT))) {
+  const bool is_undo = BLO_read_data_is_undo(reader);
+  if (is_undo || (ob->id.tag & (LIB_TAG_EXTERN | LIB_TAG_INDIRECT))) {
     ob->mode &= ~(OB_MODE_EDIT | OB_MODE_PARTICLE_EDIT);
-    if (!reader->fd->memfile) {
+    if (!is_undo) {
       ob->mode &= ~OB_MODE_POSE;
     }
   }
@@ -5008,7 +4983,7 @@ static void direct_link_object(BlendDataReader *reader, Object *ob)
   if (ob->sculpt) {
     ob->sculpt = NULL;
     /* Only create data on undo, otherwise rely on editor mode switching. */
-    if (reader->fd->memfile && (ob->mode & OB_MODE_ALL_SCULPT)) {
+    if (BLO_read_data_is_undo(reader) && (ob->mode & OB_MODE_ALL_SCULPT)) {
       BKE_object_sculpt_data_create(ob);
     }
   }
@@ -5885,7 +5860,7 @@ static void direct_link_scene(BlendDataReader *reader, Scene *sce)
     direct_link_view_layer(reader, view_layer);
   }
 
-  if (reader->fd->memfile) {
+  if (BLO_read_data_is_undo(reader)) {
     /* If it's undo do nothing here, caches are handled by higher-level generic calling code. */
   }
   else {
@@ -7332,7 +7307,7 @@ static void direct_link_sound(BlendDataReader *reader, bSound *sound)
     sound->cache = NULL;
   }
 
-  if (reader->fd->memfile != NULL) {
+  if (BLO_read_data_is_undo(reader)) {
     sound->tags |= SOUND_TAGS_WAVEFORM_NO_RELOAD;
   }
 
@@ -8079,9 +8054,6 @@ static bool direct_link_id(FileData *fd, Main *main, const int tag, ID *id, ID *
     case ID_KE:
       direct_link_key(&reader, (Key *)id);
       break;
-    case ID_LT:
-      direct_link_latt(&reader, (Lattice *)id);
-      break;
     case ID_WO:
       direct_link_world(&reader, (World *)id);
       break;
@@ -8155,6 +8127,7 @@ static bool direct_link_id(FileData *fd, Main *main, const int tag, ID *id, ID *
       direct_link_simulation(&reader, (Simulation *)id);
       break;
     case ID_ME:
+    case ID_LT:
       /* Do nothing. Handled by IDTypeInfo callback. */
       break;
   }
@@ -8820,9 +8793,6 @@ static void lib_link_all(FileData *fd, Main *bmain)
       case ID_LA:
         lib_link_light(&reader, (Light *)id);
         break;
-      case ID_LT:
-        lib_link_latt(&reader, (Lattice *)id);
-        break;
       case ID_MB:
         lib_link_mball(&reader, (MetaBall *)id);
         break;
@@ -8883,6 +8853,7 @@ static void lib_link_all(FileData *fd, Main *bmain)
         lib_link_library(&reader, (Library *)id); /* Only init users. */
         break;
       case ID_ME:
+      case ID_LT:
         /* Do nothing. Handled by IDTypeInfo callback. */
         break;
     }
@@ -9699,12 +9670,6 @@ static void expand_light(BlendExpander *expander, Light *la)
   BLO_expand(expander, la->ipo);  // XXX deprecated - old animation system
 }
 
-static void expand_lattice(BlendExpander *expander, Lattice *lt)
-{
-  BLO_expand(expander, lt->ipo);  // XXX deprecated - old animation system
-  BLO_expand(expander, lt->key);
-}
-
 static void expand_world(BlendExpander *expander, World *wrld)
 {
   BLO_expand(expander, wrld->ipo);  // XXX deprecated - old animation system
@@ -10184,9 +10149,6 @@ void BLO_expand_main(void *fdhandle, Main *mainvar)
               break;
             case ID_WO:
               expand_world(&expander, (World *)id);
-              break;
-            case ID_LT:
-              expand_lattice(&expander, (Lattice *)id);
               break;
             case ID_LA:
               expand_light(&expander, (Light *)id);
@@ -11280,6 +11242,16 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p)
   }
 
   *ptr_p = final_array;
+}
+
+bool BLO_read_data_is_undo(BlendDataReader *reader)
+{
+  return reader->fd->memfile != NULL;
+}
+
+bool BLO_read_lib_is_undo(BlendLibReader *reader)
+{
+  return reader->fd->memfile != NULL;
 }
 
 void BLO_expand_id(BlendExpander *expander, ID *id)
