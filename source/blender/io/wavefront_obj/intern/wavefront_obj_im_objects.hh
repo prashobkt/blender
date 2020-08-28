@@ -84,6 +84,8 @@ struct FaceElement {
   std::string vertex_group{};
   bool shaded_smooth = false;
   Vector<FaceCorner> face_corners;
+  /* Not read from the OBJ file. Set to true for potentially invalid polygons. */
+  bool invalid = false;
 };
 
 /**

@@ -70,7 +70,7 @@ class MeshFromGeometry : NonMovable, NonCopyable {
   }
 
   ~MeshFromGeometry();
-  void create_mesh(Main *bmain, const Map<std::string, MTLMaterial> &materials);
+  void create_mesh(Main *bmain, const Map<std::string, std::unique_ptr<MTLMaterial>> &materials);
   unique_object_ptr mover()
   {
     return std::move(mesh_object_);
@@ -83,7 +83,8 @@ class MeshFromGeometry : NonMovable, NonCopyable {
   void create_polys_loops(Span<FaceElement> all_faces);
   void create_edges();
   void create_uv_verts();
-  void create_materials(Main *bmain, const Map<std::string, MTLMaterial> &materials);
+  void create_materials(Main *bmain,
+                        const Map<std::string, std::unique_ptr<MTLMaterial>> &materials);
   void add_custom_normals();
   void dissolve_edges(const Set<std::pair<int, int>> &fgon_edges);
 };

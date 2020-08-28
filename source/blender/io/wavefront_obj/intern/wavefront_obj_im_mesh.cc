@@ -57,7 +57,8 @@ MeshFromGeometry::~MeshFromGeometry()
   }
 }
 
-void MeshFromGeometry::create_mesh(Main *bmain, const Map<std::string, MTLMaterial> &materials)
+void MeshFromGeometry::create_mesh(Main *bmain,
+                                   const Map<std::string, std::unique_ptr<MTLMaterial>> &materials)
 {
   std::string ob_name{mesh_geometry_.get_geometry_name()};
   if (ob_name.empty()) {
@@ -113,52 +114,53 @@ std::pair<int64_t, int64_t> MeshFromGeometry::tessellate_polygons(
   int64_t removed_faces = 0;
   int64_t removed_loops = 0;
   for (const FaceElement &curr_face : mesh_geometry_.face_elements()) {
-    if (curr_face.shaded_smooth || true) {  // should be valid/invalid
-      Vector<int> face_vert_indices;
-      Vector<int> face_uv_indices;
-      Vector<int> face_normal_indices;
-      face_vert_indices.reserve(curr_face.face_corners.size());
-      face_uv_indices.reserve(curr_face.face_corners.size());
-      face_normal_indices.reserve(curr_face.face_corners.size());
-      for (const FaceCorner &corner : curr_face.face_corners) {
-        face_vert_indices.append(corner.vert_index);
-        face_normal_indices.append(corner.vertex_normal_index);
-        face_uv_indices.append(corner.uv_vert_index);
-        removed_loops++;
-      }
+    if (curr_face.shaded_smooth && true) {  // should be valid/invalid
+      return {removed_faces, removed_loops};
+    }
+    Vector<int> face_vert_indices;
+    Vector<int> face_uv_indices;
+    Vector<int> face_normal_indices;
+    face_vert_indices.reserve(curr_face.face_corners.size());
+    face_uv_indices.reserve(curr_face.face_corners.size());
+    face_normal_indices.reserve(curr_face.face_corners.size());
+    for (const FaceCorner &corner : curr_face.face_corners) {
+      face_vert_indices.append(corner.vert_index);
+      face_normal_indices.append(corner.vertex_normal_index);
+      face_uv_indices.append(corner.uv_vert_index);
+      removed_loops++;
+    }
 
-      Vector<Vector<int>> new_polygon_indices = ngon_tessellate(global_vertices_.vertices,
-                                                                face_vert_indices);
+    Vector<Vector<int>> new_polygon_indices = ngon_tessellate(global_vertices_.vertices,
+                                                              face_vert_indices);
+    for (Span<int> triangle : new_polygon_indices) {
+      r_new_faces.append({curr_face.vertex_group,
+                          curr_face.shaded_smooth,
+                          {{face_vert_indices[triangle[0]],
+                            face_uv_indices[triangle[0]],
+                            face_normal_indices[triangle[0]]},
+                           {face_vert_indices[triangle[1]],
+                            face_uv_indices[triangle[1]],
+                            face_normal_indices[triangle[1]]},
+                           {face_vert_indices[triangle[2]],
+                            face_uv_indices[triangle[2]],
+                            face_normal_indices[triangle[2]]}}});
+    }
+    if (new_polygon_indices.size() > 1) {
+      Set<std::pair<int, int>> edge_users;
       for (Span<int> triangle : new_polygon_indices) {
-        r_new_faces.append({curr_face.vertex_group,
-                            curr_face.shaded_smooth,
-                            {{face_vert_indices[triangle[0]],
-                              face_uv_indices[triangle[0]],
-                              face_normal_indices[triangle[0]]},
-                             {face_vert_indices[triangle[1]],
-                              face_uv_indices[triangle[1]],
-                              face_normal_indices[triangle[1]]},
-                             {face_vert_indices[triangle[2]],
-                              face_uv_indices[triangle[2]],
-                              face_normal_indices[triangle[2]]}}});
-      }
-      if (new_polygon_indices.size() > 1) {
-        Set<std::pair<int, int>> edge_users;
-        for (Span<int> triangle : new_polygon_indices) {
-          int prev_vidx = face_vert_indices[triangle.last()];
-          for (const int ngidx : triangle) {
-            int vidx = face_vert_indices[ngidx];
-            if (vidx == prev_vidx) {
-              continue;
-            }
-            std::pair<int, int> edge_key = {min_ii(prev_vidx, vidx), max_ii(prev_vidx, vidx)};
-            prev_vidx = vidx;
-            if (edge_users.contains(edge_key)) {
-              fgon_edges.add(edge_key);
-            }
-            else {
-              edge_users.add(edge_key);
-            }
+        int prev_vidx = face_vert_indices[triangle.last()];
+        for (const int ngidx : triangle) {
+          int vidx = face_vert_indices[ngidx];
+          if (vidx == prev_vidx) {
+            continue;
+          }
+          std::pair<int, int> edge_key = {min_ii(prev_vidx, vidx), max_ii(prev_vidx, vidx)};
+          prev_vidx = vidx;
+          if (edge_users.contains(edge_key)) {
+            fgon_edges.add(edge_key);
+          }
+          else {
+            edge_users.add(edge_key);
           }
         }
       }
@@ -166,7 +168,7 @@ std::pair<int64_t, int64_t> MeshFromGeometry::tessellate_polygons(
     removed_faces++;
   }
 
-  return std::make_pair(removed_faces, removed_loops);
+  return {removed_faces, removed_loops};
 }
 
 void MeshFromGeometry::dissolve_edges(const Set<std::pair<int, int>> &fgon_edges)
@@ -353,8 +355,8 @@ void MeshFromGeometry::create_uv_verts()
 /**
  * Add materials and the nodetree to the Mesh Object.
  */
-void MeshFromGeometry::create_materials(Main *bmain,
-                                        const Map<std::string, MTLMaterial> &materials)
+void MeshFromGeometry::create_materials(
+    Main *bmain, const Map<std::string, std::unique_ptr<MTLMaterial>> &materials)
 {
   for (StringRef material_name : mesh_geometry_.material_names()) {
     if (!materials.contains_as(material_name)) {
@@ -362,7 +364,7 @@ void MeshFromGeometry::create_materials(Main *bmain,
                 << std::endl;
       continue;
     }
-    const MTLMaterial &curr_mat = materials.lookup_as(material_name);
+    const MTLMaterial &curr_mat = *materials.lookup_as(material_name).get();
     BKE_object_material_slot_add(bmain, mesh_object_.get());
     Material *mat = BKE_material_add(bmain, material_name.data());
     BKE_object_material_assign(

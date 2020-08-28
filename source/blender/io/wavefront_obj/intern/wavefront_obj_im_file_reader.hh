@@ -96,6 +96,6 @@ class MTLParser {
  public:
   MTLParser(StringRef mtl_library_, StringRefNull obj_filepath);
 
-  void parse_and_store(Map<std::string, MTLMaterial> &r_mtl_materials);
+  void parse_and_store(Map<std::string, std::unique_ptr<MTLMaterial>> &r_mtl_materials);
 };
 }  // namespace blender::io::obj

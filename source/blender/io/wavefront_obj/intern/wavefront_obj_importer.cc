@@ -86,11 +86,12 @@ void OBJParser::print_obj_data(Span<std::unique_ptr<Geometry>> all_geometries,
 /**
  * Make Blender Mesh, Curve etc from Geometry and add them to the import collection.
  */
-static void geometry_to_blender_objects(Main *bmain,
-                                        Scene *scene,
-                                        Vector<std::unique_ptr<Geometry>> &all_geometries,
-                                        const GlobalVertices &global_vertices,
-                                        const Map<std::string, MTLMaterial> &materials)
+static void geometry_to_blender_objects(
+    Main *bmain,
+    Scene *scene,
+    Vector<std::unique_ptr<Geometry>> &all_geometries,
+    const GlobalVertices &global_vertices,
+    const Map<std::string, std::unique_ptr<MTLMaterial>> &materials)
 {
   OBJImportCollection import_collection{bmain, scene};
   for (const std::unique_ptr<Geometry> &geometry : all_geometries) {
@@ -116,7 +117,7 @@ void importer_main(bContext *C, const OBJImportParams &import_params)
   /* Container for vertex and UV vertex coordinates. */
   GlobalVertices global_vertices;
   /* List of MTLMaterial instances to be parsed from MTL file. */
-  Map<std::string, MTLMaterial> materials;
+  Map<std::string, std::unique_ptr<MTLMaterial>> materials;
 
   OBJParser obj_parser{import_params};
   obj_parser.parse_and_store(all_geometries, global_vertices);

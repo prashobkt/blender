@@ -37,6 +37,7 @@ using std::string;
 
 /**
  * Store multiple lines separated by an escaped newline character: `\\n`.
+ * Use this before doing any parse operations on the read string.
  */
 static void read_next_line(std::ifstream &file, string &r_line)
 {
@@ -282,8 +283,7 @@ void OBJParser::parse_and_store(Vector<std::unique_ptr<Geometry>> &r_all_geometr
   string line;
   /* Store vertex coordinates that belong to other Geometry instances.  */
   VertexIndexOffset offset;
-  /* Non owning raw pointer to a Geometry.
-   * Needed to update object data in the same while loop. */
+  /* Non owning raw pointer to a Geometry. To be updated while creating a new Geometry. */
   Geometry *current_geometry = create_geometry(
       nullptr, GEOM_MESH, "", r_global_vertices, r_all_geometries, offset);
 
@@ -502,7 +502,7 @@ static StringRef skip_unsupported_options(StringRef line)
   /* Remove upto start of the last option + size of the last option + space after it. */
   line = line.drop_prefix(last_option_pos + last_option.size() + 1);
   for (int i = 0; i < map_options.number_of_args(last_option); i++) {
-    int64_t pos_space{line.find_first_of(' ')};
+    const int64_t pos_space{line.find_first_of(' ')};
     if (pos_space != StringRef::not_found) {
       BLI_assert(pos_space + 1 < line.size());
       line = line.drop_prefix(pos_space + 1);
@@ -538,7 +538,7 @@ MTLParser::MTLParser(StringRef mtl_library, StringRefNull obj_filepath)
 /**
  * Read MTL file(s) and add MTLMaterial instances to the given Map reference.
  */
-void MTLParser::parse_and_store(Map<string, MTLMaterial> &r_mtl_materials)
+void MTLParser::parse_and_store(Map<string, std::unique_ptr<MTLMaterial>> &r_mtl_materials)
 {
   if (!mtl_file_.good()) {
     return;
@@ -556,9 +556,11 @@ void MTLParser::parse_and_store(Map<string, MTLMaterial> &r_mtl_materials)
 
     if (line_key == "newmtl") {
       if (r_mtl_materials.remove_as(rest_line)) {
-        std::cerr << "Duplicate material found:'" << rest_line << "'." << std::endl;
+        std::cerr << "Duplicate material found:'" << rest_line
+                  << "', using the last encountered Material definition." << std::endl;
       }
-      current_mtlmaterial = &r_mtl_materials.lookup_or_add_default_as(string(rest_line));
+      current_mtlmaterial =
+          r_mtl_materials.lookup_or_add(string(rest_line), std::make_unique<MTLMaterial>()).get();
     }
     else if (line_key == "Ns") {
       copy_string_to_float(rest_line, 324.0f, current_mtlmaterial->Ns);
