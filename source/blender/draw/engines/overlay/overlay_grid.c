@@ -49,6 +49,7 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   OVERLAY_ShadingData *shd = &pd->shdata;
+  const DRWContextState *draw_ctx = DRW_context_state_get();
 
   shd->grid_flag = 0;
   shd->zneg_flag = 0;
@@ -56,23 +57,16 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata)
   shd->grid_line_size = max_ff(0.0f, U.pixelsize - 1.0f) * 0.5f;
 
   if (pd->is_image_editor) {
+    SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
     shd->grid_flag = PLANE_IMAGE | SHOW_GRID;
-    shd->grid_distance = 10.0f;
+    shd->grid_distance = sima->zoom;
     shd->grid_mesh_size = 1.0f;
-    const float multiplier = 0.01f;
-    shd->grid_steps[0] = 1 * multiplier;
-    shd->grid_steps[1] = 10 * multiplier;
-    shd->grid_steps[2] = 100 * multiplier;
-    shd->grid_steps[3] = 1000 * multiplier;
-    shd->grid_steps[4] = 10000 * multiplier;
-    shd->grid_steps[5] = 100000 * multiplier;
-    shd->grid_steps[6] = 1000000 * multiplier;
-    shd->grid_steps[7] = 10000000 * multiplier;
-    shd->grid_steps[8] = 100000000 * multiplier;
+    for (int step = 0; step <= 8; step++) {
+      shd->grid_steps[step] = powf(4, step) * 0.1;
+    }
     return;
   }
 
-  const DRWContextState *draw_ctx = DRW_context_state_get();
   View3D *v3d = draw_ctx->v3d;
   Scene *scene = draw_ctx->scene;
   RegionView3D *rv3d = draw_ctx->rv3d;

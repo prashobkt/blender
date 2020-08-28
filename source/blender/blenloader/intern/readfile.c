@@ -120,6 +120,7 @@
 #include "BKE_constraint.h"
 #include "BKE_curve.h"
 #include "BKE_curveprofile.h"
+#include "BKE_deform.h"
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
@@ -2298,11 +2299,11 @@ static void lib_link_id(BlendLibReader *reader, ID *id)
 {
   /* Note: WM IDProperties are never written to file, hence they should always be NULL here. */
   BLI_assert((GS(id->name) != ID_WM) || id->properties == NULL);
-  IDP_BlendLibRead(reader, id->properties);
+  IDP_BlendReadLib(reader, id->properties);
 
   AnimData *adt = BKE_animdata_from_id(id);
   if (adt != NULL) {
-    BKE_animdata_blend_lib_read(reader, id, adt);
+    BKE_animdata_blend_read_lib(reader, id, adt);
   }
 
   if (id->override_library) {
@@ -2721,7 +2722,7 @@ static void lib_link_action(BlendLibReader *reader, bAction *act)
   }
   // >>> XXX deprecated - old animation system
 
-  BKE_fcurve_blend_lib_read(reader, &act->id, &act->curves);
+  BKE_fcurve_blend_read_lib(reader, &act->id, &act->curves);
 
   LISTBASE_FOREACH (TimeMarker *, marker, &act->markers) {
     if (marker->camera) {
@@ -2745,7 +2746,7 @@ static void direct_link_action(BlendDataReader *reader, bAction *act)
   }
   // >>> XXX deprecated - old animation system
 
-  BKE_fcurve_blend_data_read(reader, &act->curves);
+  BKE_fcurve_blend_read_data(reader, &act->curves);
 
   LISTBASE_FOREACH (bActionGroup *, agrp, &act->groups) {
     BLO_read_data_address(reader, &agrp->channels.first);
@@ -2799,7 +2800,7 @@ static void direct_link_cachefile(BlendDataReader *reader, CacheFile *cache_file
 
   /* relink animdata */
   BLO_read_data_address(reader, &cache_file->adt);
-  BKE_animdata_blend_data_read(reader, cache_file->adt);
+  BKE_animdata_blend_read_data(reader, cache_file->adt);
 }
 
 /** \} */
@@ -2881,7 +2882,7 @@ static void lib_link_workspace_instance_hook(BlendLibReader *reader,
 
 static void lib_link_node_socket(BlendLibReader *reader, Library *lib, bNodeSocket *sock)
 {
-  IDP_BlendLibRead(reader, sock->prop);
+  IDP_BlendReadLib(reader, sock->prop);
 
   switch ((eNodeSocketDatatype)sock->type) {
     case SOCK_OBJECT: {
@@ -2928,7 +2929,7 @@ static void lib_link_ntree(BlendLibReader *reader, Library *lib, bNodeTree *ntre
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     /* Link ID Properties -- and copy this comment EXACTLY for easy finding
      * of library blocks that implement this.*/
-    IDP_BlendLibRead(reader, node->prop);
+    IDP_BlendReadLib(reader, node->prop);
 
     BLO_read_id_address(reader, lib, &node->id);
 
@@ -2986,7 +2987,7 @@ static void direct_link_nodetree(BlendDataReader *reader, bNodeTree *ntree)
   ntree->execdata = NULL;
 
   BLO_read_data_address(reader, &ntree->adt);
-  BKE_animdata_blend_data_read(reader, ntree->adt);
+  BKE_animdata_blend_read_data(reader, ntree->adt);
 
   BLO_read_list(reader, &ntree->nodes);
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
@@ -3253,7 +3254,7 @@ static void lib_link_pose(BlendLibReader *reader, Object *ob, bPose *pose)
 
     pchan->bone = BKE_armature_find_bone_name(arm, pchan->name);
 
-    IDP_BlendLibRead(reader, pchan->prop);
+    IDP_BlendReadLib(reader, pchan->prop);
 
     BLO_read_id_address(reader, arm->id.lib, &pchan->custom);
     if (UNLIKELY(pchan->bone == NULL)) {
@@ -3275,7 +3276,7 @@ static void lib_link_pose(BlendLibReader *reader, Object *ob, bPose *pose)
 
 static void lib_link_bones(BlendLibReader *reader, Bone *bone)
 {
-  IDP_BlendLibRead(reader, bone->prop);
+  IDP_BlendReadLib(reader, bone->prop);
 
   LISTBASE_FOREACH (Bone *, curbone, &bone->childbase) {
     lib_link_bones(reader, curbone);
@@ -3316,7 +3317,7 @@ static void direct_link_armature(BlendDataReader *reader, bArmature *arm)
   arm->needs_flush_to_id = 0;
 
   BLO_read_data_address(reader, &arm->adt);
-  BKE_animdata_blend_data_read(reader, arm->adt);
+  BKE_animdata_blend_read_data(reader, arm->adt);
 
   LISTBASE_FOREACH (Bone *, bone, &arm->bonebase) {
     direct_link_bones(reader, bone);
@@ -3350,7 +3351,7 @@ static void lib_link_camera(BlendLibReader *reader, Camera *ca)
 static void direct_link_camera(BlendDataReader *reader, Camera *ca)
 {
   BLO_read_data_address(reader, &ca->adt);
-  BKE_animdata_blend_data_read(reader, ca->adt);
+  BKE_animdata_blend_read_data(reader, ca->adt);
 
   BLO_read_list(reader, &ca->bg_images);
 
@@ -3374,7 +3375,7 @@ static void lib_link_light(BlendLibReader *reader, Light *la)
 static void direct_link_light(BlendDataReader *reader, Light *la)
 {
   BLO_read_data_address(reader, &la->adt);
-  BKE_animdata_blend_data_read(reader, la->adt);
+  BKE_animdata_blend_read_data(reader, la->adt);
 
   BLO_read_data_address(reader, &la->curfalloff);
   if (la->curfalloff) {
@@ -3438,7 +3439,7 @@ static void direct_link_key(BlendDataReader *reader, Key *key)
   BLO_read_list(reader, &(key->block));
 
   BLO_read_data_address(reader, &key->adt);
-  BKE_animdata_blend_data_read(reader, key->adt);
+  BKE_animdata_blend_read_data(reader, key->adt);
 
   BLO_read_data_address(reader, &key->refkey);
 
@@ -3469,7 +3470,7 @@ static void lib_link_mball(BlendLibReader *reader, MetaBall *mb)
 static void direct_link_mball(BlendDataReader *reader, MetaBall *mb)
 {
   BLO_read_data_address(reader, &mb->adt);
-  BKE_animdata_blend_data_read(reader, mb->adt);
+  BKE_animdata_blend_read_data(reader, mb->adt);
 
   BLO_read_pointer_array(reader, (void **)&mb->mat);
 
@@ -3498,7 +3499,7 @@ static void lib_link_world(BlendLibReader *reader, World *wrld)
 static void direct_link_world(BlendDataReader *reader, World *wrld)
 {
   BLO_read_data_address(reader, &wrld->adt);
-  BKE_animdata_blend_data_read(reader, wrld->adt);
+  BKE_animdata_blend_read_data(reader, wrld->adt);
 
   wrld->preview = direct_link_preview_image(reader, wrld->preview);
   BLI_listbase_clear(&wrld->gpumaterial);
@@ -3649,7 +3650,7 @@ static void switch_endian_knots(Nurb *nu)
 static void direct_link_curve(BlendDataReader *reader, Curve *cu)
 {
   BLO_read_data_address(reader, &cu->adt);
-  BKE_animdata_blend_data_read(reader, cu->adt);
+  BKE_animdata_blend_read_data(reader, cu->adt);
 
   /* Protect against integer overflow vulnerability. */
   CLAMP(cu->len_char32, 0, INT_MAX - 4);
@@ -3718,7 +3719,7 @@ static void lib_link_texture(BlendLibReader *reader, Tex *tex)
 static void direct_link_texture(BlendDataReader *reader, Tex *tex)
 {
   BLO_read_data_address(reader, &tex->adt);
-  BKE_animdata_blend_data_read(reader, tex->adt);
+  BKE_animdata_blend_read_data(reader, tex->adt);
 
   BLO_read_data_address(reader, &tex->coba);
 
@@ -3753,7 +3754,7 @@ static void lib_link_material(BlendLibReader *reader, Material *ma)
 static void direct_link_material(BlendDataReader *reader, Material *ma)
 {
   BLO_read_data_address(reader, &ma->adt);
-  BKE_animdata_blend_data_read(reader, ma->adt);
+  BKE_animdata_blend_read_data(reader, ma->adt);
 
   ma->texpaintslot = NULL;
 
@@ -3934,7 +3935,7 @@ static void direct_link_particlesettings(BlendDataReader *reader, ParticleSettin
   BLO_read_data_address(reader, &part->pd);
   BLO_read_data_address(reader, &part->pd2);
 
-  BKE_animdata_blend_data_read(reader, part->adt);
+  BKE_animdata_blend_read_data(reader, part->adt);
   direct_link_partdeflect(part->pd);
   direct_link_partdeflect(part->pd2);
 
@@ -4125,111 +4126,6 @@ static void lib_link_mesh(BlendLibReader *reader, Mesh *me)
   BLO_read_id_address(reader, me->id.lib, &me->texcomesh);
 }
 
-static void direct_link_dverts(BlendDataReader *reader, int count, MDeformVert *mdverts)
-{
-  if (mdverts == NULL) {
-    return;
-  }
-
-  for (int i = count; i > 0; i--, mdverts++) {
-    /*convert to vgroup allocation system*/
-    MDeformWeight *dw;
-    if (mdverts->dw && (dw = BLO_read_get_new_data_address(reader, mdverts->dw))) {
-      const ssize_t dw_len = mdverts->totweight * sizeof(MDeformWeight);
-      void *dw_tmp = MEM_mallocN(dw_len, "direct_link_dverts");
-      memcpy(dw_tmp, dw, dw_len);
-      mdverts->dw = dw_tmp;
-      MEM_freeN(dw);
-    }
-    else {
-      mdverts->dw = NULL;
-      mdverts->totweight = 0;
-    }
-  }
-}
-
-static void direct_link_mdisps(BlendDataReader *reader, int count, MDisps *mdisps, int external)
-{
-  if (mdisps) {
-    for (int i = 0; i < count; i++) {
-      BLO_read_data_address(reader, &mdisps[i].disps);
-      BLO_read_data_address(reader, &mdisps[i].hidden);
-
-      if (mdisps[i].totdisp && !mdisps[i].level) {
-        /* this calculation is only correct for loop mdisps;
-         * if loading pre-BMesh face mdisps this will be
-         * overwritten with the correct value in
-         * bm_corners_to_loops() */
-        float gridsize = sqrtf(mdisps[i].totdisp);
-        mdisps[i].level = (int)(logf(gridsize - 1.0f) / (float)M_LN2) + 1;
-      }
-
-      if (BLO_read_requires_endian_switch(reader) && (mdisps[i].disps)) {
-        /* DNA_struct_switch_endian doesn't do endian swap for (*disps)[] */
-        /* this does swap for data written at write_mdisps() - readfile.c */
-        BLI_endian_switch_float_array(*mdisps[i].disps, mdisps[i].totdisp * 3);
-      }
-      if (!external && !mdisps[i].disps) {
-        mdisps[i].totdisp = 0;
-      }
-    }
-  }
-}
-
-static void direct_link_grid_paint_mask(BlendDataReader *reader,
-                                        int count,
-                                        GridPaintMask *grid_paint_mask)
-{
-  if (grid_paint_mask) {
-    for (int i = 0; i < count; i++) {
-      GridPaintMask *gpm = &grid_paint_mask[i];
-      if (gpm->data) {
-        BLO_read_data_address(reader, &gpm->data);
-      }
-    }
-  }
-}
-
-/*this isn't really a public api function, so prototyped here*/
-static void direct_link_customdata(BlendDataReader *reader, CustomData *data, int count)
-{
-
-  BLO_read_data_address(reader, &data->layers);
-
-  /* annoying workaround for bug [#31079] loading legacy files with
-   * no polygons _but_ have stale customdata */
-  if (UNLIKELY(count == 0 && data->layers == NULL && data->totlayer != 0)) {
-    CustomData_reset(data);
-    return;
-  }
-
-  BLO_read_data_address(reader, &data->external);
-
-  int i = 0;
-  while (i < data->totlayer) {
-    CustomDataLayer *layer = &data->layers[i];
-
-    if (layer->flag & CD_FLAG_EXTERNAL) {
-      layer->flag &= ~CD_FLAG_IN_MEMORY;
-    }
-
-    layer->flag &= ~CD_FLAG_NOFREE;
-
-    if (CustomData_verify_versions(data, i)) {
-      BLO_read_data_address(reader, &layer->data);
-      if (layer->type == CD_MDISPS) {
-        direct_link_mdisps(reader, count, layer->data, layer->flag & CD_FLAG_EXTERNAL);
-      }
-      else if (layer->type == CD_GRID_PAINT_MASK) {
-        direct_link_grid_paint_mask(reader, count, layer->data);
-      }
-      i++;
-    }
-  }
-
-  CustomData_update_typemap(data);
-}
-
 static void direct_link_mesh(BlendDataReader *reader, Mesh *mesh)
 {
   BLO_read_pointer_array(reader, (void **)&mesh->mat);
@@ -4249,17 +4145,17 @@ static void direct_link_mesh(BlendDataReader *reader, Mesh *mesh)
 
   /* animdata */
   BLO_read_data_address(reader, &mesh->adt);
-  BKE_animdata_blend_data_read(reader, mesh->adt);
+  BKE_animdata_blend_read_data(reader, mesh->adt);
 
-  /* Normally direct_link_dverts should be called in direct_link_customdata,
+  /* Normally BKE_defvert_blend_read should be called in CustomData_blend_read,
    * but for backwards compatibility in do_versions to work we do it here. */
-  direct_link_dverts(reader, mesh->totvert, mesh->dvert);
+  BKE_defvert_blend_read(reader, mesh->totvert, mesh->dvert);
 
-  direct_link_customdata(reader, &mesh->vdata, mesh->totvert);
-  direct_link_customdata(reader, &mesh->edata, mesh->totedge);
-  direct_link_customdata(reader, &mesh->fdata, mesh->totface);
-  direct_link_customdata(reader, &mesh->ldata, mesh->totloop);
-  direct_link_customdata(reader, &mesh->pdata, mesh->totpoly);
+  CustomData_blend_read(reader, &mesh->vdata, mesh->totvert);
+  CustomData_blend_read(reader, &mesh->edata, mesh->totedge);
+  CustomData_blend_read(reader, &mesh->fdata, mesh->totface);
+  CustomData_blend_read(reader, &mesh->ldata, mesh->totloop);
+  CustomData_blend_read(reader, &mesh->pdata, mesh->totpoly);
 
   mesh->texflag &= ~ME_AUTOSPACE_EVALUATED;
   mesh->edit_mesh = NULL;
@@ -4276,9 +4172,10 @@ static void direct_link_mesh(BlendDataReader *reader, Mesh *mesh)
     BLO_read_list(reader, &mesh->mr->levels);
     MultiresLevel *lvl = mesh->mr->levels.first;
 
-    direct_link_customdata(reader, &mesh->mr->vdata, lvl->totvert);
-    direct_link_dverts(reader, lvl->totvert, CustomData_get(&mesh->mr->vdata, 0, CD_MDEFORMVERT));
-    direct_link_customdata(reader, &mesh->mr->fdata, lvl->totface);
+    CustomData_blend_read(reader, &mesh->mr->vdata, lvl->totvert);
+    BKE_defvert_blend_read(
+        reader, lvl->totvert, CustomData_get(&mesh->mr->vdata, 0, CD_MDEFORMVERT));
+    CustomData_blend_read(reader, &mesh->mr->fdata, lvl->totface);
 
     BLO_read_data_address(reader, &mesh->mr->edge_flags);
     BLO_read_data_address(reader, &mesh->mr->edge_creases);
@@ -4338,13 +4235,13 @@ static void direct_link_latt(BlendDataReader *reader, Lattice *lt)
   BLO_read_data_address(reader, &lt->def);
 
   BLO_read_data_address(reader, &lt->dvert);
-  direct_link_dverts(reader, lt->pntsu * lt->pntsv * lt->pntsw, lt->dvert);
+  BKE_defvert_blend_read(reader, lt->pntsu * lt->pntsv * lt->pntsw, lt->dvert);
 
   lt->editlatt = NULL;
   lt->batch_cache = NULL;
 
   BLO_read_data_address(reader, &lt->adt);
-  BKE_animdata_blend_data_read(reader, lt->adt);
+  BKE_animdata_blend_read_data(reader, lt->adt);
 }
 
 /** \} */
@@ -5049,7 +4946,7 @@ static void direct_link_object(BlendDataReader *reader, Object *ob)
   }
 
   BLO_read_data_address(reader, &ob->adt);
-  BKE_animdata_blend_data_read(reader, ob->adt);
+  BKE_animdata_blend_read_data(reader, ob->adt);
 
   BLO_read_data_address(reader, &ob->pose);
   direct_link_pose(reader, ob->pose);
@@ -5329,7 +5226,7 @@ static void lib_link_view_layer(BlendLibReader *reader, Library *lib, ViewLayer 
 
   BLO_read_id_address(reader, lib, &view_layer->mat_override);
 
-  IDP_BlendLibRead(reader, view_layer->id_properties);
+  IDP_BlendReadLib(reader, view_layer->id_properties);
 }
 
 /** \} */
@@ -5622,7 +5519,7 @@ static void lib_link_scene(BlendLibReader *reader, Scene *sce)
 
   Sequence *seq;
   SEQ_ALL_BEGIN (sce->ed, seq) {
-    IDP_BlendLibRead(reader, seq->prop);
+    IDP_BlendReadLib(reader, seq->prop);
 
     if (seq->ipo) {
       BLO_read_id_address(
@@ -5827,7 +5724,7 @@ static void direct_link_scene(BlendDataReader *reader, Scene *sce)
   BLO_read_list(reader, &(sce->base));
 
   BLO_read_data_address(reader, &sce->adt);
-  BKE_animdata_blend_data_read(reader, sce->adt);
+  BKE_animdata_blend_read_data(reader, sce->adt);
 
   BLO_read_list(reader, &sce->keyingsets);
   direct_link_keyingsets(reader, &sce->keyingsets);
@@ -6147,7 +6044,7 @@ static void direct_link_gpencil(BlendDataReader *reader, bGPdata *gpd)
 
   /* relink animdata */
   BLO_read_data_address(reader, &gpd->adt);
-  BKE_animdata_blend_data_read(reader, gpd->adt);
+  BKE_animdata_blend_read_data(reader, gpd->adt);
 
   /* Ensure full objectmode for linked grease pencil. */
   if (gpd->id.lib != NULL) {
@@ -6202,7 +6099,7 @@ static void direct_link_gpencil(BlendDataReader *reader, bGPdata *gpd)
         /* relink weight data */
         if (gps->dvert) {
           BLO_read_data_address(reader, &gps->dvert);
-          direct_link_dverts(reader, gps->totpoints, gps->dvert);
+          BKE_defvert_blend_read(reader, gps->totpoints, gps->dvert);
         }
       }
     }
@@ -7501,7 +7398,7 @@ static void lib_link_lightprobe(BlendLibReader *reader, LightProbe *prb)
 static void direct_link_lightprobe(BlendDataReader *reader, LightProbe *prb)
 {
   BLO_read_data_address(reader, &prb->adt);
-  BKE_animdata_blend_data_read(reader, prb->adt);
+  BKE_animdata_blend_read_data(reader, prb->adt);
 }
 
 /** \} */
@@ -7518,7 +7415,7 @@ static void lib_link_speaker(BlendLibReader *reader, Speaker *spk)
 static void direct_link_speaker(BlendDataReader *reader, Speaker *spk)
 {
   BLO_read_data_address(reader, &spk->adt);
-  BKE_animdata_blend_data_read(reader, spk->adt);
+  BKE_animdata_blend_read_data(reader, spk->adt);
 
 #if 0
   spk->sound = newdataadr(fd, spk->sound);
@@ -7964,7 +7861,7 @@ static void direct_link_linestyle_geometry_modifier(BlendDataReader *UNUSED(read
 static void direct_link_linestyle(BlendDataReader *reader, FreestyleLineStyle *linestyle)
 {
   BLO_read_data_address(reader, &linestyle->adt);
-  BKE_animdata_blend_data_read(reader, linestyle->adt);
+  BKE_animdata_blend_read_data(reader, linestyle->adt);
   BLO_read_list(reader, &linestyle->color_modifiers);
   LISTBASE_FOREACH (LineStyleModifier *, modifier, &linestyle->color_modifiers) {
     direct_link_linestyle_color_modifier(reader, modifier);
@@ -8002,11 +7899,11 @@ static void lib_link_hair(BlendLibReader *reader, Hair *hair)
 static void direct_link_hair(BlendDataReader *reader, Hair *hair)
 {
   BLO_read_data_address(reader, &hair->adt);
-  BKE_animdata_blend_data_read(reader, hair->adt);
+  BKE_animdata_blend_read_data(reader, hair->adt);
 
   /* Geometry */
-  direct_link_customdata(reader, &hair->pdata, hair->totpoint);
-  direct_link_customdata(reader, &hair->cdata, hair->totcurve);
+  CustomData_blend_read(reader, &hair->pdata, hair->totpoint);
+  CustomData_blend_read(reader, &hair->cdata, hair->totcurve);
   BKE_hair_update_customdata_pointers(hair);
 
   /* Materials */
@@ -8029,10 +7926,10 @@ static void lib_link_pointcloud(BlendLibReader *reader, PointCloud *pointcloud)
 static void direct_link_pointcloud(BlendDataReader *reader, PointCloud *pointcloud)
 {
   BLO_read_data_address(reader, &pointcloud->adt);
-  BKE_animdata_blend_data_read(reader, pointcloud->adt);
+  BKE_animdata_blend_read_data(reader, pointcloud->adt);
 
   /* Geometry */
-  direct_link_customdata(reader, &pointcloud->pdata, pointcloud->totpoint);
+  CustomData_blend_read(reader, &pointcloud->pdata, pointcloud->totpoint);
   BKE_pointcloud_update_customdata_pointers(pointcloud);
 
   /* Materials */
@@ -8060,7 +7957,7 @@ static void lib_link_volume(BlendLibReader *reader, Volume *volume)
 static void direct_link_volume(BlendDataReader *reader, Volume *volume)
 {
   BLO_read_data_address(reader, &volume->adt);
-  BKE_animdata_blend_data_read(reader, volume->adt);
+  BKE_animdata_blend_read_data(reader, volume->adt);
 
   volume->packedfile = direct_link_packedfile(reader, volume->packedfile);
   volume->runtime.frame = 0;
@@ -8085,7 +7982,7 @@ static void lib_link_simulation(BlendLibReader *reader, Simulation *simulation)
 static void direct_link_simulation(BlendDataReader *reader, Simulation *simulation)
 {
   BLO_read_data_address(reader, &simulation->adt);
-  BKE_animdata_blend_data_read(reader, simulation->adt);
+  BKE_animdata_blend_read_data(reader, simulation->adt);
 
   BLO_read_list(reader, &simulation->states);
   LISTBASE_FOREACH (SimulationState *, state, &simulation->states) {
@@ -8093,7 +7990,7 @@ static void direct_link_simulation(BlendDataReader *reader, Simulation *simulati
     BLO_read_data_address(reader, &state->type);
     if (STREQ(state->type, SIM_TYPE_NAME_PARTICLE_SIMULATION)) {
       ParticleSimulationState *particle_state = (ParticleSimulationState *)state;
-      direct_link_customdata(reader, &particle_state->attributes, particle_state->tot_particles);
+      CustomData_blend_read(reader, &particle_state->attributes, particle_state->tot_particles);
     }
   }
 
@@ -8240,6 +8137,9 @@ static bool direct_link_id(FileData *fd, Main *main, const int tag, ID *id, ID *
   }
 
   const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
+  if (id_type->blend_read_data != NULL) {
+    id_type->blend_read_data(&reader, id);
+  }
 
   /* XXX Very weakly handled currently, see comment in read_libblock() before trying to
    * use it for anything new. */
@@ -8958,6 +8858,11 @@ static void lib_link_all(FileData *fd, Main *bmain)
     }
 
     lib_link_id(&reader, id);
+
+    const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
+    if (id_type->blend_read_lib != NULL) {
+      id_type->blend_read_lib(&reader, id);
+    }
 
     /* Note: ID types are processed in reverse order as defined by INDEX_ID_XXX enums in DNA_ID.h.
      * This ensures handling of most dependencies in proper order, as elsewhere in code.
@@ -9693,7 +9598,7 @@ static void expand_id_embedded_id(BlendExpander *expander, ID *id)
 
 static void expand_id(BlendExpander *expander, ID *id)
 {
-  IDP_BlendExpand(expander, id->properties);
+  IDP_BlendReadExpand(expander, id->properties);
 
   if (id->override_library) {
     BLO_expand(expander, id->override_library->reference);
@@ -9702,7 +9607,7 @@ static void expand_id(BlendExpander *expander, ID *id)
 
   AnimData *adt = BKE_animdata_from_id(id);
   if (adt != NULL) {
-    BKE_animdata_blend_expand(expander, adt);
+    BKE_animdata_blend_read_expand(expander, adt);
   }
 
   expand_id_embedded_id(expander, id);
@@ -9718,7 +9623,7 @@ static void expand_action(BlendExpander *expander, bAction *act)
   // ---------------------------------------------------
 
   /* F-Curves in Action */
-  BKE_fcurve_blend_expand(expander, &act->curves);
+  BKE_fcurve_blend_read_expand(expander, &act->curves);
 
   LISTBASE_FOREACH (TimeMarker *, marker, &act->markers) {
     if (marker->camera) {
@@ -9809,7 +9714,7 @@ static void expand_key(BlendExpander *expander, Key *key)
 
 static void expand_node_socket(BlendExpander *expander, bNodeSocket *sock)
 {
-  IDP_BlendExpand(expander, sock->prop);
+  IDP_BlendReadExpand(expander, sock->prop);
 
   if (sock->default_value != NULL) {
 
@@ -9860,7 +9765,7 @@ static void expand_nodetree(BlendExpander *expander, bNodeTree *ntree)
       BLO_expand(expander, node->id);
     }
 
-    IDP_BlendExpand(expander, node->prop);
+    IDP_BlendReadExpand(expander, node->prop);
 
     expand_node_sockets(expander, &node->inputs);
     expand_node_sockets(expander, &node->outputs);
@@ -9978,14 +9883,14 @@ static void expand_pose(BlendExpander *expander, bPose *pose)
 
   LISTBASE_FOREACH (bPoseChannel *, chan, &pose->chanbase) {
     expand_constraints(expander, &chan->constraints);
-    IDP_BlendExpand(expander, chan->prop);
+    IDP_BlendReadExpand(expander, chan->prop);
     BLO_expand(expander, chan->custom);
   }
 }
 
 static void expand_bones(BlendExpander *expander, Bone *bone)
 {
-  IDP_BlendExpand(expander, bone->prop);
+  IDP_BlendReadExpand(expander, bone->prop);
 
   LISTBASE_FOREACH (Bone *, curBone, &bone->childbase) {
     expand_bones(expander, curBone);
@@ -10132,7 +10037,7 @@ static void expand_scene(BlendExpander *expander, Scene *sce)
   }
 
   LISTBASE_FOREACH (ViewLayer *, view_layer, &sce->view_layers) {
-    IDP_BlendExpand(expander, view_layer->id_properties);
+    IDP_BlendReadExpand(expander, view_layer->id_properties);
 
     LISTBASE_FOREACH (FreestyleModuleConfig *, module, &view_layer->freestyle_config.modules) {
       if (module->script) {
@@ -10156,7 +10061,7 @@ static void expand_scene(BlendExpander *expander, Scene *sce)
     Sequence *seq;
 
     SEQ_ALL_BEGIN (sce->ed, seq) {
-      IDP_BlendExpand(expander, seq->prop);
+      IDP_BlendReadExpand(expander, seq->prop);
 
       if (seq->scene) {
         BLO_expand(expander, seq->scene);
@@ -10371,6 +10276,11 @@ void BLO_expand_main(void *fdhandle, Main *mainvar)
       while (id) {
         if (id->tag & LIB_TAG_NEED_EXPAND) {
           expand_id(&expander, id);
+
+          const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
+          if (id_type->blend_read_expand != NULL) {
+            id_type->blend_read_expand(&expander, id);
+          }
 
           switch (GS(id->name)) {
             case ID_OB:
