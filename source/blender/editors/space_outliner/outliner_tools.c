@@ -735,9 +735,9 @@ static void id_make_asset_cb(bContext *C,
 
   RNA_id_pointer_create(id, &id_ptr);
 
-  WM_operator_properties_create(&op_ptr, "ASSET_OT_create");
+  WM_operator_properties_create(&op_ptr, "ASSET_OT_make");
   RNA_pointer_set(&op_ptr, "id", id_ptr);
-  WM_operator_name_call(C, "ASSET_OT_create", WM_OP_EXEC_DEFAULT, &op_ptr);
+  WM_operator_name_call(C, "ASSET_OT_make", WM_OP_EXEC_DEFAULT, &op_ptr);
 
   WM_operator_properties_free(&op_ptr);
 }
