@@ -687,6 +687,40 @@ static void lineart_triangle_set_cull_flag(LineartRenderTriangle *rt, unsigned c
   rt->flags |= intersection_only;
 }
 
+static bool lineart_triangle_adjacent_line_set(LineartRenderTriangle *rt,
+                                               LineartRenderTriangle *search_in,
+                                               LineartRenderTriangle *replace_with)
+{
+  if (!search_in) {
+    return false;
+  }
+  if (search_in->rl[0]->tl == rt) {
+    search_in->rl[0]->tl = replace_with;
+    return (search_in->rl[0]->flags & LRT_EDGE_FLAG_CLIPPED) != 0;
+  }
+  if (search_in->rl[0]->tr == rt) {
+    search_in->rl[0]->tr = replace_with;
+    return (search_in->rl[0]->flags & LRT_EDGE_FLAG_CLIPPED) != 0;
+  }
+  if (search_in->rl[1]->tl == rt) {
+    search_in->rl[1]->tl = replace_with;
+    return (search_in->rl[1]->flags & LRT_EDGE_FLAG_CLIPPED) != 0;
+  }
+  if (search_in->rl[1]->tr == rt) {
+    search_in->rl[1]->tr = replace_with;
+    return (search_in->rl[1]->flags & LRT_EDGE_FLAG_CLIPPED) != 0;
+  }
+  if (search_in->rl[2]->tl == rt) {
+    search_in->rl[2]->tl = replace_with;
+    return (search_in->rl[2]->flags & LRT_EDGE_FLAG_CLIPPED) != 0;
+  }
+  if (search_in->rl[2]->tr == rt) {
+    search_in->rl[2]->tr = replace_with;
+    return (search_in->rl[2]->flags & LRT_EDGE_FLAG_CLIPPED) != 0;
+  }
+  return false;
+}
+
 /** This function cuts triangles that are (partially or fully) behind near clipping plane.
  * for triangles that crossing the near plane, it will generate new 1 or 2 triangles with
  * new topology that represents the trimmed triangle. (which then became a triangle or square)
@@ -694,7 +728,7 @@ static void lineart_triangle_set_cull_flag(LineartRenderTriangle *rt, unsigned c
 static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
 {
   LineartRenderLine *rl;
-  LineartRenderTriangle *rt, *rt1, *rt2;
+  LineartRenderTriangle *rt, *rt1, *rt2, *rt_next_to;
   LineartRenderVert *rv;
   LineartRenderElementLinkNode *veln, *teln;
   LineartRenderLineSegment *rls;
@@ -703,6 +737,7 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
   double a;
   int v_count = 0, t_count = 0;
   Object *ob;
+  bool added;
 
   double view_dir[3], clip_advance[3];
   copy_v3_v3_db(view_dir, rb->view_vector);
@@ -854,27 +889,37 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
-            BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[1];
             rl->r = rt->v[0];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             /* restore adjacent triangle data. */
             rl->tl = rt->rl[0]->tl == rt ? rt1 : rt->rl[0]->tl;
             rl->tr = rt->rl[0]->tr == rt ? rt1 : rt->rl[0]->tr;
             rt1->rl[0] = rl;
             rl->object_ref = ob;
+            rt_next_to = rt->rl[0]->tl == rt ? rt->rl[0]->tr : rt->rl[0]->tl;
+            added = lineart_triangle_adjacent_line_set(rt, rt_next_to, rt1);
+            if (!added) {
+              BLI_addtail(&rb->all_render_lines, rl);
+            }
 
             /* new line connecting original point 0 and another new point */
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
-            BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[0];
             rl->r = &rv[0];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             /* restore adjacent triangle data. */
             rl->tl = rt->rl[2]->tl == rt ? rt1 : rt->rl[2]->tl;
             rl->tr = rt->rl[2]->tr == rt ? rt1 : rt->rl[2]->tr;
             rt1->rl[2] = rl;
             rl->object_ref = ob;
+            rt_next_to = rt->rl[2]->tl == rt ? rt->rl[2]->tr : rt->rl[2]->tl;
+            added = lineart_triangle_adjacent_line_set(rt, rt_next_to, rt1);
+            if (!added) {
+              BLI_addtail(&rb->all_render_lines, rl);
+            }
 
             /* re-assign triangle point array to two new points. */
             rt1->v[0] = rt->v[0];
@@ -924,24 +969,34 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
-            BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[1];
             rl->r = rt->v[2];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             rl->tl = rt->rl[1]->tl == rt ? rt1 : rt->rl[1]->tl;
             rl->tr = rt->rl[1]->tr == rt ? rt1 : rt->rl[1]->tr;
             rt1->rl[1] = rl;
             rl->object_ref = ob;
+            rt_next_to = rt->rl[1]->tl == rt ? rt->rl[1]->tr : rt->rl[1]->tl;
+            added = lineart_triangle_adjacent_line_set(rt, rt_next_to, rt1);
+            if (!added) {
+              BLI_addtail(&rb->all_render_lines, rl);
+            }
 
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
-            BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[2];
             rl->r = &rv[0];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             rl->tl = rt->rl[2]->tl == rt ? rt1 : rt->rl[2]->tl;
             rl->tr = rt->rl[2]->tr == rt ? rt1 : rt->rl[2]->tr;
             rt1->rl[2] = rl;
             rl->object_ref = ob;
+            rt_next_to = rt->rl[2]->tl == rt ? rt->rl[2]->tr : rt->rl[2]->tl;
+            added = lineart_triangle_adjacent_line_set(rt, rt_next_to, rt1);
+            if (!added) {
+              BLI_addtail(&rb->all_render_lines, rl);
+            }
 
             rt1->v[0] = &rv[0];   /*&rv[1];*/
             rt1->v[1] = &rv[1];   /*rt->v[2];*/
@@ -990,24 +1045,34 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
-            BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[0];
             rl->r = rt->v[1];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             rl->tl = rt->rl[1]->tl == rt ? rt1 : rt->rl[1]->tl;
             rl->tr = rt->rl[1]->tr == rt ? rt1 : rt->rl[1]->tr;
             rt1->rl[0] = rl;
             rl->object_ref = ob;
+            rt_next_to = rt->rl[1]->tl == rt ? rt->rl[1]->tr : rt->rl[1]->tl;
+            added = lineart_triangle_adjacent_line_set(rt, rt_next_to, rt1);
+            if (!added) {
+              BLI_addtail(&rb->all_render_lines, rl);
+            }
 
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
-            BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[1];
             rl->r = &rv[1];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             rl->tl = rt->rl[0]->tl == rt ? rt1 : rt->rl[0]->tl;
             rl->tr = rt->rl[0]->tr == rt ? rt1 : rt->rl[0]->tr;
             rt1->rl[1] = rl;
             rl->object_ref = ob;
+            rt_next_to = rt->rl[0]->tl == rt ? rt->rl[0]->tr : rt->rl[0]->tl;
+            added = lineart_triangle_adjacent_line_set(rt, rt_next_to, rt1);
+            if (!added) {
+              BLI_addtail(&rb->all_render_lines, rl);
+            }
 
             rt1->v[0] = &rv[0];   /*rt->v[1];*/
             rt1->v[1] = rt->v[1]; /*&rv[1];*/
@@ -1089,13 +1154,18 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
-            BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[0];
             rl->r = rt->v[1];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             rl->tl = rt1;
             rl->tr = rt->rl[0]->tr == rt ? rt->rl[0]->tl : rt->rl[0]->tr;
             rt1->rl[2] = rl;
             rl->object_ref = ob;
+            rt_next_to = rt->rl[0]->tl == rt ? rt->rl[0]->tr : rt->rl[0]->tl;
+            added = lineart_triangle_adjacent_line_set(rt, rt_next_to, rt1);
+            if (!added) {
+              BLI_addtail(&rb->all_render_lines, rl);
+            }
 
             /** New line connects new point 1 and old point 1,
              * this is a inner line separating newly generated triangles.
@@ -1106,6 +1176,7 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[1];
             rl->r = &rv[1];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             rl->tl = rt1;
             rl->tr = rt2;
             rt1->rl[0] = rl;
@@ -1123,14 +1194,19 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
-            BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[2];
             rl->r = &rv[1];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             rl->tl = rt2;
             rl->tr = rt->rl[2]->tr == rt ? rt->rl[2]->tl : rt->rl[2]->tr;
             rt2->rl[2] = rl;
             rt2->rl[1] = rt->rl[1];
             rl->object_ref = ob;
+            rt_next_to = rt->rl[2]->tl == rt ? rt->rl[2]->tr : rt->rl[2]->tl;
+            added = lineart_triangle_adjacent_line_set(rt, rt_next_to, rt2);
+            if (!added) {
+              BLI_addtail(&rb->all_render_lines, rl);
+            }
 
             /* Close the second triangle. */
             rt2->v[0] = &rv[1];
@@ -1180,13 +1256,18 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
-            BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[0];
             rl->r = rt->v[2];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             rl->tl = rt1;
             rl->tr = rt->rl[1]->tl == rt ? rt->rl[1]->tr : rt->rl[1]->tl;
             rt1->rl[2] = rl;
             rl->object_ref = ob;
+            rt_next_to = rt->rl[1]->tl == rt ? rt->rl[1]->tr : rt->rl[1]->tl;
+            added = lineart_triangle_adjacent_line_set(rt, rt_next_to, rt1);
+            if (!added) {
+              BLI_addtail(&rb->all_render_lines, rl);
+            }
 
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
@@ -1194,6 +1275,7 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[2];
             rl->r = &rv[1];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             rl->tl = rt1;
             rl->tr = rt2;
             rt1->rl[0] = rl;
@@ -1207,14 +1289,19 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
-            BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[0];
             rl->r = &rv[1];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             rl->tl = rt2;
             rl->tr = rt->rl[0]->tr == rt ? rt->rl[0]->tl : rt->rl[0]->tr;
             rt2->rl[2] = rl;
             rt2->rl[1] = rt->rl[2];
             rl->object_ref = ob;
+            rt_next_to = rt->rl[0]->tl == rt ? rt->rl[0]->tr : rt->rl[0]->tl;
+            added = lineart_triangle_adjacent_line_set(rt, rt_next_to, rt2);
+            if (!added) {
+              BLI_addtail(&rb->all_render_lines, rl);
+            }
 
             rt2->v[0] = &rv[1];
             rt2->v[1] = rt->v[2];
@@ -1263,13 +1350,18 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
-            BLI_addtail(&rb->all_render_lines, rl);
             rl->l = &rv[0];
             rl->r = rt->v[0];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             rl->tl = rt1;
             rl->tr = rt->rl[2]->tl == rt ? rt->rl[2]->tr : rt->rl[2]->tl;
             rt1->rl[2] = rl;
             rl->object_ref = ob;
+            rt_next_to = rt->rl[2]->tl == rt ? rt->rl[2]->tr : rt->rl[2]->tl;
+            added = lineart_triangle_adjacent_line_set(rt, rt_next_to, rt1);
+            if (!added) {
+              BLI_addtail(&rb->all_render_lines, rl);
+            }
 
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
@@ -1277,6 +1369,7 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[0];
             rl->r = &rv[1];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             rl->tl = rt1;
             rl->tr = rt2;
             rt1->rl[0] = rl;
@@ -1290,14 +1383,19 @@ static void lineart_main_cull_triangles(LineartRenderBuffer *rb)
             rl = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLine));
             rls = lineart_mem_aquire(&rb->render_data_pool, sizeof(LineartRenderLineSegment));
             BLI_addtail(&rl->segments, rls);
-            BLI_addtail(&rb->all_render_lines, rl);
             rl->l = rt->v[1];
             rl->r = &rv[1];
+            rl->flags |= LRT_EDGE_FLAG_CLIPPED;
             rl->tl = rt2;
             rl->tr = rt->rl[1]->tr == rt ? rt->rl[1]->tl : rt->rl[1]->tr;
             rt2->rl[2] = rl;
             rt2->rl[1] = rt->rl[0];
             rl->object_ref = ob;
+            rt_next_to = rt->rl[1]->tl == rt ? rt->rl[1]->tr : rt->rl[1]->tl;
+            added = lineart_triangle_adjacent_line_set(rt, rt_next_to, rt2);
+            if (!added) {
+              BLI_addtail(&rb->all_render_lines, rl);
+            }
 
             rt2->v[0] = &rv[1];
             rt2->v[1] = rt->v[0];
@@ -1693,9 +1791,9 @@ static LineartRenderLine *lineart_another_edge(const LineartRenderTriangle *rt,
   }
   return 0;
 }
-static int lineart_triangle_has_edge(const LineartRenderTriangle *rt, const LineartRenderLine *rl)
+static int lineart_edge_from_triangle(const LineartRenderTriangle *rt, const LineartRenderLine *rl)
 {
-  if (rt->rl[0] == rl || rt->rl[1] == rl || rt->rl[2] == rl) {
+  if (rl->tl == rt || rl->tr == rt) {
     return 1;
   }
   if (lineart_share.allow_overlapping_edges) {
@@ -1762,7 +1860,7 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl
   }
 
   /* If the the line is one of the edge in the triangle, then it'scene not occludded. */
-  if (lineart_triangle_has_edge(rt, rl)) {
+  if (lineart_edge_from_triangle(rt, rl)) {
     return 0;
   }
 
@@ -2225,7 +2323,7 @@ static void lineart_triangle_intersections_in_bounding_area(LineartRenderBuffer 
     testing_triangle = lip->data;
     rtt = (LineartRenderTriangleThread *)testing_triangle;
     if (testing_triangle == rt || rtt->testing[0] == (LineartRenderLine *)rt ||
-        ((rt->flags & LRT_CULL_GENERATED) && (testing_triangle->flags & LRT_CULL_GENERATED)) ||
+        //((rt->flags & LRT_CULL_GENERATED) && (testing_triangle->flags & LRT_CULL_GENERATED)) ||
         lineart_triangle_share_edge(rt, testing_triangle)) {
       continue;
     }
@@ -3904,7 +4002,9 @@ static int lineart_gpencil_update_strokes_exec(bContext *C, wmOperator *UNUSED(o
   return OPERATOR_FINISHED;
 }
 
-static int lineart_gpencil_bake_strokes_invoke(bContext *C, wmOperator *op, wmEvent *UNUSED(event))
+static int lineart_gpencil_bake_strokes_invoke(bContext *C,
+                                               wmOperator *op,
+                                               const wmEvent *UNUSED(event))
 {
   Scene *scene = CTX_data_scene(C);
   Depsgraph *dg = CTX_data_depsgraph_pointer(C);
@@ -4022,7 +4122,7 @@ static int lineart_gpencil_bake_strokes_invoke(bContext *C, wmOperator *op, wmEv
   return OPERATOR_FINISHED;
 }
 
-static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *op)
+static int lineart_gpencil_bake_strokes_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Scene *scene = CTX_data_scene(C);
 

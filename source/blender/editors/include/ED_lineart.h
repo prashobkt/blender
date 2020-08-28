@@ -122,7 +122,7 @@ typedef struct LineartRenderLine {
   char min_occ;
 
   /**  Also for line type determination on chainning */
-  char flags;
+  unsigned char flags;
 
   /**  Still need this entry because culled lines will not add to object reln node */
   struct Object *object_ref;
