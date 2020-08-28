@@ -61,6 +61,12 @@ public:
 		}
 	};
 
+	// Return AABB of root
+	Eigen::AlignedBox<T,DIM> bounds() const {
+		if (m_root) { return m_root->aabb; }
+		return Eigen::AlignedBox<T,DIM>();
+	}
+
 	// Return ptr to the root node
 	// Becomes invalidated after init()
 	std::shared_ptr<Node> root() { return m_root; }

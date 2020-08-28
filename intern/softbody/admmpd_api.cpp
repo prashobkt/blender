@@ -31,31 +31,17 @@
 #endif
 #include "DNA_mesh_types.h" // Mesh
 #include "DNA_meshdata_types.h" // MVert
+#include "DNA_modifier_types.h" // CollisionModifierData
 #include "DNA_object_force_types.h" // Enums
 #include "BKE_mesh.h" // BKE_mesh_free
 #include "BKE_softbody.h" // BodyPoint
 #include "BKE_deform.h" // BKE_defvert_find_index
+#include "BKE_modifier.h" // BKE_modifiers_findby_type
 #include "MEM_guardedalloc.h"
 
 #include <iostream>
 #include <memory>
 #include <algorithm>
-
-// Collision obstacles are cached until
-// solve(...) is called. If we are substepping,
-// the obstacle is interpolated from start to end.
-struct CollisionObstacle
-{
-  Eigen::VectorXf x0, x1;
-  std::vector<unsigned int> F;
-  bool needs_sdf_recompute;
-  void reset() {
-    x0 = Eigen::VectorXf();
-    x1 = Eigen::VectorXf();
-    F.clear();
-    needs_sdf_recompute = true;
-  }
-};
 
 struct ADMMPDInternalData
 {
@@ -66,7 +52,8 @@ struct ADMMPDInternalData
   std::shared_ptr<admmpd::Options> options;
   std::shared_ptr<admmpd::SolverData> data;
   // Created in set_obstacles
-  CollisionObstacle obs;
+  std::vector<Eigen::MatrixXd> obs_x0, obs_x1;
+  std::vector<Eigen::MatrixXi> obs_F;
 };
 
 
@@ -104,6 +91,7 @@ static inline void options_from_object(
   op->linsolver = std::max(0, std::min(LINSOLVER_NUM-1, sb->admmpd_linsolver));
   op->strain_limit[0] = std::min(1.f, sb->admmpd_strainlimit_min);
   op->strain_limit[1] = std::max(1.f, sb->admmpd_strainlimit_max);
+  op->lattice_subdiv = std::max(1,sb->admmpd_embed_res);
 
   if (!skip_require_reset)
   {
@@ -186,10 +174,8 @@ static inline int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, Object *o
   std::vector<unsigned int> f;
   vecs_from_object(ob,vertexCos,v,f);
   iface->idata->mesh = std::make_shared<admmpd::EmbeddedMesh>();
-
-  admmpd::EmbeddedMesh* emb_msh = static_cast<admmpd::EmbeddedMesh*>(iface->idata->mesh.get());
-  emb_msh->options.max_subdiv_levels = ob->soft->admmpd_embed_res;
   bool success = iface->idata->mesh->create(
+    iface->idata->options.get(),
     v.data(),
     v.size()/3,
     f.data(),
@@ -197,7 +183,7 @@ static inline int admmpd_init_with_lattice(ADMMPDInterfaceData *iface, Object *o
     nullptr,
     0);
 
-  if (!success) {
+  if (!success) { // soft unknown fail
     strcpy_error(iface, "EmbeddedMesh failed on creation");
     return 0;
   }
@@ -214,6 +200,7 @@ static inline int admmpd_init_as_cloth(ADMMPDInterfaceData *iface, Object *ob, f
 
   iface->idata->mesh = std::make_shared<admmpd::TriangleMesh>();
   bool success = iface->idata->mesh->create(
+    iface->idata->options.get(),
     v.data(),
     v.size()/3,
     f.data(),
@@ -230,6 +217,53 @@ static inline int admmpd_init_as_cloth(ADMMPDInterfaceData *iface, Object *ob, f
   return 1;
 }
 
+void admmpd_compute_lattice(
+    int subdiv,
+    float *in_verts, int in_nv,
+    unsigned int *in_faces, int in_nf,
+    float **out_verts, int *out_nv,
+    unsigned int **out_tets, int *out_nt)
+{
+
+  admmpd::EmbeddedMesh emesh;
+  admmpd::Options opt;
+  opt.lattice_subdiv = subdiv;
+  bool success = emesh.create(
+    &opt,
+    in_verts, in_nv,
+    in_faces, in_nf,
+    nullptr,
+    0);
+
+  if (!success) {
+    return;
+  }
+
+  const Eigen::MatrixXd &vt = *emesh.rest_prim_verts();
+  const Eigen::MatrixXi &t = *emesh.prims();
+  if (vt.rows()==0 || t.rows()==0) {
+    return;
+  }
+
+  *out_nv = vt.rows();
+  *out_verts = (float*)MEM_callocN(sizeof(float)*3*(vt.rows()), "ADMMPD_lattice_verts");
+  *out_nt = t.rows();
+  *out_tets = (unsigned int*)MEM_callocN(sizeof(unsigned int)*4*(t.rows()), "ADMMPD_lattice_tets");
+
+  for (int i=0; i<vt.rows(); ++i) {
+    (*out_verts)[i*3+0] = vt(i,0);
+    (*out_verts)[i*3+1] = vt(i,1);
+    (*out_verts)[i*3+2] = vt(i,2);
+  }
+
+  for (int i=0; i<t.rows(); ++i) {
+    (*out_tets)[i*4+0] = t(i,0);
+    (*out_tets)[i*4+1] = t(i,1);
+    (*out_tets)[i*4+2] = t(i,2);
+    (*out_tets)[i*4+3] = t(i,3);
+  }
+}
+
 int admmpd_mesh_needs_update(ADMMPDInterfaceData *iface, Object *ob)
 {
   if (!iface) { return 0; }
@@ -244,6 +278,7 @@ int admmpd_mesh_needs_update(ADMMPDInterfaceData *iface, Object *ob)
   // Mode or topology change?
   int mode = ob->soft->admmpd_mesh_mode;
   int mesh_type = iface->idata->mesh->type();
+
   if (mode != mesh_type) { return 1; }
   if (!iface->idata->mesh->rest_facet_verts()) { return 1; }
   int nx = iface->idata->mesh->rest_facet_verts()->rows();
@@ -258,9 +293,15 @@ int admmpd_update_mesh(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos
   if (!ob) { return 0; }
   if (!ob->soft) { return 0; }
 
-  if (!iface->idata)
+  if (!iface->idata) {
     iface->idata = (ADMMPDInternalData*)MEM_callocN(sizeof(ADMMPDInternalData), "ADMMPD_idata");
+  }
 
+  if (!iface->idata->options) {
+    iface->idata->options = std::make_shared<admmpd::Options>();
+  }
+
+  options_from_object(iface,NULL,ob,iface->idata->options.get(),false);
   int mode = ob->soft->admmpd_mesh_mode;
   iface->idata->mesh.reset();
 
@@ -362,9 +403,13 @@ int admmpd_update_solver(ADMMPDInterfaceData *iface,  Scene *sc, Object *ob, flo
   if (!iface->idata->mesh) { return 0; }
 
   // Reset options and data
-  iface->idata->options = std::make_shared<admmpd::Options>();
+  if (!iface->idata->options) {
+    iface->idata->options = std::make_shared<admmpd::Options>();
+  }
   iface->idata->data = std::make_shared<admmpd::SolverData>();
-  iface->idata->obs.reset();
+  iface->idata->obs_x0.clear();
+  iface->idata->obs_x1.clear();
+  iface->idata->obs_F.clear();
 
   admmpd::Options *op = iface->idata->options.get();
   options_from_object(iface,sc,ob,op,false);
@@ -417,11 +462,18 @@ void admmpd_copy_to_object(ADMMPDInterfaceData *iface, Object *ob, float (*verte
 
   if (ob && ob->soft) {
     SoftBody *sb = ob->soft;
+
     if (!sb->bpoint) {
       if (!ob->soft->bpoint) {
         sb->bpoint = (BodyPoint*)MEM_callocN(nx*sizeof(BodyPoint), "ADMMPD_bpoint");
       }
+      sb->totpoint = nx;
+      sb->totspring = 0;
+    }
 
+    if (sb->totpoint != nx && sb->totpoint>0) {
+      MEM_freeN(sb->bpoint);
+      sb->bpoint = (BodyPoint*)MEM_callocN(nx*sizeof(BodyPoint), "ADMMPD_bpoint");
       sb->totpoint = nx;
       sb->totspring = 0;
     }
@@ -452,66 +504,6 @@ void admmpd_copy_to_object(ADMMPDInterfaceData *iface, Object *ob, float (*verte
       }
     }
   }
-}
-
-void admmpd_update_obstacles(
-    ADMMPDInterfaceData *iface,
-    float *in_verts_0,
-    float *in_verts_1,
-    int nv,
-    unsigned int *in_faces,
-    int nf)
-{
-  if (iface==NULL || in_verts_0==NULL || in_verts_1==NULL || in_faces==NULL) {
-    return;
-  }
-  if (!iface->idata) { return; }
-
-  if (nf==0 || nv==0) { return; }
-  int nv3 = nv*3;
-  int nf3 = nf*3;
-  iface->idata->obs.needs_sdf_recompute = false;
-
-  if (iface->idata->obs.x0.size()!=nv3) {
-    iface->idata->obs.x0.resize(nv3);
-    iface->idata->obs.needs_sdf_recompute = true;
-  }
-
-  if (iface->idata->obs.x1.size()!=nv3) {
-    iface->idata->obs.x1.resize(nv3);
-    iface->idata->obs.needs_sdf_recompute = true;
-  }
-
-  if (iface->idata->obs.F.size()!=nf3) {
-    iface->idata->obs.F.resize(nf3);
-    iface->idata->obs.needs_sdf_recompute = true;
-  }
-
-  for (int i=0; i<nv3; ++i) {
-
-    // Change in x?
-    if (!iface->idata->obs.needs_sdf_recompute) {
-      if (std::abs(iface->idata->obs.x0[i]-in_verts_0[i])>1e-8 ||
-          std::abs(iface->idata->obs.x1[i]-in_verts_1[i])>1e-8 ) {
-        iface->idata->obs.needs_sdf_recompute = true;
-      }
-    }
-
-    iface->idata->obs.x0[i] = in_verts_0[i];
-    iface->idata->obs.x1[i] = in_verts_1[i];
-  }
-  for (int i=0; i<nf3; ++i) {
-
-    // Change in f?
-    if (!iface->idata->obs.needs_sdf_recompute) {
-      if (iface->idata->obs.F[i] != in_faces[i]) {
-        iface->idata->obs.needs_sdf_recompute = true;
-      }
-    }
-
-    iface->idata->obs.F[i] = in_faces[i];
-  }
-
 }
 
 static inline void admmpd_update_goals(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
@@ -603,10 +595,17 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
     return 0;
   }
 
-  if (!iface->idata || !iface->idata->options || !iface->idata->data) {
+  if (!iface->idata || !iface->idata->options ||
+      !iface->idata->data || !iface->idata->mesh) {
     strcpy_error(iface, "NULL internal data");
     return 0;
   }
+
+  std::string meshname(ob->id.name);
+
+  // Set to true if certain conditions should
+  // throw a warning flag.
+  bool return_warning = false;
 
   // Change only options that do not cause a reset of the solver.
   bool skip_solver_reset = true;
@@ -617,6 +616,19 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
     iface->idata->options.get(),
     skip_solver_reset);
 
+  // Disable self collision flag if the mesh does not support it.
+  if (iface->idata->options->self_collision &&
+    !iface->idata->mesh->self_collision_allowed()) {
+    // Special message if embedded, in which the mesh is not closed.
+    std::string err = "Cannot do self collisions on object "+meshname+" for selected mesh type";
+    if (iface->idata->mesh->type() == MESHTYPE_EMBEDDED) {
+      err = "Cannot do self collisions on object "+meshname+", mesh is not closed.";
+    }
+    strcpy_error(iface, err.c_str());
+    iface->idata->options->self_collision = false;
+    return_warning = true;
+  }
+
   // Goals and self collision group can change
   // between time steps. If the goal indices/weights change,
   // it will trigger a refactorization in the solver.
@@ -625,12 +637,11 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
 
   // Obstacle collisions not yet implemented
   // for cloth or tet mesh.
-  bool had_set_obstacle_error = false;
   if ((ob->soft->admmpd_mesh_mode == MESHTYPE_TET ||
     ob->soft->admmpd_mesh_mode == MESHTYPE_TRIANGLE) &&
-    iface->idata->obs.x0.size()>0)
+    iface->idata->obs_x0.size()>0)
   {
-    had_set_obstacle_error = true;
+    return_warning = true;
     strcpy_error(iface, "Obstacle collision not yet available for selected mesh mode.");
   }
 
@@ -640,47 +651,40 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
   // b) the obstacle positions have changed from the last frame
   bool has_obstacles = 
     iface->idata->collision &&
-    iface->idata->obs.x0.size() > 0 &&
-    iface->idata->obs.F.size() > 0 &&
-    iface->idata->obs.x0.size()==iface->idata->obs.x1.size();
-  bool lerp_obstacles =
-    has_obstacles &&
-    iface->idata->options->substeps>1 &&
-    (iface->idata->obs.x0-iface->idata->obs.x1).lpNorm<Eigen::Infinity>()>1e-6;
+    iface->idata->obs_x0.size() > 0 &&
+    iface->idata->obs_x1.size() > 0 &&
+    iface->idata->obs_x0[0].size()==iface->idata->obs_x1[0].size();
 
-  if (has_obstacles && iface->idata->obs.needs_sdf_recompute && !lerp_obstacles) {
+  int substeps = std::max(1,iface->idata->options->substeps);
+  int n_obs = iface->idata->obs_x0.size();
+  if (has_obstacles && substeps == 1) { // no lerp necessary
     std::string set_obs_error = "";
     if (!iface->idata->collision->set_obstacles(
-        iface->idata->obs.x0.data(),
-        iface->idata->obs.x1.data(),
-        iface->idata->obs.x0.size()/3,
-        iface->idata->obs.F.data(),
-        iface->idata->obs.F.size()/3,
+        iface->idata->obs_x0, iface->idata->obs_x1, iface->idata->obs_F,
         &set_obs_error)) {
       strcpy_error(iface, set_obs_error.c_str());
-      had_set_obstacle_error = true;
+      return_warning = true;
     }
   }
 
   try
   {
-    Eigen::VectorXf obs_x1; // used if substeps > 1
-    int substeps = std::max(1,iface->idata->options->substeps);
+    std::vector<Eigen::MatrixXd> obs_x1_t;
     for (int i=0; i<substeps; ++i) {
 
-      if (lerp_obstacles) {
+      // Interpolate obstacles
+      if (has_obstacles && substeps>1) {
         float t = float(i)/float(substeps-1);
-        obs_x1 = (1.f-t)*iface->idata->obs.x0 + t*iface->idata->obs.x1;
+        obs_x1_t.resize(n_obs);
+        for (int j=0; j<n_obs; ++j) {
+          obs_x1_t[j] = (1.f-t)*iface->idata->obs_x0[j] + t*iface->idata->obs_x1[j];
+        }
         std::string set_obs_error = "";
-        if (iface->idata->collision->set_obstacles(
-            iface->idata->obs.x0.data(),
-            obs_x1.data(),
-            iface->idata->obs.x0.size()/3,
-            iface->idata->obs.F.data(),
-            iface->idata->obs.F.size()/3,
+        if (!iface->idata->collision->set_obstacles(
+            iface->idata->obs_x0, iface->idata->obs_x1, iface->idata->obs_F,
             &set_obs_error)) {
           strcpy_error(iface, set_obs_error.c_str());
-          had_set_obstacle_error = true;
+          return_warning = true;
         }
       }
 
@@ -699,8 +703,7 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
     return 0;
   }
 
-  if (had_set_obstacle_error) {
-    // Return warning (-1).
+  if (return_warning) {
     // We've already copied the error message.
     return -1;
   }
@@ -708,6 +711,59 @@ int admmpd_solve(ADMMPDInterfaceData *iface, Object *ob, float (*vertexCos)[3])
   return 1;
 }
 
+void admmpd_update_obstacles(ADMMPDInterfaceData *iface, Object **obstacles, int numobjects)
+{
+  // Because substepping may occur, we'll buffer the start and end states
+  // of the obstacles. They will not be copied over to the collision pointer
+  // until solve(), depending on the number of substeps, in which case
+  // they are LERP'd
+  iface->idata->obs_x0.clear();
+  iface->idata->obs_x1.clear();
+  iface->idata->obs_F.clear();
+  if (!iface) { return; }
+  if (!iface->idata) { return; }
+  if (!obstacles || numobjects==0) { return; }
+
+  for (int i = 0; i < numobjects; ++i) {
+    Object *ob = obstacles[i];
+    if (!ob) {
+      continue; // uh?
+    }
+    if (ob->type != OB_MESH) {
+      continue; // is not a mesh type
+    }
+    if (!ob->pd || !ob->pd->deflect) {
+      continue; // is a non-collider
+    }
+    if (strcmp(ob->id.name,iface->name)==0) {
+      continue; // skip self
+    }
+
+    CollisionModifierData *cmd = (CollisionModifierData *)BKE_modifiers_findby_type(
+        ob, eModifierType_Collision);
+    if (!cmd) {
+      continue;
+    }
+
+    int idx = iface->idata->obs_x0.size();
+    iface->idata->obs_x0.emplace_back(Eigen::MatrixXd(cmd->mvert_num,3));
+    iface->idata->obs_x1.emplace_back(Eigen::MatrixXd(cmd->mvert_num,3));
+    iface->idata->obs_F.emplace_back(Eigen::MatrixXi(cmd->tri_num,3));
+
+    for (int j=0; j<cmd->mvert_num; ++j) {
+      for (int k=0; k<3; ++k) {
+        iface->idata->obs_x0[idx](j,k) = cmd->x[j].co[k];
+        iface->idata->obs_x1[idx](j,k) = cmd->xnew[j].co[k];
+      }
+    }
+
+    for (int j=0; j<cmd->tri_num; ++j) {
+      for (int k=0; k<3; ++k) {
+        iface->idata->obs_F[idx](j,k) = cmd->tri[j].tri[k];
+      }
+    }
+  }
+}
 
 #ifdef WITH_TETGEN
 
@@ -864,6 +920,7 @@ static inline int admmpd_init_with_tetgen(ADMMPDInterfaceData *iface, Object *ob
 
   iface->idata->mesh = std::make_shared<admmpd::TetMesh>();
   bool success = iface->idata->mesh->create(
+    iface->idata->options.get(),
     verts.data(),
     nv,
     faces.data(),

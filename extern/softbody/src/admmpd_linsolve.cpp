@@ -74,14 +74,17 @@ void LDLT::init_solve(
 		data->ls.Ptq = options->pk * P.transpose() * q;
 	}
 
-	if (!data->ls.ldlt_A_PtP)
+	bool new_ptr = false;
+	if (!data->ls.ldlt_A_PtP) {
 		data->ls.ldlt_A_PtP = std::make_unique<Cholesky>();
+		new_ptr = true;
+	}
 
 	// Compute A + P'P and factorize:
 	// 1) A not computed
 	// 2) P has changed
 	// 3) factorization not set
-	if ( data->ls.ldlt_A_PtP->info() != Eigen::Success ||
+	if ( new_ptr ||
 		data->ls.A_PtP.nonZeros()==0 ||
 		new_P)
 	{

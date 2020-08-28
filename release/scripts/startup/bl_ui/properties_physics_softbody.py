@@ -57,6 +57,7 @@ class PHYSICS_PT_softbody(PhysicButtonsPanel, Panel):
         layout.prop(softbody, "solver_mode")
     
         if softbody.solver_mode=='LEGACY':
+            # Moved to collision dropdown in ADMMPD
             layout.prop(softbody, "collision_collection")
         elif softbody.solver_mode=='ADMMPD':
             layout.prop(softbody, "admmpd_mesh_mode")
@@ -349,6 +350,8 @@ class PHYSICS_PT_softbody_admmpdcollision(PhysicButtonsPanel, Panel):
         softbody = md.settings
         layout.enabled = softbody_panel_enabled(md)
         ob = context.object
+
+        layout.prop(softbody, "collision_collection")
 
         layout.prop(softbody, "admmpd_ck_exp")
         layout.prop(softbody, "admmpd_floor_z")

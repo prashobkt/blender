@@ -310,6 +310,7 @@ enum {
   REMESH_VOXEL = 0,
   REMESH_QUAD = 1,
   REMESH_TET = 2,
+  REMESH_TETLATTICE = 3,
 };
 
 /* Subsurf Type */

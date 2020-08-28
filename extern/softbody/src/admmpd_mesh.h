@@ -18,6 +18,7 @@ public:
     // Copy buffers to internal data, 
     // calculates BVH/SDF, etc...
     virtual bool create(
+        const Options *options,
         const float *verts, // size nv*3
         int nv,
         const unsigned int *faces, // size nf*3
@@ -34,6 +35,8 @@ public:
     virtual const Eigen::MatrixXi *facets() const = 0;
     virtual const Eigen::MatrixXd *rest_facet_verts() const = 0;
     virtual const SDFType *rest_facet_sdf() const = 0;
+
+    virtual bool self_collision_allowed() const = 0;
 
     // Maps primitive vertex to facet vertex. For standard tet meshes
     // it's just one-to-one, but embedded meshes use bary weighting.
@@ -85,32 +88,27 @@ protected:
     std::unordered_map<int,double> emb_pin_k;
     std::unordered_map<int,Eigen::Vector3d> emb_pin_pos;
     admmpd::AABBTree<double,3> emb_rest_facet_tree;
+    bool mesh_is_closed;
     SDFType emb_sdf;
     mutable bool P_updated; // set to false on linearize_pins
 
-    bool compute_embedding();
+    bool compute_embedding(const admmpd::Options *options);
 
     // Computes the tet mesh on a subset of faces
-    bool compute_lattice();
+    bool compute_lattice(const admmpd::Options *options);
 
+    // Sets mesh_is_closed
     void compute_sdf(
         const Eigen::MatrixXd *emb_v,
         const Eigen::MatrixXi *emb_f,
-        SDFType *sdf) const;
+        SDFType *sdf);
 
 public:
 
     int type() const { return MESHTYPE_EMBEDDED; }
 
-    struct Options
-    {
-        int max_subdiv_levels;
-        Options() :
-            max_subdiv_levels(3)
-            {}
-    } options;
-
     bool create(
+        const Options *options,
         const float *verts, // size nv*3
         int nv,
         const unsigned int *faces, // size nf*3
@@ -126,6 +124,8 @@ public:
     const Eigen::MatrixXd *emb_barycoords() const { return &emb_barys; }
     const SDFType *rest_facet_sdf() const { return &emb_sdf; }
     const admmpd::AABBTree<double,3> *emb_rest_tree() const { return &emb_rest_facet_tree; }
+
+    bool self_collision_allowed() const { return mesh_is_closed; }
 
     Eigen::Vector3d get_mapped_facet_vertex(
         const Eigen::MatrixXd *prim_verts,
@@ -177,6 +177,7 @@ public:
     int type() const { return MESHTYPE_TET; }
 
     bool create(
+        const Options *options,
         const float *verts, // size nv*3
         int nv,
         const unsigned int *faces, // size nf*3 (surface faces)
@@ -189,6 +190,9 @@ public:
     const Eigen::MatrixXi *prims() const { return &T; }
     const Eigen::MatrixXd *rest_prim_verts() const { return &V0; }
     const SDFType *rest_facet_sdf() const { return &rest_sdf; }
+
+    // Not yet implemented
+    bool self_collision_allowed() const { return false; }
 
     Eigen::Vector3d get_mapped_facet_vertex(
         const Eigen::MatrixXd *prim_verts,
@@ -237,6 +241,7 @@ public:
     int type() const { return MESHTYPE_TRIANGLE; }
 
     bool create(
+        const Options *options,
         const float *verts, // size nv*3
         int nv,
         const unsigned int *faces, // size nf*3
@@ -249,6 +254,9 @@ public:
     const Eigen::MatrixXi *facets() const { return &F; }
     const Eigen::MatrixXd *rest_facet_verts() const { return &V0; }
     const SDFType *rest_facet_sdf() const { return nullptr; }
+
+    // Not yet implemented
+    bool self_collision_allowed() const { return false; }
 
     Eigen::Vector3d get_mapped_facet_vertex(
         const Eigen::MatrixXd *prim_verts,

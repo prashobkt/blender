@@ -56,6 +56,7 @@ std::string Logger::state_string(int state)
 	{
 		default: break;
 		case SOLVERSTATE_INIT: str="init"; break;
+		case SOLVERSTATE_MESHCREATE: str="mesh_init"; break;
 		case SOLVERSTATE_SOLVE: str="solve"; break;
 		case SOLVERSTATE_INIT_SOLVE: str="init_solve"; break;
 		case SOLVERSTATE_LOCAL_STEP: str="local_step"; break;

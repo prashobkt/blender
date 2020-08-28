@@ -23,11 +23,14 @@ struct VFCollisionPair {
 class Collision {
 public:
     struct ObstacleData {
-        bool has_obs() const { return F.rows()>0; }
-        void clear();
-        Eigen::MatrixXd V;
-        Eigen::MatrixXi F;
-        SDFType sdf;
+        int num_obs() const { return sdf.size(); }
+        bool compute_sdf(int idx);
+        std::vector<SDFType> sdf;
+        // Obstacle data stored in custom matrix type to interop with DiscreGrid
+        std::vector<Eigen::Matrix<double,Eigen::Dynamic,3,Eigen::RowMajor> > x0;
+        std::vector<Eigen::Matrix<double,Eigen::Dynamic,3,Eigen::RowMajor> > x1;
+        std::vector<Eigen::Matrix<unsigned int,Eigen::Dynamic,3,Eigen::RowMajor> > F;
+        std::vector<Eigen::AlignedBox<double,3> > box;
     } obsdata;
 
     virtual ~Collision() {}
@@ -56,15 +59,13 @@ public:
         const admmpd::Mesh *mesh,
         std::vector<std::set<int> > &g) = 0;
 
-    // Set the soup of obstacles for this time step.
-    // Returns true on success (SDF generation).
-    // If err not nullptr, it's set with what caused the error.
+    // Updates the collision obstacles. If the
+    // obstacles are new or have moved, the SDF
+    // is recomputed on the next call to detect(...)
     virtual bool set_obstacles(
-        const float *v0,
-        const float *v1,
-        int nv,
-        const unsigned int *faces,
-        int nf,
+        std::vector<Eigen::MatrixXd> &v0,
+        std::vector<Eigen::MatrixXd> &v1,
+        std::vector<Eigen::MatrixXi> &F,
         std::string *err=nullptr);
 
     // Linearizes active collision pairs about x

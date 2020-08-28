@@ -48,6 +48,8 @@
 
 #include "bmesh_tools.h"
 
+#include "admmpd_api.h"
+
 #ifdef WITH_OPENVDB
 #  include "openvdb_capi.h"
 #endif
@@ -167,11 +169,11 @@ static Mesh *BKE_mesh_remesh_quadriflow(Mesh *input_mesh,
                                         void *update_cb,
                                         void *update_cb_data)
 {
-  /* Ensure that the triangulated mesh data is up to data */
+  /* Ensure that the triangulated mesh data is up to data. */
   BKE_mesh_runtime_looptri_recalc(input_mesh);
   const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(input_mesh);
 
-  /* Gather the required data for export to the internal quadiflow mesh format */
+  /* Gather the required data for export to the internal quadiflow mesh format. */
   MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(input_mesh),
                                   "remesh_looptri");
   BKE_mesh_runtime_verttri_from_looptri(
@@ -197,7 +199,7 @@ static Mesh *BKE_mesh_remesh_quadriflow(Mesh *input_mesh,
     faces[i * 3 + 2] = vt->tri[2];
   }
 
-  /* Fill out the required input data */
+  /* Fill out the required input data. */
   QuadriflowRemeshData qrd;
 
   qrd.totfaces = totfaces;
@@ -215,7 +217,7 @@ static Mesh *BKE_mesh_remesh_quadriflow(Mesh *input_mesh,
 
   qrd.out_faces = NULL;
 
-  /* Run the remesher */
+  /* Run the remesher. */
   QFLOW_quadriflow_remesh(&qrd, update_cb, update_cb_data);
 
   MEM_freeN(verts);
@@ -223,7 +225,7 @@ static Mesh *BKE_mesh_remesh_quadriflow(Mesh *input_mesh,
   MEM_freeN(verttri);
 
   if (qrd.out_faces == NULL) {
-    /* The remeshing was canceled */
+    /* The remeshing was canceled. */
     return NULL;
   }
 
@@ -267,11 +269,11 @@ static Mesh *BKE_mesh_remesh_quadriflow(Mesh *input_mesh,
 #ifdef WITH_TETGEN
 static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh, unsigned int **tets, int *numtets)
 {
-  // Ensure that the triangulated mesh data is up to data
+  /* Ensure that the triangulated mesh data is up to data. */
   BKE_mesh_runtime_looptri_recalc(input_mesh);
   const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(input_mesh);
 
-  // Gather the required data
+  /* Gather the required data. */
   MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(input_mesh),
                                   "remesh_looptri");
   BKE_mesh_runtime_verttri_from_looptri(
@@ -297,7 +299,7 @@ static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh, unsigned int **tets, int *
     faces[i * 3 + 2] = vt->tri[2];
   }
 
-  // Call the tetgen remesher
+  /* Call the tetgen remesher. */
   TetGenRemeshData tg;
   init_tetgenremeshdata(&tg);
   tg.in_totfaces = totfaces;
@@ -317,7 +319,7 @@ static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh, unsigned int **tets, int *
 
   Mesh *mesh = NULL;
   if (success) {
-    // Construct the new output mesh
+    /* Construct the new output mesh. */
     mesh = BKE_mesh_new_nomain(tg.out_totverts, 0, 0, (tg.out_totfacets * 3), tg.out_totfacets);
 
     for (int i = 0; i < tg.out_totverts; i++) {
@@ -339,10 +341,9 @@ static Mesh *BKE_mesh_remesh_tetgen(Mesh *input_mesh, unsigned int **tets, int *
     *numtets = tg.out_tottets;
     *tets = (unsigned int *)MEM_malloc_arrayN(
         tg.out_tottets * 4, sizeof(unsigned int), "remesh_output_tets");
-    //*tets = (unsigned int *)malloc(tg.out_tottets*4*sizeof(unsigned int));
     memcpy(*tets, tg.out_tets, tg.out_tottets * 4 * sizeof(unsigned int));
 
-  }  // end success
+  }
 
   if (tg.out_verts != NULL) {
     MEM_freeN(tg.out_verts);
@@ -373,6 +374,118 @@ struct Mesh *BKE_mesh_remesh_tetgen_to_mesh_nomain(struct Mesh *mesh,
   UNUSED_VARS(mesh, tets, numtets);
 #endif
   return NULL;
+}
+
+static Mesh *BKE_mesh_remesh_tetlattice(struct Mesh *input_mesh,
+                                        int subdivisions,
+                                        unsigned int **tets,
+                                        int *numtets)
+{
+
+  /* Ensure that the triangulated mesh data is up to data. */
+  BKE_mesh_runtime_looptri_recalc(input_mesh);
+  const MLoopTri *looptri = BKE_mesh_runtime_looptri_ensure(input_mesh);
+
+  /* Gather the required data. */
+  MVertTri *verttri = MEM_callocN(sizeof(*verttri) * BKE_mesh_runtime_looptri_len(input_mesh),
+                                  "remesh_looptri");
+  BKE_mesh_runtime_verttri_from_looptri(
+      verttri, input_mesh->mloop, looptri, BKE_mesh_runtime_looptri_len(input_mesh));
+
+  unsigned int totfaces = BKE_mesh_runtime_looptri_len(input_mesh);
+  unsigned int totverts = input_mesh->totvert;
+  float *verts = (float *)MEM_malloc_arrayN(totverts * 3, sizeof(float), "remesh_input_verts");
+  unsigned int *faces = (unsigned int *)MEM_malloc_arrayN(
+      totfaces * 3, sizeof(unsigned int), "remesh_intput_faces");
+
+  for (unsigned int i = 0; i < totverts; i++) {
+    MVert *mvert = &input_mesh->mvert[i];
+    verts[i * 3] = mvert->co[0];
+    verts[i * 3 + 1] = mvert->co[1];
+    verts[i * 3 + 2] = mvert->co[2];
+  }
+
+  for (unsigned int i = 0; i < totfaces; i++) {
+    MVertTri *vt = &verttri[i];
+    faces[i * 3] = vt->tri[0];
+    faces[i * 3 + 1] = vt->tri[1];
+    faces[i * 3 + 2] = vt->tri[2];
+  }
+
+  float *out_verts = NULL;
+  int out_totverts = 0;
+  admmpd_compute_lattice(
+    subdivisions,
+    verts, totverts,
+    faces, totfaces,
+    &out_verts, &out_totverts,
+    tets, numtets);
+  bool success = out_totverts>0 && *numtets>0;
+
+  MEM_freeN(verts);
+  verts = NULL;
+  MEM_freeN(faces);
+  faces = NULL;
+  MEM_freeN(verttri);
+  verttri = NULL;
+
+  Mesh *mesh = NULL;
+  if (success) {
+
+    int nt = *numtets;
+    int nf = *numtets * 4;
+
+    /* Construct the new output mesh. */
+    mesh = BKE_mesh_new_nomain(out_totverts, 0, 0, (nf*3), nf);
+
+    for (int i = 0; i < out_totverts; i++) {
+      copy_v3_v3(mesh->mvert[i].co, &out_verts[i * 3]);
+    }
+
+    MPoly *mp = mesh->mpoly;
+    MLoop *ml = mesh->mloop;
+    for (int i=0; i<nt; ++i) {
+  
+      int tet[4];
+      tet[0] = (*tets)[i*4+0];
+      tet[1] = (*tets)[i*4+1];
+      tet[2] = (*tets)[i*4+2];
+      tet[3] = (*tets)[i*4+3];
+
+      int tet_facets[4*3] = {
+        0, 2, 1,
+        0, 1, 3,
+        0, 3, 2,
+        1, 2, 3
+      };
+
+      for (int j = 0; j < 4; j++, mp++, ml += 3) {
+        mp->loopstart = (int)(ml - mesh->mloop);
+        mp->totloop = 3;
+        ml[0].v = tet[tet_facets[j*3+0]];
+        ml[1].v = tet[tet_facets[j*3+1]];
+        ml[2].v = tet[tet_facets[j*3+2]];
+      }
+    }
+
+  }
+  BKE_mesh_calc_edges(mesh, false, false);
+  BKE_mesh_calc_normals(mesh);
+
+  if (out_verts != NULL) {
+    MEM_freeN(out_verts);
+    out_verts = NULL;
+  }
+
+  return mesh;
+}
+
+struct Mesh *BKE_mesh_remesh_tetlattice_to_mesh_nomain(struct Mesh *mesh,
+                                                   int subdivisions,
+                                                   unsigned int **tets,
+                                                   int *numtets)
+{
+  return BKE_mesh_remesh_tetlattice(mesh, subdivisions, tets, numtets);
 }
 
 Mesh *BKE_mesh_remesh_quadriflow_to_mesh_nomain(Mesh *mesh,

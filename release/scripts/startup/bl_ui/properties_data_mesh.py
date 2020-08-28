@@ -502,7 +502,7 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
         row = layout.row()
 
         mesh = context.mesh
-        row.prop(mesh, "remesh_mode", text="Mode", expand=True)
+        row.prop(mesh, "remesh_mode", text="Mode", expand=False)
         col = layout.column()
         if mesh.remesh_mode == 'VOXEL':
             col.prop(mesh, "remesh_voxel_size")
@@ -520,8 +520,10 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
             col.operator("object.voxel_remesh", text="Voxel Remesh")
         elif mesh.remesh_mode == 'QUAD':
             col.operator("object.quadriflow_remesh", text="QuadriFlow Remesh")
-        else:
+        elif mesh.remesh_mode == 'TET':
             col.operator("object.tetgen_remesh", text="Tetrahedralize")
+        elif mesh.remesh_mode == 'TETLATTICE':
+            col.operator("object.tetlattice_remesh", text="Generate Lattice")
             
 
 

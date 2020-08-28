@@ -303,6 +303,7 @@ void OBJECT_OT_voxel_remesh(struct wmOperatorType *ot);
 void OBJECT_OT_voxel_size_edit(struct wmOperatorType *ot);
 void OBJECT_OT_quadriflow_remesh(struct wmOperatorType *ot);
 void OBJECT_OT_tetgen_remesh(struct wmOperatorType *ot);
+void OBJECT_OT_tetlattice_remesh(struct wmOperatorType *ot);
 
 /* object_transfer_data.c */
 void OBJECT_OT_data_transfer(struct wmOperatorType *ot);

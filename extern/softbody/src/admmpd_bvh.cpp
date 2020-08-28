@@ -267,8 +267,13 @@ void Octree<T,DIM>::init(const MatrixXT *V, const Eigen::MatrixXi *F, int stopde
 		boxes[i].extend(V->row(f[0]).transpose());
 		boxes[i].extend(V->row(f[1]).transpose());
 		boxes[i].extend(V->row(f[2]).transpose());
+        boxes[i].extend(boxes[i].min()-VecType::Ones()*1e-4);
+        boxes[i].extend(boxes[i].max()+VecType::Ones()*1e-4);
 		global_box.extend(boxes[i]);
     }
+
+    global_box.extend(global_box.min()-VecType::Ones()*1e-2);
+    global_box.extend(global_box.max()+VecType::Ones()*1e-2);
 
 	T halfwidth = global_box.sizes().maxCoeff()*0.5;
     m_root.reset(

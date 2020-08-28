@@ -36,13 +36,14 @@ typedef Discregrid::CubicLagrangeDiscreteGrid SDFType;
 #define COLLISIONMODE_NUM 2
 
 #define SOLVERSTATE_INIT 0
-#define SOLVERSTATE_SOLVE 1
-#define SOLVERSTATE_INIT_SOLVE 2
-#define SOLVERSTATE_LOCAL_STEP 3
-#define SOLVERSTATE_GLOBAL_STEP 4
-#define SOLVERSTATE_COLLISION_UPDATE 5
-#define SOLVERSTATE_TEST_CONVERGED 6
-#define SOLVERSTATE_NUM 7
+#define SOLVERSTATE_MESHCREATE 1
+#define SOLVERSTATE_SOLVE 2
+#define SOLVERSTATE_INIT_SOLVE 3
+#define SOLVERSTATE_LOCAL_STEP 4
+#define SOLVERSTATE_GLOBAL_STEP 5
+#define SOLVERSTATE_COLLISION_UPDATE 6
+#define SOLVERSTATE_TEST_CONVERGED 7
+#define SOLVERSTATE_NUM 8
 
 #define LOGLEVEL_NONE 0
 #define LOGLEVEL_LOW 1
@@ -57,6 +58,7 @@ typedef Discregrid::CubicLagrangeDiscreteGrid SDFType;
 
 struct Options {
     double timestep_s;
+    int lattice_subdiv; // max subdiv levels for lattice gen
     int log_level;
     int linsolver;
     int max_admm_iters;
@@ -74,12 +76,13 @@ struct Options {
     double poisson; // Poisson ratio // TODO variable per-tet
     double density_kgm3; // density of mesh
     double floor; // floor location
-    double collision_thickness;
+    //double collision_thickness;
     bool self_collision; // process self collisions
     Eigen::Vector2d strain_limit; // min=[-inf,1], max=[1,inf]
     Eigen::Vector3d grav;
     Options() :
         timestep_s(1.0/24.0),
+        lattice_subdiv(3),
         log_level(LOGLEVEL_NONE),
         linsolver(LINSOLVER_PCG),
         max_admm_iters(20),
@@ -97,7 +100,7 @@ struct Options {
         poisson(0.399),
         density_kgm3(1522),
         floor(-std::numeric_limits<double>::max()),
-        collision_thickness(1e-6),
+        //collision_thickness(1e-6),
         self_collision(false),
         strain_limit(0,100),
         grav(0,0,-9.8)
