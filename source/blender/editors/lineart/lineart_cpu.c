@@ -1515,6 +1515,11 @@ static void lineart_geometry_object_load(Object *ob,
     }
 
     if (ED_lineart_calculation_flag_check(LRT_RENDER_CANCELING)) {
+      BM_mesh_free(bm);
+      if (ob->type != OB_MESH) {
+        BKE_mesh_free(use_mesh);
+        MEM_freeN(use_mesh);
+      }
       return;
     }
 
@@ -2590,7 +2595,6 @@ LineartRenderBuffer *ED_lineart_create_render_buffer(Scene *scene)
   lineart_share.pending_render_task = NULL;
   BLI_spin_unlock(&lineart_share.lock_render_status);
 
-  ED_lineart_calculation_flag_set(LRT_RENDER_IDLE);
   return rb;
 }
 
@@ -3772,6 +3776,9 @@ void ED_lineart_compute_feature_lines_background(Depsgraph *dg, const int show_f
   if (ED_lineart_calculation_flag_check(LRT_RENDER_RUNNING)) {
     /* Set CANCEL flag, and when operation is canceled, flag will become FINISHED. */
     ED_lineart_calculation_flag_set(LRT_RENDER_CANCELING);
+    /* No need to lock anything as we are canceling anyway. Will there be any potential memory
+     * problem 'while' canceling? */
+    BLI_spin_unlock(&lineart_share.lock_loader);
   }
 
   if (tp_read) {
