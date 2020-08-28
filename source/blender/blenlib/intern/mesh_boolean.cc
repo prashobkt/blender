@@ -2008,6 +2008,7 @@ static void propagate_windings_and_in_output_volume(PatchesInfo &pinfo,
         int t = patch.tri(0);
         int shape = shape_fn(t);
         BLI_assert(shape < nshapes);
+        UNUSED_VARS_NDEBUG(nshapes);
         if (dbg_level > 1) {
           std::cout << "    representative tri " << t << ": in shape " << shape << "\n";
         }
@@ -2391,6 +2392,7 @@ static IMesh gwn_boolean(const IMesh &tm,
   Vector<Face *> out_faces;
   out_faces.reserve(tm.face_size());
   BLI_assert(nshapes == 2); /* TODO: generalize. */
+  UNUSED_VARS_NDEBUG(nshapes);
   for (int p : pinfo.index_range()) {
     const Patch &patch = pinfo.patch(p);
     /* For test triangle, choose one in the middle of patch list
