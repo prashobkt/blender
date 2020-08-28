@@ -57,12 +57,11 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata)
   shd->grid_line_size = max_ff(0.0f, U.pixelsize - 1.0f) * 0.5f;
 
   if (pd->is_image_editor) {
-    SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
     shd->grid_flag = PLANE_IMAGE | SHOW_GRID;
-    shd->grid_distance = sima->zoom;
+    shd->grid_distance = 1.0f;
     shd->grid_mesh_size = 1.0f;
-    for (int step = 0; step <= 8; step++) {
-      shd->grid_steps[step] = powf(4, step) * 0.1;
+    for (int step = 0; step < 8; step++) {
+      shd->grid_steps[step] = powf(10, step) * 0.01;
     }
     return;
   }
