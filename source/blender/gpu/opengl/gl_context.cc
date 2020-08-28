@@ -22,6 +22,7 @@
  */
 
 #include "BLI_assert.h"
+#include "BLI_system.h"
 #include "BLI_utildefines.h"
 
 #include "GPU_framebuffer.h"
@@ -29,6 +30,8 @@
 #include "GHOST_C-api.h"
 
 #include "gpu_context_private.hh"
+
+#include "gl_state.hh"
 
 #include "gl_backend.hh" /* TODO remove */
 #include "gl_context.hh"
@@ -54,6 +57,8 @@ GLContext::GLContext(void *ghost_window, GLSharedOrphanLists &shared_orphan_list
   glBindBuffer(GL_ARRAY_BUFFER, default_attr_vbo_);
   glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  state_manager = new GLStateManager();
 }
 
 GLContext::~GLContext()
@@ -231,6 +236,40 @@ void GLContext::framebuffer_unregister(struct GPUFrameBuffer *fb)
 #else
   UNUSED_VARS(fb);
 #endif
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Error Checking
+ *
+ * This is only useful for implementation that does not support the KHR_debug extension.
+ * \{ */
+
+void GLContext::check_error(const char *info)
+{
+  GLenum error = glGetError();
+
+#define ERROR_CASE(err) \
+  case err: \
+    fprintf(stderr, "GL error: %s : %s\n", #err, info); \
+    BLI_system_backtrace(stderr); \
+    break;
+
+  switch (error) {
+    ERROR_CASE(GL_INVALID_ENUM)
+    ERROR_CASE(GL_INVALID_VALUE)
+    ERROR_CASE(GL_INVALID_OPERATION)
+    ERROR_CASE(GL_INVALID_FRAMEBUFFER_OPERATION)
+    ERROR_CASE(GL_OUT_OF_MEMORY)
+    ERROR_CASE(GL_STACK_UNDERFLOW)
+    ERROR_CASE(GL_STACK_OVERFLOW)
+    case GL_NO_ERROR:
+      break;
+    default:
+      fprintf(stderr, "Unknown GL error: %x : %s", error, info);
+      break;
+  }
 }
 
 /** \} */

@@ -63,7 +63,7 @@
 #include "BLT_translation.h"
 
 #ifdef WITH_PYTHON
-#  include "BPY_extern.h"
+#  include "BPY_extern_run.h"
 #endif
 
 #include "ED_screen.h"
@@ -221,8 +221,8 @@ static void ui_tooltip_region_draw_cb(const bContext *UNUSED(C), ARegion *region
 
       /* offset to the end of the last line */
       if (field->text_suffix) {
-        float xofs = field->geom.x_pos;
-        float yofs = data->lineh * (field->geom.lines - 1);
+        const float xofs = field->geom.x_pos;
+        const float yofs = data->lineh * (field->geom.lines - 1);
         bbox.xmin += xofs;
         bbox.ymax -= yofs;
 
@@ -433,7 +433,7 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
     if (has_valid_context == false) {
       expr_result = BLI_strdup(has_valid_context_error);
     }
-    else if (BPY_execute_string_as_string(C, expr_imports, expr, __func__, &expr_result)) {
+    else if (BPY_run_string_as_string(C, expr_imports, expr, __func__, &expr_result)) {
       if (STREQ(expr_result, "")) {
         MEM_freeN(expr_result);
         expr_result = NULL;
@@ -490,7 +490,7 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
     if (has_valid_context == false) {
       expr_result = BLI_strdup(has_valid_context_error);
     }
-    else if (BPY_execute_string_as_string(C, expr_imports, expr, __func__, &expr_result)) {
+    else if (BPY_run_string_as_string(C, expr_imports, expr, __func__, &expr_result)) {
       if (STREQ(expr_result, ".")) {
         MEM_freeN(expr_result);
         expr_result = NULL;
@@ -535,13 +535,13 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
     char *shortcut = NULL;
 
     {
-      uiStringInfo op_keymap = {BUT_GET_OP_KEYMAP, NULL};
+      const uiStringInfo op_keymap = {BUT_GET_OP_KEYMAP, NULL};
       UI_but_string_info_get(C, but, &op_keymap, NULL);
       shortcut = op_keymap.strinfo;
     }
 
     if (shortcut == NULL) {
-      ePaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
+      const ePaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
       const char *tool_attr = BKE_paint_get_tool_prop_id_from_paintmode(paint_mode);
       if (tool_attr != NULL) {
         const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
@@ -594,7 +594,7 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
         if (has_valid_context == false) {
           shortcut = BLI_strdup(has_valid_context_error);
         }
-        else if (BPY_execute_string_as_intptr(C, expr_imports, expr, __func__, &expr_result)) {
+        else if (BPY_run_string_as_intptr(C, expr_imports, expr, __func__, &expr_result)) {
           if (expr_result != 0) {
             wmKeyMap *keymap = (wmKeyMap *)expr_result;
             LISTBASE_FOREACH (wmKeyMapItem *, kmi, &keymap->items) {
@@ -658,7 +658,7 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
       if (has_valid_context == false) {
         /* pass */
       }
-      else if (BPY_execute_string_as_string_and_size(
+      else if (BPY_run_string_as_string_and_size(
                    C, expr_imports, expr, __func__, &expr_result, &expr_result_len)) {
         /* pass. */
       }
@@ -736,7 +736,7 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
     if (has_valid_context == false) {
       /* pass */
     }
-    else if (BPY_execute_string_as_intptr(C, expr_imports, expr, __func__, &expr_result)) {
+    else if (BPY_run_string_as_intptr(C, expr_imports, expr, __func__, &expr_result)) {
       if (expr_result != 0) {
         {
           uiTooltipField *field = text_field_add(data,
@@ -768,14 +768,14 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
 
 static uiTooltipData *ui_tooltip_data_from_button(bContext *C, uiBut *but)
 {
-  uiStringInfo but_label = {BUT_GET_LABEL, NULL};
-  uiStringInfo but_tip = {BUT_GET_TIP, NULL};
-  uiStringInfo enum_label = {BUT_GET_RNAENUM_LABEL, NULL};
-  uiStringInfo enum_tip = {BUT_GET_RNAENUM_TIP, NULL};
-  uiStringInfo op_keymap = {BUT_GET_OP_KEYMAP, NULL};
-  uiStringInfo prop_keymap = {BUT_GET_PROP_KEYMAP, NULL};
-  uiStringInfo rna_struct = {BUT_GET_RNASTRUCT_IDENTIFIER, NULL};
-  uiStringInfo rna_prop = {BUT_GET_RNAPROP_IDENTIFIER, NULL};
+  const uiStringInfo but_label = {BUT_GET_LABEL, NULL};
+  const uiStringInfo but_tip = {BUT_GET_TIP, NULL};
+  const uiStringInfo enum_label = {BUT_GET_RNAENUM_LABEL, NULL};
+  const uiStringInfo enum_tip = {BUT_GET_RNAENUM_TIP, NULL};
+  const uiStringInfo op_keymap = {BUT_GET_OP_KEYMAP, NULL};
+  const uiStringInfo prop_keymap = {BUT_GET_PROP_KEYMAP, NULL};
+  const uiStringInfo rna_struct = {BUT_GET_RNASTRUCT_IDENTIFIER, NULL};
+  const uiStringInfo rna_prop = {BUT_GET_RNAPROP_IDENTIFIER, NULL};
 
   char buf[512];
 
@@ -884,7 +884,7 @@ static uiTooltipData *ui_tooltip_data_from_button(bContext *C, uiBut *but)
   }
 
   if (but->rnaprop) {
-    int unit_type = UI_but_unit_type_get(but);
+    const int unit_type = UI_but_unit_type_get(but);
 
     if (unit_type == PROP_UNIT_ROTATION) {
       if (RNA_property_type(but->rnaprop) == PROP_FLOAT) {
