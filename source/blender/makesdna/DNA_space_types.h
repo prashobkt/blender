@@ -877,10 +877,10 @@ typedef enum eFileSel_File_Types {
   FILE_TYPE_USD = (1 << 18),
   FILE_TYPE_VOLUME = (1 << 19),
 
+  FILE_TYPE_ASSET = (1 << 29),
   /** An FS directory (i.e. S_ISDIR on its path is true). */
   FILE_TYPE_DIR = (1 << 30),
   FILE_TYPE_BLENDERLIB = (1ul << 31),
-  FILE_TYPE_ASSET = (1ul << 32),
 } eFileSel_File_Types;
 
 /* Selection Flags in filesel: struct direntry, unsigned char selflag */

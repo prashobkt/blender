@@ -18,8 +18,7 @@
  * \ingroup DNA
  */
 
-#ifndef __DNA_ASSET_DEFAULTS_H__
-#define __DNA_ASSET_DEFAULTS_H__
+#pragma once
 
 /* Struct members on own line. */
 /* clang-format off */
@@ -30,10 +29,9 @@
 
 #define _DNA_DEFAULT_AssetData \
   { \
+    0 \
   }
 
 /** \} */
 
 /* clang-format on */
-
-#endif /* __DNA_ASSET_DEFAULTS_H__ */
