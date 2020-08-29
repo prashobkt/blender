@@ -755,7 +755,7 @@ class RENDER_PT_lineart_line_types(RenderButtonsPanel, Panel):
         row.prop(lineart, "fuzzy_everything")
 
         layout.label(text="Extras:")
-        layout.prop(lineart, "allow_duplication")
+        layout.prop(lineart, "allow_duplication", text="Allow Instances")
         layout.prop(lineart, "allow_overlapping_edges")
 
 
