@@ -120,6 +120,7 @@
 #include "BKE_constraint.h"
 #include "BKE_curve.h"
 #include "BKE_curveprofile.h"
+#include "BKE_deform.h"
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
@@ -2429,7 +2430,7 @@ static int direct_link_id_restore_recalc(const FileData *fd,
 static void direct_link_id_common(
     BlendDataReader *reader, Library *current_library, ID *id, ID *id_old, const int tag)
 {
-  if (reader->fd->memfile == NULL) {
+  if (!BLO_read_data_is_undo(reader)) {
     /* When actually reading a file , we do want to reset/re-generate session uuids.
      * In undo case, we want to re-use existing ones. */
     id->session_uuid = MAIN_ID_SESSION_UUID_UNSET;
@@ -2470,7 +2471,7 @@ static void direct_link_id_common(
    *
    * But for regular file load we clear the flag, since the flags might have been changed since
    * the version the file has been saved with. */
-  if (reader->fd->memfile == NULL) {
+  if (!BLO_read_data_is_undo(reader)) {
     id->recalc = 0;
     id->recalc_after_undo_push = 0;
   }
@@ -2630,12 +2631,12 @@ static void direct_link_paint_curve(BlendDataReader *reader, PaintCurve *pc)
 /** \name Read PackedFile
  * \{ */
 
-static PackedFile *direct_link_packedfile(BlendDataReader *reader, PackedFile *oldpf)
+static PackedFile *direct_link_packedfile(BlendDataReader *reader, PackedFile *pf)
 {
-  PackedFile *pf = newpackedadr(reader->fd, oldpf);
+  BLO_read_packed_address(reader, &pf);
 
   if (pf) {
-    pf->data = newpackedadr(reader->fd, pf->data);
+    BLO_read_packed_address(reader, &pf->data);
     if (pf->data == NULL) {
       /* We cannot allow a PackedFile with a NULL data field,
        * the whole code assumes this is not possible. See T70315. */
@@ -2947,7 +2948,7 @@ static void lib_link_ntree(BlendLibReader *reader, Library *lib, bNodeTree *ntre
 
   /* For nodes with static socket layout, add/remove sockets as needed
    * to match the static layout. */
-  if (reader->fd->memfile == NULL) {
+  if (!BLO_read_lib_is_undo(reader)) {
     LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
       node_verify_socket_templates(ntree, node);
     }
@@ -3227,7 +3228,7 @@ static void lib_link_pose(BlendLibReader *reader, Object *ob, bPose *pose)
   /* always rebuild to match proxy or lib changes, but on Undo */
   bool rebuild = false;
 
-  if (reader->fd->memfile == NULL) {
+  if (!BLO_read_lib_is_undo(reader)) {
     if (ob->proxy || ob->id.lib != arm->id.lib) {
       rebuild = true;
     }
@@ -3586,7 +3587,7 @@ static void direct_link_image(BlendDataReader *reader, Image *ima)
   BLO_read_list(reader, &ima->tiles);
 
   BLO_read_list(reader, &(ima->renderslots));
-  if (reader->fd->memfile == NULL) {
+  if (!BLO_read_data_is_undo(reader)) {
     /* We reset this last render slot index only when actually reading a file, not for undo. */
     ima->last_render_slot = ima->render_slot;
   }
@@ -4107,245 +4108,6 @@ static void direct_link_particlesystems(BlendDataReader *reader, ListBase *parti
 /* -------------------------------------------------------------------- */
 /** \name Read ID: Mesh
  * \{ */
-
-static void lib_link_mesh(BlendLibReader *reader, Mesh *me)
-{
-  /* this check added for python created meshes */
-  if (me->mat) {
-    for (int i = 0; i < me->totcol; i++) {
-      BLO_read_id_address(reader, me->id.lib, &me->mat[i]);
-    }
-  }
-  else {
-    me->totcol = 0;
-  }
-
-  BLO_read_id_address(reader, me->id.lib, &me->ipo);  // XXX: deprecated: old anim sys
-  BLO_read_id_address(reader, me->id.lib, &me->key);
-  BLO_read_id_address(reader, me->id.lib, &me->texcomesh);
-}
-
-static void direct_link_dverts(BlendDataReader *reader, int count, MDeformVert *mdverts)
-{
-  if (mdverts == NULL) {
-    return;
-  }
-
-  for (int i = count; i > 0; i--, mdverts++) {
-    /*convert to vgroup allocation system*/
-    MDeformWeight *dw;
-    if (mdverts->dw && (dw = BLO_read_get_new_data_address(reader, mdverts->dw))) {
-      const ssize_t dw_len = mdverts->totweight * sizeof(MDeformWeight);
-      void *dw_tmp = MEM_mallocN(dw_len, "direct_link_dverts");
-      memcpy(dw_tmp, dw, dw_len);
-      mdverts->dw = dw_tmp;
-      MEM_freeN(dw);
-    }
-    else {
-      mdverts->dw = NULL;
-      mdverts->totweight = 0;
-    }
-  }
-}
-
-static void direct_link_mdisps(BlendDataReader *reader, int count, MDisps *mdisps, int external)
-{
-  if (mdisps) {
-    for (int i = 0; i < count; i++) {
-      BLO_read_data_address(reader, &mdisps[i].disps);
-      BLO_read_data_address(reader, &mdisps[i].hidden);
-
-      if (mdisps[i].totdisp && !mdisps[i].level) {
-        /* this calculation is only correct for loop mdisps;
-         * if loading pre-BMesh face mdisps this will be
-         * overwritten with the correct value in
-         * bm_corners_to_loops() */
-        float gridsize = sqrtf(mdisps[i].totdisp);
-        mdisps[i].level = (int)(logf(gridsize - 1.0f) / (float)M_LN2) + 1;
-      }
-
-      if (BLO_read_requires_endian_switch(reader) && (mdisps[i].disps)) {
-        /* DNA_struct_switch_endian doesn't do endian swap for (*disps)[] */
-        /* this does swap for data written at write_mdisps() - readfile.c */
-        BLI_endian_switch_float_array(*mdisps[i].disps, mdisps[i].totdisp * 3);
-      }
-      if (!external && !mdisps[i].disps) {
-        mdisps[i].totdisp = 0;
-      }
-    }
-  }
-}
-
-static void direct_link_grid_paint_mask(BlendDataReader *reader,
-                                        int count,
-                                        GridPaintMask *grid_paint_mask)
-{
-  if (grid_paint_mask) {
-    for (int i = 0; i < count; i++) {
-      GridPaintMask *gpm = &grid_paint_mask[i];
-      if (gpm->data) {
-        BLO_read_data_address(reader, &gpm->data);
-      }
-    }
-  }
-}
-
-/*this isn't really a public api function, so prototyped here*/
-static void direct_link_customdata(BlendDataReader *reader, CustomData *data, int count)
-{
-
-  BLO_read_data_address(reader, &data->layers);
-
-  /* annoying workaround for bug [#31079] loading legacy files with
-   * no polygons _but_ have stale customdata */
-  if (UNLIKELY(count == 0 && data->layers == NULL && data->totlayer != 0)) {
-    CustomData_reset(data);
-    return;
-  }
-
-  BLO_read_data_address(reader, &data->external);
-
-  int i = 0;
-  while (i < data->totlayer) {
-    CustomDataLayer *layer = &data->layers[i];
-
-    if (layer->flag & CD_FLAG_EXTERNAL) {
-      layer->flag &= ~CD_FLAG_IN_MEMORY;
-    }
-
-    layer->flag &= ~CD_FLAG_NOFREE;
-
-    if (CustomData_verify_versions(data, i)) {
-      BLO_read_data_address(reader, &layer->data);
-      if (layer->type == CD_MDISPS) {
-        direct_link_mdisps(reader, count, layer->data, layer->flag & CD_FLAG_EXTERNAL);
-      }
-      else if (layer->type == CD_GRID_PAINT_MASK) {
-        direct_link_grid_paint_mask(reader, count, layer->data);
-      }
-      i++;
-    }
-  }
-
-  CustomData_update_typemap(data);
-}
-
-static void direct_link_mesh(BlendDataReader *reader, Mesh *mesh)
-{
-  BLO_read_pointer_array(reader, (void **)&mesh->mat);
-
-  BLO_read_data_address(reader, &mesh->mvert);
-  BLO_read_data_address(reader, &mesh->medge);
-  BLO_read_data_address(reader, &mesh->mface);
-  BLO_read_data_address(reader, &mesh->mloop);
-  BLO_read_data_address(reader, &mesh->mpoly);
-  BLO_read_data_address(reader, &mesh->tface);
-  BLO_read_data_address(reader, &mesh->mtface);
-  BLO_read_data_address(reader, &mesh->mcol);
-  BLO_read_data_address(reader, &mesh->dvert);
-  BLO_read_data_address(reader, &mesh->mloopcol);
-  BLO_read_data_address(reader, &mesh->mloopuv);
-  BLO_read_data_address(reader, &mesh->mselect);
-
-  /* animdata */
-  BLO_read_data_address(reader, &mesh->adt);
-  BKE_animdata_blend_read_data(reader, mesh->adt);
-
-  /* Normally direct_link_dverts should be called in direct_link_customdata,
-   * but for backwards compatibility in do_versions to work we do it here. */
-  direct_link_dverts(reader, mesh->totvert, mesh->dvert);
-
-  direct_link_customdata(reader, &mesh->vdata, mesh->totvert);
-  direct_link_customdata(reader, &mesh->edata, mesh->totedge);
-  direct_link_customdata(reader, &mesh->fdata, mesh->totface);
-  direct_link_customdata(reader, &mesh->ldata, mesh->totloop);
-  direct_link_customdata(reader, &mesh->pdata, mesh->totpoly);
-
-  mesh->texflag &= ~ME_AUTOSPACE_EVALUATED;
-  mesh->edit_mesh = NULL;
-  BKE_mesh_runtime_reset(mesh);
-
-  /* happens with old files */
-  if (mesh->mselect == NULL) {
-    mesh->totselect = 0;
-  }
-
-  /* Multires data */
-  BLO_read_data_address(reader, &mesh->mr);
-  if (mesh->mr) {
-    BLO_read_list(reader, &mesh->mr->levels);
-    MultiresLevel *lvl = mesh->mr->levels.first;
-
-    direct_link_customdata(reader, &mesh->mr->vdata, lvl->totvert);
-    direct_link_dverts(reader, lvl->totvert, CustomData_get(&mesh->mr->vdata, 0, CD_MDEFORMVERT));
-    direct_link_customdata(reader, &mesh->mr->fdata, lvl->totface);
-
-    BLO_read_data_address(reader, &mesh->mr->edge_flags);
-    BLO_read_data_address(reader, &mesh->mr->edge_creases);
-
-    BLO_read_data_address(reader, &mesh->mr->verts);
-
-    /* If mesh has the same number of vertices as the
-     * highest multires level, load the current mesh verts
-     * into multires and discard the old data. Needed
-     * because some saved files either do not have a verts
-     * array, or the verts array contains out-of-date
-     * data. */
-    if (mesh->totvert == ((MultiresLevel *)mesh->mr->levels.last)->totvert) {
-      if (mesh->mr->verts) {
-        MEM_freeN(mesh->mr->verts);
-      }
-      mesh->mr->verts = MEM_dupallocN(mesh->mvert);
-    }
-
-    for (; lvl; lvl = lvl->next) {
-      BLO_read_data_address(reader, &lvl->verts);
-      BLO_read_data_address(reader, &lvl->faces);
-      BLO_read_data_address(reader, &lvl->edges);
-      BLO_read_data_address(reader, &lvl->colfaces);
-    }
-  }
-
-  /* if multires is present but has no valid vertex data,
-   * there's no way to recover it; silently remove multires */
-  if (mesh->mr && !mesh->mr->verts) {
-    multires_free(mesh->mr);
-    mesh->mr = NULL;
-  }
-
-  if ((BLO_read_requires_endian_switch(reader)) && mesh->tface) {
-    TFace *tf = mesh->tface;
-    for (int i = 0; i < mesh->totface; i++, tf++) {
-      BLI_endian_switch_uint32_array(tf->col, 4);
-    }
-  }
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Read ID: Lattice
- * \{ */
-
-static void lib_link_latt(BlendLibReader *reader, Lattice *lt)
-{
-  BLO_read_id_address(reader, lt->id.lib, &lt->ipo);  // XXX deprecated - old animation system
-  BLO_read_id_address(reader, lt->id.lib, &lt->key);
-}
-
-static void direct_link_latt(BlendDataReader *reader, Lattice *lt)
-{
-  BLO_read_data_address(reader, &lt->def);
-
-  BLO_read_data_address(reader, &lt->dvert);
-  direct_link_dverts(reader, lt->pntsu * lt->pntsv * lt->pntsw, lt->dvert);
-
-  lt->editlatt = NULL;
-  lt->batch_cache = NULL;
-
-  BLO_read_data_address(reader, &lt->adt);
-  BKE_animdata_blend_read_data(reader, lt->adt);
-}
 
 /** \} */
 
@@ -5041,9 +4803,10 @@ static void direct_link_object(BlendDataReader *reader, Object *ob)
    * Also when linking in a file don't allow edit and pose modes.
    * See [#34776, #42780] for more information.
    */
-  if (reader->fd->memfile || (ob->id.tag & (LIB_TAG_EXTERN | LIB_TAG_INDIRECT))) {
+  const bool is_undo = BLO_read_data_is_undo(reader);
+  if (is_undo || (ob->id.tag & (LIB_TAG_EXTERN | LIB_TAG_INDIRECT))) {
     ob->mode &= ~(OB_MODE_EDIT | OB_MODE_PARTICLE_EDIT);
-    if (!reader->fd->memfile) {
+    if (!is_undo) {
       ob->mode &= ~OB_MODE_POSE;
     }
   }
@@ -5220,7 +4983,7 @@ static void direct_link_object(BlendDataReader *reader, Object *ob)
   if (ob->sculpt) {
     ob->sculpt = NULL;
     /* Only create data on undo, otherwise rely on editor mode switching. */
-    if (reader->fd->memfile && (ob->mode & OB_MODE_ALL_SCULPT)) {
+    if (BLO_read_data_is_undo(reader) && (ob->mode & OB_MODE_ALL_SCULPT)) {
       BKE_object_sculpt_data_create(ob);
     }
   }
@@ -6097,7 +5860,7 @@ static void direct_link_scene(BlendDataReader *reader, Scene *sce)
     direct_link_view_layer(reader, view_layer);
   }
 
-  if (reader->fd->memfile) {
+  if (BLO_read_data_is_undo(reader)) {
     /* If it's undo do nothing here, caches are handled by higher-level generic calling code. */
   }
   else {
@@ -6202,7 +5965,7 @@ static void direct_link_gpencil(BlendDataReader *reader, bGPdata *gpd)
         /* relink weight data */
         if (gps->dvert) {
           BLO_read_data_address(reader, &gps->dvert);
-          direct_link_dverts(reader, gps->totpoints, gps->dvert);
+          BKE_defvert_blend_read(reader, gps->totpoints, gps->dvert);
         }
       }
     }
@@ -7544,7 +7307,7 @@ static void direct_link_sound(BlendDataReader *reader, bSound *sound)
     sound->cache = NULL;
   }
 
-  if (reader->fd->memfile != NULL) {
+  if (BLO_read_data_is_undo(reader)) {
     sound->tags |= SOUND_TAGS_WAVEFORM_NO_RELOAD;
   }
 
@@ -8005,8 +7768,8 @@ static void direct_link_hair(BlendDataReader *reader, Hair *hair)
   BKE_animdata_blend_read_data(reader, hair->adt);
 
   /* Geometry */
-  direct_link_customdata(reader, &hair->pdata, hair->totpoint);
-  direct_link_customdata(reader, &hair->cdata, hair->totcurve);
+  CustomData_blend_read(reader, &hair->pdata, hair->totpoint);
+  CustomData_blend_read(reader, &hair->cdata, hair->totcurve);
   BKE_hair_update_customdata_pointers(hair);
 
   /* Materials */
@@ -8032,7 +7795,7 @@ static void direct_link_pointcloud(BlendDataReader *reader, PointCloud *pointclo
   BKE_animdata_blend_read_data(reader, pointcloud->adt);
 
   /* Geometry */
-  direct_link_customdata(reader, &pointcloud->pdata, pointcloud->totpoint);
+  CustomData_blend_read(reader, &pointcloud->pdata, pointcloud->totpoint);
   BKE_pointcloud_update_customdata_pointers(pointcloud);
 
   /* Materials */
@@ -8093,7 +7856,7 @@ static void direct_link_simulation(BlendDataReader *reader, Simulation *simulati
     BLO_read_data_address(reader, &state->type);
     if (STREQ(state->type, SIM_TYPE_NAME_PARTICLE_SIMULATION)) {
       ParticleSimulationState *particle_state = (ParticleSimulationState *)state;
-      direct_link_customdata(reader, &particle_state->attributes, particle_state->tot_particles);
+      CustomData_blend_read(reader, &particle_state->attributes, particle_state->tot_particles);
     }
   }
 
@@ -8261,9 +8024,6 @@ static bool direct_link_id(FileData *fd, Main *main, const int tag, ID *id, ID *
     case ID_OB:
       direct_link_object(&reader, (Object *)id);
       break;
-    case ID_ME:
-      direct_link_mesh(&reader, (Mesh *)id);
-      break;
     case ID_CU:
       direct_link_curve(&reader, (Curve *)id);
       break;
@@ -8293,9 +8053,6 @@ static bool direct_link_id(FileData *fd, Main *main, const int tag, ID *id, ID *
       break;
     case ID_KE:
       direct_link_key(&reader, (Key *)id);
-      break;
-    case ID_LT:
-      direct_link_latt(&reader, (Lattice *)id);
       break;
     case ID_WO:
       direct_link_world(&reader, (World *)id);
@@ -8368,6 +8125,10 @@ static bool direct_link_id(FileData *fd, Main *main, const int tag, ID *id, ID *
       break;
     case ID_SIM:
       direct_link_simulation(&reader, (Simulation *)id);
+      break;
+    case ID_ME:
+    case ID_LT:
+      /* Do nothing. Handled by IDTypeInfo callback. */
       break;
   }
 
@@ -9032,17 +8793,11 @@ static void lib_link_all(FileData *fd, Main *bmain)
       case ID_LA:
         lib_link_light(&reader, (Light *)id);
         break;
-      case ID_LT:
-        lib_link_latt(&reader, (Lattice *)id);
-        break;
       case ID_MB:
         lib_link_mball(&reader, (MetaBall *)id);
         break;
       case ID_CU:
         lib_link_curve(&reader, (Curve *)id);
-        break;
-      case ID_ME:
-        lib_link_mesh(&reader, (Mesh *)id);
         break;
       case ID_CF:
         lib_link_cachefiles(&reader, (CacheFile *)id);
@@ -9096,6 +8851,10 @@ static void lib_link_all(FileData *fd, Main *bmain)
         break;
       case ID_LI:
         lib_link_library(&reader, (Library *)id); /* Only init users. */
+        break;
+      case ID_ME:
+      case ID_LT:
+        /* Do nothing. Handled by IDTypeInfo callback. */
         break;
     }
 
@@ -9911,12 +9670,6 @@ static void expand_light(BlendExpander *expander, Light *la)
   BLO_expand(expander, la->ipo);  // XXX deprecated - old animation system
 }
 
-static void expand_lattice(BlendExpander *expander, Lattice *lt)
-{
-  BLO_expand(expander, lt->ipo);  // XXX deprecated - old animation system
-  BLO_expand(expander, lt->key);
-}
-
 static void expand_world(BlendExpander *expander, World *wrld)
 {
   BLO_expand(expander, wrld->ipo);  // XXX deprecated - old animation system
@@ -9944,16 +9697,6 @@ static void expand_curve(BlendExpander *expander, Curve *cu)
   BLO_expand(expander, cu->bevobj);
   BLO_expand(expander, cu->taperobj);
   BLO_expand(expander, cu->textoncurve);
-}
-
-static void expand_mesh(BlendExpander *expander, Mesh *me)
-{
-  for (int a = 0; a < me->totcol; a++) {
-    BLO_expand(expander, me->mat[a]);
-  }
-
-  BLO_expand(expander, me->key);
-  BLO_expand(expander, me->texcomesh);
 }
 
 /* callback function used to expand constraint ID-links */
@@ -10389,9 +10132,6 @@ void BLO_expand_main(void *fdhandle, Main *mainvar)
             case ID_OB:
               expand_object(&expander, (Object *)id);
               break;
-            case ID_ME:
-              expand_mesh(&expander, (Mesh *)id);
-              break;
             case ID_CU:
               expand_curve(&expander, (Curve *)id);
               break;
@@ -10409,9 +10149,6 @@ void BLO_expand_main(void *fdhandle, Main *mainvar)
               break;
             case ID_WO:
               expand_world(&expander, (World *)id);
-              break;
-            case ID_LT:
-              expand_lattice(&expander, (Lattice *)id);
               break;
             case ID_LA:
               expand_light(&expander, (Light *)id);
@@ -11352,6 +11089,11 @@ void *BLO_read_get_new_data_address(BlendDataReader *reader, const void *old_add
   return newdataadr(reader->fd, old_address);
 }
 
+void *BLO_read_get_new_packed_address(BlendDataReader *reader, const void *old_address)
+{
+  return newpackedadr(reader->fd, old_address);
+}
+
 ID *BLO_read_get_new_id_address(BlendLibReader *reader, Library *lib, ID *id)
 {
   return newlibadr(reader->fd, lib, id);
@@ -11505,6 +11247,16 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p)
   }
 
   *ptr_p = final_array;
+}
+
+bool BLO_read_data_is_undo(BlendDataReader *reader)
+{
+  return reader->fd->memfile != NULL;
+}
+
+bool BLO_read_lib_is_undo(BlendLibReader *reader)
+{
+  return reader->fd->memfile != NULL;
 }
 
 void BLO_expand_id(BlendExpander *expander, ID *id)
