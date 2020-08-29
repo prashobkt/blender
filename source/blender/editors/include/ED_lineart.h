@@ -446,8 +446,8 @@ BLI_INLINE int lineart_LineIntersectTest2d(
   double x_diff = (a2[0] - a1[0]);
   double x_diff2 = (b2[0] - b1[0]);
 
-  if (x_diff == 0) {
-    if (x_diff2 == 0) {
+  if (LRT_DOUBLE_CLOSE_ENOUGH(x_diff, 0)) {
+    if (LRT_DOUBLE_CLOSE_ENOUGH(x_diff2, 0)) {
       *aRatio = 0;
       return 0;
     }
@@ -457,7 +457,7 @@ BLI_INLINE int lineart_LineIntersectTest2d(
     *aRatio = ratio = lineart_get_linear_ratio(a1[1], a2[1], y);
   }
   else {
-    if (x_diff2 == 0) {
+    if (LRT_DOUBLE_CLOSE_ENOUGH(x_diff2, 0)) {
       ratio = lineart_get_linear_ratio(a1[0], a2[0], b1[0]);
       x = interpd(a2[0], a1[0], ratio);
       *aRatio = ratio;
@@ -477,7 +477,7 @@ BLI_INLINE int lineart_LineIntersectTest2d(
     }
   }
 
-  if (b1[0] == b2[0]) {
+  if (LRT_DOUBLE_CLOSE_ENOUGH(b1[0], b2[0])) {
     y = interpd(a2[1], a1[1], ratio);
     if (y > MAX2(b1[1], b2[1]) || y < MIN2(b1[1], b2[1]))
       return 0;

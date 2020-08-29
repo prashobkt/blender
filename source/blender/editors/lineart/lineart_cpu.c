@@ -1791,7 +1791,7 @@ static LineartRenderLine *lineart_another_edge(const LineartRenderTriangle *rt,
 }
 static int lineart_edge_from_triangle(const LineartRenderTriangle *rt, const LineartRenderLine *rl)
 {
-  if (rl->tl == rt || rl->tr == rt) {
+  if (rt->rl[0] == rl || rt->rl[1] == rl || rt->rl[2] == rl) {
     return 1;
   }
   if (lineart_share.allow_overlapping_edges) {
@@ -1853,7 +1853,8 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl
   if ((MAX3(FBC0[0], FBC1[0], FBC2[0]) < MIN2(LFBC[0], RFBC[0])) ||
       (MIN3(FBC0[0], FBC1[0], FBC2[0]) > MAX2(LFBC[0], RFBC[0])) ||
       (MAX3(FBC0[1], FBC1[1], FBC2[1]) < MIN2(LFBC[1], RFBC[1])) ||
-      (MIN3(FBC0[1], FBC1[1], FBC2[1]) > MAX2(LFBC[1], RFBC[1]))) {
+      (MIN3(FBC0[1], FBC1[1], FBC2[1]) > MAX2(LFBC[1], RFBC[1])) ||
+      (MIN3(FBC0[1], FBC1[1], FBC2[1]) > MAX2(LFBC[2], RFBC[2]))) {
     return 0;
   }
 
