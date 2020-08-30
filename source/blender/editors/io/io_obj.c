@@ -467,7 +467,7 @@ void WM_OT_obj_import(struct wmOperatorType *ot)
                 0.0f,
                 1000.0f,
                 "Clamp values above",
-                "Clamp the size of the bounding box of the object",
+                "Clamp the size of the bounding box of the object. Value 0 diables clamping",
                 0.0f,
                 1000.0f);
   RNA_def_enum(ot->srna,

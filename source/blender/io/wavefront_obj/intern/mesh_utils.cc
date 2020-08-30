@@ -332,18 +332,18 @@ void transform_object(Object *object, const OBJImportParams &import_params)
                             axes_transform);
   mul_m4_m3m4(object->obmat, axes_transform, object->obmat);
 
-
   if (import_params.clamp_size != 0.0f) {
-    float3 max(-INT_MAX);
-    float3 min(INT_MAX);
+    float3 max_coord(-INT_MAX);
+    float3 min_coord(INT_MAX);
     BoundBox *bb = BKE_mesh_boundbox_get(object);
     for (int i = 0; i < 8; i++) {
       for (int j = 0; j < 3; j++) {
-        max[j] = max_ff(max[j], bb->vec[i][j]);
-        min[j] = min_ff(min[j], bb->vec[i][j]);
+        max_coord[j] = max_ff(max_coord[j], bb->vec[i][j]);
+        min_coord[j] = min_ff(min_coord[j], bb->vec[i][j]);
       }
     }
-    const float max_diff = max_fff(max[0] - min[0], max[1] - min[1], max[2] - min[2]);
+    const float max_diff = max_fff(
+        max_coord[0] - min_coord[0], max_coord[1] - min_coord[1], max_coord[2] - min_coord[2]);
     float scale = 1.0f;
     while (import_params.clamp_size < max_diff * scale) {
       scale = scale / 10;
