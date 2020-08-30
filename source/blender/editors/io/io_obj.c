@@ -143,8 +143,8 @@ static void ui_obj_export_settings(uiLayout *layout, PointerRNA *imfptr)
 {
   uiLayout *box;
   uiLayout *row;
-  bool export_animation = RNA_boolean_get(imfptr, "export_animation");
-  bool export_smooth_groups = RNA_boolean_get(imfptr, "export_smooth_groups");
+  const bool export_animation = RNA_boolean_get(imfptr, "export_animation");
+  const bool export_smooth_groups = RNA_boolean_get(imfptr, "export_smooth_groups");
 
   box = uiLayoutBox(layout);
   row = uiLayoutRow(box, false);
@@ -400,12 +400,14 @@ static int wm_obj_import_invoke(bContext *C, wmOperator *op, const wmEvent *even
   return OPERATOR_RUNNING_MODAL;
   UNUSED_VARS(event);
 }
+
 static int wm_obj_import_exec(bContext *C, wmOperator *op)
 {
   if (!RNA_struct_property_is_set(op->ptr, "filepath")) {
     BKE_report(op->reports, RPT_ERROR, "No filename given");
     return OPERATOR_CANCELLED;
   }
+
   struct OBJImportParams import_params;
   RNA_string_get(op->ptr, "filepath", import_params.filepath);
   OBJ_import(C, &import_params);

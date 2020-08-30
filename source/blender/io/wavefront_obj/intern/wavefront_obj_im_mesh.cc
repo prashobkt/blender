@@ -208,7 +208,7 @@ void MeshFromGeometry::create_vertices()
     if (mesh_geometry_.vertex_index(i) < global_vertices_.vertices.size()) {
       copy_v3_v3(blender_mesh_->mvert[i].co,
                  global_vertices_.vertices[mesh_geometry_.vertex_index(i)]);
-      if (i > mesh_geometry_.tot_normals()) {
+      if (i >= mesh_geometry_.tot_normals()) {
         /* Silence debug warning in mesh validate. */
         normal_float_to_short_v3(blender_mesh_->mvert[i].no, (float[3]){1.0f, 1.0f, 1.0f});
       }

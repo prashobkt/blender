@@ -533,6 +533,7 @@ MTLParser::MTLParser(StringRef mtl_library, StringRefNull obj_filepath)
   mtl_file_.open(mtl_file_path_);
   if (!mtl_file_.good()) {
     fprintf(stderr, "Cannot read from MTL file:'%s'\n", mtl_file_path_);
+    return;
   }
   fprintf(stderr, "Reading MTL file from:'%s'\n", mtl_file_path_);
 }
