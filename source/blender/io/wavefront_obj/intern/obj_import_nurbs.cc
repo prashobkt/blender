@@ -25,9 +25,9 @@
 
 #include "DNA_curve_types.h"
 
-#include "mesh_utils.hh"
-#include "wavefront_obj_im_nurbs.hh"
-#include "wavefront_obj_im_objects.hh"
+#include "utils.hh"
+#include "obj_import_nurbs.hh"
+#include "obj_import_objects.hh"
 
 namespace blender::io::obj {
 

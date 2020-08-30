@@ -42,8 +42,8 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 
-#include "mesh_utils.hh"
-#include "wavefront_obj_im_mesh.hh"
+#include "utils.hh"
+#include "obj_import_mesh.hh"
 
 namespace blender::io::obj {
 

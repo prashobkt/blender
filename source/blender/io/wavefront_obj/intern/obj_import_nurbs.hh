@@ -31,7 +31,7 @@
 
 #include "DNA_curve_types.h"
 
-#include "wavefront_obj_im_objects.hh"
+#include "obj_import_objects.hh"
 
 namespace blender::io::obj {
 

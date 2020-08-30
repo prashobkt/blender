@@ -28,8 +28,8 @@
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
-#include "wavefront_obj_ex_file_writer.hh"
-#include "wavefront_obj_im_file_reader.hh"
+#include "obj_export_file_writer.hh"
+#include "obj_import_file_reader.hh"
 
 namespace blender::io::obj {
 

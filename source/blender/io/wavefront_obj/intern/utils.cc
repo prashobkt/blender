@@ -21,7 +21,7 @@
  * \ingroup obj
  */
 
-#include "mesh_utils.hh"
+#include "utils.hh"
 
 #include "BKE_displist.h"
 #include "BKE_mesh.h"

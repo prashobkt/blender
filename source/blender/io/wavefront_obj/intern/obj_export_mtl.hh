@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "wavefront_obj_im_mtl.hh"
+#include "obj_import_mtl.hh"
 
 namespace blender::io::obj {
 class MaterialWrap {

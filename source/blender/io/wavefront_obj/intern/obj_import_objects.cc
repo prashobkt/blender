@@ -30,7 +30,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "wavefront_obj_im_objects.hh"
+#include "obj_import_objects.hh"
 
 namespace blender::io::obj {
 

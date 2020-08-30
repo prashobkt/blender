@@ -38,33 +38,33 @@ set(INC_SYS
 )
 
 set(SRC
-  intern/mesh_utils.cc
+  intern/utils.cc
   intern/wavefront_obj.cc
-  intern/wavefront_obj_exporter.cc
-  intern/wavefront_obj_ex_mesh.cc
-  intern/wavefront_obj_ex_mtl.cc
-  intern/wavefront_obj_ex_nurbs.cc
-  intern/wavefront_obj_ex_file_writer.cc
-  intern/wavefront_obj_im_file_reader.cc
-  intern/wavefront_obj_importer.cc
-  intern/wavefront_obj_im_mesh.cc
-  intern/wavefront_obj_im_mtl.cc
-  intern/wavefront_obj_im_nurbs.cc
-  intern/wavefront_obj_im_objects.cc
+  intern/obj_exporter.cc
+  intern/obj_export_mesh.cc
+  intern/obj_export_mtl.cc
+  intern/obj_export_nurbs.cc
+  intern/obj_export_file_writer.cc
+  intern/obj_import_file_reader.cc
+  intern/obj_importer.cc
+  intern/obj_import_mesh.cc
+  intern/obj_import_mtl.cc
+  intern/obj_import_nurbs.cc
+  intern/obj_import_objects.cc
 
   IO_wavefront_obj.h
-  intern/mesh_utils.hh
-  intern/wavefront_obj_exporter.hh
-  intern/wavefront_obj_ex_mesh.hh
-  intern/wavefront_obj_ex_mtl.hh
-  intern/wavefront_obj_ex_nurbs.hh
-  intern/wavefront_obj_ex_file_writer.hh
-  intern/wavefront_obj_im_file_reader.hh
-  intern/wavefront_obj_importer.hh
-  intern/wavefront_obj_im_mesh.hh
-  intern/wavefront_obj_im_mtl.hh
-  intern/wavefront_obj_im_nurbs.hh
-  intern/wavefront_obj_im_objects.hh
+  intern/utils.hh
+  intern/obj_exporter.hh
+  intern/obj_export_mesh.hh
+  intern/obj_export_mtl.hh
+  intern/obj_export_nurbs.hh
+  intern/obj_export_file_writer.hh
+  intern/obj_import_file_reader.hh
+  intern/obj_importer.hh
+  intern/obj_import_mesh.hh
+  intern/obj_import_mtl.hh
+  intern/obj_import_nurbs.hh
+  intern/obj_import_objects.hh
 )
 
 set(LIB

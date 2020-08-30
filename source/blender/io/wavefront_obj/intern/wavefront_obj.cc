@@ -28,8 +28,8 @@
 
 #include "IO_wavefront_obj.h"
 
-#include "wavefront_obj_exporter.hh"
-#include "wavefront_obj_importer.hh"
+#include "obj_exporter.hh"
+#include "obj_importer.hh"
 
 /**
  * Time the full export process.

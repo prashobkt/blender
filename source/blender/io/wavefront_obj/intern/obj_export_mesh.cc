@@ -41,7 +41,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
-#include "wavefront_obj_ex_mesh.hh"
+#include "obj_export_mesh.hh"
 
 namespace blender::io::obj {
 /**

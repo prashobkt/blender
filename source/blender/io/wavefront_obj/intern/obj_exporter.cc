@@ -34,10 +34,10 @@
 
 #include "ED_object.h"
 
-#include "wavefront_obj_ex_file_writer.hh"
-#include "wavefront_obj_ex_mesh.hh"
-#include "wavefront_obj_ex_nurbs.hh"
-#include "wavefront_obj_exporter.hh"
+#include "obj_export_file_writer.hh"
+#include "obj_export_mesh.hh"
+#include "obj_export_nurbs.hh"
+#include "obj_exporter.hh"
 
 namespace blender::io::obj {
 /**

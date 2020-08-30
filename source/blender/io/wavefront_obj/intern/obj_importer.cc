@@ -29,11 +29,11 @@
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 
-#include "wavefront_obj_im_file_reader.hh"
-#include "wavefront_obj_im_mesh.hh"
-#include "wavefront_obj_im_nurbs.hh"
-#include "wavefront_obj_im_objects.hh"
-#include "wavefront_obj_importer.hh"
+#include "obj_import_file_reader.hh"
+#include "obj_import_mesh.hh"
+#include "obj_import_nurbs.hh"
+#include "obj_import_objects.hh"
+#include "obj_importer.hh"
 
 namespace blender::io::obj {
 

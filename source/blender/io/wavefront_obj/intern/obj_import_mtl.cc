@@ -30,7 +30,7 @@
 
 #include "NOD_shader.h"
 
-#include "wavefront_obj_im_mtl.hh"
+#include "obj_import_mtl.hh"
 
 namespace blender::io::obj {
 

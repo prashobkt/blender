@@ -33,9 +33,9 @@
 
 #include "NOD_node_tree_ref.hh"
 
-#include "wavefront_obj_ex_mesh.hh"
-#include "wavefront_obj_ex_mtl.hh"
-#include "wavefront_obj_im_mtl.hh"
+#include "obj_export_mesh.hh"
+#include "obj_export_mtl.hh"
+#include "obj_import_mtl.hh"
 
 namespace blender::io::obj {
 

@@ -27,8 +27,8 @@
 
 #include "BLI_utility_mixins.hh"
 
-#include "wavefront_obj_im_mtl.hh"
-#include "wavefront_obj_im_objects.hh"
+#include "obj_import_mtl.hh"
+#include "obj_import_objects.hh"
 
 namespace blender::io::obj {
 /**
