@@ -89,6 +89,7 @@ void OBJParser::print_obj_data(Span<std::unique_ptr<Geometry>> all_geometries,
 static void geometry_to_blender_objects(
     Main *bmain,
     Scene *scene,
+    const OBJImportParams &import_params,
     Vector<std::unique_ptr<Geometry>> &all_geometries,
     const GlobalVertices &global_vertices,
     const Map<std::string, std::unique_ptr<MTLMaterial>> &materials)
@@ -97,12 +98,12 @@ static void geometry_to_blender_objects(
   for (const std::unique_ptr<Geometry> &geometry : all_geometries) {
     if (geometry->get_geom_type() == GEOM_MESH) {
       MeshFromGeometry mesh_ob_from_geometry{*geometry, global_vertices};
-      mesh_ob_from_geometry.create_mesh(bmain, materials);
+      mesh_ob_from_geometry.create_mesh(bmain, materials, import_params);
       import_collection.add_object_to_collection(mesh_ob_from_geometry.mover());
     }
     else if (geometry->get_geom_type() == GEOM_CURVE) {
       CurveFromGeometry curve_ob_from_geometry(*geometry, global_vertices);
-      curve_ob_from_geometry.create_curve(bmain);
+      curve_ob_from_geometry.create_curve(bmain, import_params);
       import_collection.add_object_to_collection(curve_ob_from_geometry.mover());
     }
   }
@@ -128,6 +129,7 @@ void importer_main(bContext *C, const OBJImportParams &import_params)
   }
   //  obj_parser.print_obj_data(all_geometries, global_vertices);
 
-  geometry_to_blender_objects(bmain, scene, all_geometries, global_vertices, materials);
+  geometry_to_blender_objects(
+      bmain, scene, import_params, all_geometries, global_vertices, materials);
 }
 }  // namespace blender::io::obj

@@ -70,7 +70,9 @@ class MeshFromGeometry : NonMovable, NonCopyable {
   }
 
   ~MeshFromGeometry();
-  void create_mesh(Main *bmain, const Map<std::string, std::unique_ptr<MTLMaterial>> &materials);
+  void create_mesh(Main *bmain,
+                   const Map<std::string, std::unique_ptr<MTLMaterial>> &materials,
+                   const OBJImportParams &import_params);
   unique_object_ptr mover()
   {
     return std::move(mesh_object_);

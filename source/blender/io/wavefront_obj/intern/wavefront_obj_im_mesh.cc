@@ -58,7 +58,8 @@ MeshFromGeometry::~MeshFromGeometry()
 }
 
 void MeshFromGeometry::create_mesh(Main *bmain,
-                                   const Map<std::string, std::unique_ptr<MTLMaterial>> &materials)
+                                   const Map<std::string, std::unique_ptr<MTLMaterial>> &materials,
+                                   const OBJImportParams &import_params)
 {
   std::string ob_name{mesh_geometry_.get_geometry_name()};
   if (ob_name.empty()) {
@@ -97,6 +98,7 @@ void MeshFromGeometry::create_mesh(Main *bmain,
 #endif
   /* Un-tessellate unnecesarily triangulated n-gons. */
   dissolve_edges(fgon_edges);
+  transform_object(mesh_object_.get(), import_params);
 
   BKE_mesh_nomain_to_mesh(blender_mesh_.release(),
                           static_cast<Mesh *>(mesh_object_->data),

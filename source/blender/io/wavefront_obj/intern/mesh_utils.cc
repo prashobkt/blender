@@ -24,9 +24,14 @@
 #include "mesh_utils.hh"
 
 #include "BKE_displist.h"
+#include "BKE_mesh.h"
 
 #include "BLI_array.hh"
 #include "BLI_set.hh"
+
+#include "DNA_object_types.h"
+
+#include "IO_wavefront_obj.h"
 
 namespace blender::io::obj {
 
@@ -309,4 +314,41 @@ Vector<Vector<int>> ngon_tessellate(Span<float3> vertex_coords, Span<int> face_v
   return fill_indices;
 }
 
+/**
+ * Apply axes transform to the Object, and clamp object dimensions to the specified value.
+ */
+void transform_object(Object *object, const OBJImportParams &import_params)
+{
+  float axes_transform[3][3];
+  unit_m3(axes_transform);
+  unit_m4(object->obmat);
+  /* Location shift should be 0. */
+  copy_v3_fl(object->obmat[3], 0.0f);
+  /* -Y-forward and +Z-up are the default Blender axis settings. */
+  mat3_from_axis_conversion(OBJ_AXIS_NEGATIVE_Y_FORWARD,
+                            OBJ_AXIS_Z_UP,
+                            import_params.forward_axis,
+                            import_params.up_axis,
+                            axes_transform);
+  mul_m4_m3m4(object->obmat, axes_transform, object->obmat);
+
+
+  if (import_params.clamp_size != 0.0f) {
+    float3 max(-INT_MAX);
+    float3 min(INT_MAX);
+    BoundBox *bb = BKE_mesh_boundbox_get(object);
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 3; j++) {
+        max[j] = max_ff(max[j], bb->vec[i][j]);
+        min[j] = min_ff(min[j], bb->vec[i][j]);
+      }
+    }
+    const float max_diff = max_fff(max[0] - min[0], max[1] - min[1], max[2] - min[2]);
+    float scale = 1.0f;
+    while (import_params.clamp_size < max_diff * scale) {
+      scale = scale / 10;
+    }
+    copy_v3_fl(object->scale, scale);
+  }
+}
 }  // namespace blender::io::obj

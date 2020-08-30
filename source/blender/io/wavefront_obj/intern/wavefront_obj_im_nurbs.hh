@@ -74,13 +74,13 @@ class CurveFromGeometry : NonMovable, NonCopyable {
   }
   ~CurveFromGeometry();
 
-  void create_curve(Main *bmain);
+  void create_curve(Main *bmain, const OBJImportParams &import_params);
   unique_object_ptr mover()
   {
     return std::move(curve_object_);
   }
 
  private:
-  void create_nurbs();
+  void create_nurbs(const OBJImportParams &import_params);
 };
 }  // namespace blender::io::obj

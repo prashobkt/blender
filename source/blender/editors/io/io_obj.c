@@ -410,12 +410,37 @@ static int wm_obj_import_exec(bContext *C, wmOperator *op)
 
   struct OBJImportParams import_params;
   RNA_string_get(op->ptr, "filepath", import_params.filepath);
+  import_params.clamp_size = RNA_float_get(op->ptr, "clamp_size");
+  import_params.forward_axis = RNA_enum_get(op->ptr, "forward_axis");
+  import_params.up_axis = RNA_enum_get(op->ptr, "up_axis");
+
   OBJ_import(C, &import_params);
 
   return OPERATOR_FINISHED;
 }
-static void wm_obj_import_draw(bContext *UNUSED(C), wmOperator *UNUSED(op))
+
+static void ui_obj_import_settings(uiLayout *layout, PointerRNA *imfptr)
 {
+  uiLayout *box, *row;
+
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+  box = uiLayoutBox(layout);
+
+  uiItemL(box, IFACE_("Transform"), ICON_OBJECT_DATA);
+  row = uiLayoutRow(box, false);
+  uiLayout *col = uiLayoutColumn(box, true);
+
+  uiItemR(col, imfptr, "clamp_size", 0, NULL, ICON_NONE);
+  uiItemR(col, imfptr, "forward_axis", 0, NULL, ICON_NONE);
+  uiItemR(col, imfptr, "up_axis", 0, NULL, ICON_NONE);
+}
+
+static void wm_obj_import_draw(bContext *UNUSED(C), wmOperator *op)
+{
+  PointerRNA ptr;
+  RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
+  ui_obj_import_settings(op->layout, &ptr);
 }
 
 void WM_OT_obj_import(struct wmOperatorType *ot)
@@ -436,4 +461,20 @@ void WM_OT_obj_import(struct wmOperatorType *ot)
                                  WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_ALPHA);
+  RNA_def_float(ot->srna,
+                "clamp_size",
+                0.0f,
+                0.0f,
+                1000.0f,
+                "Clamp values above",
+                "Clamp the size of the bounding box of the object",
+                0.0f,
+                1000.0f);
+  RNA_def_enum(ot->srna,
+               "forward_axis",
+               io_obj_transform_axis_forward,
+               OBJ_AXIS_NEGATIVE_Y_FORWARD,
+               "Forward Axis",
+               "Forward Axis");
+  RNA_def_enum(ot->srna, "up_axis", io_obj_transform_axis_up, OBJ_AXIS_Z_UP, "Up Axis", "Up Axis");
 }

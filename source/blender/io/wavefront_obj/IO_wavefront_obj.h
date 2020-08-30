@@ -92,6 +92,10 @@ struct OBJExportParams {
 struct OBJImportParams {
   /** Full path to the source OBJ file to import. */
   char filepath[FILE_MAX];
+  /* Value 0 disables clamping. */
+  float clamp_size;
+  eTransformAxisForward forward_axis;
+  eTransformAxisUp up_axis;
 };
 
 void OBJ_import(bContext *C, const struct OBJImportParams *import_params);

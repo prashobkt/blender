@@ -27,8 +27,11 @@
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
-namespace blender::io::obj {
+struct Object;
+struct OBJImportParams;
 
+namespace blender::io::obj {
 Vector<Vector<int>> ngon_tessellate(Span<float3> vertex_coords, Span<int> face_vertex_indices);
 
-}
+void transform_object(Object *object, const OBJImportParams &import_params);
+}  // namespace blender::io::obj

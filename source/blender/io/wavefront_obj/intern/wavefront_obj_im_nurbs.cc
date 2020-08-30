@@ -25,6 +25,7 @@
 
 #include "DNA_curve_types.h"
 
+#include "mesh_utils.hh"
 #include "wavefront_obj_im_nurbs.hh"
 #include "wavefront_obj_im_objects.hh"
 
@@ -40,7 +41,7 @@ CurveFromGeometry::~CurveFromGeometry()
   }
 }
 
-void CurveFromGeometry::create_curve(Main *bmain)
+void CurveFromGeometry::create_curve(Main *bmain, const OBJImportParams &import_params)
 {
   std::string ob_name{curve_geometry_.get_geometry_name()};
   if (ob_name.empty() && !curve_geometry_.group().empty()) {
@@ -60,14 +61,16 @@ void CurveFromGeometry::create_curve(Main *bmain)
 
   Nurb *nurb = static_cast<Nurb *>(MEM_callocN(sizeof(Nurb), "OBJ import NURBS curve"));
   BLI_addtail(BKE_curve_nurbs_get(blender_curve_.get()), nurb);
-  create_nurbs();
+  create_nurbs(import_params);
 
   curve_object_->data = blender_curve_.release();
+  transform_object(curve_object_.get(), import_params);
 }
+
 /**
  * Create a NURBS spline for the Curve converted from Geometry.
  */
-void CurveFromGeometry::create_nurbs()
+void CurveFromGeometry::create_nurbs(const OBJImportParams &import_params)
 {
   const NurbsElement &nurbs_geometry = curve_geometry_.nurbs_elem();
   Nurb *nurb = static_cast<Nurb *>(blender_curve_->nurb.first);
