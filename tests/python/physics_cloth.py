@@ -57,7 +57,7 @@ def main():
             break
         elif cmd == "--run-test":
             cloth_test.apply_modifiers = False
-            name = str(command[i + 1])
+            name = command[i + 1]
             cloth_test.run_test(name)
             break
 
