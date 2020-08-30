@@ -32,7 +32,7 @@ def main():
 
         # Make sure no modifier is added on the test object.
         MeshTest("ClothSimple", "testClothPlane", "expectedClothPlane",
-                 [ModifierSpec('Cloth', 'CLOTH', {'settings': {'quality': 5}}, 10)], threshold=1e-3),
+                 [ModifierSpec('Cloth', 'CLOTH', {'settings': {'quality': 5}}, 15)], threshold=1e-3),
 
         # Not reproducible
         # MeshTest("ClothPressure", "testObjClothPressure", "expObjClothPressure",
