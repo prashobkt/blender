@@ -517,8 +517,8 @@ static int lineart_point_on_lined(double v[2], double v0[2], double v1[2])
 {
   double c1, c2;
 
-  c1 = lineart_get_linear_ratio(v0[0], v1[0], v[0]);
-  c2 = lineart_get_linear_ratio(v0[1], v1[1], v[1]);
+  c1 = ratiod(v0[0], v1[0], v[0]);
+  c2 = ratiod(v0[1], v1[1], v[1]);
 
   if (LRT_DOUBLE_CLOSE_ENOUGH(c1, c2) && c1 >= 0 && c1 <= 1) {
     return 1;
@@ -1612,7 +1612,7 @@ static void lineart_geometry_object_load(Object *ob,
       double gn[3];
       copy_v3db_v3fl(gn, f->no);
       mul_v3_mat3_m4v3_db(rt->gn, normal, gn);
-      normalize_v3_d(rt->gn);
+      normalize_v3_db(rt->gn);
       lineart_render_line_assign_with_triangle(rt);
 
       if (usage == OBJECT_LRT_INTERSECTION_ONLY) {
@@ -1937,10 +1937,10 @@ static int lineart_triangle_line_imagespace_intersection_v2(SpinLock *UNUSED(spl
 
   /* To accomodate k=0 and k=inf (vertical) lines. */
   if (fabs(rl->l->fbcoord[0] - rl->r->fbcoord[0]) > fabs(rl->l->fbcoord[1] - rl->r->fbcoord[1])) {
-    cut = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], trans[0]);
+    cut = ratiod(rl->l->fbcoord[0], rl->r->fbcoord[0], trans[0]);
   }
   else {
-    cut = lineart_get_linear_ratio(rl->l->fbcoord[1], rl->r->fbcoord[1], trans[1]);
+    cut = ratiod(rl->l->fbcoord[1], rl->r->fbcoord[1], trans[1]);
   }
 
   if (st_l == 2) {
@@ -3337,8 +3337,8 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
     if (positive_y > 0) {
       uy = this->u;
       ux = x + (uy - y) / k;
-      r1 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], rx);
-      r2 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], ux);
+      r1 = ratiod(rl->l->fbcoord[0], rl->r->fbcoord[0], rx);
+      r2 = ratiod(rl->l->fbcoord[0], rl->r->fbcoord[0], ux);
       if (MIN2(r1, r2) > 1) {
         return 0;
       }
@@ -3370,8 +3370,8 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
     else if (positive_y < 0) {
       by = this->b;
       bx = x + (by - y) / k;
-      r1 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], rx);
-      r2 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], bx);
+      r1 = ratiod(rl->l->fbcoord[0], rl->r->fbcoord[0], rx);
+      r2 = ratiod(rl->l->fbcoord[0], rl->r->fbcoord[0], bx);
       if (MIN2(r1, r2) > 1) {
         return 0;
       }
@@ -3398,7 +3398,7 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
     }
     /* If the line is compeletely horizontal, in which Y diffence == 0 */
     else {
-      r1 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], this->r);
+      r1 = ratiod(rl->l->fbcoord[0], rl->r->fbcoord[0], this->r);
       if (r1 > 1) {
         return 0;
       }
@@ -3422,8 +3422,8 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
     if (positive_y > 0) {
       uy = this->u;
       ux = x + (uy - y) / k;
-      r1 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], lx);
-      r2 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], ux);
+      r1 = ratiod(rl->l->fbcoord[0], rl->r->fbcoord[0], lx);
+      r2 = ratiod(rl->l->fbcoord[0], rl->r->fbcoord[0], ux);
       if (MIN2(r1, r2) > 1) {
         return 0;
       }
@@ -3453,8 +3453,8 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
     else if (positive_y < 0) {
       by = this->b;
       bx = x + (by - y) / k;
-      r1 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], lx);
-      r2 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], bx);
+      r1 = ratiod(rl->l->fbcoord[0], rl->r->fbcoord[0], lx);
+      r2 = ratiod(rl->l->fbcoord[0], rl->r->fbcoord[0], bx);
       if (MIN2(r1, r2) > 1) {
         return 0;
       }
@@ -3481,7 +3481,7 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
     }
     /* Again, horizontal */
     else {
-      r1 = lineart_get_linear_ratio(rl->l->fbcoord[0], rl->r->fbcoord[0], this->l);
+      r1 = ratiod(rl->l->fbcoord[0], rl->r->fbcoord[0], this->l);
       if (r1 > 1) {
         return 0;
       }
@@ -3498,7 +3498,7 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
   /* If the line is completely vertical, hence X difference == 0 */
   else {
     if (positive_y > 0) {
-      r1 = lineart_get_linear_ratio(rl->l->fbcoord[1], rl->r->fbcoord[1], this->u);
+      r1 = ratiod(rl->l->fbcoord[1], rl->r->fbcoord[1], this->u);
       if (r1 > 1) {
         return 0;
       }
@@ -3512,7 +3512,7 @@ static LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *this
       }
     }
     else if (positive_y < 0) {
-      r1 = lineart_get_linear_ratio(rl->l->fbcoord[1], rl->r->fbcoord[1], this->b);
+      r1 = ratiod(rl->l->fbcoord[1], rl->r->fbcoord[1], this->b);
       if (r1 > 1) {
         return 0;
       }
