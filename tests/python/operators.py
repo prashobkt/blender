@@ -26,7 +26,7 @@ from random import shuffle, seed
 seed(0)
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-from modules.mesh_test import OperatorTest, MeshTest, OperatorSpecEditMode, RunTest
+from modules.mesh_test import MeshTest, OperatorSpecEditMode, RunTest
 
 # Central vertical loop of Suzanne
 MONKEY_LOOP_VERT = {68, 69, 71, 73, 74, 75, 76, 77, 90, 129, 136, 175, 188, 189, 198, 207,
