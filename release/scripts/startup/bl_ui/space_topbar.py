@@ -436,7 +436,7 @@ class TOPBAR_MT_file_import(Menu):
     bl_owner_use_filter = False
 
     def draw(self, _context):
-        self.layout.operator("wm.obj_import", text="OBJ New (.obj)")
+        self.layout.operator("wm.obj_import", text="Wavefront OBJ (.obj) - New")
         if bpy.app.build_options.collada:
             self.layout.operator("wm.collada_import",
                                  text="Collada (Default) (.dae)")
@@ -450,7 +450,7 @@ class TOPBAR_MT_file_export(Menu):
     bl_owner_use_filter = False
 
     def draw(self, context):
-        self.layout.operator("wm.obj_export", text="OBJ New (.obj)")
+        self.layout.operator("wm.obj_export", text="Wavefront OBJ (.obj) - New")
         if bpy.app.build_options.collada:
             self.layout.operator("wm.collada_export",
                                  text="Collada (Default) (.dae)")
