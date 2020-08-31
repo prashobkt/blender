@@ -46,6 +46,7 @@
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
+#include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_sequencer.h"
 #include "BKE_workspace.h"
@@ -193,12 +194,17 @@ static void do_outliner_item_posemode_toggle(
   }
   else {
     bool ok = false;
-    if (ob->mode & OB_MODE_POSE) {
+
+    if (ID_IS_LINKED(ob)) {
+      BKE_report(CTX_wm_reports(C), RPT_WARNING, "Cannot pose libdata");
+    }
+    else if (ob->mode & OB_MODE_POSE) {
       ok = ED_object_posemode_exit_ex(bmain, ob);
     }
     else {
       ok = ED_object_posemode_enter_ex(bmain, ob);
     }
+
     if (ok) {
       ED_object_base_select(base, (ob->mode & OB_MODE_POSE) ? BA_SELECT : BA_DESELECT);
 
@@ -1641,7 +1647,7 @@ static TreeElement *outliner_walk_left(SpaceOutliner *space_outliner,
   TreeStoreElem *tselem = TREESTORE(te);
 
   if (TSELEM_OPEN(tselem, space_outliner)) {
-    outliner_item_openclose(te, false, toggle_all);
+    outliner_item_openclose(space_outliner, te, false, toggle_all);
   }
   /* Only walk up a level if the element is closed and not toggling expand */
   else if (!toggle_all && te->parent) {
@@ -1662,7 +1668,7 @@ static TreeElement *outliner_walk_right(SpaceOutliner *space_outliner,
     te = te->subtree.first;
   }
   else {
-    outliner_item_openclose(te, true, toggle_all);
+    outliner_item_openclose(space_outliner, te, true, toggle_all);
   }
 
   return te;
