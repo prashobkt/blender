@@ -459,7 +459,7 @@ static void lineart_occlusion_worker(TaskPool *__restrict UNUSED(pool), LineartR
   }
 }
 
-static void lineart_occlusion_begin_calculation(LineartRenderBuffer *rb)
+static void lineart_main_occlusion_begin(LineartRenderBuffer *rb)
 {
   int thread_count = lineart_share.thread_count;
   LineartRenderTaskInfo *rti = MEM_callocN(sizeof(LineartRenderTaskInfo) * thread_count,
@@ -2344,7 +2344,7 @@ static void lineart_triangle_intersections_in_bounding_area(LineartRenderBuffer 
   }
 }
 
-static void lineart_compute_view_vector(LineartRenderBuffer *rb)
+static void lineart_main_get_view_vector(LineartRenderBuffer *rb)
 {
   float direction[3] = {0, 0, 1};
   float trans[3];
@@ -2368,7 +2368,7 @@ static void lineart_compute_view_vector(LineartRenderBuffer *rb)
   copy_v3db_v3fl(rb->view_vector, trans);
 }
 
-static void lineart_compute_scene_contours(LineartRenderBuffer *rb, const float threshold)
+static void lineart_main_compute_scene_contours(LineartRenderBuffer *rb, const float threshold)
 {
   double *view_vector = rb->view_vector;
   double dot_1 = 0, dot_2 = 0;
@@ -2379,7 +2379,7 @@ static void lineart_compute_scene_contours(LineartRenderBuffer *rb, const float 
   int material_count = 0;
 
   if (!rb->cam_is_persp) {
-    lineart_compute_view_vector(rb);
+    lineart_main_get_view_vector(rb);
   }
 
   LISTBASE_FOREACH (LineartRenderLine *, rl, &rb->all_render_lines) {
@@ -2705,7 +2705,7 @@ static int lineart_triangle_size_get(LineartRenderBuffer *rb, const Scene *scene
 #define LRT_BOUND_AREA_CROSSES(b1, b2) \
   ((b1)[0] < (b2)[1] && (b1)[1] > (b2)[0] && (b1)[3] < (b2)[2] && (b1)[2] > (b2)[3])
 
-static void lineart_bounding_area_make_initial(LineartRenderBuffer *rb)
+static void lineart_main_bounding_area_make_initial(LineartRenderBuffer *rb)
 {
   int sp_w = 4; /*  20; */
   int sp_h = 4; /*  rb->H / (rb->W / sp_w); */
@@ -3279,7 +3279,7 @@ LineartBoundingArea *ED_lineart_get_point_bounding_area_deep(LineartRenderBuffer
   return NULL;
 }
 
-static void lineart_add_triangles(LineartRenderBuffer *rb)
+static void lineart_main_add_triangles(LineartRenderBuffer *rb)
 {
   LineartRenderTriangle *rt;
   int i, lim;
@@ -3661,12 +3661,12 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
 
   LRT_CANCEL_STAGE
 
-  lineart_compute_view_vector(rb);
+  lineart_main_get_view_vector(rb);
   lineart_main_cull_triangles(rb);
 
   lineart_main_perspective_division(rb);
 
-  lineart_bounding_area_make_initial(rb);
+  lineart_main_bounding_area_make_initial(rb);
 
   LRT_CANCEL_STAGE
   LRT_PROGRESS(10, "LRT: Contour lines.");
@@ -3677,19 +3677,19 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
   }
 
   if (!intersections_only) {
-    lineart_compute_scene_contours(rb, lineart->crease_threshold);
+    lineart_main_compute_scene_contours(rb, lineart->crease_threshold);
   }
 
   LRT_CANCEL_STAGE
   LRT_PROGRESS(25, "LRT: Intersections.");
 
-  lineart_add_triangles(rb);
+  lineart_main_add_triangles(rb);
 
   LRT_CANCEL_STAGE
   LRT_PROGRESS(50, "LRT: Occlusion.");
 
   if (!intersections_only) {
-    lineart_occlusion_begin_calculation(rb);
+    lineart_main_occlusion_begin(rb);
   }
 
   LRT_CANCEL_STAGE
@@ -3701,14 +3701,6 @@ int ED_lineart_compute_feature_lines_internal(Depsgraph *depsgraph, const int sh
     float t_geom = scene->lineart.chaining_geometry_threshold;
 
     ED_lineart_chain_feature_lines(rb);
-
-    // if (is_lineart_engine) {
-    //  /* Enough with it. We can provide an option after we have Line Art internal smoothing */
-    //  ED_lineart_calculation_flag_set(LRT_RENDER_FINISHED);
-    //  return OPERATOR_FINISHED;
-    //}
-
-    /* Below are simply for better GPencil experience. */
 
     ED_lineart_chain_split_for_fixed_occlusion(rb);
 
