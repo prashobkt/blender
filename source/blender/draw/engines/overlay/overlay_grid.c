@@ -57,7 +57,9 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata)
   shd->grid_line_size = max_ff(0.0f, U.pixelsize - 1.0f) * 0.5f;
 
   if (pd->is_image_editor) {
-    shd->grid_flag = PLANE_IMAGE | SHOW_GRID;
+    const SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
+    const Image *image = sima->image;
+    shd->grid_flag = (image == NULL) ? PLANE_IMAGE | SHOW_GRID : 0;
     shd->grid_distance = 1.0f;
     shd->grid_mesh_size = 1.0f;
     for (int step = 0; step < 8; step++) {
@@ -181,7 +183,10 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata)
 
 void OVERLAY_grid_cache_init(OVERLAY_Data *vedata)
 {
-  OVERLAY_ShadingData *shd = &vedata->stl->pd->shdata;
+  OVERLAY_StorageList *stl = vedata->stl;
+  OVERLAY_PrivateData *pd = stl->pd;
+  OVERLAY_ShadingData *shd = &pd->shdata;
+
   OVERLAY_PassList *psl = vedata->psl;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
