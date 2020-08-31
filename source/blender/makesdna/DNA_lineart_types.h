@@ -40,6 +40,10 @@ struct Object;
 struct Material;
 struct Collection;
 
+/* Notice that we need to have this file although no struct defines.
+ * Edge flags and usage flags are used by with scene/object/gpencil modifier bits, and those values
+ * needs to stay consistent throughout. */
+
 typedef enum eLineartEdgeFlag {
   LRT_EDGE_FLAG_EDGE_MARK = (1 << 0),
   LRT_EDGE_FLAG_CONTOUR = (1 << 1),
